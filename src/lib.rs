@@ -330,17 +330,7 @@ impl State {
             self.size.width,
             self.size.height,
         );
-        /*
-        {
-            if let Some(vector_field) = &mut self.vector_field {
-                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Compute Pass"),
-                });
-                compute_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                vector_field.update(&mut compute_pass);
-            }
-        }
-        */
+
         for model in self.models.values_mut() {
             model.refresh_data(
                 &self.device,
