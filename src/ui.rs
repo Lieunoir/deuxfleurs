@@ -232,6 +232,7 @@ impl UI {
                             }
                         }
                     };
+                    //TODO avoid pollster blocking here
                     #[cfg(not(target_arch = "wasm32"))]
                     pollster::block_on(f);
                     #[cfg(target_arch = "wasm32")]
