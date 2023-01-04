@@ -141,10 +141,7 @@ impl VectorField {
             &pipeline_layout,
             color_format,
             Some(texture::Texture::DEPTH_FORMAT),
-            &[
-                VectorVertex::desc(),
-                VectorData::desc(),
-            ],
+            &[VectorVertex::desc(), VectorData::desc()],
             shader,
             Some("vector field render"),
         );

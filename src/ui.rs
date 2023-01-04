@@ -60,11 +60,9 @@ impl UI {
     pub fn draw_models(
         &mut self,
         window: &Window,
-        event_loop_proxy: &winit::event_loop::EventLoopProxy<crate::UserEvent>,
         models: &mut HashMap<String, crate::model::Model>,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
-        picked: &Option<(String, usize)>,
     ) {
         let input = self.state.take_egui_input(window);
         self.ctx.begin_frame(input);

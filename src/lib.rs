@@ -92,7 +92,7 @@ pub enum UserEvent {
 
 impl State {
     // Initialize the state
-    pub async fn new(event_loop: &EventLoop<UserEvent>, window: &Window) -> Self {
+    pub async fn new(window: &Window) -> Self {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
@@ -517,7 +517,7 @@ impl State {
 
 impl StateWrapper {
     pub async fn new(event_loop: &EventLoop<UserEvent>, window: &Window) -> Self {
-        let state = State::new(event_loop, window).await;
+        let state = State::new(window).await;
         let ui = ui::UI::new(&state.device, state.config.format, event_loop);
         Self {
             state,
@@ -570,11 +570,9 @@ impl StateWrapper {
                     self.state.update();
                     self.ui.draw_models(
                         &window,
-                        &event_loop_proxy,
                         &mut self.state.models,
                         self.state.camera.build_view(),
                         self.state.camera.build_proj(),
-                        &self.state.picker.picked_item,
                     );
                     self.ui
                         .draw_callback(&event_loop_proxy, &mut self.state, &mut self.callback);

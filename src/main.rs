@@ -72,30 +72,8 @@ pub async fn run() {
 
     let mut last_selected = 0;
     let mut last_selected_mesh = "".into();
-    let mut selected_mesh = "";
     state.set_callback(move |ui, state| {
         ui.label("User defined stuff here : ");
-        /*
-        egui::ComboBox::from_label("Selected mesh")
-            .selected_text(format!("{:?}", selected_mesh))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut model.mesh.gizmo_mode,
-                    GizmoMode::Rotate,
-                    "Rotate",
-                    );
-                ui.selectable_value(
-                    &mut model.mesh.gizmo_mode,
-                    GizmoMode::Translate,
-                    "Translate",
-                    );
-                ui.selectable_value(
-                    &mut model.mesh.gizmo_mode,
-                    GizmoMode::Scale,
-                    "Scale",
-                    );
-            });
-            */
         if ui
             .add(egui::Button::new("Filter input mesh (require mesh loaded)"))
             .clicked()
