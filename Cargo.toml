@@ -12,7 +12,8 @@ bytemuck = { version = "1.12.1", features = [ "derive" ] }
 cfg-if = "1.0.0"
 cgmath = "0.18.0"
 egui = "0.20.1"
-egui-gizmo = { path = "../egui-gizmo" }
+# Includes dirty fix so that gizmo can grab focus
+egui-gizmo = { git = "https://github.com/Lieunoir/egui-gizmo" }
 egui-wgpu = { version = "0.20.0", features = ["winit"] }
 egui-winit = { version = "0.20.1", default-features = false, features = ["wayland"] }
 egui_demo_lib = "0.20.0"
