@@ -35,11 +35,18 @@ impl Vertex for VectorVertex {
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[wgpu::VertexAttribute {
-                offset: 0,
-                shader_location: 0,
-                format: wgpu::VertexFormat::Float32x3,
-            }],
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
         }
     }
 }
@@ -53,17 +60,17 @@ impl Vertex for VectorData {
             attributes: &[
                 wgpu::VertexAttribute {
                     offset: 0,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x3,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
+                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
+                    shader_location: 4,
                     format: wgpu::VertexFormat::Float32x3,
                 },
             ],
@@ -74,16 +81,43 @@ impl Vertex for VectorData {
 impl VectorField {
     fn build_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
         let positions = [
-            [0.485, 0., 0.],  //0
-            [0.515, 0., 0.],  //1
-            [0.485, 0.7, 0.], //2
-            [0.515, 0., 0.],  //1
-            [0.515, 0.7, 0.], //3
-            [0.485, 0.7, 0.], //2
-            [0.45, 0.7, 0.],  //arrow
-            [0.55, 0.7, 0.],
-            [0.5, 1.0, 0.],
-        ];
+            [-0.07, 0., -0.07],
+            [0.07, 0., -0.07],
+            [-0.07, 0., 0.07],
+            [-0.07, 0., 0.07],
+            [0.07, 0., -0.07],
+            [0.07, 0., 0.07],
+
+            [0.07, 1., -0.07],
+            [-0.07, 1., -0.07],
+            [-0.07, 1., 0.07],
+            [0.07, 1., -0.07],
+            [-0.07, 1., 0.07],
+            [0.07, 1., 0.07],
+
+			/*
+            [-0.07, 0., -0.07],
+            [-0.07, 0., 0.07],
+            [-0.07, 1., -0.07],
+            [-0.07, 1., -0.07],
+            [-0.07, 0., 0.07],
+            [-0.07, 1., 0.07],
+
+            [0.07, 0., 0.07],
+            [0.07, 0., -0.07],
+            [0.07, 1., -0.07],
+            [0.07, 0., 0.07],
+            [0.07, 1., -0.07],
+            [0.07, 1., 0.07],
+			*/
+
+            [-0.07, 0., 0.07],
+            [0.07, 0., 0.07],
+            [-0.07, 1., 0.07],
+            [-0.07, 1., 0.07],
+            [0.07, 0., 0.07],
+            [0.07, 1., 0.07],
+            ];
         let vertices = positions.map(|position| VectorVertex { position });
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vector Vertex Buffer"),
@@ -165,6 +199,6 @@ impl VectorField {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
-        render_pass.draw(0..9, 0..(self.vectors.len() as u32));
+        render_pass.draw(0..18, 0..(self.vectors.len() as u32));
     }
 }

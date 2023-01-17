@@ -11,3 +11,7 @@ A few things that should be added :
 * other data structures such as polygonal meshes, vector fields, point clouds, volumes
 * state saving/loading
 * documentation
+
+## Mesh permanent quantities:
+add new hashtable
+each can contain a pipeline, is self contained regarding to rendering and updates

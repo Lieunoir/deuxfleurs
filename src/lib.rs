@@ -425,7 +425,6 @@ impl State {
             &self.picker.bind_group_layout,
             self.config.format,
         );
-        /*
         let positions = vertices.clone();
         let normals = model
             .mesh
@@ -434,7 +433,6 @@ impl State {
             .map(|vertex| vertex.normal)
             .collect();
         self.register_vector_field(normals, positions);
-        */
         self.models.insert(mesh_name.into(), model);
         self.picker.counters_dirty = true;
         self.models.get_mut(mesh_name).unwrap()
