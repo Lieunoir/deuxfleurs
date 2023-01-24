@@ -131,6 +131,11 @@ impl UI {
                                     );
                                 });
                         });
+                        for (name, field) in &mut model.mesh.vector_fields {
+                            ui.horizontal(|ui| {
+                                ui.checkbox(&mut field.shown, name.clone());
+                            });
+                        }
                         for (name, data) in &mut model.mesh.datas {
                             let active = model.mesh.shown_data == Some(name.clone());
                             ui.horizontal(|ui| {

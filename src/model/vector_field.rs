@@ -151,6 +151,7 @@ impl VectorField {
     pub fn new(
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         vectors: Vec<[f32; 3]>,
         vectors_offsets: Vec<[f32; 3]>,
@@ -162,7 +163,7 @@ impl VectorField {
             label: Some("Vector Render Pipeline Layout"),
             bind_group_layouts: &[
                 camera_light_bind_group_layout,
-                //transform_bind_group_layout,
+                transform_bind_group_layout,
             ],
             push_constant_ranges: &[],
         });

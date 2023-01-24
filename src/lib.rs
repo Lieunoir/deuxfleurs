@@ -416,7 +416,7 @@ impl State {
         vertices: &Vec<[f32; 3]>,
         indices: &Vec<[u32; 3]>,
     ) -> &mut model::Model {
-        let model = model::Model::new(
+        let mut model = model::Model::new(
             mesh_name,
             vertices,
             indices,
@@ -425,19 +425,23 @@ impl State {
             &self.picker.bind_group_layout,
             self.config.format,
         );
-        let positions = vertices.clone();
+        //let positions = vertices.clone();
         let normals = model
             .mesh
             .vertices
             .iter()
             .map(|vertex| vertex.normal)
             .collect();
+        model.mesh.add_vertex_vector_field("Normals".to_string(), normals);
+        /*
         self.register_vector_field(normals, positions);
+        */
         self.models.insert(mesh_name.into(), model);
         self.picker.counters_dirty = true;
         self.models.get_mut(mesh_name).unwrap()
     }
 
+    /*
     pub fn register_vector_field(
         &mut self,
         vectors: Vec<[f32; 3]>,
@@ -451,6 +455,7 @@ impl State {
             vectors_offsets,
         ));
     }
+    */
 
     pub fn screenshot(&mut self) {
         self.screenshot = true;
@@ -601,6 +606,7 @@ impl StateWrapper {
         self.state.register_mesh(mesh_name, vertices, indices)
     }
 
+    /*
     pub fn register_vector_field(
         &mut self,
         vectors: Vec<[f32; 3]>,
@@ -608,6 +614,7 @@ impl StateWrapper {
     ) {
         self.state.register_vector_field(vectors, vectors_offsets);
     }
+    */
 
     pub fn screenshot(&mut self) {
         self.state.screenshot();

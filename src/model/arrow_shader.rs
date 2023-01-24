@@ -9,11 +9,18 @@ struct Light {
     color: vec3<f32>,
 }
 
+struct TransformUniform {
+    model: mat4x4<f32>,
+    normal: mat4x4<f32>,
+}
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
 var<uniform> light: Light;
 
+@group(1) @binding(0)
+var<uniform> transform: TransformUniform;
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) coords: vec3<f32>,
@@ -38,28 +45,30 @@ fn vs_main(
     model: VertexInput,
     vector_i: VectorInput,
 ) -> VertexOutput {
-    //let model_matrix = transform.model;
-    //let normal_matrix = transform.normal;
+    let model_matrix = transform.model;
+    let normal_matrix = transform.normal;
+
+    let world_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
+    // Do we want to scale a vector field if we scale its attached mesh?
+    let world_vector_arrow = (model_matrix * vec4<f32>(vector_i.orig_position + vector_i.arrow, 1.)).xyz - world_vector_pos;
 
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
 
     out.color = vector_i.color;
-	out.orig_position = vector_i.orig_position;
-	out.arrow = vector_i.arrow;
+	out.orig_position = world_vector_pos;
+	out.arrow = world_vector_arrow;
 
-    let view_axis = normalize(vector_i.orig_position - camera.view_pos.xyz);
-    let arrow_axis = normalize(vector_i.arrow);
+    let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
+    let arrow_axis = normalize(world_vector_arrow);
     let right_axis = normalize(cross(view_axis, arrow_axis));
     let depth_axis = -normalize(cross(arrow_axis, right_axis));
     let rotation_mat = mat3x3<f32>(
         right_axis,
-        arrow_axis,
+        world_vector_arrow,
         depth_axis);
-    let position = rotation_mat * model.position * 0.1 + vec3<f32>(vector_i.orig_position);
+    let position = rotation_mat * model.position * 0.1 + world_vector_pos;
     out.world_pos = position;
-
-    //out.clip_position = camera.view_proj * model_matrix * vec4<f32>(model.position, 1.0);
     out.clip_position = camera.view_proj * vec4<f32>(position, 1.0);
     return out;
 }

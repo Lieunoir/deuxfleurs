@@ -69,7 +69,7 @@ impl Vertex for ModelVertex {
 pub struct MeshRenderer {
     vertex_buffer: wgpu::Buffer,
     num_elements: u32,
-    transform_bind_group_layout: wgpu::BindGroupLayout,
+    pub transform_bind_group_layout: wgpu::BindGroupLayout,
     transform_bind_group: wgpu::BindGroup,
     transform_buffer: wgpu::Buffer,
     data_uniform: Option<DataUniform>,

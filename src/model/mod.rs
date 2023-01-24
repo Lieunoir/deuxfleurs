@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::model::data::{DataUniform, MeshData};
 use crate::model::mesh_picker::MeshPicker;
 use crate::model::renderer::{MeshRenderer, ModelVertex};
+use crate::model::vector_field::VectorField;
 use crate::texture;
 
 mod arrow_shader;
@@ -18,6 +19,11 @@ pub struct Material {
     pub bind_group: wgpu::BindGroup,
 }
 
+pub struct VectorFieldData {
+    pub field: VectorField,
+    pub shown: bool,
+}
+
 pub struct Mesh {
     pub name: String,
     pub vertices: Vec<ModelVertex>,
@@ -30,6 +36,8 @@ pub struct Mesh {
     pub transform_changed: bool,
     pub uniform_changed: bool,
     pub datas: HashMap<String, MeshData>,
+    pub vector_fields: HashMap<String, VectorFieldData>,
+    pub added_vector_fields: Vec<(String, Vec<[f32; 3]>, Vec<[f32; 3]>)>,
     pub shown_data: Option<String>,
     // When the data to show is changed, so we can do the change in the main loop
     pub color: [f32; 4],
@@ -125,6 +133,8 @@ impl Mesh {
             transform_changed: false,
             uniform_changed: false,
             datas: std::collections::HashMap::new(),
+            vector_fields: std::collections::HashMap::new(),
+            added_vector_fields: Vec::new(),
             shown_data: None,
             show: true,
             color: [0.2, 0.2, 0.8, 1.],
@@ -256,6 +266,34 @@ impl Mesh {
         self
     }
 
+    pub fn add_vertex_vector_field(
+        &mut self,
+        name: String,
+        vectors: Vec<[f32; 3]>) -> &mut Self {
+        assert!(vectors.len() == self.vertices.len());
+        let vectors_offsets: Vec<[f32; 3]> = self.vertices.iter().map(|v| v.position).collect();
+        self.added_vector_fields.push((name, vectors, vectors_offsets));
+        self
+    }
+
+    pub fn add_face_vector_field(
+        &mut self,
+        name: String,
+        vectors: Vec<[f32; 3]>) -> &mut Self {
+        assert!(vectors.len() == self.indices.len());
+        let vectors_offsets: Vec<[f32; 3]> = self.indices.iter().map(|face| {
+            let v1 = self.vertices[face[0] as usize].position;
+            let v2 = self.vertices[face[1] as usize].position;
+            let v3 = self.vertices[face[2] as usize].position;
+            let res0 = v1[0] + v2[0] + v3[0];
+            let res1 = v1[1] + v2[1] + v3[1];
+            let res2 = v1[2] + v2[2] + v3[2];
+            [res0, res1, res2]
+        }).collect();
+        self.added_vector_fields.push((name, vectors, vectors_offsets));
+        self
+    }
+
     pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
         self.data_to_show = Some(name);
         self
@@ -306,6 +344,14 @@ impl Model {
         color_format: wgpu::TextureFormat,
     ) -> bool {
         self.picker.update(queue, &self.mesh);
+        for (name, vectors, vectors_offsets) in self.mesh.added_vector_fields.drain(..) {
+            let field = VectorField::new(device, camera_light_bind_group_layout, &self.renderer.transform_bind_group_layout, color_format, vectors, vectors_offsets);
+            let vector_field = VectorFieldData {
+                field,
+                shown: true,
+            };
+            self.mesh.vector_fields.insert(name, vector_field);
+        }
         self.renderer.update(
             device,
             queue,
@@ -331,6 +377,11 @@ where
     fn draw_model(&mut self, model: &'b Model) {
         if model.mesh.show {
             model.renderer.render(self);
+            for vector_field in model.mesh.vector_fields.values() {
+                if vector_field.shown {
+                    vector_field.field.render(self);
+                }
+            }
         }
     }
 
