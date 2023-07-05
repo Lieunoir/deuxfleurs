@@ -426,13 +426,14 @@ impl State {
             self.config.format,
         );
         //let positions = vertices.clone();
+        /*
         let normals = model
             .mesh
             .vertices
             .iter()
             .map(|vertex| vertex.normal)
             .collect();
-        model.mesh.add_vertex_vector_field("Normals".to_string(), normals);
+        model.mesh.add_vertex_vector_field("Normals".to_string(), normals);*/
         /*
         self.register_vector_field(normals, positions);
         */

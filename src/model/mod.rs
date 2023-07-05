@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 
 use crate::model::data::{DataUniform, MeshData};
 use crate::model::mesh_picker::MeshPicker;
 use crate::model::renderer::{MeshRenderer, ModelVertex};
-use crate::model::vector_field::VectorField;
+use crate::model::vector_field::{VectorField, VectorFieldSettings};
 use crate::texture;
 
 mod arrow_shader;
@@ -310,6 +311,16 @@ pub struct Model {
     picker: MeshPicker,
 }
 
+impl Deref for Model {
+    type Target = Mesh;
+
+    fn deref(&self) -> &<Self as Deref>::Target { &self.mesh }
+}
+
+impl DerefMut for Model {
+    fn deref_mut(&mut self) -> &mut <Self as Deref>::Target { &mut self.mesh }
+}
+
 impl Model {
     pub fn new(
         name: &str,
@@ -345,12 +356,21 @@ impl Model {
     ) -> bool {
         self.picker.update(queue, &self.mesh);
         for (name, vectors, vectors_offsets) in self.mesh.added_vector_fields.drain(..) {
-            let field = VectorField::new(device, camera_light_bind_group_layout, &self.renderer.transform_bind_group_layout, color_format, vectors, vectors_offsets);
+            let vector_field_settings = VectorFieldSettings { magnitude: 1., _padding: [0; 7] };
+            let field = VectorField::new(device, camera_light_bind_group_layout, &self.renderer.transform_bind_group_layout, color_format, vectors, vectors_offsets, vector_field_settings);
+            let shown = if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
+                vector_field_data.shown
+            } else {
+                true
+            };
             let vector_field = VectorFieldData {
                 field,
-                shown: true,
+                shown,
             };
             self.mesh.vector_fields.insert(name, vector_field);
+        }
+        for (_name, vector_field) in &mut self.mesh.vector_fields {
+            vector_field.field.update(queue);
         }
         self.renderer.update(
             device,

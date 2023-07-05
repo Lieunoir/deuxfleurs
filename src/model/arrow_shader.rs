@@ -14,6 +14,11 @@ struct TransformUniform {
     normal: mat4x4<f32>,
 }
 
+struct SettingsUniform {
+    magnitude: f32,
+    _padding: vec3<u32>,
+}
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
@@ -21,6 +26,8 @@ var<uniform> light: Light;
 
 @group(1) @binding(0)
 var<uniform> transform: TransformUniform;
+@group(2) @binding(0)
+var<uniform> settings: SettingsUniform;
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) coords: vec3<f32>,
@@ -57,7 +64,7 @@ fn vs_main(
 
     out.color = vector_i.color;
 	out.orig_position = world_vector_pos;
-	out.arrow = world_vector_arrow;
+	out.arrow = world_vector_arrow * settings.magnitude;
 
     let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
     let arrow_axis = normalize(world_vector_arrow);
@@ -67,7 +74,7 @@ fn vs_main(
         right_axis,
         world_vector_arrow,
         depth_axis);
-    let position = rotation_mat * model.position * 0.1 + world_vector_pos;
+    let position = rotation_mat * model.position * settings.magnitude * 0.1 + world_vector_pos;
     out.world_pos = position;
     out.clip_position = camera.view_proj * vec4<f32>(position, 1.0);
     return out;
@@ -192,13 +199,13 @@ fn fs_main(in: VertexOutput) -> FragOutput {
     let ro = camera.view_pos.xyz;
 	let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let pa = in.orig_position;
-    let pb1 = in.orig_position + 0.6 * in.arrow * 0.1;
+    let pb1 = in.orig_position + 0.5 * in.arrow * 0.1;
     let pb2 = in.orig_position + in.arrow * 0.1;
 
     var out: FragOutput;
 
-    let traced_1 = iCappedCone(ro, rd, pb1, pb2, 0.07 * 0.1, 0.);
-    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.05 * 0.1);
+    let traced_1 = iCappedCone(ro, rd, pb1, pb2, 0.1 * 0.1 * settings.magnitude, 0.);
+    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.05 * 0.1 * settings.magnitude);
 	if(max(traced_1.x, traced_2.x) < 0.) {
 		discard;
 	}

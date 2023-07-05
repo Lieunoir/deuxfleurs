@@ -6,9 +6,21 @@ pub struct VectorField {
     pub vectors: Vec<[f32; 3]>,
     pub vectors_offsets: Vec<[f32; 3]>,
     pub colors: Vec<[f32; 3]>,
-    pub render_pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
-    pub vector_buffer: wgpu::Buffer,
+    render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    vector_buffer: wgpu::Buffer,
+    pub settings: VectorFieldSettings,
+    pub settings_changed: bool,
+    settings_bind_group: wgpu::BindGroup,
+    settings_buffer: wgpu::Buffer,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct VectorFieldSettings {
+    pub magnitude: f32,
+    //TODO make private
+    pub _padding: [u32; 7],
 }
 
 pub trait Vertex {
@@ -81,42 +93,42 @@ impl Vertex for VectorData {
 impl VectorField {
     fn build_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
         let positions = [
-            [-0.07, 0., -0.07],
-            [0.07, 0., -0.07],
-            [-0.07, 0., 0.07],
-            [-0.07, 0., 0.07],
-            [0.07, 0., -0.07],
-            [0.07, 0., 0.07],
+            [-0.1, 0., -0.1],
+            [0.1, 0., -0.1],
+            [-0.1, 0., 0.1],
+            [-0.1, 0., 0.1],
+            [0.1, 0., -0.1],
+            [0.1, 0., 0.1],
 
-            [0.07, 1., -0.07],
-            [-0.07, 1., -0.07],
-            [-0.07, 1., 0.07],
-            [0.07, 1., -0.07],
-            [-0.07, 1., 0.07],
-            [0.07, 1., 0.07],
+            [0.1, 1., -0.1],
+            [-0.1, 1., -0.1],
+            [-0.1, 1., 0.1],
+            [0.1, 1., -0.1],
+            [-0.1, 1., 0.1],
+            [0.1, 1., 0.1],
 
 			/*
-            [-0.07, 0., -0.07],
-            [-0.07, 0., 0.07],
-            [-0.07, 1., -0.07],
-            [-0.07, 1., -0.07],
-            [-0.07, 0., 0.07],
-            [-0.07, 1., 0.07],
+            [-0.1, 0., -0.1],
+            [-0.1, 0., 0.1],
+            [-0.1, 1., -0.1],
+            [-0.1, 1., -0.1],
+            [-0.1, 0., 0.1],
+            [-0.1, 1., 0.1],
 
-            [0.07, 0., 0.07],
-            [0.07, 0., -0.07],
-            [0.07, 1., -0.07],
-            [0.07, 0., 0.07],
-            [0.07, 1., -0.07],
-            [0.07, 1., 0.07],
+            [0.1, 0., 0.1],
+            [0.1, 0., -0.1],
+            [0.1, 1., -0.1],
+            [0.1, 0., 0.1],
+            [0.1, 1., -0.1],
+            [0.1, 1., 0.1],
 			*/
 
-            [-0.07, 0., 0.07],
-            [0.07, 0., 0.07],
-            [-0.07, 1., 0.07],
-            [-0.07, 1., 0.07],
-            [0.07, 0., 0.07],
-            [0.07, 1., 0.07],
+            [-0.1, 0., 0.1],
+            [0.1, 0., 0.1],
+            [-0.1, 1., 0.1],
+            [-0.1, 1., 0.1],
+            [0.1, 0., 0.1],
+            [0.1, 1., 0.1],
             ];
         let vertices = positions.map(|position| VectorVertex { position });
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -155,15 +167,44 @@ impl VectorField {
         color_format: wgpu::TextureFormat,
         vectors: Vec<[f32; 3]>,
         vectors_offsets: Vec<[f32; 3]>,
+        settings: VectorFieldSettings,
     ) -> Self {
         assert!(vectors.len() == vectors_offsets.len());
-        let colors = vec![[1., 0., 0.]; vectors.len()];
+        let colors = vec![[1., 0.1, 0.1]; vectors.len()];
+
+        let settings_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vector field settings buffer"),
+            contents: bytemuck::cast_slice(&[settings]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let settings_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("vector_field_settings_bind_group_layout"),
+        });
+        let settings_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &settings_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: settings_buffer.as_entire_binding(),
+            }],
+            label: Some("vector_field_settings_bind_group"),
+        });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Vector Render Pipeline Layout"),
             bind_group_layouts: &[
                 camera_light_bind_group_layout,
                 transform_bind_group_layout,
+                &settings_bind_group_layout,
             ],
             push_constant_ranges: &[],
         });
@@ -190,6 +231,10 @@ impl VectorField {
             render_pipeline,
             vertex_buffer,
             vector_buffer,
+            settings,
+            settings_changed: false,
+            settings_bind_group,
+            settings_buffer,
         }
     }
 
@@ -197,9 +242,17 @@ impl VectorField {
     where
         'a: 'b,
     {
+        render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
         render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+    }
+
+    pub fn update(&mut self, queue: &mut wgpu::Queue) {
+        if self.settings_changed {
+            queue.write_buffer(&self.settings_buffer, 0, bytemuck::cast_slice(&[self.settings]));
+            self.settings_changed = false;
+        }
     }
 }
