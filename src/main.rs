@@ -85,7 +85,7 @@ pub async fn run() {
                 //let mut vertices = model.mesh.vertices.clone();
                 vertices = vec![[0., 0., 0.]; model.mesh.vertices.len()];
                 for (vertex, orig_vertex) in vertices.iter_mut().zip(model.mesh.vertices.iter()) {
-                    *vertex = orig_vertex.position;
+                    *vertex = *orig_vertex;
                 }
                 indices = model.mesh.indices.clone();
                 filtered = true;

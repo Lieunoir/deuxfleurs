@@ -86,7 +86,7 @@ pub struct StateWrapper {
 }
 
 pub enum UserEvent {
-    LoadMesh(Vec<[f32; 3]>, Vec<[u32; 3]>),
+    LoadMesh(Vec<[f32; 3]>, Vec<Vec<u32>>),
     Pick,
 }
 
@@ -414,7 +414,7 @@ impl State {
         &mut self,
         mesh_name: &'_ str,
         vertices: &Vec<[f32; 3]>,
-        indices: &Vec<[u32; 3]>,
+        indices: &Vec<Vec<u32>>,
     ) -> &mut model::Model {
         let mut model = model::Model::new(
             mesh_name,
@@ -602,7 +602,7 @@ impl StateWrapper {
         &mut self,
         mesh_name: &'_ str,
         vertices: &Vec<[f32; 3]>,
-        indices: &Vec<[u32; 3]>,
+        indices: &Vec<Vec<u32>>,
     ) -> &mut model::Model {
         self.state.register_mesh(mesh_name, vertices, indices)
     }

@@ -27,35 +27,54 @@ pub struct VectorFieldData {
 
 pub struct Mesh {
     pub name: String,
-    pub vertices: Vec<ModelVertex>,
+    pub vertices: Vec<[f32; 3]>,
+    internal_vertices: Vec<ModelVertex>,
     //pub normals: Vec<[f32; 3]>,
-    pub indices: Vec<[u32; 3]>,
+    //TODO use face strides
+    pub indices: Vec<Vec<u32>>,
+    internal_indices: Vec<[u32; 3]>,
     pub num_elements: u32,
     pub material: usize,
-    pub transform: Transform,
+
     pub property_changed: bool,
     pub transform_changed: bool,
     pub uniform_changed: bool,
     pub datas: HashMap<String, MeshData>,
     pub vector_fields: HashMap<String, VectorFieldData>,
+
+    //cuz we have to build a renderer from the main loop after we add them
     pub added_vector_fields: Vec<(String, Vec<[f32; 3]>, Vec<[f32; 3]>)>,
+
     pub shown_data: Option<String>,
-    // When the data to show is changed, so we can do the change in the main loop
+    pub data_to_show: Option<Option<String>>,
+    // When the data to show is changed, so we can do the change from the main loop
     pub color: [f32; 4],
     pub show: bool,
     pub show_edges: bool,
     pub smooth: bool,
     pub show_gizmo: bool,
     pub gizmo_mode: egui_gizmo::GizmoMode,
-    pub data_to_show: Option<Option<String>>,
+    pub transform: Transform,
 }
 
+    //TODO some kind of error handling
 //TODO refactor datas properties
+//split part to copy when replacing the vertices
+//copy data by part : if mapped to vertices, keep if nv same, idem with faces
 /*
-struct MeshProperties {
+
+struct MeshState {
+
+}
+
+struct MeshUISettings {
+    pub color: [f32; 4],
+    pub show: bool,
     pub show_edges: bool,
     pub smooth: bool,
-    pub shown_data: Option<String>,
+    pub show_gizmo: bool,
+    pub gizmo_mode: egui_gizmo::GizmoMode,
+    pub transform: Transform,
 }
 */
 
@@ -107,9 +126,10 @@ impl TransformRaw {
 }
 
 impl Mesh {
-    pub fn new(name: &str, vertices: &Vec<[f32; 3]>, indices: &Vec<[u32; 3]>) -> Self {
+    pub fn new(name: &str, vertices: &Vec<[f32; 3]>, indices: &Vec<Vec<u32>>) -> Self {
         let normals = Self::compute_normals(vertices, indices);
-        let vertices = vertices
+        let vertices = vertices.clone();
+        let internal_vertices = vertices
             .iter()
             .zip(normals)
             .map(|(vertex, normal)| ModelVertex {
@@ -121,13 +141,21 @@ impl Mesh {
                 distance: 0.,
             })
             .collect::<Vec<_>>();
+        let mut internal_indices = Vec::new();
+        for face in indices {
+            for i in 1..face.len()-1 {
+                internal_indices.push([face[0], face[i], face[i+1]]);
+            }
+        }
         let indices = indices.clone();
         let transform = Transform::default();
         let num_elements = indices.len() as u32;
         Self {
             name: name.to_string(),
             vertices,
+            internal_vertices,
             indices,
+            internal_indices,
             num_elements,
             material: 0,
             transform,
@@ -148,27 +176,29 @@ impl Mesh {
         }
     }
 
-    fn compute_normals(vertices: &Vec<[f32; 3]>, indices: &Vec<[u32; 3]>) -> Vec<[f32; 3]> {
+    fn compute_normals(vertices: &Vec<[f32; 3]>, indices: &Vec<Vec<u32>>) -> Vec<[f32; 3]> {
         let mut normals = vec![[0., 0., 0.]; vertices.len()];
         for face in indices {
-            let i0 = face[0] as usize;
-            let i1 = face[1] as usize;
-            let i2 = face[2] as usize;
-            let v0: cgmath::Vector3<f32> = vertices[i0].into();
-            let v1: cgmath::Vector3<f32> = vertices[i1].into();
-            let v2: cgmath::Vector3<f32> = vertices[i2].into();
-            let e1 = v1 - v0;
-            let e2 = v2 - v0;
-            let cross_p = e1.cross(e2);
-            let n = AsRef::<[f32; 3]>::as_ref(&cross_p);
-            for (a, b) in normals[i0].iter_mut().zip(n) {
-                *a += b
-            }
-            for (a, b) in normals[i1].iter_mut().zip(n) {
-                *a += b
-            }
-            for (a, b) in normals[i2].iter_mut().zip(n) {
-                *a += b
+            for i in 1..face.len()-1 {
+                let i0 = face[0] as usize;
+                let i1 = face[i] as usize;
+                let i2 = face[i+1] as usize;
+                let v0: cgmath::Vector3<f32> = vertices[i0].into();
+                let v1: cgmath::Vector3<f32> = vertices[i1].into();
+                let v2: cgmath::Vector3<f32> = vertices[i2].into();
+                let e1 = v1 - v0;
+                let e2 = v2 - v0;
+                let cross_p = e1.cross(e2);
+                let n = AsRef::<[f32; 3]>::as_ref(&cross_p);
+                for (a, b) in normals[i0].iter_mut().zip(n) {
+                    *a += b
+                }
+                for (a, b) in normals[i1].iter_mut().zip(n) {
+                    *a += b
+                }
+                for (a, b) in normals[i2].iter_mut().zip(n) {
+                    *a += b
+                }
             }
         }
         for normal in &mut normals {
@@ -197,7 +227,6 @@ impl Mesh {
         self
     }
 
-    //TODO some kind of error handling
     pub fn add_face_scalar(&mut self, name: String, datas: Vec<f32>) -> &mut Self {
         assert!(datas.len() == self.indices.len());
         if let Some(data_name) = &mut self.shown_data {
@@ -218,9 +247,19 @@ impl Mesh {
                 self.shown_data = None;
             }
         }
+        let settings = if let Some(mesh_data) = self.datas.remove(&name) {
+            if let MeshData::VertexScalar(_datas, settings) = mesh_data {
+                settings
+            }
+            else {
+                crate::model::data::VertexScalarSettings::default()
+            }
+        } else {
+            crate::model::data::VertexScalarSettings::default()
+        };
         self.datas.insert(
             name,
-            MeshData::VertexScalar(datas, crate::model::data::VertexScalarUniform::default()),
+            MeshData::VertexScalar(datas, settings),
         );
         self
     }
@@ -233,9 +272,20 @@ impl Mesh {
                 self.shown_data = None;
             }
         }
+        let settings = if let Some(mesh_data) = self.datas.remove(&name) {
+            if let MeshData::UVMap(_datas, settings) = mesh_data {
+                settings
+            } else if let MeshData::UVCornerMap(_datas, settings) = mesh_data {
+                settings
+            } else {
+                crate::model::data::UVMapSettings::default()
+            }
+        } else {
+            crate::model::data::UVMapSettings::default()
+        };
         self.datas.insert(
             name,
-            MeshData::UVMap(datas, crate::model::data::UVMapUniform::default()),
+            MeshData::UVMap(datas, settings),
         );
         self
     }
@@ -248,9 +298,21 @@ impl Mesh {
                 self.shown_data = None;
             }
         }
+        let settings = if let Some(mesh_data) = self.datas.remove(&name) {
+            if let MeshData::UVMap(_datas, settings) = mesh_data {
+                settings
+            } else if let MeshData::UVCornerMap(_datas, settings) = mesh_data {
+                settings
+            } else {
+                crate::model::data::UVMapSettings::default()
+            }
+        } else {
+            crate::model::data::UVMapSettings::default()
+        };
+
         self.datas.insert(
             name,
-            MeshData::UVCornerMap(datas, crate::model::data::UVMapUniform::default()),
+            MeshData::UVCornerMap(datas, settings),
         );
         self
     }
@@ -267,28 +329,36 @@ impl Mesh {
         self
     }
 
+    //TODO save settings when already existing
     pub fn add_vertex_vector_field(
         &mut self,
         name: String,
         vectors: Vec<[f32; 3]>) -> &mut Self {
         assert!(vectors.len() == self.vertices.len());
-        let vectors_offsets: Vec<[f32; 3]> = self.vertices.iter().map(|v| v.position).collect();
+        let vectors_offsets: Vec<[f32; 3]> = self.vertices.clone();
         self.added_vector_fields.push((name, vectors, vectors_offsets));
         self
     }
 
+    //TODO save settings when already existing
     pub fn add_face_vector_field(
         &mut self,
         name: String,
         vectors: Vec<[f32; 3]>) -> &mut Self {
         assert!(vectors.len() == self.indices.len());
         let vectors_offsets: Vec<[f32; 3]> = self.indices.iter().map(|face| {
-            let v1 = self.vertices[face[0] as usize].position;
-            let v2 = self.vertices[face[1] as usize].position;
-            let v3 = self.vertices[face[2] as usize].position;
-            let res0 = v1[0] + v2[0] + v3[0];
-            let res1 = v1[1] + v2[1] + v3[1];
-            let res2 = v1[2] + v2[2] + v3[2];
+            let mut res0 = 0.;
+            let mut res1 = 0.;
+            let mut res2 = 0.;
+            for index in face {
+                let vertex = self.vertices[*index as usize];
+                res0 += vertex[0];
+                res1 += vertex[1];
+                res2 += vertex[2];
+            }
+            res0 = res0 / face.len() as f32;
+            res1 = res1 / face.len() as f32;
+            res2 = res2 / face.len() as f32;
             [res0, res1, res2]
         }).collect();
         self.added_vector_fields.push((name, vectors, vectors_offsets));
@@ -325,7 +395,7 @@ impl Model {
     pub fn new(
         name: &str,
         vertices: &Vec<[f32; 3]>,
-        indices: &Vec<[u32; 3]>,
+        indices: &Vec<Vec<u32>>,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,

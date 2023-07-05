@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use super::data::ColorUniform;
+use super::data::ColorSettings;
 use super::mesh_shader;
 use super::DataUniform;
 use super::Mesh;
@@ -88,14 +88,33 @@ where
         match self {
             Some(builder) => builder.build_vertex_buffer(device, mesh),
             None => {
-                let mut gpu_vertices = Vec::with_capacity(3 * mesh.indices.len());
-                for i in 0..mesh.indices.len() {
-                    gpu_vertices.push(mesh.vertices[mesh.indices[i][0] as usize]);
-                    gpu_vertices.push(mesh.vertices[mesh.indices[i][1] as usize]);
-                    gpu_vertices.push(mesh.vertices[mesh.indices[i][2] as usize]);
-                    gpu_vertices[3 * i].barycentric_coords = [1., 0., 0.];
-                    gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
-                    gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                let mut gpu_vertices = Vec::with_capacity(3 * mesh.internal_indices.len());
+                let mut i = 0;
+                for face in &mesh.indices {
+                    for j in 1..face.len()-1 {
+                        gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][0] as usize]);
+                        gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][1] as usize]);
+                        gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][2] as usize]);
+                        if face.len() == 3 {
+                            gpu_vertices[3 * i].barycentric_coords = [1., 0., 0.];
+                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                        } else if j == 1{
+                            gpu_vertices[3 * i].barycentric_coords = [1., 1., 0.];
+                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+
+                        } else if j == face.len()-2 {
+                            gpu_vertices[3 * i].barycentric_coords = [1., 0., 1.];
+                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                        } else {
+                            gpu_vertices[3 * i].barycentric_coords = [1., 1., 1.];
+                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                        }
+                        i+=1;
+                    }
                 }
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(&format!("{:?} Vertex Buffer", mesh.name)),
@@ -200,11 +219,11 @@ impl MeshRenderer {
             label: Some("transform_bind_group"),
         });
 
-        let num_elements = (mesh.indices.len() * 3) as u32;
+        let num_elements = (mesh.internal_indices.len() * 3) as u32;
         let data_uniform = if let Some(data) = mesh_data {
             data.build_uniform(device)
         } else {
-            Some(ColorUniform::build_uniform(&mesh.color, device))
+            Some(ColorSettings::build_uniform(&mesh.color, device))
         };
         let render_pipeline = build_render_pipeline(
             device,
@@ -267,7 +286,7 @@ impl MeshRenderer {
             let data_uniform = if let Some(data) = mesh_data {
                 data.build_uniform(device)
             } else {
-                Some(ColorUniform::build_uniform(&mesh.color, device))
+                Some(ColorSettings::build_uniform(&mesh.color, device))
             };
             self.data_uniform = data_uniform;
             self.render_pipeline = build_render_pipeline(
@@ -291,7 +310,7 @@ impl MeshRenderer {
             if let Some(mesh_data) = mesh_data {
                 mesh_data.refresh_buffer(queue, self.data_uniform.as_ref());
             } else {
-                ColorUniform::refresh_buffer(&mesh.color, queue, self.data_uniform.as_ref())
+                ColorSettings::refresh_buffer(&mesh.color, queue, self.data_uniform.as_ref())
             }
             mesh.uniform_changed = false;
         }

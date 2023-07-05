@@ -11,15 +11,15 @@ pub struct DataUniform {
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct ColorUniform {
+pub struct ColorSettings {
     color: [f32; 4],
 }
 
-impl DataUniformBuilder for ColorUniform {}
+impl DataUniformBuilder for ColorSettings {}
 
-impl ColorUniform {
+impl ColorSettings {
     pub fn build_uniform(color: &[f32; 4], device: &wgpu::Device) -> DataUniform {
-        let uniform = ColorUniform { color: *color };
+        let uniform = ColorSettings { color: *color };
         uniform.build_uniform(device)
     }
 
@@ -28,19 +28,19 @@ impl ColorUniform {
         queue: &mut wgpu::Queue,
         data_uniform: Option<&DataUniform>,
     ) {
-        let uniform = ColorUniform { color: *color };
+        let uniform = ColorSettings { color: *color };
         uniform.refresh_buffer(queue, data_uniform.unwrap());
     }
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct VertexScalarUniform {
+pub struct VertexScalarSettings {
     pub isoline_number: f32,
     _padding: [f32; 3],
 }
 
-impl Default for VertexScalarUniform {
+impl Default for VertexScalarSettings {
     fn default() -> Self {
         Self {
             isoline_number: 0.,
@@ -49,18 +49,18 @@ impl Default for VertexScalarUniform {
     }
 }
 
-impl DataUniformBuilder for VertexScalarUniform {}
+impl DataUniformBuilder for VertexScalarSettings {}
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct UVMapUniform {
+pub struct UVMapSettings {
     pub color_1: [f32; 4],
     pub color_2: [f32; 4],
     pub period: f32,
     _padding: [f32; 3],
 }
 
-impl Default for UVMapUniform {
+impl Default for UVMapSettings {
     fn default() -> Self {
         Self {
             color_1: [0.9, 0.9, 0.9, 1.],
@@ -71,17 +71,17 @@ impl Default for UVMapUniform {
     }
 }
 
-impl DataUniformBuilder for UVMapUniform {}
+impl DataUniformBuilder for UVMapSettings {}
 
 #[non_exhaustive]
 pub enum MeshData {
     Color(Vec<[f32; 3]>),
     FaceScalar(Vec<f32>),
-    VertexScalar(Vec<f32>, VertexScalarUniform),
+    VertexScalar(Vec<f32>, VertexScalarSettings),
     //TODO think about edge ordering
     //EdgeScalar(Vec<f32>),
-    UVMap(Vec<(f32, f32)>, UVMapUniform),
-    UVCornerMap(Vec<(f32, f32)>, UVMapUniform),
+    UVMap(Vec<(f32, f32)>, UVMapSettings),
+    UVCornerMap(Vec<(f32, f32)>, UVMapSettings),
 }
 
 impl MeshData {
@@ -209,18 +209,37 @@ impl UiMeshDataElement for MeshData {
 impl VertexBufferBuilder for MeshData {
     fn build_vertex_buffer(&self, device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
         let mut gpu_vertices = Vec::with_capacity(3 * mesh.indices.len());
-        for (i, indices) in mesh.indices.iter().enumerate() {
-            gpu_vertices.push(mesh.vertices[indices[0] as usize]);
-            gpu_vertices.push(mesh.vertices[indices[1] as usize]);
-            gpu_vertices.push(mesh.vertices[indices[2] as usize]);
-            gpu_vertices[3 * i].barycentric_coords = [1., 0., 0.];
-            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
-            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+        let mut i = 0;
+        for face in &mesh.indices {
+            for j in 1..face.len()-1 {
+                gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][0] as usize]);
+                gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][1] as usize]);
+                gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][2] as usize]);
+                if face.len() == 3 {
+                    gpu_vertices[3 * i].barycentric_coords = [1., 0., 0.];
+                    gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                    gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                } else if j == 1{
+                    gpu_vertices[3 * i].barycentric_coords = [1., 1., 0.];
+                    gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                    gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+
+                } else if j == face.len()-2 {
+                    gpu_vertices[3 * i].barycentric_coords = [1., 0., 1.];
+                    gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                    gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                } else {
+                    gpu_vertices[3 * i].barycentric_coords = [1., 1., 1.];
+                    gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
+                    gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                }
+                i+=1;
+            }
         }
         match self {
             MeshData::Color(colors) => {
                 for (i, vertex) in gpu_vertices.iter_mut().enumerate() {
-                    let color = colors[mesh.indices[i / 3][i % 3] as usize];
+                    let color = colors[mesh.internal_indices[i / 3][i % 3] as usize];
                     vertex.color = color;
                 }
             }
@@ -236,7 +255,7 @@ impl VertexBufferBuilder for MeshData {
                     }
                 }
                 for (i, vertex) in gpu_vertices.iter_mut().enumerate() {
-                    let data = datas[mesh.indices[i / 3][i % 3] as usize];
+                    let data = datas[mesh.internal_indices[i / 3][i % 3] as usize];
                     let t = (data - min_d) / (max_d - min_d);
                     vertex.color[0] = t * t;
                     vertex.color[1] = 2. * t * (1. - t);
@@ -255,22 +274,29 @@ impl VertexBufferBuilder for MeshData {
                         min_d = *data;
                     }
                 }
-                for (vertices, data) in gpu_vertices.chunks_exact_mut(3).zip(datas) {
+                let mut k = 0;
+                for (face, data) in mesh.indices.iter().zip(datas) {
                     let t = (data - min_d) / (max_d - min_d);
                     let color = [t * t, 2. * t * (1. - t), (1. - t) * (1. - t)];
-                    for vertex in vertices {
-                        vertex.color = color;
-                        vertex.distance = t;
+                    for i in 1..face.len()-1 {
+                        gpu_vertices[3*k].color = color;
+                        gpu_vertices[3*k+1].color = color;
+                        gpu_vertices[3*k+2].color = color;
+                        gpu_vertices[3*k].distance = t;
+                        gpu_vertices[3*k+1].distance = t;
+                        gpu_vertices[3*k+2].distance = t;
+                        k+=1;
                     }
                 }
             }
             MeshData::UVMap(uv_map, _) => {
                 for (i, vertex) in gpu_vertices.iter_mut().enumerate() {
-                    let uv = uv_map[mesh.indices[i / 3][i % 3] as usize];
+                    let uv = uv_map[mesh.internal_indices[i / 3][i % 3] as usize];
                     vertex.tex_coords = [uv.0, uv.1];
                 }
             }
             MeshData::UVCornerMap(uv_map, _) => {
+                //TODO this but for polygonal faces
                 for (vertex, uv) in gpu_vertices.iter_mut().zip(uv_map) {
                     vertex.tex_coords = [uv.0, uv.1];
                 }

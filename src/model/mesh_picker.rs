@@ -207,20 +207,27 @@ fn build_render_pipeline(
 }
 
 fn build_vertex_buffer(device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
-    let mut gpu_vertices = Vec::with_capacity(3 * mesh.indices.len());
+    let mut gpu_vertices = Vec::with_capacity(3 * mesh.internal_indices.len());
     let face_offset = mesh.vertices.len();
     //let edges_offset = face_offset + mesh.indices.len();
     for (i, indices) in mesh.indices.iter().enumerate() {
         let bars = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
-        for (bar, index) in bars.iter().zip(indices) {
-            gpu_vertices.push(ModelVertex {
-                position: mesh.vertices[*index as usize].position,
-                barycentric_coords: *bar,
-                vertex_index_1: indices[0],
-                vertex_index_2: indices[1],
-                vertex_index_3: indices[2],
-                face_index: (i + face_offset) as u32,
-            });
+        //for (bar, index) in bars.iter().zip(indices) {
+        for j in 1..indices.len()-1 {
+            let index0 = indices[0];
+            let index1 = indices[j];
+            let index2 = indices[j+1];
+            let v_indices = [index0, index1, index2];
+            for k in 0..3 {
+                gpu_vertices.push(ModelVertex {
+                    position: mesh.vertices[v_indices[k] as usize],
+                    barycentric_coords: bars[k],
+                    vertex_index_1: index0,
+                    vertex_index_2: index1,
+                    vertex_index_3: index2,
+                    face_index: (i + face_offset) as u32,
+                });
+            }
         }
     }
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -276,7 +283,7 @@ impl MeshPicker {
             label: Some("transform_bind_group"),
         });
 
-        let num_elements = (mesh.indices.len() * 3) as u32;
+        let num_elements = (mesh.internal_indices.len() * 3) as u32;
         let render_pipeline = build_render_pipeline(
             device,
             camera_light_bind_group_layout,
