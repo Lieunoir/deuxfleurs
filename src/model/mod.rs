@@ -33,6 +33,7 @@ pub struct Mesh {
     //TODO use face strides
     pub indices: Vec<Vec<u32>>,
     internal_indices: Vec<[u32; 3]>,
+    face_normals: Vec<[f32; 3]>,
     pub num_elements: u32,
     pub material: usize,
 
@@ -128,6 +129,7 @@ impl TransformRaw {
 impl Mesh {
     pub fn new(name: &str, vertices: &Vec<[f32; 3]>, indices: &Vec<Vec<u32>>) -> Self {
         let normals = Self::compute_normals(vertices, indices);
+        let face_normals = Self::compute_face_normals(vertices, indices);
         let vertices = vertices.clone();
         let internal_vertices = vertices
             .iter()
@@ -136,6 +138,7 @@ impl Mesh {
                 position: [vertex[0], vertex[1], vertex[2]],
                 tex_coords: [0., 0.],
                 normal,
+                face_normal: normal,
                 color: [0.2, 0.2, 0.8],
                 barycentric_coords: [0., 0., 0.],
                 distance: 0.,
@@ -154,6 +157,7 @@ impl Mesh {
             name: name.to_string(),
             vertices,
             internal_vertices,
+            face_normals,
             indices,
             internal_indices,
             num_elements,
@@ -197,6 +201,35 @@ impl Mesh {
                     *a += b
                 }
                 for (a, b) in normals[i2].iter_mut().zip(n) {
+                    *a += b
+                }
+            }
+        }
+        for normal in &mut normals {
+            let norm =
+                (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+            normal[0] /= norm;
+            normal[1] /= norm;
+            normal[2] /= norm;
+        }
+        normals
+    }
+
+    fn compute_face_normals(vertices: &Vec<[f32; 3]>, indices: &Vec<Vec<u32>>) -> Vec<[f32; 3]> {
+        let mut normals = vec![[0., 0., 0.]; indices.len()];
+        for (normal, face) in normals.iter_mut().zip(indices) {
+            for i in 1..face.len()-1 {
+                let i0 = face[0] as usize;
+                let i1 = face[i] as usize;
+                let i2 = face[i+1] as usize;
+                let v0: cgmath::Vector3<f32> = vertices[i0].into();
+                let v1: cgmath::Vector3<f32> = vertices[i1].into();
+                let v2: cgmath::Vector3<f32> = vertices[i2].into();
+                let e1 = v1 - v0;
+                let e2 = v2 - v0;
+                let cross_p = e1.cross(e2);
+                let n = AsRef::<[f32; 3]>::as_ref(&cross_p);
+                for (a, b) in normal.iter_mut().zip(n) {
                     *a += b
                 }
             }

@@ -19,6 +19,7 @@ pub struct ModelVertex {
     pub position: [f32; 3],
     pub tex_coords: [f32; 2],
     pub normal: [f32; 3],
+    pub face_normal: [f32; 3],
     pub color: [f32; 3],
     pub barycentric_coords: [f32; 3],
     pub distance: f32,
@@ -59,6 +60,11 @@ impl Vertex for ModelVertex {
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 14]>() as wgpu::BufferAddress,
                     shader_location: 5,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 15]>() as wgpu::BufferAddress,
+                    shader_location: 6,
                     format: wgpu::VertexFormat::Float32,
                 },
             ],
@@ -90,28 +96,32 @@ where
             None => {
                 let mut gpu_vertices = Vec::with_capacity(3 * mesh.internal_indices.len());
                 let mut i = 0;
-                for face in &mesh.indices {
+                for (face_index, face) in mesh.indices.iter().enumerate() {
                     for j in 1..face.len()-1 {
                         gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][0] as usize]);
                         gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][1] as usize]);
                         gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][2] as usize]);
+                        gpu_vertices[3 * i].face_normal = mesh.face_normals[face_index];
+                        gpu_vertices[3 * i + 1].face_normal = mesh.face_normals[face_index];
+                        gpu_vertices[3 * i + 2].face_normal = mesh.face_normals[face_index];
                         if face.len() == 3 {
                             gpu_vertices[3 * i].barycentric_coords = [1., 0., 0.];
                             gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
                             gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                            //TODO find alternative when triangle meshes
                         } else if j == 1{
                             gpu_vertices[3 * i].barycentric_coords = [1., 1., 0.];
-                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
-                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1.1, 0.];
+                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 1., 1.];
 
                         } else if j == face.len()-2 {
                             gpu_vertices[3 * i].barycentric_coords = [1., 0., 1.];
-                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
-                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 1.];
+                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.1];
                         } else {
                             gpu_vertices[3 * i].barycentric_coords = [1., 1., 1.];
-                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
-                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
+                            gpu_vertices[3 * i + 1].barycentric_coords = [0., 1.1, 1.];
+                            gpu_vertices[3 * i + 2].barycentric_coords = [0., 1., 1.1];
                         }
                         i+=1;
                     }

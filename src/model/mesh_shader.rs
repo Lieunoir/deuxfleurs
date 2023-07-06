@@ -40,9 +40,10 @@ struct VertexInput {{
     @location(0) position: vec3<f32>,
     @location(1) tex_coords: vec2<f32>,
     @location(2) normal: vec3<f32>,
-    @location(3) color: vec3<f32>,
-    @location(4) barycentric_coords: vec3<f32>,
-    @location(5) distance: f32,
+    @location(3) face_normal: vec3<f32>,
+    @location(4) color: vec3<f32>,
+    @location(5) barycentric_coords: vec3<f32>,
+    @location(6) distance: f32,
 }};
 
 // The output we send to our fragment shader
@@ -69,7 +70,8 @@ fn vs_main(
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    out.world_normal = normalize((normal_matrix * vec4<f32>(model.normal, 0.0)).xyz);
+    // smooth normals
+    {} 
     let world_position: vec4<f32> = model_matrix * vec4<f32>(model.position, 1.0);
     out.world_position = world_position.xyz;
 
@@ -138,7 +140,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
     let half_dir = normalize(view_dir + light_dir);
 
     // smooth shading
-    {}
+    var normal = in.world_normal;
     if(dot(normal, view_dir) < 0.) {{
         normal *= -1.;
     }}
@@ -237,13 +239,17 @@ const CHECKERBOARD: &str = "
     data_color = mix(tex_color, data_uniform.color_2.xyz, s_check);
 ";
 
+/*
 const FLAT_NORMAL_INTERPOLATION: &str = "
     let tan_x = dpdx(in.world_position);
     let tan_y = dpdy(in.world_position);
     var normal = normalize(cross(tan_x, tan_y));
+";*/
+const FLAT_NORMAL_INTERPOLATION: &str = "
+    out.world_normal = normalize((normal_matrix * vec4<f32>(model.face_normal, 0.0)).xyz);
 ";
 const SMOOTH_NORMAL_INTERPOLATION: &str = "
-    var normal = in.world_normal;
+    out.world_normal = normalize((normal_matrix * vec4<f32>(model.normal, 0.0)).xyz);
 ";
 
 const WITH_EDGE_SHADER: &str = "
@@ -290,6 +296,6 @@ pub fn get_shader(data_format: Option<&MeshData>, smooth: bool, show_edge: bool)
     let edge_shader = if show_edge { WITH_EDGE_SHADER } else { "" };
     format!(
         SHADER!(),
-        uniform, color_input, normal_interpolation, render_modif, edge_shader
+        uniform,  normal_interpolation, color_input,render_modif, edge_shader
     )
 }

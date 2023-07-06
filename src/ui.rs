@@ -145,32 +145,36 @@ impl UI {
                                 let mut max_y = std::f32::MIN;
                                 let mut max_z = std::f32::MIN;
 
+                                let transfo_matrix: cgmath::Matrix4<f32> = model.mesh.transform.0.into();
                                 for vertex in &model.mesh.vertices {
-                                    if vertex[0] < min_x {
-                                        min_x = vertex[0];
+                                    let threed_point: cgmath::Point3<f32> = (*vertex).into();
+                                    use cgmath::Matrix;
+                                    let position = cgmath::Point3::<f32>::from_homogeneous(transfo_matrix.transpose() * threed_point.to_homogeneous());
+                                    if position[0] < min_x {
+                                        min_x = position[0];
                                     }
-                                    if vertex[1] < min_y {
-                                        min_y = vertex[1];
+                                    if position[1] < min_y {
+                                        min_y = position[1];
                                     }
-                                    if vertex[2] < min_z {
-                                        min_z = vertex[2];
+                                    if position[2] < min_z {
+                                        min_z = position[2];
                                     }
-                                    if vertex[0] > max_x {
-                                        max_x = vertex[0];
+                                    if position[0] > max_x {
+                                        max_x = position[0];
                                     }
-                                    if vertex[1] > max_y {
-                                        max_y = vertex[1];
+                                    if position[1] > max_y {
+                                        max_y = position[1];
                                     }
-                                    if vertex[2] > max_z {
-                                        max_z = vertex[2];
+                                    if position[2] > max_z {
+                                        max_z = position[2];
                                     }
                                 }
                                 let x = (max_x + min_x) / 2.;
                                 let y = (max_y + min_y) / 2.;
                                 let z = (max_z + min_z) / 2.;
-                                model.mesh.transform.0[3][0] = -x;
-                                model.mesh.transform.0[3][1] = -y;
-                                model.mesh.transform.0[3][2] = -z;
+                                model.mesh.transform.0[3][0] -= x;
+                                model.mesh.transform.0[3][1] -= y;
+                                model.mesh.transform.0[3][2] -= z;
                                 model.mesh.refresh_transform();
                             }
                             if ui.add(egui::Button::new("Unit Scale")).clicked() {
@@ -210,7 +214,7 @@ impl UI {
                                 let z = max_z - min_z;
                                 let scale = 1. / (x*x+y*y+z*z).sqrt();
                                 for (i, row) in model.mesh.transform.0.iter_mut().enumerate() {
-                                    for (j, value) in row.iter_mut().enumerate() {
+                                    for value in row.iter_mut() {
                                         if i < 3 {
                                             *value *= scale;
                                         }

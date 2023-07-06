@@ -210,11 +210,14 @@ impl VertexBufferBuilder for MeshData {
     fn build_vertex_buffer(&self, device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
         let mut gpu_vertices = Vec::with_capacity(3 * mesh.indices.len());
         let mut i = 0;
-        for face in &mesh.indices {
+        for (face_index, face) in mesh.indices.iter().enumerate() {
             for j in 1..face.len()-1 {
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][0] as usize]);
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][1] as usize]);
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][2] as usize]);
+                gpu_vertices[3 * i].face_normal = mesh.face_normals[face_index];
+                gpu_vertices[3 * i + 1].face_normal = mesh.face_normals[face_index];
+                gpu_vertices[3 * i + 2].face_normal = mesh.face_normals[face_index];
                 if face.len() == 3 {
                     gpu_vertices[3 * i].barycentric_coords = [1., 0., 0.];
                     gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
@@ -278,7 +281,7 @@ impl VertexBufferBuilder for MeshData {
                 for (face, data) in mesh.indices.iter().zip(datas) {
                     let t = (data - min_d) / (max_d - min_d);
                     let color = [t * t, 2. * t * (1. - t), (1. - t) * (1. - t)];
-                    for i in 1..face.len()-1 {
+                    for _i in 1..face.len()-1 {
                         gpu_vertices[3*k].color = color;
                         gpu_vertices[3*k+1].color = color;
                         gpu_vertices[3*k+2].color = color;
