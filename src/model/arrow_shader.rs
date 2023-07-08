@@ -45,6 +45,7 @@ struct VertexOutput {
 	@location(1) world_pos: vec3<f32>,
 	@location(2) orig_position: vec3<f32>,
 	@location(3) arrow: vec3<f32>,
+	@location(4) radius: f32,
 };
 
 @vertex
@@ -68,12 +69,18 @@ fn vs_main(
 
     let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
     let arrow_axis = normalize(world_vector_arrow);
-    let right_axis = normalize(cross(view_axis, arrow_axis));
-    let depth_axis = -normalize(cross(arrow_axis, right_axis));
+    let right_axis = (model_matrix * vec4<f32>(normalize(cross(view_axis, arrow_axis)), 0.)).xyz;
+    let depth_axis = (model_matrix * vec4<f32>(-normalize(cross(arrow_axis, right_axis)), 0.)).xyz;
+    let radius = min(length(depth_axis), length(right_axis));
+    out.radius = radius;
+    let right_axis = radius * normalize(cross(view_axis, arrow_axis));
+    let depth_axis = -radius * normalize(cross(arrow_axis, right_axis));
     let rotation_mat = mat3x3<f32>(
         right_axis,
         world_vector_arrow,
         depth_axis);
+    //let model_matrix_2 = mat3x3<f32>(model_matrix[0].xyz, model_matrix[1].xyz, model_matrix[2].xyz);
+    //let position = rotation_mat * model_matrix_2 * model.position * settings.magnitude * 0.1 + world_vector_pos;
     let position = rotation_mat * model.position * settings.magnitude * 0.1 + world_vector_pos;
     out.world_pos = position;
     out.clip_position = camera.view_proj * vec4<f32>(position, 1.0);
@@ -204,8 +211,8 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 
     var out: FragOutput;
 
-    let traced_1 = iCappedCone(ro, rd, pb1, pb2, 0.1 * 0.1 * settings.magnitude, 0.);
-    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.05 * 0.1 * settings.magnitude);
+    let traced_1 = iCappedCone(ro, rd, pb1, pb2, 0.1 * 0.1 * in.radius * settings.magnitude, 0.);
+    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.05 * 0.1 * in.radius * settings.magnitude);
 	if(max(traced_1.x, traced_2.x) < 0.) {
 		discard;
 	}
