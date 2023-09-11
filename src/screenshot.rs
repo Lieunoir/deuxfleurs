@@ -37,6 +37,7 @@ impl Screenshoter {
             dimension: wgpu::TextureDimension::D2,
             format: color_format,
             usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
         };
         let texture = device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -81,9 +82,7 @@ impl Screenshoter {
                 buffer: &self.output_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: std::num::NonZeroU32::new(
-                        self.buffer_dimensions.padded_bytes_per_row as u32,
-                    ),
+                    bytes_per_row: Some(self.buffer_dimensions.padded_bytes_per_row as u32),
                     //rows_per_image: std::num::NonZeroU32::new(self.size.height),
                     rows_per_image: None,
                 },

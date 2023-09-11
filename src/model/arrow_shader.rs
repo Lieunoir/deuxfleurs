@@ -158,7 +158,7 @@ fn cylIntersect( ro: vec3<f32>, rd: vec3<f32>, pa: vec3<f32>, pb: vec3<f32>, ra:
     return vec4<f32>(-1.0);//no intersection
 }
 
-let PI: f32 = 3.14159;
+const PI: f32 = 3.14159;
 
 // PBR functions taken from https://learnopengl.com/PBR/Theory
 fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {

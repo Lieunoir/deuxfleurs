@@ -69,7 +69,7 @@ pub async fn load_mesh(file_name: &str) -> anyhow::Result<(Vec<[f32; 3]>, Vec<Ve
     let mut i = 0;
     if mesh.face_arities.len() > 0 {
         for face_arity in &mesh.face_arities {
-            indices.push(mesh.indices[i..i+*face_arity as usize].into());
+            indices.push(mesh.indices[i..i + *face_arity as usize].into());
             i += *face_arity as usize;
         }
     } else {
@@ -78,7 +78,6 @@ pub async fn load_mesh(file_name: &str) -> anyhow::Result<(Vec<[f32; 3]>, Vec<Ve
             .chunks(3)
             .map(|face| face.try_into().unwrap())
             .collect::<Vec<_>>();
-
     }
     Ok((vertices, indices))
 }
@@ -113,7 +112,7 @@ pub async fn load_preloaded_mesh(data: Vec<u8>) -> anyhow::Result<(Vec<[f32; 3]>
     let mut i = 0;
     if mesh.face_arities.len() > 0 {
         for face_arity in &mesh.face_arities {
-            indices.push(mesh.indices[i..i+*face_arity as usize].into());
+            indices.push(mesh.indices[i..i + *face_arity as usize].into());
             i += *face_arity as usize;
         }
     } else {
@@ -122,7 +121,6 @@ pub async fn load_preloaded_mesh(data: Vec<u8>) -> anyhow::Result<(Vec<[f32; 3]>
             .chunks(3)
             .map(|face| face.try_into().unwrap())
             .collect::<Vec<_>>();
-
     }
     Ok((vertices, indices))
 }

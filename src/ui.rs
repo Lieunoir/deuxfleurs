@@ -1,7 +1,7 @@
+use egui::Widget;
 use egui_gizmo::GizmoMode;
 use egui_wgpu::{renderer::ScreenDescriptor, Renderer};
 use egui_winit::State;
-use egui::Widget;
 use std::collections::HashMap;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
@@ -145,11 +145,14 @@ impl UI {
                                 let mut max_y = std::f32::MIN;
                                 let mut max_z = std::f32::MIN;
 
-                                let transfo_matrix: cgmath::Matrix4<f32> = model.mesh.transform.0.into();
+                                let transfo_matrix: cgmath::Matrix4<f32> =
+                                    model.mesh.transform.0.into();
                                 for vertex in &model.mesh.vertices {
                                     let threed_point: cgmath::Point3<f32> = (*vertex).into();
                                     use cgmath::Matrix;
-                                    let position = cgmath::Point3::<f32>::from_homogeneous(transfo_matrix.transpose() * threed_point.to_homogeneous());
+                                    let position = cgmath::Point3::<f32>::from_homogeneous(
+                                        transfo_matrix * threed_point.to_homogeneous(),
+                                    );
                                     if position[0] < min_x {
                                         min_x = position[0];
                                     }
@@ -185,11 +188,14 @@ impl UI {
                                 let mut max_y = std::f32::MIN;
                                 let mut max_z = std::f32::MIN;
 
-                                let transfo_matrix: cgmath::Matrix4<f32> = model.mesh.transform.0.into();
+                                let transfo_matrix: cgmath::Matrix4<f32> =
+                                    model.mesh.transform.0.into();
                                 for vertex in &model.mesh.vertices {
                                     let threed_point: cgmath::Point3<f32> = (*vertex).into();
                                     use cgmath::Matrix;
-                                    let position = cgmath::Point3::<f32>::from_homogeneous(transfo_matrix.transpose() * threed_point.to_homogeneous());
+                                    let position = cgmath::Point3::<f32>::from_homogeneous(
+                                        transfo_matrix * threed_point.to_homogeneous(),
+                                    );
                                     if position[0] < min_x {
                                         min_x = position[0];
                                     }
@@ -212,7 +218,7 @@ impl UI {
                                 let x = max_x - min_x;
                                 let y = max_y - min_y;
                                 let z = max_z - min_z;
-                                let scale = 1. / (x*x+y*y+z*z).sqrt();
+                                let scale = 1. / (x * x + y * y + z * z).sqrt();
                                 for (i, row) in model.mesh.transform.0.iter_mut().enumerate() {
                                     for value in row.iter_mut() {
                                         if i < 3 {
@@ -230,12 +236,17 @@ impl UI {
                             egui::CollapsingHeader::new(name)
                                 .default_open(false)
                                 .show(ui, |ui| {
-                                    if egui::Slider::new(&mut field.field.settings.magnitude, 0.1..=1.0)
-                                        .text("Magnitude")
-                                            .ui(ui)
-                                            .changed() {
-                                                field.field.settings_changed = true;
-                                            }
+                                    if egui::Slider::new(
+                                        &mut field.field.settings.magnitude,
+                                        0.1..=100.0,
+                                    )
+                                    .text("Magnitude")
+                                    .logarithmic(true)
+                                    .ui(ui)
+                                    .changed()
+                                    {
+                                        field.field.settings_changed = true;
+                                    }
                                 });
                         }
                         for (name, data) in &mut model.mesh.datas {
@@ -298,7 +309,7 @@ impl UI {
                         let last_gizmo_response = gizmo.interact(ui);
 
                         if let Some(gizmo_response) = last_gizmo_response {
-                            model.mesh.transform.0 = gizmo_response.transform;
+                            model.mesh.transform.0 = gizmo_response.transform().to_cols_array_2d();
                             model.mesh.refresh_transform();
                         }
                     }
@@ -347,7 +358,14 @@ impl UI {
                 }
                 if let Some((picked_name, picked_number)) = state.get_picked() {
                     ui.label(format!("Picked model : {}", picked_name));
-                    ui.label(format!("Picked item : {}", picked_number));
+                    let picked_type;
+                    let mut picked_number = *picked_number;
+                    if let Some(mesh) = state.get_model_ref(&picked_name) {
+                        (picked_type, picked_number) = mesh.get_element_info(picked_number);
+                    } else {
+                        picked_type = "".into();
+                    }
+                    ui.label(format!("Picked {} number {}", picked_type, picked_number));
                 }
 
                 if let Some(callback) = callback {

@@ -97,8 +97,11 @@ impl State {
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
-        let surface = unsafe { instance.create_surface(window) };
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            dx12_shader_compiler: Default::default(),
+        });
+        let surface = unsafe { instance.create_surface(window) }.unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -128,17 +131,26 @@ impl State {
             .await
             .unwrap();
 
-        log::warn!("{:?}", surface.get_supported_formats(&adapter));
-        let target_format = surface.get_supported_formats(&adapter)[0];
+        let surface_caps = surface.get_capabilities(&adapter);
+        // Shader code in this tutorial assumes an sRGB surface texture. Using a different
+        // one will result all the colors coming out darker. If you want to support non
+        // sRGB surfaces, you'll need to account for that when drawing to the frame.
+        let surface_format = surface_caps
+            .formats
+            .iter()
+            .copied()
+            .find(|f| f.is_srgb())
+            .unwrap_or(surface_caps.formats[0]);
+
         // Config for surface
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: target_format,
+            format: surface_format,
             width: size.width,
             height: size.height,
-            // Choose whatever best is available
-            present_mode: wgpu::PresentMode::AutoVsync,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            present_mode: surface_caps.present_modes[0],
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
         };
         surface.configure(&device, &config);
 
@@ -222,7 +234,7 @@ impl State {
 
         // Create texture for screenshots
         let screenshoter =
-            screenshot::Screenshoter::new(&device, size.width, size.height, target_format);
+            screenshot::Screenshoter::new(&device, size.width, size.height, surface_format);
 
         // Clear color used for mouse input interaction
         //let ui = ui::UI::new(&device, target_format, event_loop);
@@ -504,6 +516,10 @@ impl State {
 
     pub fn get_model(&mut self, name: &str) -> Option<&mut model::Model> {
         self.models.get_mut(name)
+    }
+
+    pub fn get_model_ref(&self, name: &str) -> Option<&model::Model> {
+        self.models.get(name)
     }
 
     pub fn get_picked(&self) -> &Option<(String, usize)> {

@@ -99,15 +99,13 @@ impl VectorField {
             [-0.1, 0., 0.1],
             [0.1, 0., -0.1],
             [0.1, 0., 0.1],
-
             [0.1, 1., -0.1],
             [-0.1, 1., -0.1],
             [-0.1, 1., 0.1],
             [0.1, 1., -0.1],
             [-0.1, 1., 0.1],
             [0.1, 1., 0.1],
-
-			/*
+            /*
             [-0.1, 0., -0.1],
             [-0.1, 0., 0.1],
             [-0.1, 1., -0.1],
@@ -121,15 +119,14 @@ impl VectorField {
             [0.1, 0., 0.1],
             [0.1, 1., -0.1],
             [0.1, 1., 0.1],
-			*/
-
+            */
             [-0.1, 0., 0.1],
             [0.1, 0., 0.1],
             [-0.1, 1., 0.1],
             [-0.1, 1., 0.1],
             [0.1, 0., 0.1],
             [0.1, 1., 0.1],
-            ];
+        ];
         let vertices = positions.map(|position| VectorVertex { position });
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vector Vertex Buffer"),
@@ -177,19 +174,20 @@ impl VectorField {
             contents: bytemuck::cast_slice(&[settings]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-        let settings_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("vector_field_settings_bind_group_layout"),
-        });
+        let settings_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("vector_field_settings_bind_group_layout"),
+            });
         let settings_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &settings_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
@@ -251,7 +249,11 @@ impl VectorField {
 
     pub fn update(&mut self, queue: &mut wgpu::Queue) {
         if self.settings_changed {
-            queue.write_buffer(&self.settings_buffer, 0, bytemuck::cast_slice(&[self.settings]));
+            queue.write_buffer(
+                &self.settings_buffer,
+                0,
+                bytemuck::cast_slice(&[self.settings]),
+            );
             self.settings_changed = false;
         }
     }

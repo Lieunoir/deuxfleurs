@@ -6,16 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ahash = "0.7.6"
+ahash = "0.8.3"
 anyhow = "1.0.65"
 bytemuck = { version = "1.12.1", features = [ "derive" ] }
 cfg-if = "1.0.0"
 cgmath = "0.18.0"
-egui = "0.20.1"
+egui = "0.22"
 # Includes dirty fix so that gizmo can grab focus
-egui-gizmo = { git = "https://github.com/Lieunoir/egui-gizmo" }
-egui-wgpu = { version = "0.20.0", features = ["winit"] }
-egui-winit = { version = "0.20.1", default-features = false, features = ["wayland"] }
+egui-gizmo = { git = "https://github.com/Lieunoir/egui-gizmo", rev = "756a43f" }
+egui-wgpu = { version = "0.22", features = ["winit"] }
+egui-winit = { version = "0.22", default-features = false, features = ["wayland"] }
 egui_demo_lib = "0.20.0"
 env_logger = "0.9.1"
 image = { version = "0.24.4", default-features = false, features = ["png", "jpeg"] }
@@ -23,18 +23,19 @@ log = "0.4.17"
 oneshot = "0.1.5"
 pollster = "0.2.5"
 rfd = "0.10.0"
-tobj = { version = "3.2.1", features = [
+tobj = { version = "4.0", features = [
     "async",
 ]}
-wgpu = "0.14"
-winit = "0.27.3"
+wgpu = "0.16"
+winit = "0.28"
 
 # WASM specific dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 console_log = "0.2.0"
+getrandom = { version = "0.2", features = ["js"] }
 reqwest = { version = "0.11" }
-wgpu = { version = "0.14", features = ["webgl"]}
+wgpu = { version = "0.16", features = ["webgl"]}
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.53", features = [

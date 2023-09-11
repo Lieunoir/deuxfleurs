@@ -88,7 +88,7 @@ fn vs_main(
     return out;
 }}
 
-let PI: f32 = 3.14159;
+const PI: f32 = 3.14159;
 
 // PBR functions taken from https://learnopengl.com/PBR/Theory
 fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {{
@@ -296,6 +296,6 @@ pub fn get_shader(data_format: Option<&MeshData>, smooth: bool, show_edge: bool)
     let edge_shader = if show_edge { WITH_EDGE_SHADER } else { "" };
     format!(
         SHADER!(),
-        uniform,  normal_interpolation, color_input,render_modif, edge_shader
+        uniform, normal_interpolation, color_input, render_modif, edge_shader
     )
 }

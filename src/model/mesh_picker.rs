@@ -213,10 +213,10 @@ fn build_vertex_buffer(device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
     for (i, indices) in mesh.indices.iter().enumerate() {
         let bars = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
         //for (bar, index) in bars.iter().zip(indices) {
-        for j in 1..indices.len()-1 {
+        for j in 1..indices.len() - 1 {
             let index0 = indices[0];
             let index1 = indices[j];
-            let index2 = indices[j+1];
+            let index2 = indices[j + 1];
             let v_indices = [index0, index1, index2];
             for k in 0..3 {
                 gpu_vertices.push(ModelVertex {

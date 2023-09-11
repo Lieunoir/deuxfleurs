@@ -211,7 +211,7 @@ impl VertexBufferBuilder for MeshData {
         let mut gpu_vertices = Vec::with_capacity(3 * mesh.indices.len());
         let mut i = 0;
         for (face_index, face) in mesh.indices.iter().enumerate() {
-            for j in 1..face.len()-1 {
+            for j in 1..face.len() - 1 {
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][0] as usize]);
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][1] as usize]);
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][2] as usize]);
@@ -222,12 +222,11 @@ impl VertexBufferBuilder for MeshData {
                     gpu_vertices[3 * i].barycentric_coords = [1., 0., 0.];
                     gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
                     gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
-                } else if j == 1{
+                } else if j == 1 {
                     gpu_vertices[3 * i].barycentric_coords = [1., 1., 0.];
                     gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
                     gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
-
-                } else if j == face.len()-2 {
+                } else if j == face.len() - 2 {
                     gpu_vertices[3 * i].barycentric_coords = [1., 0., 1.];
                     gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
                     gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
@@ -236,7 +235,7 @@ impl VertexBufferBuilder for MeshData {
                     gpu_vertices[3 * i + 1].barycentric_coords = [0., 1., 0.];
                     gpu_vertices[3 * i + 2].barycentric_coords = [0., 0., 1.];
                 }
-                i+=1;
+                i += 1;
             }
         }
         match self {
@@ -281,14 +280,14 @@ impl VertexBufferBuilder for MeshData {
                 for (face, data) in mesh.indices.iter().zip(datas) {
                     let t = (data - min_d) / (max_d - min_d);
                     let color = [t * t, 2. * t * (1. - t), (1. - t) * (1. - t)];
-                    for _i in 1..face.len()-1 {
-                        gpu_vertices[3*k].color = color;
-                        gpu_vertices[3*k+1].color = color;
-                        gpu_vertices[3*k+2].color = color;
-                        gpu_vertices[3*k].distance = t;
-                        gpu_vertices[3*k+1].distance = t;
-                        gpu_vertices[3*k+2].distance = t;
-                        k+=1;
+                    for _i in 1..face.len() - 1 {
+                        gpu_vertices[3 * k].color = color;
+                        gpu_vertices[3 * k + 1].color = color;
+                        gpu_vertices[3 * k + 2].color = color;
+                        gpu_vertices[3 * k].distance = t;
+                        gpu_vertices[3 * k + 1].distance = t;
+                        gpu_vertices[3 * k + 2].distance = t;
+                        k += 1;
                     }
                 }
             }

@@ -47,6 +47,7 @@ impl Picker {
             dimension: wgpu::TextureDimension::D2,
             format: texture::Texture::PICKER_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
         };
         let texture = device.create_texture(&desc);
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -121,6 +122,7 @@ impl Picker {
             dimension: wgpu::TextureDimension::D2,
             format: crate::texture::Texture::PICKER_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
         };
         self.texture = device.create_texture(&desc);
         self.texture_view = self
@@ -264,9 +266,7 @@ impl Picker {
                         buffer: &self.buffer,
                         layout: wgpu::ImageDataLayout {
                             offset: 0,
-                            bytes_per_row: std::num::NonZeroU32::new(
-                                self.buffer_dimensions.padded_bytes_per_row as u32,
-                            ),
+                            bytes_per_row: Some(self.buffer_dimensions.padded_bytes_per_row as u32),
                             //rows_per_image: std::num::NonZeroU32::new(self.size.height),
                             rows_per_image: None,
                         },
