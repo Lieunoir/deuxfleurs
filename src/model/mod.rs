@@ -25,6 +25,30 @@ pub struct VectorFieldData {
     pub shown: bool,
 }
 
+pub struct VectorFieldOptions {
+    pub shown: bool,
+    pub magnitude: f32,
+}
+
+impl Default for VectorFieldOptions {
+    fn default() -> VectorFieldOptions {
+        Self {
+            shown: true,
+            magnitude: 1.,
+        }
+    }
+}
+
+impl VectorFieldOptions {
+    pub fn set_magnitude(&mut self, magnitude: f32) {
+        self.magnitude = magnitude;
+    }
+
+    pub fn show(&mut self, show: bool) {
+        self.shown = show;
+    }
+}
+
 pub struct Mesh {
     pub name: String,
     pub vertices: Vec<[f32; 3]>,
@@ -44,7 +68,7 @@ pub struct Mesh {
     pub vector_fields: HashMap<String, VectorFieldData>,
 
     //cuz we have to build a renderer from the main loop after we add them
-    pub added_vector_fields: Vec<(String, Vec<[f32; 3]>, Vec<[f32; 3]>)>,
+    pub added_vector_fields: Vec<(String, Vec<[f32; 3]>, Vec<[f32; 3]>, VectorFieldOptions)>,
 
     pub shown_data: Option<String>,
     pub data_to_show: Option<Option<String>>,
@@ -355,16 +379,17 @@ impl Mesh {
     }
 
     //TODO save settings when already existing
-    pub fn add_vertex_vector_field(&mut self, name: String, vectors: Vec<[f32; 3]>) -> &mut Self {
+    pub fn add_vertex_vector_field(&mut self, name: String, vectors: Vec<[f32; 3]>) -> &mut VectorFieldOptions {
         assert!(vectors.len() == self.vertices.len());
         let vectors_offsets: Vec<[f32; 3]> = self.vertices.clone();
         self.added_vector_fields
-            .push((name, vectors, vectors_offsets));
-        self
+            .push((name, vectors, vectors_offsets, VectorFieldOptions::default()));
+        let n = self.added_vector_fields.len()-1;
+        &mut self.added_vector_fields.get_mut(n).unwrap().3
     }
 
     //TODO save settings when already existing
-    pub fn add_face_vector_field(&mut self, name: String, vectors: Vec<[f32; 3]>) -> &mut Self {
+    pub fn add_face_vector_field(&mut self, name: String, vectors: Vec<[f32; 3]>) -> &mut VectorFieldOptions {
         assert!(vectors.len() == self.indices.len());
         let vectors_offsets: Vec<[f32; 3]> = self
             .indices
@@ -386,8 +411,9 @@ impl Mesh {
             })
             .collect();
         self.added_vector_fields
-            .push((name, vectors, vectors_offsets));
-        self
+            .push((name, vectors, vectors_offsets, VectorFieldOptions::default()));
+        let n = self.added_vector_fields.len()-1;
+        &mut self.added_vector_fields.get_mut(n).unwrap().3
     }
 
     pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
@@ -454,9 +480,15 @@ impl Model {
         color_format: wgpu::TextureFormat,
     ) -> bool {
         self.picker.update(queue, &self.mesh);
-        for (name, vectors, vectors_offsets) in self.mesh.added_vector_fields.drain(..) {
+        for (name, vectors, vectors_offsets, options) in self.mesh.added_vector_fields.drain(..) {
+
+            let (shown, magnitude) = if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
+                (vector_field_data.shown, vector_field_data.field.settings.magnitude)
+            } else {
+                (options.shown, options.magnitude)
+            };
             let vector_field_settings = VectorFieldSettings {
-                magnitude: 1.,
+                magnitude,
                 _padding: [0; 7],
             };
             let field = VectorField::new(
@@ -468,11 +500,6 @@ impl Model {
                 vectors_offsets,
                 vector_field_settings,
             );
-            let shown = if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
-                vector_field_data.shown
-            } else {
-                true
-            };
             let vector_field = VectorFieldData { field, shown };
             self.mesh.vector_fields.insert(name, vector_field);
         }
