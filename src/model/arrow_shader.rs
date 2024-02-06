@@ -34,7 +34,7 @@ struct VertexInput {
 
 struct VectorInput {
     @location(1) orig_position: vec3<f32>,
-    @location(1) arrow: vec3<f32>,
+    @location(2) arrow: vec3<f32>,
 };
 
 struct VertexOutput {
