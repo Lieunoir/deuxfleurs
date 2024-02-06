@@ -16,7 +16,7 @@ struct TransformUniform {
 
 struct SettingsUniform {
     magnitude: f32,
-    _padding: vec3<u32>,
+    color: vec3<f32>,
 }
 
 @group(0) @binding(0)
@@ -34,18 +34,16 @@ struct VertexInput {
 };
 
 struct VectorInput {
-    @location(2) color: vec3<f32>,
-    @location(3) orig_position: vec3<f32>,
-    @location(4) arrow: vec3<f32>,
+    @location(2) orig_position: vec3<f32>,
+    @location(3) arrow: vec3<f32>,
 };
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) color: vec3<f32>,
-	@location(1) world_pos: vec3<f32>,
-	@location(2) orig_position: vec3<f32>,
-	@location(3) arrow: vec3<f32>,
-	@location(4) radius: f32,
+	@location(0) world_pos: vec3<f32>,
+	@location(1) orig_position: vec3<f32>,
+	@location(2) arrow: vec3<f32>,
+	@location(3) radius: f32,
 };
 
 @vertex
@@ -65,7 +63,6 @@ fn vs_main(
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    out.color = vector_i.color;
 	out.orig_position = world_vector_pos;
 	out.arrow = world_vector_arrow * settings.magnitude * arrow_ampl;
 
@@ -231,7 +228,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	let G = GeometrySmith(normal, view_dir, light_dir, 0.01);
 	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
 	let kd = 1.0;
-	let lambertian = in.color;
+	let lambertian = settings.color;
 	let result = (kd * lambertian + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
 	out.color = vec4<f32>(result, 1.);
 	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);

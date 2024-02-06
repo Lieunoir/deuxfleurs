@@ -249,6 +249,28 @@ impl UI {
                                     {
                                         field.field.settings_changed = true;
                                     }
+
+                                    let mut vec_color = egui::Rgba::from_rgba_unmultiplied(
+                                        field.field.settings.color[0],
+                                        field.field.settings.color[1],
+                                        field.field.settings.color[2],
+                                        field.field.settings.color[3],
+                                    );
+                                    let mut picker_changed = false;
+                                    ui.horizontal(|ui| {
+                                        picker_changed = egui::widgets::color_picker::color_edit_button_rgba(
+                                            ui,
+                                            &mut vec_color,
+                                            egui::widgets::color_picker::Alpha::Opaque,
+                                        )
+                                            .changed();
+                                        ui.label("Field color");
+                                    });
+                                    field.field.settings.color = vec_color.to_array();
+
+                                    if picker_changed                                    {
+                                        field.field.settings_changed = true;
+                                    }
                                 });
                         }
                         for (name, data) in &mut model.mesh.datas {

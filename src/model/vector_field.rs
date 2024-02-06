@@ -5,7 +5,6 @@ use wgpu::util::DeviceExt;
 pub struct VectorField {
     pub vectors: Vec<[f32; 3]>,
     pub vectors_offsets: Vec<[f32; 3]>,
-    pub colors: Vec<[f32; 3]>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     vector_buffer: wgpu::Buffer,
@@ -19,8 +18,9 @@ pub struct VectorField {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct VectorFieldSettings {
     pub magnitude: f32,
+    pub _padding1: [u32; 3],
+    pub color: [f32; 4],
     //TODO make private
-    pub _padding: [u32; 7],
 }
 
 pub trait Vertex {
@@ -36,7 +36,6 @@ pub struct VectorVertex {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct VectorData {
-    pub color: [f32; 3],
     pub orig_position: [f32; 3],
     pub vector: [f32; 3],
 }
@@ -78,11 +77,6 @@ impl Vertex for VectorData {
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 3,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
-                    shader_location: 4,
                     format: wgpu::VertexFormat::Float32x3,
                 },
             ],
@@ -139,12 +133,10 @@ impl VectorField {
         device: &wgpu::Device,
         vectors: &Vec<[f32; 3]>,
         vectors_offsets: &Vec<[f32; 3]>,
-        colors: &Vec<[f32; 3]>,
     ) -> wgpu::Buffer {
         let mut gpu_vertices = Vec::with_capacity(vectors.len());
-        for ((vector, offset), color) in vectors.iter().zip(vectors_offsets).zip(colors) {
+        for (vector, offset) in vectors.iter().zip(vectors_offsets) {
             let vertex = VectorData {
-                color: *color,
                 orig_position: *offset,
                 vector: *vector,
             };
@@ -167,7 +159,6 @@ impl VectorField {
         settings: VectorFieldSettings,
     ) -> Self {
         assert!(vectors.len() == vectors_offsets.len());
-        let colors = vec![[1., 0.1, 0.1]; vectors.len()];
 
         let settings_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vector field settings buffer"),
@@ -221,11 +212,10 @@ impl VectorField {
         );
 
         let vertex_buffer = Self::build_vertex_buffer(device);
-        let vector_buffer = Self::build_vector_buffer(device, &vectors, &vectors_offsets, &colors);
+        let vector_buffer = Self::build_vector_buffer(device, &vectors, &vectors_offsets);
         Self {
             vectors,
             vectors_offsets,
-            colors,
             render_pipeline,
             vertex_buffer,
             vector_buffer,
@@ -234,11 +224,6 @@ impl VectorField {
             settings_bind_group,
             settings_buffer,
         }
-    }
-
-    pub fn set_magnitude(&mut self, magnitude: f32) {
-        self.settings.magnitude = magnitude;
-        self.settings_changed = true;
     }
 
     pub fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)

@@ -14,12 +14,6 @@ mod mesh_shader;
 mod renderer;
 pub mod vector_field;
 
-pub struct Material {
-    pub name: String,
-    pub diffuse_texture: texture::Texture,
-    pub bind_group: wgpu::BindGroup,
-}
-
 pub struct VectorFieldData {
     pub field: VectorField,
     pub shown: bool,
@@ -28,6 +22,7 @@ pub struct VectorFieldData {
 pub struct VectorFieldOptions {
     pub shown: bool,
     pub magnitude: f32,
+    pub color: [f32; 4],
 }
 
 impl Default for VectorFieldOptions {
@@ -35,6 +30,7 @@ impl Default for VectorFieldOptions {
         Self {
             shown: true,
             magnitude: 1.,
+            color: [1., 0.1, 0.1, 1.],
         }
     }
 }
@@ -46,6 +42,10 @@ impl VectorFieldOptions {
 
     pub fn show(&mut self, show: bool) {
         self.shown = show;
+    }
+
+    pub fn set_color(&mut self, color: [f32; 4]) {
+        self.color = color;
     }
 }
 
@@ -59,7 +59,6 @@ pub struct Mesh {
     internal_indices: Vec<[u32; 3]>,
     face_normals: Vec<[f32; 3]>,
     pub num_elements: u32,
-    pub material: usize,
 
     pub property_changed: bool,
     pub transform_changed: bool,
@@ -185,7 +184,6 @@ impl Mesh {
             indices,
             internal_indices,
             num_elements,
-            material: 0,
             transform,
             transform_changed: false,
             uniform_changed: false,
@@ -482,14 +480,15 @@ impl Model {
         self.picker.update(queue, &self.mesh);
         for (name, vectors, vectors_offsets, options) in self.mesh.added_vector_fields.drain(..) {
 
-            let (shown, magnitude) = if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
-                (vector_field_data.shown, vector_field_data.field.settings.magnitude)
+            let (shown, magnitude, color) = if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
+                (vector_field_data.shown, vector_field_data.field.settings.magnitude, vector_field_data.field.settings.color)
             } else {
-                (options.shown, options.magnitude)
+                (options.shown, options.magnitude, options.color)
             };
             let vector_field_settings = VectorFieldSettings {
                 magnitude,
-                _padding: [0; 7],
+                _padding1: [0; 3],
+                color,
             };
             let field = VectorField::new(
                 device,
