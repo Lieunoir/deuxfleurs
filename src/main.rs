@@ -63,12 +63,18 @@ pub async fn run() {
         .register_mesh("spot", &spot_v, &spot_f)
         .mesh
         .show_edges(true)
-        .add_vertex_scalar("x coord".into(), spot_data_1)
+        .add_vertex_scalar("x coord".into(), spot_data_1.clone())
         .add_vertex_scalar("y coord".into(), spot_data_2)
         .add_uv_map("uv".into(), spot_uv_map)
         .add_corner_uv_map("corner uv".into(), spot_corner_uv_map)
         .add_face_scalar("face scalar".into(), spot_face_scalar)
         .set_data(Some("y coord".into()));
+
+    state
+        .register_point_cloud("spot_uv".into(), spot_v.clone())
+        .add_scalar("x coord".into(), spot_data_1)
+        .set_data(Some("x coord".into()))
+        ;
 
     let mut last_selected = 0;
     let mut last_selected_mesh = "".into();

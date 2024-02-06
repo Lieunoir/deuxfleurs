@@ -30,12 +30,11 @@ var<uniform> transform: TransformUniform;
 var<uniform> settings: SettingsUniform;
 struct VertexInput {
     @location(0) position: vec3<f32>,
-    @location(1) coords: vec3<f32>,
 };
 
 struct VectorInput {
-    @location(2) orig_position: vec3<f32>,
-    @location(3) arrow: vec3<f32>,
+    @location(1) orig_position: vec3<f32>,
+    @location(1) arrow: vec3<f32>,
 };
 
 struct VertexOutput {

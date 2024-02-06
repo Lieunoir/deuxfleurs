@@ -63,6 +63,7 @@ impl UI {
         &mut self,
         window: &Window,
         models: &mut HashMap<String, crate::model::Model>,
+        clouds: &mut HashMap<String, crate::point_cloud::PointCloud>,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
     ) {
@@ -312,6 +313,64 @@ impl UI {
                                         model.mesh.uniform_changed = true;
                                     }
                                 });
+                        }
+                    });
+                }
+
+                for (name, cloud) in clouds.iter_mut() {
+                    egui::CollapsingHeader::new(format!(
+                        "{} : {} points",
+                        name,
+                        cloud.positions.len(),
+                    ))
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.checkbox(&mut cloud.show, "Show");
+
+                            let mut cloud_color = egui::Rgba::from_rgba_unmultiplied(
+                                cloud.settings.color[0],
+                                cloud.settings.color[1],
+                                cloud.settings.color[2],
+                                cloud.settings.color[3],
+                            );
+                            let picker_changed = egui::widgets::color_picker::color_edit_button_rgba(
+                                ui,
+                                &mut cloud_color,
+                                egui::widgets::color_picker::Alpha::Opaque,
+                            )
+                            .changed();
+                            if picker_changed {
+                                cloud.uniform_changed = true;
+                            }
+                            ui.label("Color");
+                            cloud.settings.color = cloud_color.to_array();
+                        });
+                        if egui::Slider::new(
+                            &mut cloud.settings.radius,
+                            0.1..=100.0,
+                        )
+                            .text("Radius")
+                                .clamp_to_range(false)
+                                .logarithmic(true)
+                                .ui(ui)
+                                .changed()
+                        {
+                            cloud.uniform_changed = true;
+                        }
+                        for (name, _data) in &mut cloud.datas {
+                            let active = cloud.shown_data == Some(name.clone());
+                            ui.horizontal(|ui| {
+                                let mut change_active = active;
+                                ui.checkbox(&mut change_active, name.clone());
+                                if change_active != active {
+                                    if !active {
+                                        cloud.data_to_show = Some(Some(name.clone()))
+                                    } else {
+                                        cloud.data_to_show = Some(None)
+                                    }
+                                }
+                            });
                         }
                     });
                 }

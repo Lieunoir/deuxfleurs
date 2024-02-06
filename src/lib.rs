@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::iter;
+use std::ops::{Deref, DerefMut};
 use wgpu::util::DeviceExt;
 use winit::event_loop::EventLoopBuilder;
 use winit::{
@@ -15,6 +16,7 @@ use wasm_bindgen::prelude::*;
 
 mod camera;
 pub mod model;
+pub mod point_cloud;
 mod picker;
 pub mod resources;
 mod screenshot;
@@ -23,6 +25,7 @@ mod ui;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
 use model::DrawModel;
+use point_cloud::PointCloud;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -65,8 +68,9 @@ pub struct State<'a> {
     camera_buffer: wgpu::Buffer,
     // 3D Model
     models: HashMap<String, model::Model>,
-    //TODO :
     //Points
+    clouds: HashMap<String, PointCloud>,
+    //TODO :
     //Curves
     //Volume meshes
     // Lighting
@@ -103,7 +107,7 @@ impl<'a> State<'a> {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
-        let surface = unsafe { instance.create_surface(window) }.unwrap();
+        let surface = instance.create_surface(window).unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -231,6 +235,7 @@ impl<'a> State<'a> {
         });
 
         let models = HashMap::new();
+        let clouds = HashMap::new();
         // Create depth texture
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
@@ -256,6 +261,7 @@ impl<'a> State<'a> {
             camera_buffer,
             camera_uniform,
             models,
+            clouds,
             light_uniform,
             light_buffer,
             camera_light_bind_group_layout,
@@ -354,6 +360,15 @@ impl<'a> State<'a> {
             );
         }
 
+        for cloud in self.clouds.values_mut() {
+            cloud.refresh_data(
+                &self.device,
+                &mut self.queue,
+                &self.camera_light_bind_group_layout,
+                self.config.format,
+            );
+        }
+
         self.picker.render(
             &self.device,
             &mut encoder,
@@ -396,6 +411,10 @@ impl<'a> State<'a> {
             // Draw the models
             for model in self.models.values() {
                 render_pass.draw_model(model);
+            }
+            for cloud in self.clouds.values() {
+                cloud.render(&mut render_pass);
+                //render_pass.draw_model(cloud);
             }
 
             // Draw the gui
@@ -440,6 +459,23 @@ impl<'a> State<'a> {
         self.models.insert(mesh_name.into(), model);
         self.picker.counters_dirty = true;
         self.models.get_mut(mesh_name).unwrap()
+    }
+
+    pub fn register_point_cloud(
+        &mut self,
+        name: String,
+        positions: Vec<[f32; 3]>,
+    ) -> &mut PointCloud {
+        let model = PointCloud::new(
+            name.clone(),
+            positions,
+            &self.device,
+            &self.camera_light_bind_group_layout,
+            //&self.picker.bind_group_layout,
+            self.config.format,
+        );
+        self.clouds.insert(name.clone(), model);
+        self.clouds.get_mut(&name).unwrap()
     }
 
     pub fn screenshot(&mut self) {
@@ -557,6 +593,7 @@ impl<'a> StateWrapper<'a> {
                                 self.ui.draw_models(
                                     window,
                                     &mut self.state.models,
+                                    &mut self.state.clouds,
                                     self.state.camera.build_view(),
                                     self.state.camera.build_proj(),
                                 );
@@ -592,14 +629,14 @@ impl<'a> StateWrapper<'a> {
         self.state.resize(new_size)
     }
 
-    pub fn register_mesh(
+    /*pub fn register_mesh(
         &mut self,
         mesh_name: &'_ str,
         vertices: &Vec<[f32; 3]>,
         indices: &Vec<Vec<u32>>,
     ) -> &mut model::Model {
         self.state.register_mesh(mesh_name, vertices, indices)
-    }
+    }*/
 
     /*
     pub fn register_vector_field(
@@ -611,13 +648,13 @@ impl<'a> StateWrapper<'a> {
     }
     */
 
-    pub fn screenshot(&mut self) {
-        self.state.screenshot();
-    }
+    //pub fn screenshot(&mut self) {
+    //    self.state.screenshot();
+    //}
 
-    pub fn get_model(&mut self, name: &str) -> Option<&mut model::Model> {
-        self.state.get_model(name)
-    }
+    //pub fn get_model(&mut self, name: &str) -> Option<&mut model::Model> {
+    //    self.state.get_model(name)
+    //}
 
     pub fn set_callback<T>(&mut self, callback: T)
     where
@@ -629,6 +666,19 @@ impl<'a> StateWrapper<'a> {
 
     pub fn get_picked(&self) -> &Option<(String, usize)> {
         self.state.get_picked()
+    }
+}
+
+impl<'a> Deref for StateWrapper<'a> {
+    type Target = State<'a>;
+    fn deref(&self) -> &State<'a> {
+        &self.state
+    }
+}
+
+impl<'a> DerefMut for StateWrapper<'a> {
+    fn deref_mut(&mut self) -> &mut State<'a> {
+        &mut self.state
     }
 }
 
