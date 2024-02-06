@@ -159,6 +159,7 @@ impl UiMeshDataElement for MeshData {
                 //ui.add(egui::Slider::new(&mut data_uniform.period, 0.0..=100.0).text("Period"));
                 changed |= egui::Slider::new(&mut data_uniform.period, 0.0..=100.0)
                     .text("Period")
+                    .clamp_to_range(false)
                     .ui(ui)
                     .changed();
                 let mut color_1 = egui::Rgba::from_rgba_unmultiplied(
@@ -198,6 +199,7 @@ impl UiMeshDataElement for MeshData {
             MeshData::VertexScalar(_, data_uniform) => {
                 egui::Slider::new(&mut data_uniform.isoline_number, 0.0..=100.0)
                     .text("Isolines")
+                    .clamp_to_range(false)
                     .ui(ui)
                     .changed()
             }

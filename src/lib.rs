@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::iter;
-
 use wgpu::util::DeviceExt;
 use winit::event_loop::EventLoopBuilder;
 use winit::{
     dpi::PhysicalSize,
     event::*,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
     window::{Window, WindowBuilder},
+    keyboard::{Key, NamedKey},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -22,7 +22,6 @@ mod texture;
 mod ui;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
-use model::vector_field::VectorField;
 use model::DrawModel;
 
 #[repr(C)]
@@ -46,9 +45,9 @@ impl ModelContainer for HashMap<String, model::Model> {
     }
 }
 
-pub struct State {
+pub struct State<'a> {
     // Graphic context
-    surface: wgpu::Surface,
+    surface: wgpu::Surface<'a>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -66,7 +65,10 @@ pub struct State {
     camera_buffer: wgpu::Buffer,
     // 3D Model
     models: HashMap<String, model::Model>,
-    vector_field: Option<VectorField>,
+    //TODO :
+    //Points
+    //Curves
+    //Volume meshes
     // Lighting
     light_uniform: LightUniform,
     light_buffer: wgpu::Buffer,
@@ -79,8 +81,8 @@ pub struct State {
     picker: picker::Picker,
 }
 
-pub struct StateWrapper {
-    state: State,
+pub struct StateWrapper<'a> {
+    state: State<'a>,
     ui: ui::UI,
     callback: Option<Box<dyn FnMut(&mut egui::Ui, &mut State)>>,
 }
@@ -90,16 +92,16 @@ pub enum UserEvent {
     Pick,
 }
 
-impl State {
+impl<'a> State<'a> {
     // Initialize the state
-    pub async fn new(window: &Window) -> Self {
+    pub async fn new<'b : 'a>(window: &'b Window) -> State<'a> {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
-            dx12_shader_compiler: Default::default(),
+            ..Default::default()
         });
         let surface = unsafe { instance.create_surface(window) }.unwrap();
         let adapter = instance
@@ -116,10 +118,10 @@ impl State {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    features: wgpu::Features::empty(),
+                    required_features: wgpu::Features::empty(),
                     // WebGL doesn't support all of wgpu's features, so if
                     // we're building for the web we'll have to disable some.
-                    limits: if cfg!(target_arch = "wasm32") {
+                    required_limits: if cfg!(target_arch = "wasm32") {
                         wgpu::Limits::downlevel_webgl2_defaults()
                     } else {
                         wgpu::Limits::default()
@@ -151,6 +153,7 @@ impl State {
             present_mode: surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
+            desired_maximum_frame_latency: 10,
         };
         surface.configure(&device, &config);
 
@@ -253,7 +256,6 @@ impl State {
             camera_buffer,
             camera_uniform,
             models,
-            vector_field: None,
             light_uniform,
             light_buffer,
             camera_light_bind_group_layout,
@@ -373,7 +375,7 @@ impl State {
                             b: 0.3,
                             a: 0.0,
                         }),
-                        store: true,
+                        store: wgpu::StoreOp::Store,
                     },
                 })],
                 // Create a depth stencil buffer using the depth texture
@@ -381,10 +383,12 @@ impl State {
                     view: &self.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
-                        store: true,
+                        store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
                 }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
             });
 
             render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
@@ -392,10 +396,6 @@ impl State {
             // Draw the models
             for model in self.models.values() {
                 render_pass.draw_model(model);
-            }
-
-            if let Some(vector_field) = &self.vector_field {
-                vector_field.render(&mut render_pass);
             }
 
             // Draw the gui
@@ -428,7 +428,7 @@ impl State {
         vertices: &Vec<[f32; 3]>,
         indices: &Vec<Vec<u32>>,
     ) -> &mut model::Model {
-        let mut model = model::Model::new(
+        let model = model::Model::new(
             mesh_name,
             vertices,
             indices,
@@ -437,38 +437,10 @@ impl State {
             &self.picker.bind_group_layout,
             self.config.format,
         );
-        //let positions = vertices.clone();
-        /*
-        let normals = model
-            .mesh
-            .vertices
-            .iter()
-            .map(|vertex| vertex.normal)
-            .collect();
-        model.mesh.add_vertex_vector_field("Normals".to_string(), normals);*/
-        /*
-        self.register_vector_field(normals, positions);
-        */
         self.models.insert(mesh_name.into(), model);
         self.picker.counters_dirty = true;
         self.models.get_mut(mesh_name).unwrap()
     }
-
-    /*
-    pub fn register_vector_field(
-        &mut self,
-        vectors: Vec<[f32; 3]>,
-        vectors_offsets: Vec<[f32; 3]>,
-    ) {
-        self.vector_field = Some(VectorField::new(
-            &self.device,
-            &self.camera_light_bind_group_layout,
-            self.config.format,
-            vectors,
-            vectors_offsets,
-        ));
-    }
-    */
 
     pub fn screenshot(&mut self) {
         self.screenshot = true;
@@ -527,10 +499,10 @@ impl State {
     }
 }
 
-impl StateWrapper {
-    pub async fn new(event_loop: &EventLoop<UserEvent>, window: &Window) -> Self {
+impl<'a> StateWrapper<'a> {
+    pub async fn new<'b: 'a>(event_loop: &EventLoop<UserEvent>, window: &'b Window) -> StateWrapper<'a> {
         let state = State::new(window).await;
-        let ui = ui::UI::new(&state.device, state.config.format, event_loop);
+        let ui = ui::UI::new(&state.device, state.config.format, event_loop, window.scale_factor());
         Self {
             state,
             ui,
@@ -538,9 +510,10 @@ impl StateWrapper {
         }
     }
 
-    pub fn run(mut self, event_loop: EventLoop<UserEvent>, window: Window) {
+    pub fn run(mut self, event_loop: EventLoop<UserEvent>, window: &Window) {
         let event_loop_proxy = event_loop.create_proxy();
-        event_loop.run(move |event, _, control_flow| {
+        //event_loop.set_control_flow(ControlFlow::Poll);
+        event_loop.run(move |event, elwt| {
             match event {
                 Event::UserEvent(UserEvent::LoadMesh(mesh_v, mesh_f)) => {
                     self.state.register_mesh("loaded mesh", &mesh_v, &mesh_f);
@@ -552,55 +525,60 @@ impl StateWrapper {
                     ref event,
                     window_id,
                 } if window_id == window.id() => {
-                    let processed = self.ui.process_event(event);
+                    let processed = self.ui.process_event(window, event);
                     if !processed && !self.state.input(event) {
                         // Handle window events (like resizing, or key inputs)
                         // This is stuff from `winit` -- see their docs for more info
                         match event {
                             WindowEvent::CloseRequested
                             | WindowEvent::KeyboardInput {
-                                input:
-                                    KeyboardInput {
+                                event:
+                                    KeyEvent {
+                                        logical_key: Key::Named(NamedKey::Escape),
                                         state: ElementState::Pressed,
-                                        virtual_keycode: Some(VirtualKeyCode::Escape),
                                         ..
                                     },
+                                    //KeyboardInput {
+                                    //    state: ElementState::Pressed,
+                                    //    virtual_keycode: Some(VirtualKeyCode::Escape),
+                                    //    ..
+                                    //},
                                 ..
-                            } => *control_flow = ControlFlow::Exit,
+                            } => elwt.exit(),
                             WindowEvent::Resized(physical_size) => {
                                 self.state.resize(*physical_size);
                             }
-                            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                                // new_inner_size is &&mut so w have to dereference it twice
-                                self.state.resize(**new_inner_size);
+                            //WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                            //    // new_inner_size is &&mut so w have to dereference it twice
+                            //    //self.state.resize(**new_inner_size);
+                            //}
+                            WindowEvent::RedrawRequested => {
+                                self.state.update();
+                                self.ui.draw_models(
+                                    window,
+                                    &mut self.state.models,
+                                    self.state.camera.build_view(),
+                                    self.state.camera.build_proj(),
+                                );
+                                self.ui
+                                    .draw_callback(&event_loop_proxy, &mut self.state, &mut self.callback);
+                                match self.state.render(&event_loop_proxy, &mut self.ui) {
+                                    Ok(()) => self.ui.handle_platform_output(window),
+                                    // Reconfigure the surface if it's lost or outdated
+                                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                                        self.state.resize(self.state.size)
+                                    }
+                                    // The system is out of memory, we should probably quit
+                                    Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
+
+                                    Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
+                                }
                             }
                             _ => {}
                         }
                     }
                 }
-                Event::RedrawRequested(window_id) if window_id == window.id() => {
-                    self.state.update();
-                    self.ui.draw_models(
-                        &window,
-                        &mut self.state.models,
-                        self.state.camera.build_view(),
-                        self.state.camera.build_proj(),
-                    );
-                    self.ui
-                        .draw_callback(&event_loop_proxy, &mut self.state, &mut self.callback);
-                    match self.state.render(&event_loop_proxy, &mut self.ui) {
-                        Ok(()) => self.ui.handle_platform_output(&window),
-                        // Reconfigure the surface if it's lost or outdated
-                        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                            self.state.resize(self.state.size)
-                        }
-                        // The system is out of memory, we should probably quit
-                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-
-                        Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
-                    }
-                }
-                Event::RedrawEventsCleared => {
+                Event::AboutToWait => {
                     // RedrawRequested will only trigger once, unless we manually
                     // request it.
                     window.request_redraw();
@@ -664,7 +642,7 @@ pub async fn create_window(width: u32, height: u32) -> (EventLoop<UserEvent>, Wi
         }
     }
 
-    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
+    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build().unwrap();
     let window = WindowBuilder::new()
         .with_title("Deuxfleurs")
         .build(&event_loop)
@@ -672,7 +650,7 @@ pub async fn create_window(width: u32, height: u32) -> (EventLoop<UserEvent>, Wi
 
     // Winit prevents sizing with CSS, so we have to set
     // the size manually when on web.
-    window.set_inner_size(PhysicalSize::new(width, height));
+    window.request_inner_size(PhysicalSize::new(width, height));
     #[cfg(target_arch = "wasm32")]
     {
         use winit::platform::web::WindowExtWebSys;

@@ -58,30 +58,32 @@ fn vs_main(
 
     let world_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
     // Do we want to scale a vector field if we scale its attached mesh?
-    let world_vector_arrow = (model_matrix * vec4<f32>(vector_i.orig_position + vector_i.arrow, 1.)).xyz - world_vector_pos;
+    let world_vector_arrow_t = (model_matrix * vec4<f32>(vector_i.orig_position + vector_i.arrow, 1.)).xyz - world_vector_pos;
+    let arrow_ampl = length(world_vector_arrow_t);
+    let world_vector_arrow = normalize(world_vector_arrow_t);
 
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
 
     out.color = vector_i.color;
 	out.orig_position = world_vector_pos;
-	out.arrow = world_vector_arrow * settings.magnitude;
+	out.arrow = world_vector_arrow * settings.magnitude * arrow_ampl;
 
     let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
-    let arrow_axis = normalize(world_vector_arrow);
+    let arrow_axis = world_vector_arrow;
     let right_axis = (model_matrix * vec4<f32>(normalize(cross(view_axis, arrow_axis)), 0.)).xyz;
     let depth_axis = (model_matrix * vec4<f32>(-normalize(cross(arrow_axis, right_axis)), 0.)).xyz;
     let radius = min(length(depth_axis), length(right_axis));
-    out.radius = radius;
-    let right_axis = radius * normalize(cross(view_axis, arrow_axis));
-    let depth_axis = -radius * normalize(cross(arrow_axis, right_axis));
+    out.radius = radius * arrow_ampl;
+    //let right_axis = radius * normalize(cross(view_axis, arrow_axis));
+    //let depth_axis = -radius * normalize(cross(arrow_axis, right_axis));
     let rotation_mat = mat3x3<f32>(
         right_axis,
         world_vector_arrow,
         depth_axis);
     //let model_matrix_2 = mat3x3<f32>(model_matrix[0].xyz, model_matrix[1].xyz, model_matrix[2].xyz);
     //let position = rotation_mat * model_matrix_2 * model.position * settings.magnitude * 0.1 + world_vector_pos;
-    let position = rotation_mat * model.position * settings.magnitude * 0.1 + world_vector_pos;
+    let position = rotation_mat * model.position * settings.magnitude * arrow_ampl * 0.1 + world_vector_pos;
     out.world_pos = position;
     out.clip_position = camera.view_proj * vec4<f32>(position, 1.0);
     return out;

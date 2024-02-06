@@ -139,5 +139,5 @@ pub async fn run() {
             }
         }
     });
-    state.run(event_loop, window);
+    state.run(event_loop, &window);
 }

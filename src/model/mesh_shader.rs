@@ -175,8 +175,9 @@ var<uniform> data_uniform: DataUniform;
 
 const ISOLINES: &str = "
     let scaled_distance = in.distance * data_uniform.isoline_number.x;
-    var testVal = 1.;
-    var modVal = modf(scaled_distance, &testVal);
+    //var testVal = 1.;
+    //var modVal = modf(scaled_distance, &testVal);
+    var modVal = modf(scaled_distance).fract;
     if(modVal < 0.) {{
         modVal += 1.;
     }}
@@ -222,11 +223,12 @@ var<uniform> data_uniform: DataUniform;
 const CHECKERBOARD: &str = "
     let check_period = data_uniform.period;
     //Trash value
-    var check_mod_period = 1.;
+    //var check_mod_period = 1.;
     let tex_color = data_uniform.color_1.xyz;
-    let check_mod_x = modf(in.tex_coords.x * check_period, &check_mod_period);
+    //let check_mod_x = modf(in.tex_coords.x * check_period, &check_mod_period);
+    let check_mod_x = modf(in.tex_coords.x * check_period).fract;
     let check_min_x = 2. * (max(abs(check_mod_x), 1. - abs(check_mod_x)) - .5);
-    let check_mod_y = modf(in.tex_coords.y * check_period, &check_mod_period);
+    let check_mod_y = modf(in.tex_coords.y * check_period).fract;
     let check_min_y = 2. * (max(abs(check_mod_y), 1. - abs(check_mod_y)) - .5);
 
     let v_check = (check_min_x - .5) * (check_min_y - .5);

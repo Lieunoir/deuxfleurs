@@ -1,6 +1,6 @@
 use egui::Widget;
 use egui_gizmo::GizmoMode;
-use egui_wgpu::{renderer::ScreenDescriptor, Renderer};
+use egui_wgpu::{ScreenDescriptor, Renderer};
 use egui_winit::State;
 use std::collections::HashMap;
 use winit::event_loop::EventLoop;
@@ -26,6 +26,7 @@ impl UI {
         device: &wgpu::Device,
         target_format: wgpu::TextureFormat,
         event_loop: &EventLoop<T>,
+        scale_factor: f64
     ) -> Self {
         let rpass = Renderer::new(
             device,
@@ -45,7 +46,7 @@ impl UI {
         style.override_font_id = Some(egui::FontId::proportional(20.));
         ctx.set_style(style);
         */
-        let state = State::new(event_loop);
+        let state = State::new(ctx.clone(), egui::viewport::ViewportId::ROOT, event_loop, Some(scale_factor as f32), None);
         Self {
             rpass,
             ctx,
@@ -54,8 +55,8 @@ impl UI {
         }
     }
 
-    pub fn process_event(&mut self, event: &winit::event::WindowEvent) -> bool {
-        self.state.on_event(&self.ctx, event).consumed
+    pub fn process_event(&mut self, window: &Window, event: &winit::event::WindowEvent) -> bool {
+        self.state.on_window_event(window, event).consumed
     }
 
     pub fn draw_models(
@@ -241,6 +242,7 @@ impl UI {
                                         0.1..=100.0,
                                     )
                                     .text("Magnitude")
+                                    .clamp_to_range(false)
                                     .logarithmic(true)
                                     .ui(ui)
                                     .changed()
@@ -389,11 +391,11 @@ impl UI {
     ) {
         let full_output = self.ctx.end_frame();
         let textures_delta = full_output.textures_delta;
-        let clipped_primitives = self.ctx.tessellate(full_output.shapes);
+        let clipped_primitives = self.ctx.tessellate(full_output.shapes, self.ctx.pixels_per_point());
 
         let screen_descriptor = ScreenDescriptor {
             size_in_pixels: [width, height],
-            pixels_per_point: 1.,
+            pixels_per_point: self.ctx.pixels_per_point(),
         };
 
         let user_cmd_bufs = {
@@ -415,7 +417,7 @@ impl UI {
     pub fn render<'a, 'b: 'a>(
         &'b self,
         render_pass: &mut wgpu::RenderPass<'a>,
-        clipped_primitives: &[egui::ClippedPrimitive],
+        clipped_primitives: &'a [egui::ClippedPrimitive],
         screen_descriptor: &'a ScreenDescriptor,
     ) {
         self.rpass
@@ -425,7 +427,7 @@ impl UI {
     pub fn handle_platform_output(&mut self, window: &Window) {
         if let Some(platform_output) = self.platform_output.take() {
             self.state
-                .handle_platform_output(window, &self.ctx, platform_output);
+                .handle_platform_output(window, platform_output);
         }
     }
 }

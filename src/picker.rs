@@ -198,7 +198,7 @@ impl Picker {
                                 b: 0.0,
                                 a: 0.0,
                             }),
-                            store: true,
+                            store: wgpu::StoreOp::Store,
                         },
                     })],
                     // Create a depth stencil buffer using the depth texture
@@ -206,10 +206,12 @@ impl Picker {
                         view: depth_texture_view,
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Clear(1.0),
-                            store: true,
+                            store: wgpu::StoreOp::Store,
                         }),
                         stencil_ops: None,
                     }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
                 });
                 render_pass.set_bind_group(0, camera_light_bind_group, &[]);
 
