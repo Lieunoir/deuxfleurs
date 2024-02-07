@@ -32,32 +32,48 @@ where
         }
     }
 }
-pub struct PCData {
-    scalar: Vec<f32>,
+
+pub struct CloudScalar(Vec<f32>);
+
+pub struct CloudColor(Vec<f32>);
+
+pub enum CloudData {
+    Scalar(Vec<f32>),
+    Color(Vec<[f32; 3]>),
 }
 
-impl DataBufferBuilder for PCData {
+impl DataBufferBuilder for CloudData {
     fn build_data_buffer(&self, device: &wgpu::Device, positions: &[[f32; 3]]) -> wgpu::Buffer {
 
-        let mut min_d = self.scalar[0];
-        let mut max_d = self.scalar[0];
-        for data in &self.scalar {
-            if *data > max_d {
-                max_d = *data;
-            }
-            if *data < min_d {
-                min_d = *data;
-            }
-        }
-
         let mut gpu_vertices = Vec::with_capacity(positions.len());
-        //for ((position, color), distance) in positions.iter().zip(colors).zip(distance) {
-        for (position, data) in positions.iter().zip(self.scalar.iter()) {
+        let colors: Vec<_> = match self {
+            CloudData::Scalar(scalars) =>  {
+                let mut min_d = scalars[0];
+                let mut max_d = scalars[0];
+                for data in scalars {
+                    if *data > max_d {
+                        max_d = *data;
+                    }
+                    if *data < min_d {
+                        min_d = *data;
+                    }
+                }
+                scalars.iter().map(|data|{
                 let mut color = [0.; 3];
                 let t = (data - min_d) / (max_d - min_d);
                 color[0] = t * t;
                 color[1] = 2. * t * (1. - t);
                 color[2] = (1. - t) * (1. - t);
+                color
+                }).collect()
+
+            },
+            CloudData::Color(colors) => {
+                colors.clone()
+            }
+        };
+        //for ((position, color), distance) in positions.iter().zip(colors).zip(distance) {
+        for (position, color) in positions.iter().zip(colors) {
             let vertex = PointData {
                 position: *position,
                 color,
@@ -141,7 +157,7 @@ pub struct PointCloud {
     pub positions: Vec<[f32; 3]>,
     pub num_elements: u32,
 
-    pub datas: HashMap<String, PCData>,
+    pub datas: HashMap<String, CloudData>,
     pub shown_data: Option<String>,
     pub data_to_show: Option<Option<String>>,
     pub settings: PCSettings,
@@ -308,7 +324,20 @@ impl PointCloud {
             }
         }
         self.datas
-            .insert(name, PCData { scalar: datas });
+            .insert(name, CloudData::Scalar(datas));
+        self
+    }
+
+    pub fn add_colors(&mut self, name: String, datas: Vec<[f32; 3]>) -> &mut Self {
+        assert!(datas.len() == self.positions.len());
+        if let Some(data_name) = &mut self.shown_data {
+            if *data_name == name {
+                self.data_to_show = Some(Some(data_name.clone()));
+                self.shown_data = None;
+            }
+        }
+        self.datas
+            .insert(name, CloudData::Color(datas));
         self
     }
 

@@ -7,6 +7,7 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 
 use crate::model::data::MeshData;
+use crate::point_cloud::CloudData;
 
 pub trait UiMeshDataElement {
     fn draw(&mut self, ui: &mut egui::Ui) -> bool;
@@ -358,7 +359,7 @@ impl UI {
                         {
                             cloud.uniform_changed = true;
                         }
-                        for (name, _data) in &mut cloud.datas {
+                        for (name, data) in &mut cloud.datas {
                             let active = cloud.shown_data == Some(name.clone());
                             ui.horizontal(|ui| {
                                 let mut change_active = active;
@@ -369,6 +370,10 @@ impl UI {
                                     } else {
                                         cloud.data_to_show = Some(None)
                                     }
+                                }
+                                match data {
+                                    CloudData::Scalar(_) => ui.label("Scalar"),
+                                    CloudData::Color(_) =>  ui.label("Color"),
                                 }
                             });
                         }
