@@ -6,6 +6,7 @@ use crate::model::mesh_picker::MeshPicker;
 use crate::model::renderer::{MeshRenderer, ModelVertex};
 use crate::model::vector_field::{VectorField, VectorFieldSettings};
 use crate::texture;
+use crate::types::*;
 
 mod arrow_shader;
 pub mod data;
@@ -54,8 +55,7 @@ pub struct Mesh {
     pub vertices: Vec<[f32; 3]>,
     internal_vertices: Vec<ModelVertex>,
     //pub normals: Vec<[f32; 3]>,
-    //TODO use face strides
-    pub indices: Vec<Vec<u32>>,
+    pub indices: SurfaceIndices,
     internal_indices: Vec<[u32; 3]>,
     face_normals: Vec<[f32; 3]>,
     pub num_elements: u32,
@@ -150,9 +150,9 @@ impl TransformRaw {
 }
 
 impl Mesh {
-    pub fn new(name: &str, vertices: &Vec<[f32; 3]>, indices: &Vec<Vec<u32>>) -> Self {
-        let normals = Self::compute_normals(vertices, indices);
-        let face_normals = Self::compute_face_normals(vertices, indices);
+    pub fn new(name: &str, vertices: Vec<[f32; 3]>, indices: SurfaceIndices) -> Self {
+        let normals = Self::compute_normals(&vertices, &indices);
+        let face_normals = Self::compute_face_normals(&vertices, &indices);
         let vertices = vertices.clone();
         let internal_vertices = vertices
             .iter()
@@ -168,14 +168,13 @@ impl Mesh {
             })
             .collect::<Vec<_>>();
         let mut internal_indices = Vec::new();
-        for face in indices {
+        for face in &indices {
             for i in 1..face.len() - 1 {
                 internal_indices.push([face[0], face[i], face[i + 1]]);
             }
         }
-        let indices = indices.clone();
         let transform = Transform::default();
-        let num_elements = indices.len() as u32;
+        let num_elements = indices.size() as u32;
         Self {
             name: name.to_string(),
             vertices,
@@ -202,7 +201,7 @@ impl Mesh {
         }
     }
 
-    fn compute_normals(vertices: &Vec<[f32; 3]>, indices: &Vec<Vec<u32>>) -> Vec<[f32; 3]> {
+    fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[f32; 3]> {
         let mut normals = vec![[0., 0., 0.]; vertices.len()];
         for face in indices {
             for i in 1..face.len() - 1 {
@@ -237,8 +236,8 @@ impl Mesh {
         normals
     }
 
-    fn compute_face_normals(vertices: &Vec<[f32; 3]>, indices: &Vec<Vec<u32>>) -> Vec<[f32; 3]> {
-        let mut normals = vec![[0., 0., 0.]; indices.len()];
+    fn compute_face_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[f32; 3]> {
+        let mut normals = vec![[0., 0., 0.]; indices.size()];
         for (normal, face) in normals.iter_mut().zip(indices) {
             for i in 1..face.len() - 1 {
                 let i0 = face[0] as usize;
@@ -282,8 +281,9 @@ impl Mesh {
         self
     }
 
-    pub fn add_face_scalar(&mut self, name: String, datas: Vec<f32>) -> &mut Self {
-        assert!(datas.len() == self.indices.len());
+    pub fn add_face_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut Self {
+        let datas = datas.into();
+        assert!(datas.len() == self.indices.size());
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
                 self.data_to_show = Some(Some(data_name.clone()));
@@ -294,7 +294,8 @@ impl Mesh {
         self
     }
 
-    pub fn add_vertex_scalar(&mut self, name: String, datas: Vec<f32>) -> &mut Self {
+    pub fn add_vertex_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut Self {
+        let datas = datas.into();
         assert!(datas.len() == self.vertices.len());
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
@@ -316,7 +317,8 @@ impl Mesh {
         self
     }
 
-    pub fn add_uv_map(&mut self, name: String, datas: Vec<(f32, f32)>) -> &mut Self {
+    pub fn add_uv_map<UV: Vertices2D>(&mut self, name: String, datas: UV) -> &mut Self {
+        let datas = datas.into();
         assert!(datas.len() == self.vertices.len());
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
@@ -339,8 +341,9 @@ impl Mesh {
         self
     }
 
-    pub fn add_corner_uv_map(&mut self, name: String, datas: Vec<(f32, f32)>) -> &mut Self {
-        assert!(datas.len() == 3 * self.indices.len());
+    pub fn add_corner_uv_map<UV: Vertices2D>(&mut self, name: String, datas: UV) -> &mut Self {
+        let datas = datas.into();
+        assert!(datas.len() == 3 * self.indices.size());
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
                 self.data_to_show = Some(Some(data_name.clone()));
@@ -364,7 +367,8 @@ impl Mesh {
         self
     }
 
-    pub fn add_vertex_color(&mut self, name: String, colors: Vec<[f32; 3]>) -> &mut Self {
+    pub fn add_vertex_color<C: Color>(&mut self, name: String, colors: C) -> &mut Self {
+        let colors = colors.into();
         assert!(colors.len() == self.vertices.len());
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
@@ -377,21 +381,35 @@ impl Mesh {
     }
 
     //TODO save settings when already existing
-    pub fn add_vertex_vector_field(&mut self, name: String, vectors: Vec<[f32; 3]>) -> &mut VectorFieldOptions {
+    pub fn add_vertex_vector_field<V: Vertices>(
+        &mut self,
+        name: String,
+        vectors: V,
+    ) -> &mut VectorFieldOptions {
+        let vectors = vectors.into();
         assert!(vectors.len() == self.vertices.len());
         let vectors_offsets: Vec<[f32; 3]> = self.vertices.clone();
-        self.added_vector_fields
-            .push((name, vectors, vectors_offsets, VectorFieldOptions::default()));
-        let n = self.added_vector_fields.len()-1;
+        self.added_vector_fields.push((
+            name,
+            vectors,
+            vectors_offsets,
+            VectorFieldOptions::default(),
+        ));
+        let n = self.added_vector_fields.len() - 1;
         &mut self.added_vector_fields.get_mut(n).unwrap().3
     }
 
     //TODO save settings when already existing
-    pub fn add_face_vector_field(&mut self, name: String, vectors: Vec<[f32; 3]>) -> &mut VectorFieldOptions {
-        assert!(vectors.len() == self.indices.len());
+    pub fn add_face_vector_field<V: Vertices>(
+        &mut self,
+        name: String,
+        vectors: V,
+    ) -> &mut VectorFieldOptions {
+        let vectors = vectors.into();
+        assert!(vectors.len() == self.indices.size());
         let vectors_offsets: Vec<[f32; 3]> = self
             .indices
-            .iter()
+            .into_iter()
             .map(|face| {
                 let mut res0 = 0.;
                 let mut res1 = 0.;
@@ -408,9 +426,13 @@ impl Mesh {
                 [res0, res1, res2]
             })
             .collect();
-        self.added_vector_fields
-            .push((name, vectors, vectors_offsets, VectorFieldOptions::default()));
-        let n = self.added_vector_fields.len()-1;
+        self.added_vector_fields.push((
+            name,
+            vectors,
+            vectors_offsets,
+            VectorFieldOptions::default(),
+        ));
+        let n = self.added_vector_fields.len() - 1;
         &mut self.added_vector_fields.get_mut(n).unwrap().3
     }
 
@@ -447,8 +469,8 @@ impl DerefMut for Model {
 impl Model {
     pub fn new(
         name: &str,
-        vertices: &Vec<[f32; 3]>,
-        indices: &Vec<Vec<u32>>,
+        vertices: Vec<[f32; 3]>,
+        indices: SurfaceIndices,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
@@ -479,12 +501,16 @@ impl Model {
     ) -> bool {
         self.picker.update(queue, &self.mesh);
         for (name, vectors, vectors_offsets, options) in self.mesh.added_vector_fields.drain(..) {
-
-            let (shown, magnitude, color) = if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
-                (vector_field_data.shown, vector_field_data.field.settings.magnitude, vector_field_data.field.settings.color)
-            } else {
-                (options.shown, options.magnitude, options.color)
-            };
+            let (shown, magnitude, color) =
+                if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
+                    (
+                        vector_field_data.shown,
+                        vector_field_data.field.settings.magnitude,
+                        vector_field_data.field.settings.color,
+                    )
+                } else {
+                    (options.shown, options.magnitude, options.color)
+                };
             let vector_field_settings = VectorFieldSettings {
                 magnitude,
                 _padding1: [0; 3],
@@ -521,7 +547,7 @@ impl Model {
     pub fn get_element_info(&self, element: usize) -> (String, usize) {
         if element < self.mesh.vertices.len() {
             ("vertex".into(), element)
-        } else if element < self.mesh.vertices.len() + self.mesh.indices.len() {
+        } else if element < self.mesh.vertices.len() + self.mesh.indices.size() {
             ("face".into(), element - self.mesh.vertices.len())
         } else {
             ("".into(), element)

@@ -1,4 +1,5 @@
 use deuxfleurs::resources;
+use deuxfleurs::types::SurfaceIndices;
 use deuxfleurs::{create_window, StateWrapper};
 
 #[cfg(target_arch = "wasm32")]
@@ -26,6 +27,10 @@ pub async fn run() {
         .set_data("test data".into());
         */
     let (spot_v, spot_f) = resources::load_mesh("spot.obj").await.unwrap();
+    let spot_f = match spot_f {
+        SurfaceIndices::Triangles(t) => t,
+        _ => panic!(),
+    };
     let mut spot_data_1 = vec![0.; spot_v.len()];
     let mut spot_data_2 = vec![0.; spot_v.len()];
     for (data, vertex) in spot_data_1.iter_mut().zip(&spot_v) {
@@ -34,20 +39,20 @@ pub async fn run() {
     for (data, vertex) in spot_data_2.iter_mut().zip(&spot_v) {
         *data = vertex[1];
     }
-    let mut spot_uv_map = vec![(0., 0.); spot_v.len()];
+    let mut spot_uv_map = vec![[0., 0.]; spot_v.len()];
     for (data, vertex) in spot_uv_map.iter_mut().zip(&spot_v) {
-        *data = (vertex[0] * 0.1, vertex[1] * 0.1);
+        *data = [vertex[0] * 0.1, vertex[1] * 0.1];
     }
     let mut spot_uv_mesh = vec![[0., 0., 0.]; spot_v.len()];
     for (data, vertex) in spot_uv_mesh.iter_mut().zip(&spot_v) {
         *data = [vertex[0], vertex[1], 0.];
     }
 
-    let mut spot_corner_uv_map = vec![(0., 0.); 3 * spot_f.len()];
+    let mut spot_corner_uv_map = vec![[0., 0.]; 3 * spot_f.len()];
     for (datas, face) in spot_corner_uv_map.chunks_exact_mut(3).zip(&spot_f) {
-        datas[0] = (spot_v[face[0] as usize][0], spot_v[face[0] as usize][1]);
-        datas[1] = (spot_v[face[1] as usize][0], spot_v[face[1] as usize][1]);
-        datas[2] = (spot_v[face[2] as usize][0], spot_v[face[2] as usize][1]);
+        datas[0] = [spot_v[face[0] as usize][0], spot_v[face[0] as usize][1]];
+        datas[1] = [spot_v[face[1] as usize][0], spot_v[face[1] as usize][1]];
+        datas[2] = [spot_v[face[2] as usize][0], spot_v[face[2] as usize][1]];
     }
 
     let mut spot_face_scalar = vec![0.; spot_f.len()];
@@ -56,11 +61,11 @@ pub async fn run() {
         *face = value;
     }
     state
-        .register_mesh("spot_uv", &spot_uv_mesh, &spot_f)
+        .register_mesh("spot_uv", spot_uv_mesh, spot_f.clone())
         .mesh
         .show_edges(true);
     state
-        .register_mesh("spot", &spot_v, &spot_f)
+        .register_mesh("spot", spot_v.clone(), spot_f.clone())
         .mesh
         .show_edges(true)
         .add_vertex_scalar("x coord".into(), spot_data_1.clone())
@@ -73,8 +78,7 @@ pub async fn run() {
     state
         .register_point_cloud("spot_uv".into(), spot_v.clone())
         .add_scalar("x coord".into(), spot_data_1)
-        .set_data(Some("x coord".into()))
-        ;
+        .set_data(Some("x coord".into()));
 
     let mut last_selected = 0;
     let mut last_selected_mesh = "".into();
@@ -93,7 +97,10 @@ pub async fn run() {
                 for (vertex, orig_vertex) in vertices.iter_mut().zip(model.mesh.vertices.iter()) {
                     *vertex = *orig_vertex;
                 }
-                indices = model.mesh.indices.clone();
+                indices = match &model.mesh.indices {
+                    SurfaceIndices::Triangles(t) => t.clone(),
+                    _ => panic!(),
+                };
                 filtered = true;
             }
             if filtered {
@@ -118,7 +125,7 @@ pub async fn run() {
                         vertex[i] = vertex[i] / (weight as f32);
                     }
                 }
-                state.register_mesh("loaded mesh", &new_pos, &indices);
+                state.register_mesh("loaded mesh", new_pos, indices);
             }
         }
 
@@ -135,7 +142,7 @@ pub async fn run() {
                             .mesh
                             .add_vertex_scalar("selected vertex".into(), selected);
                     } else {
-                        let mut selected = vec![0.; model.mesh.indices.len()];
+                        let mut selected = vec![0.; model.mesh.indices.size()];
                         last_selected = item;
                         last_selected_mesh = model_name.clone();
                         selected[item - n_v] = 1.;

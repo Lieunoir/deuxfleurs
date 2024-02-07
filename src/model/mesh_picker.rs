@@ -210,7 +210,7 @@ fn build_vertex_buffer(device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
     let mut gpu_vertices = Vec::with_capacity(3 * mesh.internal_indices.len());
     let face_offset = mesh.vertices.len();
     //let edges_offset = face_offset + mesh.indices.len();
-    for (i, indices) in mesh.indices.iter().enumerate() {
+    for (i, indices) in mesh.indices.into_iter().enumerate() {
         let bars = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
         //for (bar, index) in bars.iter().zip(indices) {
         for j in 1..indices.len() - 1 {
@@ -290,7 +290,7 @@ impl MeshPicker {
             counter_bind_group_layout,
             &transform_bind_group_layout,
         );
-        let tot_elements = (mesh.vertices.len() + mesh.indices.len()) as u32;
+        let tot_elements = (mesh.vertices.len() + mesh.indices.size()) as u32;
         Self {
             vertex_buffer,
             num_elements,

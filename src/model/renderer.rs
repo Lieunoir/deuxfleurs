@@ -96,7 +96,7 @@ where
             None => {
                 let mut gpu_vertices = Vec::with_capacity(3 * mesh.internal_indices.len());
                 let mut i = 0;
-                for (face_index, face) in mesh.indices.iter().enumerate() {
+                for (face_index, face) in mesh.indices.into_iter().enumerate() {
                     for j in 1..face.len() - 1 {
                         gpu_vertices
                             .push(mesh.internal_vertices[mesh.internal_indices[i][0] as usize]);

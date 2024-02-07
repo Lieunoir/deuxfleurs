@@ -80,8 +80,8 @@ pub enum MeshData {
     VertexScalar(Vec<f32>, VertexScalarSettings),
     //TODO think about edge ordering
     //EdgeScalar(Vec<f32>),
-    UVMap(Vec<(f32, f32)>, UVMapSettings),
-    UVCornerMap(Vec<(f32, f32)>, UVMapSettings),
+    UVMap(Vec<[f32; 2]>, UVMapSettings),
+    UVCornerMap(Vec<[f32; 2]>, UVMapSettings),
 }
 
 impl MeshData {
@@ -210,9 +210,9 @@ impl UiMeshDataElement for MeshData {
 
 impl VertexBufferBuilder for MeshData {
     fn build_vertex_buffer(&self, device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
-        let mut gpu_vertices = Vec::with_capacity(3 * mesh.indices.len());
+        let mut gpu_vertices = Vec::with_capacity(3 * mesh.indices.size());
         let mut i = 0;
-        for (face_index, face) in mesh.indices.iter().enumerate() {
+        for (face_index, face) in mesh.indices.into_iter().enumerate() {
             for j in 1..face.len() - 1 {
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][0] as usize]);
                 gpu_vertices.push(mesh.internal_vertices[mesh.internal_indices[i][1] as usize]);
@@ -279,7 +279,7 @@ impl VertexBufferBuilder for MeshData {
                     }
                 }
                 let mut k = 0;
-                for (face, data) in mesh.indices.iter().zip(datas) {
+                for (face, data) in mesh.indices.into_iter().zip(datas) {
                     let t = (data - min_d) / (max_d - min_d);
                     let color = [t * t, 2. * t * (1. - t), (1. - t) * (1. - t)];
                     for _i in 1..face.len() - 1 {
@@ -296,13 +296,13 @@ impl VertexBufferBuilder for MeshData {
             MeshData::UVMap(uv_map, _) => {
                 for (i, vertex) in gpu_vertices.iter_mut().enumerate() {
                     let uv = uv_map[mesh.internal_indices[i / 3][i % 3] as usize];
-                    vertex.tex_coords = [uv.0, uv.1];
+                    vertex.tex_coords = uv;
                 }
             }
             MeshData::UVCornerMap(uv_map, _) => {
                 //TODO this but for polygonal faces
                 for (vertex, uv) in gpu_vertices.iter_mut().zip(uv_map) {
-                    vertex.tex_coords = [uv.0, uv.1];
+                    vertex.tex_coords = *uv;
                 }
             }
             _ => (),

@@ -1,3 +1,4 @@
+use crate::types::SurfaceIndices;
 use std::io::{BufReader, Cursor};
 
 use cfg_if::cfg_if;
@@ -38,7 +39,7 @@ pub async fn load_string(file_name: &str) -> anyhow::Result<String> {
     Ok(txt)
 }
 
-pub async fn load_mesh(file_name: &str) -> anyhow::Result<(Vec<[f32; 3]>, Vec<Vec<u32>>)> {
+pub async fn load_mesh(file_name: &str) -> anyhow::Result<(Vec<[f32; 3]>, SurfaceIndices)> {
     let obj_text = load_string(file_name).await?;
     let obj_cursor = Cursor::new(obj_text);
     let mut obj_reader = BufReader::new(obj_cursor);
@@ -65,24 +66,20 @@ pub async fn load_mesh(file_name: &str) -> anyhow::Result<(Vec<[f32; 3]>, Vec<Ve
         .chunks(3)
         .map(|vertex| vertex.try_into().unwrap())
         .collect::<Vec<_>>();
-    let mut indices = Vec::new();
-    let mut i = 0;
-    if mesh.face_arities.len() > 0 {
-        for face_arity in &mesh.face_arities {
-            indices.push(mesh.indices[i..i + *face_arity as usize].into());
-            i += *face_arity as usize;
-        }
+    let arity_len = mesh.face_arities.len();
+    let indices = if arity_len > 0 {
+        (mesh.indices.clone(), mesh.face_arities.clone()).into()
     } else {
-        indices = mesh
-            .indices
+        mesh.indices
             .chunks(3)
             .map(|face| face.try_into().unwrap())
-            .collect::<Vec<_>>();
-    }
+            .collect::<Vec<[u32; 3]>>()
+            .into()
+    };
     Ok((vertices, indices))
 }
 
-pub async fn load_preloaded_mesh(data: Vec<u8>) -> anyhow::Result<(Vec<[f32; 3]>, Vec<Vec<u32>>)> {
+pub async fn load_preloaded_mesh(data: Vec<u8>) -> anyhow::Result<(Vec<[f32; 3]>, SurfaceIndices)> {
     let obj_cursor = Cursor::new(data);
     let mut obj_reader = BufReader::new(obj_cursor);
 
@@ -108,19 +105,15 @@ pub async fn load_preloaded_mesh(data: Vec<u8>) -> anyhow::Result<(Vec<[f32; 3]>
         .chunks(3)
         .map(|vertex| vertex.try_into().unwrap())
         .collect::<Vec<_>>();
-    let mut indices = Vec::new();
-    let mut i = 0;
-    if mesh.face_arities.len() > 0 {
-        for face_arity in &mesh.face_arities {
-            indices.push(mesh.indices[i..i + *face_arity as usize].into());
-            i += *face_arity as usize;
-        }
+    let arity_len = mesh.face_arities.len();
+    let indices = if arity_len > 0 {
+        (mesh.indices.clone(), mesh.face_arities.clone()).into()
     } else {
-        indices = mesh
-            .indices
+        mesh.indices
             .chunks(3)
             .map(|face| face.try_into().unwrap())
-            .collect::<Vec<_>>();
-    }
+            .collect::<Vec<[u32; 3]>>()
+            .into()
+    };
     Ok((vertices, indices))
 }

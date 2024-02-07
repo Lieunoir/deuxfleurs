@@ -7,8 +7,8 @@ use winit::{
     dpi::PhysicalSize,
     event::*,
     event_loop::EventLoop,
-    window::{Window, WindowBuilder},
     keyboard::{Key, NamedKey},
+    window::{Window, WindowBuilder},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -16,16 +16,18 @@ use wasm_bindgen::prelude::*;
 
 mod camera;
 pub mod model;
-pub mod point_cloud;
 mod picker;
+pub mod point_cloud;
 pub mod resources;
 mod screenshot;
 mod texture;
+pub mod types;
 mod ui;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
 use model::DrawModel;
 use point_cloud::PointCloud;
+use types::*;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -92,13 +94,13 @@ pub struct StateWrapper<'a> {
 }
 
 pub enum UserEvent {
-    LoadMesh(Vec<[f32; 3]>, Vec<Vec<u32>>),
+    LoadMesh(Vec<[f32; 3]>, SurfaceIndices),
     Pick,
 }
 
 impl<'a> State<'a> {
     // Initialize the state
-    pub async fn new<'b : 'a>(window: &'b Window) -> State<'a> {
+    pub async fn new<'b: 'a>(window: &'b Window) -> State<'a> {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
@@ -441,16 +443,17 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn register_mesh(
+    pub fn register_mesh<V: Vertices, I: Into<SurfaceIndices>>(
         &mut self,
         mesh_name: &'_ str,
-        vertices: &Vec<[f32; 3]>,
-        indices: &Vec<Vec<u32>>,
+        //vertices: &Vec<[f32; 3]>,
+        vertices: V,
+        indices: I,
     ) -> &mut model::Model {
         let model = model::Model::new(
             mesh_name,
-            vertices,
-            indices,
+            vertices.into(),
+            indices.into(),
             &self.device,
             &self.camera_light_bind_group_layout,
             &self.picker.bind_group_layout,
@@ -461,14 +464,14 @@ impl<'a> State<'a> {
         self.models.get_mut(mesh_name).unwrap()
     }
 
-    pub fn register_point_cloud(
+    pub fn register_point_cloud<V: Vertices>(
         &mut self,
         name: String,
-        positions: Vec<[f32; 3]>,
+        positions: V,
     ) -> &mut PointCloud {
         let model = PointCloud::new(
             name.clone(),
-            positions,
+            positions.into(),
             &self.device,
             &self.camera_light_bind_group_layout,
             //&self.picker.bind_group_layout,
@@ -536,9 +539,17 @@ impl<'a> State<'a> {
 }
 
 impl<'a> StateWrapper<'a> {
-    pub async fn new<'b: 'a>(event_loop: &EventLoop<UserEvent>, window: &'b Window) -> StateWrapper<'a> {
+    pub async fn new<'b: 'a>(
+        event_loop: &EventLoop<UserEvent>,
+        window: &'b Window,
+    ) -> StateWrapper<'a> {
         let state = State::new(window).await;
-        let ui = ui::UI::new(&state.device, state.config.format, event_loop, window.scale_factor());
+        let ui = ui::UI::new(
+            &state.device,
+            state.config.format,
+            event_loop,
+            window.scale_factor(),
+        );
         Self {
             state,
             ui,
@@ -552,7 +563,7 @@ impl<'a> StateWrapper<'a> {
         event_loop.run(move |event, elwt| {
             match event {
                 Event::UserEvent(UserEvent::LoadMesh(mesh_v, mesh_f)) => {
-                    self.state.register_mesh("loaded mesh", &mesh_v, &mesh_f);
+                    self.state.register_mesh("loaded mesh", mesh_v, mesh_f);
                 }
                 Event::UserEvent(UserEvent::Pick) => {
                     self.state.picker.pick(&self.state.models);
@@ -574,11 +585,11 @@ impl<'a> StateWrapper<'a> {
                                         state: ElementState::Pressed,
                                         ..
                                     },
-                                    //KeyboardInput {
-                                    //    state: ElementState::Pressed,
-                                    //    virtual_keycode: Some(VirtualKeyCode::Escape),
-                                    //    ..
-                                    //},
+                                //KeyboardInput {
+                                //    state: ElementState::Pressed,
+                                //    virtual_keycode: Some(VirtualKeyCode::Escape),
+                                //    ..
+                                //},
                                 ..
                             } => elwt.exit(),
                             WindowEvent::Resized(physical_size) => {
@@ -597,18 +608,23 @@ impl<'a> StateWrapper<'a> {
                                     self.state.camera.build_view(),
                                     self.state.camera.build_proj(),
                                 );
-                                self.ui
-                                    .draw_callback(&event_loop_proxy, &mut self.state, &mut self.callback);
+                                self.ui.draw_callback(
+                                    &event_loop_proxy,
+                                    &mut self.state,
+                                    &mut self.callback,
+                                );
                                 match self.state.render(&event_loop_proxy, &mut self.ui) {
                                     Ok(()) => self.ui.handle_platform_output(window),
                                     // Reconfigure the surface if it's lost or outdated
-                                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                                        self.state.resize(self.state.size)
-                                    }
+                                    Err(
+                                        wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
+                                    ) => self.state.resize(self.state.size),
                                     // The system is out of memory, we should probably quit
                                     Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
 
-                                    Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
+                                    Err(wgpu::SurfaceError::Timeout) => {
+                                        log::warn!("Surface timeout")
+                                    }
                                 }
                             }
                             _ => {}
@@ -692,15 +708,15 @@ pub async fn create_window(width: u32, height: u32) -> (EventLoop<UserEvent>, Wi
         }
     }
 
-    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build().unwrap();
+    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event()
+        .build()
+        .unwrap();
     let window = WindowBuilder::new()
         .with_title("Deuxfleurs")
+        .with_inner_size(PhysicalSize::new(width, height))
         .build(&event_loop)
         .unwrap();
 
-    // Winit prevents sizing with CSS, so we have to set
-    // the size manually when on web.
-    window.request_inner_size(PhysicalSize::new(width, height));
     #[cfg(target_arch = "wasm32")]
     {
         use winit::platform::web::WindowExtWebSys;
@@ -708,11 +724,12 @@ pub async fn create_window(width: u32, height: u32) -> (EventLoop<UserEvent>, Wi
             .and_then(|win| win.document())
             .and_then(|doc| {
                 let dst = doc.body()?;
-                let canvas = web_sys::HtmlCanvasElement::from(window.canvas());
+                let canvas = window.canvas().unwrap();
                 // disable right click
                 let empty_func = js_sys::Function::new_no_args("return false;");
                 canvas.set_oncontextmenu(Some(&empty_func));
                 dst.append_child(&canvas).ok()?;
+                log::warn!("{}", canvas.width());
                 Some(())
             })
             .expect("Couldn't append canvas to document body.");

@@ -1,7 +1,8 @@
 use crate::texture;
+use crate::types::{Color, Scalar};
 use crate::util;
-use wgpu::util::DeviceExt;
 use std::collections::HashMap;
+use wgpu::util::DeviceExt;
 
 pub trait DataBufferBuilder {
     fn build_data_buffer(&self, device: &wgpu::Device, positions: &[[f32; 3]]) -> wgpu::Buffer;
@@ -44,10 +45,9 @@ pub enum CloudData {
 
 impl DataBufferBuilder for CloudData {
     fn build_data_buffer(&self, device: &wgpu::Device, positions: &[[f32; 3]]) -> wgpu::Buffer {
-
         let mut gpu_vertices = Vec::with_capacity(positions.len());
         let colors: Vec<_> = match self {
-            CloudData::Scalar(scalars) =>  {
+            CloudData::Scalar(scalars) => {
                 let mut min_d = scalars[0];
                 let mut max_d = scalars[0];
                 for data in scalars {
@@ -58,19 +58,19 @@ impl DataBufferBuilder for CloudData {
                         min_d = *data;
                     }
                 }
-                scalars.iter().map(|data|{
-                let mut color = [0.; 3];
-                let t = (data - min_d) / (max_d - min_d);
-                color[0] = t * t;
-                color[1] = 2. * t * (1. - t);
-                color[2] = (1. - t) * (1. - t);
-                color
-                }).collect()
-
-            },
-            CloudData::Color(colors) => {
-                colors.clone()
+                scalars
+                    .iter()
+                    .map(|data| {
+                        let mut color = [0.; 3];
+                        let t = (data - min_d) / (max_d - min_d);
+                        color[0] = t * t;
+                        color[1] = 2. * t * (1. - t);
+                        color[2] = (1. - t) * (1. - t);
+                        color
+                    })
+                    .collect()
             }
+            CloudData::Color(colors) => colors.clone(),
         };
         //for ((position, color), distance) in positions.iter().zip(colors).zip(distance) {
         for (position, color) in positions.iter().zip(colors) {
@@ -119,13 +119,11 @@ impl Vertex for PointVertex {
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<PointVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-            ],
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
         }
     }
 }
@@ -223,8 +221,8 @@ impl PointCloud {
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         //transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
-        ) -> Self {
-        let settings = PCSettings{
+    ) -> Self {
+        let settings = PCSettings {
             radius: 0.01,
             _padding: [0; 3],
             color: [0.2, 0.2, 0.8, 1.],
@@ -315,7 +313,8 @@ impl PointCloud {
         self.uniform_changed = true;
     }
 
-    pub fn add_scalar(&mut self, name: String, datas: Vec<f32>) -> &mut Self {
+    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut Self {
+        let datas = datas.into();
         assert!(datas.len() == self.positions.len());
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
@@ -323,12 +322,12 @@ impl PointCloud {
                 self.shown_data = None;
             }
         }
-        self.datas
-            .insert(name, CloudData::Scalar(datas));
+        self.datas.insert(name, CloudData::Scalar(datas));
         self
     }
 
-    pub fn add_colors(&mut self, name: String, datas: Vec<[f32; 3]>) -> &mut Self {
+    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut Self {
+        let datas = datas.into();
         assert!(datas.len() == self.positions.len());
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
@@ -336,8 +335,7 @@ impl PointCloud {
                 self.shown_data = None;
             }
         }
-        self.datas
-            .insert(name, CloudData::Color(datas));
+        self.datas.insert(name, CloudData::Color(datas));
         self
     }
 
@@ -427,7 +425,11 @@ impl PointCloud {
 }
 
 fn get_shader(show_data: bool) -> &'static str {
-    if !show_data { SPHERE_SHADER } else { SPHERE_DATA_SHADER }
+    if !show_data {
+        SPHERE_SHADER
+    } else {
+        SPHERE_DATA_SHADER
+    }
 }
 
 //macro_rules! SHADER { () => {"

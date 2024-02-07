@@ -1,6 +1,6 @@
 use egui::Widget;
 use egui_gizmo::GizmoMode;
-use egui_wgpu::{ScreenDescriptor, Renderer};
+use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use std::collections::HashMap;
 use winit::event_loop::EventLoop;
@@ -27,7 +27,7 @@ impl UI {
         device: &wgpu::Device,
         target_format: wgpu::TextureFormat,
         event_loop: &EventLoop<T>,
-        scale_factor: f64
+        scale_factor: f64,
     ) -> Self {
         let rpass = Renderer::new(
             device,
@@ -47,7 +47,13 @@ impl UI {
         style.override_font_id = Some(egui::FontId::proportional(20.));
         ctx.set_style(style);
         */
-        let state = State::new(ctx.clone(), egui::viewport::ViewportId::ROOT, event_loop, Some(scale_factor as f32), None);
+        let state = State::new(
+            ctx.clone(),
+            egui::viewport::ViewportId::ROOT,
+            event_loop,
+            Some(scale_factor as f32),
+            None,
+        );
         Self {
             rpass,
             ctx,
@@ -80,7 +86,7 @@ impl UI {
                         "{} : {} vertices, {} faces",
                         name,
                         model.mesh.vertices.len(),
-                        model.mesh.indices.len()
+                        model.mesh.indices.size()
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
@@ -260,17 +266,18 @@ impl UI {
                                     );
                                     let mut picker_changed = false;
                                     ui.horizontal(|ui| {
-                                        picker_changed = egui::widgets::color_picker::color_edit_button_rgba(
-                                            ui,
-                                            &mut vec_color,
-                                            egui::widgets::color_picker::Alpha::Opaque,
-                                        )
+                                        picker_changed =
+                                            egui::widgets::color_picker::color_edit_button_rgba(
+                                                ui,
+                                                &mut vec_color,
+                                                egui::widgets::color_picker::Alpha::Opaque,
+                                            )
                                             .changed();
                                         ui.label("Field color");
                                     });
                                     field.field.settings.color = vec_color.to_array();
 
-                                    if picker_changed                                    {
+                                    if picker_changed {
                                         field.field.settings_changed = true;
                                     }
                                 });
@@ -335,27 +342,25 @@ impl UI {
                                 cloud.settings.color[2],
                                 cloud.settings.color[3],
                             );
-                            let picker_changed = egui::widgets::color_picker::color_edit_button_rgba(
-                                ui,
-                                &mut cloud_color,
-                                egui::widgets::color_picker::Alpha::Opaque,
-                            )
-                            .changed();
+                            let picker_changed =
+                                egui::widgets::color_picker::color_edit_button_rgba(
+                                    ui,
+                                    &mut cloud_color,
+                                    egui::widgets::color_picker::Alpha::Opaque,
+                                )
+                                .changed();
                             if picker_changed {
                                 cloud.uniform_changed = true;
                             }
                             ui.label("Color");
                             cloud.settings.color = cloud_color.to_array();
                         });
-                        if egui::Slider::new(
-                            &mut cloud.settings.radius,
-                            0.1..=100.0,
-                        )
+                        if egui::Slider::new(&mut cloud.settings.radius, 0.1..=100.0)
                             .text("Radius")
-                                .clamp_to_range(false)
-                                .logarithmic(true)
-                                .ui(ui)
-                                .changed()
+                            .clamp_to_range(false)
+                            .logarithmic(true)
+                            .ui(ui)
+                            .changed()
                         {
                             cloud.uniform_changed = true;
                         }
@@ -373,7 +378,7 @@ impl UI {
                                 }
                                 match data {
                                     CloudData::Scalar(_) => ui.label("Scalar"),
-                                    CloudData::Color(_) =>  ui.label("Color"),
+                                    CloudData::Color(_) => ui.label("Color"),
                                 }
                             });
                         }
@@ -477,7 +482,9 @@ impl UI {
     ) {
         let full_output = self.ctx.end_frame();
         let textures_delta = full_output.textures_delta;
-        let clipped_primitives = self.ctx.tessellate(full_output.shapes, self.ctx.pixels_per_point());
+        let clipped_primitives = self
+            .ctx
+            .tessellate(full_output.shapes, self.ctx.pixels_per_point());
 
         let screen_descriptor = ScreenDescriptor {
             size_in_pixels: [width, height],
@@ -512,8 +519,7 @@ impl UI {
 
     pub fn handle_platform_output(&mut self, window: &Window) {
         if let Some(platform_output) = self.platform_output.take() {
-            self.state
-                .handle_platform_output(window, platform_output);
+            self.state.handle_platform_output(window, platform_output);
         }
     }
 }
