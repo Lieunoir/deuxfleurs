@@ -75,8 +75,22 @@ pub async fn run() {
         .add_face_scalar("face scalar".into(), spot_face_scalar)
         .set_data(Some("y coord".into()));
 
+    let mut curves = Vec::new();
+    for f in &spot_f {
+        if !curves.contains(&[f[0], f[1]]) && !curves.contains(&[f[1], f[0]]) {
+            curves.push([f[0], f[1]]);
+        }
+        if !curves.contains(&[f[2], f[1]]) && !curves.contains(&[f[1], f[2]]) {
+            curves.push([f[2], f[1]]);
+        }
+        if !curves.contains(&[f[0], f[2]]) && !curves.contains(&[f[2], f[0]]) {
+            curves.push([f[0], f[2]]);
+        }
+    }
+        //curves.push([(spot_v.len() - i) as u32, 100]);
+        //curves.push([i as u32, 100]);
     state
-        .register_point_cloud("spot_uv".into(), spot_v.clone())
+        .register_curve("spot_uv".into(), spot_v.clone(), curves)
         .add_scalar("x coord".into(), spot_data_1)
         .set_data(Some("x coord".into()));
 

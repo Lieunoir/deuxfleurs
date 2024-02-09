@@ -8,6 +8,7 @@ use winit::window::Window;
 
 use crate::model::data::MeshData;
 use crate::point_cloud::CloudData;
+use crate::curve::CurveData;
 
 pub trait UiMeshDataElement {
     fn draw(&mut self, ui: &mut egui::Ui) -> bool;
@@ -71,6 +72,7 @@ impl UI {
         window: &Window,
         models: &mut HashMap<String, crate::model::Model>,
         clouds: &mut HashMap<String, crate::point_cloud::PointCloud>,
+        curves: &mut HashMap<String, crate::curve::Curve>,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
     ) {
@@ -379,6 +381,66 @@ impl UI {
                                 match data {
                                     CloudData::Scalar(_) => ui.label("Scalar"),
                                     CloudData::Color(_) => ui.label("Color"),
+                                }
+                            });
+                        }
+                    });
+                }
+                for (name, curve) in curves.iter_mut() {
+                    egui::CollapsingHeader::new(format!(
+                        "{} : {} points, {} edges",
+                        name,
+                        curve.positions.len(),
+                        curve.connections.len(),
+                    ))
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.checkbox(&mut curve.show, "Show");
+
+                            let mut cloud_color = egui::Rgba::from_rgba_unmultiplied(
+                                curve.settings.color[0],
+                                curve.settings.color[1],
+                                curve.settings.color[2],
+                                curve.settings.color[3],
+                            );
+                            let picker_changed =
+                                egui::widgets::color_picker::color_edit_button_rgba(
+                                    ui,
+                                    &mut cloud_color,
+                                    egui::widgets::color_picker::Alpha::Opaque,
+                                )
+                                .changed();
+                            if picker_changed {
+                                curve.uniform_changed = true;
+                            }
+                            ui.label("Color");
+                            curve.settings.color = cloud_color.to_array();
+                        });
+                        if egui::Slider::new(&mut curve.settings.radius, 0.1..=100.0)
+                            .text("Radius")
+                            .clamp_to_range(false)
+                            .logarithmic(true)
+                            .ui(ui)
+                            .changed()
+                        {
+                            curve.uniform_changed = true;
+                        }
+                        for (name, data) in &mut curve.datas {
+                            let active = curve.shown_data == Some(name.clone());
+                            ui.horizontal(|ui| {
+                                let mut change_active = active;
+                                ui.checkbox(&mut change_active, name.clone());
+                                if change_active != active {
+                                    if !active {
+                                        curve.data_to_show = Some(Some(name.clone()))
+                                    } else {
+                                        curve.data_to_show = Some(None)
+                                    }
+                                }
+                                match data {
+                                    CurveData::Scalar(_) => ui.label("Scalar"),
+                                    CurveData::Color(_) => ui.label("Color"),
                                 }
                             });
                         }

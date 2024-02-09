@@ -18,6 +18,7 @@ mod camera;
 pub mod model;
 mod picker;
 pub mod point_cloud;
+pub mod curve;
 pub mod resources;
 mod screenshot;
 mod texture;
@@ -27,6 +28,7 @@ mod util;
 use camera::{Camera, CameraController, CameraUniform};
 use model::DrawModel;
 use point_cloud::PointCloud;
+use curve::Curve;
 use types::*;
 
 #[repr(C)]
@@ -72,8 +74,8 @@ pub struct State<'a> {
     models: HashMap<String, model::Model>,
     //Points
     clouds: HashMap<String, PointCloud>,
-    //TODO :
     //Curves
+    curves: HashMap<String, Curve>,
     //Volume meshes
     // Lighting
     light_uniform: LightUniform,
@@ -238,6 +240,7 @@ impl<'a> State<'a> {
 
         let models = HashMap::new();
         let clouds = HashMap::new();
+        let curves = HashMap::new();
         // Create depth texture
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
@@ -264,6 +267,7 @@ impl<'a> State<'a> {
             camera_uniform,
             models,
             clouds,
+            curves,
             light_uniform,
             light_buffer,
             camera_light_bind_group_layout,
@@ -371,6 +375,15 @@ impl<'a> State<'a> {
             );
         }
 
+        for curve in self.curves.values_mut() {
+            curve.refresh_data(
+                &self.device,
+                &mut self.queue,
+                &self.camera_light_bind_group_layout,
+                self.config.format,
+            );
+        }
+
         self.picker.render(
             &self.device,
             &mut encoder,
@@ -417,6 +430,9 @@ impl<'a> State<'a> {
             for cloud in self.clouds.values() {
                 cloud.render(&mut render_pass);
                 //render_pass.draw_model(cloud);
+            }
+            for curve in self.curves.values() {
+                curve.render(&mut render_pass);
             }
 
             // Draw the gui
@@ -479,6 +495,25 @@ impl<'a> State<'a> {
         );
         self.clouds.insert(name.clone(), model);
         self.clouds.get_mut(&name).unwrap()
+    }
+
+    pub fn register_curve<V: Vertices>(
+        &mut self,
+        name: String,
+        positions: V,
+        connections: Vec<[u32; 2]>,
+    ) -> &mut Curve {
+        let model = Curve::new(
+            name.clone(),
+            positions.into(),
+            connections,
+            &self.device,
+            &self.camera_light_bind_group_layout,
+            //&self.picker.bind_group_layout,
+            self.config.format,
+        );
+        self.curves.insert(name.clone(), model);
+        self.curves.get_mut(&name).unwrap()
     }
 
     pub fn screenshot(&mut self) {
@@ -605,6 +640,7 @@ impl<'a> StateWrapper<'a> {
                                     window,
                                     &mut self.state.models,
                                     &mut self.state.clouds,
+                                    &mut self.state.curves,
                                     self.state.camera.build_view(),
                                     self.state.camera.build_proj(),
                                 );
