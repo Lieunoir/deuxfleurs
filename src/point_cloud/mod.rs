@@ -738,3 +738,98 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	return out;
 }
 ";
+//// function from :
+//// https://iquilezles.org/articles/intersectors/
+//fn dot2(v: vec3<f32>) -> f32 { return dot(v, v); }
+//
+//
+//const PI: f32 = 3.14159;
+//
+//// PBR functions taken from https://learnopengl.com/PBR/Theory
+//fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {
+//    let a2     = a*a;
+//    let NdotH  = max(dot(N, H), 0.0);
+//    let NdotH2 = NdotH*NdotH;
+//	
+//    let nom    = a2;
+//    var denom  = (NdotH2 * (a2 - 1.0) + 1.0);
+//    denom        = PI * denom * denom;
+//	
+//    return nom / denom;
+//}
+//
+//fn GeometrySchlickGGX(NdotV: f32, k: f32) -> f32
+//{
+//    let nom   = NdotV;
+//    let denom = NdotV * (1.0 - k) + k;
+//	
+//    return nom / denom;
+//}
+//  
+//fn GeometrySmith(N: vec3<f32>, V: vec3<f32>, L: vec3<f32>, k: f32) -> f32
+//{
+//    let NdotV = max(dot(N, V), 0.0);
+//    let NdotL = max(dot(N, L), 0.0);
+//    let ggx1 = GeometrySchlickGGX(NdotV, k);
+//    let ggx2 = GeometrySchlickGGX(NdotL, k);
+//	
+//    return ggx1 * ggx2;
+//}
+//
+//fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32>
+//{
+//    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+//}
+//
+//fn sphIntersect( ro: vec3<f32>, rd: vec3<f32>, ce: vec3<f32>, ra: f32 ) -> vec2<f32>
+//{
+//    let oc = ro - ce;
+//    let b = dot( oc, rd );
+//    let c = dot( oc, oc ) - ra*ra;
+//    var h = b*b - c;
+//    if( h<0.0 ) { return vec2<f32>(-1.0); } // no intersection
+//    h = sqrt( h );
+//    return vec2<f32>( -b-h, -b+h );
+//}
+//
+//struct FragOutput {
+//    @builtin(frag_depth) depth: f32,
+//    @location(0) color: vec4<f32>,
+//}
+//
+//@fragment
+//fn fs_main(in: VertexOutput) -> FragOutput {
+//    let ro = camera.view_pos.xyz;
+//	let rd = normalize(in.world_pos - camera.view_pos.xyz);
+//    let ce = in.center;
+//    let r = settings.radius;
+//    //let pa = in.orig_position;
+//    //let pb1 = in.orig_position + 0.5 * in.arrow * 0.1;
+//    //let pb2 = in.orig_position + in.arrow * 0.1;
+//
+//    var out: FragOutput;
+//
+//    let t = sphIntersect( ro, rd, ce, r);
+//    if(t.x < 0.0) {
+//        discard;
+//    }
+//	let pos = ro + t.x * rd;
+//	let normal = normalize(pos - ce);
+//
+//	let light_dir = normalize(light.position - pos);
+//	let view_dir = normalize(camera.view_pos.xyz - pos);
+//	let half_dir = normalize(view_dir + light_dir);
+//	let F0 = vec3<f32>(0.04, 0.04, 0.04);
+//	let D = DistributionGGX(normal, half_dir, 0.15);
+//	let F = fresnelSchlick(dot(half_dir, normal), F0);
+//	let G = GeometrySmith(normal, view_dir, light_dir, 0.01);
+//	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
+//	let kd = 1.0;
+//	let lambertian = in.color;
+//	let result = (kd * lambertian + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
+//	out.color = vec4<f32>(result, 1.);
+//	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+//	out.depth = clip_space_pos.z / clip_space_pos.w;
+//	return out;
+//}
+//";
