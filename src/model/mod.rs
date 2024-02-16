@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::ops::{Deref, DerefMut};
 
-use crate::model::data::{DataUniform, MeshData};
+use crate::data::{ColorSettings, DataUniform, UVMapSettings};
+use crate::model::data::MeshData;
 use crate::model::mesh_picker::MeshPicker;
 use crate::model::renderer::{MeshRenderer, ModelVertex};
 use crate::model::vector_field::{VectorField, VectorFieldSettings};
@@ -60,25 +61,26 @@ pub struct Mesh {
     face_normals: Vec<[f32; 3]>,
     pub num_elements: u32,
 
-    pub property_changed: bool,
-    pub transform_changed: bool,
-    pub uniform_changed: bool,
-    pub datas: HashMap<String, MeshData>,
-    pub vector_fields: HashMap<String, VectorFieldData>,
-
-    //cuz we have to build a renderer from the main loop after we add them
-    pub added_vector_fields: Vec<(String, Vec<[f32; 3]>, Vec<[f32; 3]>, VectorFieldOptions)>,
-
-    pub shown_data: Option<String>,
-    pub data_to_show: Option<Option<String>>,
-    // When the data to show is changed, so we can do the change from the main loop
-    pub color: [f32; 4],
     pub show: bool,
+
+    // When the data to show is changed, so we can do the change from the main loop
+    pub color: ColorSettings,
     pub show_edges: bool,
     pub smooth: bool,
     pub show_gizmo: bool,
     pub gizmo_mode: egui_gizmo::GizmoMode,
     pub transform: Transform,
+    pub property_changed: bool,
+    pub transform_changed: bool,
+    pub uniform_changed: bool,
+    pub datas: IndexMap<String, MeshData>,
+
+    //cuz we have to build a renderer from the main loop after we add them
+    pub vector_fields: IndexMap<String, VectorFieldData>,
+    pub added_vector_fields: Vec<(String, Vec<[f32; 3]>, Vec<[f32; 3]>, VectorFieldOptions)>,
+
+    pub shown_data: Option<String>,
+    pub data_to_show: Option<Option<String>>,
 }
 
 //TODO some kind of error handling
@@ -186,12 +188,12 @@ impl Mesh {
             transform,
             transform_changed: false,
             uniform_changed: false,
-            datas: HashMap::new(),
-            vector_fields: HashMap::new(),
+            datas: IndexMap::new(),
+            vector_fields: IndexMap::new(),
             added_vector_fields: Vec::new(),
             shown_data: None,
             show: true,
-            color: [0.2, 0.2, 0.8, 1.],
+            color: ColorSettings::default(),
             show_edges: false,
             smooth: true,
             data_to_show: None,
@@ -290,7 +292,17 @@ impl Mesh {
                 self.shown_data = None;
             }
         }
-        self.datas.insert(name, MeshData::FaceScalar(datas));
+        let settings = if let Some(mesh_data) = self.datas.shift_remove(&name) {
+            if let MeshData::FaceScalar(_datas, settings) = mesh_data {
+                settings
+            } else {
+                crate::model::data::FaceScalarSettings::default()
+            }
+        } else {
+            crate::model::data::FaceScalarSettings::default()
+        };
+        self.datas
+            .insert(name, MeshData::FaceScalar(datas, settings));
         self
     }
 
@@ -303,7 +315,7 @@ impl Mesh {
                 self.shown_data = None;
             }
         }
-        let settings = if let Some(mesh_data) = self.datas.remove(&name) {
+        let settings = if let Some(mesh_data) = self.datas.shift_remove(&name) {
             if let MeshData::VertexScalar(_datas, settings) = mesh_data {
                 settings
             } else {
@@ -326,16 +338,16 @@ impl Mesh {
                 self.shown_data = None;
             }
         }
-        let settings = if let Some(mesh_data) = self.datas.remove(&name) {
+        let settings = if let Some(mesh_data) = self.datas.shift_remove(&name) {
             if let MeshData::UVMap(_datas, settings) = mesh_data {
                 settings
             } else if let MeshData::UVCornerMap(_datas, settings) = mesh_data {
                 settings
             } else {
-                crate::model::data::UVMapSettings::default()
+                UVMapSettings::default()
             }
         } else {
-            crate::model::data::UVMapSettings::default()
+            UVMapSettings::default()
         };
         self.datas.insert(name, MeshData::UVMap(datas, settings));
         self
@@ -350,16 +362,16 @@ impl Mesh {
                 self.shown_data = None;
             }
         }
-        let settings = if let Some(mesh_data) = self.datas.remove(&name) {
+        let settings = if let Some(mesh_data) = self.datas.shift_remove(&name) {
             if let MeshData::UVMap(_datas, settings) = mesh_data {
                 settings
             } else if let MeshData::UVCornerMap(_datas, settings) = mesh_data {
                 settings
             } else {
-                crate::model::data::UVMapSettings::default()
+                UVMapSettings::default()
             }
         } else {
-            crate::model::data::UVMapSettings::default()
+            UVMapSettings::default()
         };
 
         self.datas
@@ -502,7 +514,7 @@ impl Model {
         self.picker.update(queue, &self.mesh);
         for (name, vectors, vectors_offsets, options) in self.mesh.added_vector_fields.drain(..) {
             let (shown, magnitude, color) =
-                if let Some(vector_field_data) = self.mesh.vector_fields.remove(&name) {
+                if let Some(vector_field_data) = self.mesh.vector_fields.shift_remove(&name) {
                     (
                         vector_field_data.shown,
                         vector_field_data.field.settings.magnitude,

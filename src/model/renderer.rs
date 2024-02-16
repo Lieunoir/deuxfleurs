@@ -1,11 +1,12 @@
 use wgpu::util::DeviceExt;
 
-use super::data::ColorSettings;
 use super::mesh_shader;
 use super::DataUniform;
 use super::Mesh;
 use super::MeshData;
 use super::Transform;
+use crate::data::ColorSettings;
+use crate::model::data::DataUniformBuilder;
 use crate::texture;
 use crate::util::create_render_pipeline;
 
@@ -235,7 +236,7 @@ impl MeshRenderer {
         let data_uniform = if let Some(data) = mesh_data {
             data.build_uniform(device)
         } else {
-            Some(ColorSettings::build_uniform(&mesh.color, device))
+            Some(mesh.color.build_uniform(device))
         };
         let render_pipeline = build_render_pipeline(
             device,
@@ -298,7 +299,7 @@ impl MeshRenderer {
             let data_uniform = if let Some(data) = mesh_data {
                 data.build_uniform(device)
             } else {
-                Some(ColorSettings::build_uniform(&mesh.color, device))
+                Some(mesh.color.build_uniform(device))
             };
             self.data_uniform = data_uniform;
             self.render_pipeline = build_render_pipeline(
@@ -322,7 +323,8 @@ impl MeshRenderer {
             if let Some(mesh_data) = mesh_data {
                 mesh_data.refresh_buffer(queue, self.data_uniform.as_ref());
             } else {
-                ColorSettings::refresh_buffer(&mesh.color, queue, self.data_uniform.as_ref())
+                mesh.color
+                    .refresh_buffer(queue, self.data_uniform.as_ref().unwrap())
             }
             mesh.uniform_changed = false;
         }

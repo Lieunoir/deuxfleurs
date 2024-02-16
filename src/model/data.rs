@@ -1,82 +1,82 @@
+use crate::data::{ColorMap, ColorMapValues, IsolineSettings, UVMapSettings};
+use crate::data::{ColorSettings, DataUniform};
 use crate::model::renderer::VertexBufferBuilder;
 use crate::model::Mesh;
-use crate::ui::UiMeshDataElement;
+use crate::ui::UiDataElement;
 use wgpu::util::DeviceExt;
 
-pub struct DataUniform {
-    pub bind_group_layout: wgpu::BindGroupLayout,
-    pub bind_group: wgpu::BindGroup,
-    pub buffer: wgpu::Buffer,
-}
-
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct ColorSettings {
-    color: [f32; 4],
+struct VertexScalarSettingsBuffer {
+    isoline: IsolineSettings,
+    colormap: ColorMapValues,
 }
 
-impl DataUniformBuilder for ColorSettings {}
-
-impl ColorSettings {
-    pub fn build_uniform(color: &[f32; 4], device: &wgpu::Device) -> DataUniform {
-        let uniform = ColorSettings { color: *color };
-        uniform.build_uniform(device)
-    }
-
-    pub fn refresh_buffer(
-        color: &[f32; 4],
-        queue: &mut wgpu::Queue,
-        data_uniform: Option<&DataUniform>,
-    ) {
-        let uniform = ColorSettings { color: *color };
-        uniform.refresh_buffer(queue, data_uniform.unwrap());
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone)]
 pub struct VertexScalarSettings {
-    pub isoline_number: f32,
-    _padding: [f32; 3],
+    pub isoline: IsolineSettings,
+    pub colormap: ColorMap,
+}
+
+#[derive(Copy, Clone)]
+pub struct FaceScalarSettings {
+    pub colormap: ColorMap,
+}
+
+impl Default for FaceScalarSettings {
+    fn default() -> Self {
+        Self {
+            colormap: ColorMap::default(),
+        }
+    }
+}
+
+impl DataUniformBuilder for FaceScalarSettings {
+    fn build_uniform(self, device: &wgpu::Device) -> DataUniform {
+        self.colormap.get_value().build_uniform(device)
+    }
+
+    fn refresh_buffer(self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+        self.colormap
+            .get_value()
+            .refresh_buffer(queue, data_uniform);
+    }
+}
+
+impl From<&VertexScalarSettings> for VertexScalarSettingsBuffer {
+    fn from(settings: &VertexScalarSettings) -> VertexScalarSettingsBuffer {
+        VertexScalarSettingsBuffer {
+            isoline: settings.isoline,
+            colormap: settings.colormap.get_value(),
+        }
+    }
 }
 
 impl Default for VertexScalarSettings {
     fn default() -> Self {
         Self {
-            isoline_number: 0.,
-            _padding: [0.; 3],
+            isoline: IsolineSettings::default(),
+            colormap: ColorMap::default(),
         }
     }
 }
 
-impl DataUniformBuilder for VertexScalarSettings {}
+impl DataUniformBuilder for VertexScalarSettings {
+    fn build_uniform(self, device: &wgpu::Device) -> DataUniform {
+        let settings_buffer: VertexScalarSettingsBuffer = (&self).into();
+        settings_buffer.build_uniform(device)
+    }
 
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct UVMapSettings {
-    pub color_1: [f32; 4],
-    pub color_2: [f32; 4],
-    pub period: f32,
-    _padding: [f32; 3],
-}
-
-impl Default for UVMapSettings {
-    fn default() -> Self {
-        Self {
-            color_1: [0.9, 0.9, 0.9, 1.],
-            color_2: [0.6, 0.2, 0.4, 1.],
-            period: 100.,
-            _padding: [0.; 3],
-        }
+    fn refresh_buffer(self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+        let settings_buffer: VertexScalarSettingsBuffer = (&self).into();
+        settings_buffer.refresh_buffer(queue, data_uniform);
     }
 }
-
-impl DataUniformBuilder for UVMapSettings {}
 
 #[non_exhaustive]
 pub enum MeshData {
     Color(Vec<[f32; 3]>),
-    FaceScalar(Vec<f32>),
+    FaceScalar(Vec<f32>, FaceScalarSettings),
     VertexScalar(Vec<f32>, VertexScalarSettings),
     //TODO think about edge ordering
     //EdgeScalar(Vec<f32>),
@@ -88,6 +88,7 @@ impl MeshData {
     pub fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
         match self {
             MeshData::VertexScalar(_, uniform) => Some(uniform.build_uniform(device)),
+            MeshData::FaceScalar(_, uniform) => Some(uniform.build_uniform(device)),
             MeshData::UVMap(_, uniform) => Some(uniform.build_uniform(device)),
             MeshData::UVCornerMap(_, uniform) => Some(uniform.build_uniform(device)),
             // Maybe use empty uniform instead of none?
@@ -100,6 +101,9 @@ impl MeshData {
             MeshData::VertexScalar(_, uniform) => {
                 uniform.refresh_buffer(queue, data_uniform.unwrap())
             }
+            MeshData::FaceScalar(_, uniform) => {
+                uniform.refresh_buffer(queue, data_uniform.unwrap())
+            }
             MeshData::UVMap(_, uniform) => uniform.refresh_buffer(queue, data_uniform.unwrap()),
             MeshData::UVCornerMap(_, uniform) => {
                 uniform.refresh_buffer(queue, data_uniform.unwrap())
@@ -109,7 +113,15 @@ impl MeshData {
     }
 }
 
-trait DataUniformBuilder: bytemuck::Pod + Copy {
+pub trait DataUniformBuilder {
+    fn build_uniform(self, device: &wgpu::Device) -> DataUniform;
+    fn refresh_buffer(self, queue: &mut wgpu::Queue, data_uniform: &DataUniform);
+}
+
+impl<T> DataUniformBuilder for T
+where
+    T: bytemuck::Pod + Copy,
+{
     fn build_uniform(self, device: &wgpu::Device) -> DataUniform {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Data buffer"),
@@ -150,59 +162,18 @@ trait DataUniformBuilder: bytemuck::Pod + Copy {
     }
 }
 
-impl UiMeshDataElement for MeshData {
+impl UiDataElement for MeshData {
     fn draw(&mut self, ui: &mut egui::Ui) -> bool {
         use egui::Widget;
         match self {
             MeshData::UVMap(_, data_uniform) | MeshData::UVCornerMap(_, data_uniform) => {
-                let mut changed = false;
-                //ui.add(egui::Slider::new(&mut data_uniform.period, 0.0..=100.0).text("Period"));
-                changed |= egui::Slider::new(&mut data_uniform.period, 0.0..=100.0)
-                    .text("Period")
-                    .clamp_to_range(false)
-                    .ui(ui)
-                    .changed();
-                let mut color_1 = egui::Rgba::from_rgba_unmultiplied(
-                    data_uniform.color_1[0],
-                    data_uniform.color_1[1],
-                    data_uniform.color_1[2],
-                    data_uniform.color_1[3],
-                );
-                let mut color_2 = egui::Rgba::from_rgba_unmultiplied(
-                    data_uniform.color_2[0],
-                    data_uniform.color_2[1],
-                    data_uniform.color_2[2],
-                    data_uniform.color_2[3],
-                );
-                ui.horizontal(|ui| {
-                    changed |= egui::widgets::color_picker::color_edit_button_rgba(
-                        ui,
-                        &mut color_1,
-                        egui::widgets::color_picker::Alpha::Opaque,
-                    )
-                    .changed();
-                    ui.label("Checkerboard color 1");
-                });
-                ui.horizontal(|ui| {
-                    changed |= egui::widgets::color_picker::color_edit_button_rgba(
-                        ui,
-                        &mut color_2,
-                        egui::widgets::color_picker::Alpha::Opaque,
-                    )
-                    .changed();
-                    ui.label("Checkerboard color 2");
-                });
-                data_uniform.color_1 = color_1.to_array();
-                data_uniform.color_2 = color_2.to_array();
-                changed
+                data_uniform.draw(ui)
             }
             MeshData::VertexScalar(_, data_uniform) => {
-                egui::Slider::new(&mut data_uniform.isoline_number, 0.0..=100.0)
-                    .text("Isolines")
-                    .clamp_to_range(false)
-                    .ui(ui)
-                    .changed()
+                let changed = data_uniform.colormap.draw(ui);
+                data_uniform.isoline.draw(ui) || changed
             }
+            MeshData::FaceScalar(_, data_uniform) => data_uniform.colormap.draw(ui),
             _ => false,
         }
     }
@@ -267,7 +238,7 @@ impl VertexBufferBuilder for MeshData {
                     vertex.distance = t;
                 }
             }
-            MeshData::FaceScalar(datas) => {
+            MeshData::FaceScalar(datas, _) => {
                 let mut min_d = datas[0];
                 let mut max_d = datas[0];
                 for data in datas {

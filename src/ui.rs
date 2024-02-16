@@ -2,15 +2,15 @@ use egui::Widget;
 use egui_gizmo::GizmoMode;
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
+use crate::curve::CurveData;
 use crate::model::data::MeshData;
 use crate::point_cloud::CloudData;
-use crate::curve::CurveData;
 
-pub trait UiMeshDataElement {
+pub trait UiDataElement {
     fn draw(&mut self, ui: &mut egui::Ui) -> bool;
 }
 
@@ -70,9 +70,9 @@ impl UI {
     pub fn draw_models(
         &mut self,
         window: &Window,
-        models: &mut HashMap<String, crate::model::Model>,
-        clouds: &mut HashMap<String, crate::point_cloud::PointCloud>,
-        curves: &mut HashMap<String, crate::curve::Curve>,
+        models: &mut IndexMap<String, crate::model::Model>,
+        clouds: &mut IndexMap<String, crate::point_cloud::PointCloud>,
+        curves: &mut IndexMap<String, crate::curve::Curve>,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
     ) {
@@ -101,23 +101,9 @@ impl UI {
                             ui.checkbox(&mut smooth, "Smooth");
                             model.mesh.set_smooth(smooth);
                         });
-                        let mut mesh_color = egui::Rgba::from_rgba_unmultiplied(
-                            model.mesh.color[0],
-                            model.mesh.color[1],
-                            model.mesh.color[2],
-                            model.mesh.color[3],
-                        );
-                        let mut picker_changed = false;
-                        ui.horizontal(|ui| {
-                            picker_changed = egui::widgets::color_picker::color_edit_button_rgba(
-                                ui,
-                                &mut mesh_color,
-                                egui::widgets::color_picker::Alpha::Opaque,
-                            )
-                            .changed();
-                            ui.label("Mesh color");
-                        });
-                        model.mesh.color = mesh_color.to_array();
+
+                        let mut picker_changed = model.mesh.color.draw(ui);
+
                         if model.mesh.shown_data.is_none() && picker_changed {
                             model.mesh.uniform_changed = true;
                         }
@@ -286,38 +272,37 @@ impl UI {
                         }
                         for (name, data) in &mut model.mesh.datas {
                             let active = model.mesh.shown_data == Some(name.clone());
-                            ui.horizontal(|ui| {
-                                let mut change_active = active;
-                                ui.checkbox(&mut change_active, name.clone());
-                                if change_active != active {
-                                    if !active {
-                                        model.mesh.data_to_show = Some(Some(name.clone()))
-                                    } else {
-                                        model.mesh.data_to_show = Some(None)
-                                    }
-                                }
-                                match data {
-                                    MeshData::UVMap(..) => {
-                                        ui.label("UV Map");
-                                    }
-                                    MeshData::UVCornerMap(..) => {
-                                        ui.label("UV Corner Map");
-                                    }
-                                    MeshData::VertexScalar(..) => {
-                                        ui.label("Vertex Scalar");
-                                    }
-                                    MeshData::FaceScalar(..) => {
-                                        ui.label("Face Scalar");
-                                    }
-                                    MeshData::Color(..) => {
-                                        ui.label("Color");
-                                    }
-                                    _ => (),
-                                };
-                            });
-                            egui::CollapsingHeader::new(name)
+                            let mut job = egui::text::LayoutJob::default();
+                            job.append(&name, 0.0, egui::text::TextFormat::default());
+                            let data_type = match data {
+                                MeshData::UVMap(..) => "UV Map",
+                                MeshData::UVCornerMap(..) => "UV Corner Map",
+                                MeshData::VertexScalar(..) => "Vertex Scalar",
+                                MeshData::FaceScalar(..) => "Face Scalar",
+                                MeshData::Color(..) => "Color",
+                                _ => "",
+                            };
+                            job.append(
+                                data_type,
+                                10.0,
+                                egui::text::TextFormat {
+                                    color: egui::Color32::DARK_GRAY,
+                                    ..Default::default()
+                                },
+                            );
+
+                            egui::CollapsingHeader::new(job)
                                 .default_open(false)
                                 .show(ui, |ui| {
+                                    let mut change_active = active;
+                                    ui.checkbox(&mut change_active, "Show");
+                                    if change_active != active {
+                                        if !active {
+                                            model.mesh.data_to_show = Some(Some(name.clone()))
+                                        } else {
+                                            model.mesh.data_to_show = Some(None)
+                                        }
+                                    }
                                     let changed = data.draw(ui);
                                     if active && changed {
                                         model.mesh.uniform_changed = true;
@@ -331,117 +316,81 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points",
                         name,
-                        cloud.positions.len(),
+                        cloud.item.positions.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.checkbox(&mut cloud.show, "Show");
 
-                            let mut cloud_color = egui::Rgba::from_rgba_unmultiplied(
-                                cloud.settings.color[0],
-                                cloud.settings.color[1],
-                                cloud.settings.color[2],
-                                cloud.settings.color[3],
-                            );
-                            let picker_changed =
-                                egui::widgets::color_picker::color_edit_button_rgba(
-                                    ui,
-                                    &mut cloud_color,
-                                    egui::widgets::color_picker::Alpha::Opaque,
-                                )
-                                .changed();
+                            let picker_changed = cloud.updater.settings.color.draw(ui);
                             if picker_changed {
-                                cloud.uniform_changed = true;
+                                cloud.updater.settings_changed = true;
                             }
-                            ui.label("Color");
-                            cloud.settings.color = cloud_color.to_array();
                         });
-                        if egui::Slider::new(&mut cloud.settings.radius, 0.1..=100.0)
-                            .text("Radius")
-                            .clamp_to_range(false)
-                            .logarithmic(true)
-                            .ui(ui)
-                            .changed()
-                        {
-                            cloud.uniform_changed = true;
-                        }
-                        for (name, data) in &mut cloud.datas {
-                            let active = cloud.shown_data == Some(name.clone());
+                        cloud.updater.settings_changed |= cloud.updater.settings.radius.draw(ui);
+                        for (name, data) in &mut cloud.updater.data {
+                            let active = cloud.updater.shown_data == Some(name.clone());
                             ui.horizontal(|ui| {
                                 let mut change_active = active;
                                 ui.checkbox(&mut change_active, name.clone());
                                 if change_active != active {
                                     if !active {
-                                        cloud.data_to_show = Some(Some(name.clone()))
+                                        cloud.updater.data_to_show = Some(Some(name.clone()))
                                     } else {
-                                        cloud.data_to_show = Some(None)
+                                        cloud.updater.data_to_show = Some(None)
                                     }
                                 }
                                 match data {
-                                    CloudData::Scalar(_) => ui.label("Scalar"),
-                                    CloudData::Color(_) => ui.label("Color"),
-                                }
+                                    CloudData::Scalar(_, settings) => {
+                                        ui.label("Scalar");
+                                        if settings.draw(ui) {
+                                            cloud.updater.uniform_changed = true;
+                                        }}
+                                    CloudData::Color(_) => {ui.label("Color");},
+                                };
                             });
                         }
                     });
                 }
+
                 for (name, curve) in curves.iter_mut() {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points, {} edges",
                         name,
-                        curve.positions.len(),
-                        curve.connections.len(),
+                        curve.item.positions.len(),
+                        curve.item.connections.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.checkbox(&mut curve.show, "Show");
-
-                            let mut cloud_color = egui::Rgba::from_rgba_unmultiplied(
-                                curve.settings.color[0],
-                                curve.settings.color[1],
-                                curve.settings.color[2],
-                                curve.settings.color[3],
-                            );
-                            let picker_changed =
-                                egui::widgets::color_picker::color_edit_button_rgba(
-                                    ui,
-                                    &mut cloud_color,
-                                    egui::widgets::color_picker::Alpha::Opaque,
-                                )
-                                .changed();
+                            let picker_changed = curve.updater.settings.color.draw(ui);
                             if picker_changed {
-                                curve.uniform_changed = true;
+                                curve.updater.settings_changed = true;
                             }
-                            ui.label("Color");
-                            curve.settings.color = cloud_color.to_array();
                         });
-                        if egui::Slider::new(&mut curve.settings.radius, 0.1..=100.0)
-                            .text("Radius")
-                            .clamp_to_range(false)
-                            .logarithmic(true)
-                            .ui(ui)
-                            .changed()
-                        {
-                            curve.uniform_changed = true;
-                        }
-                        for (name, data) in &mut curve.datas {
-                            let active = curve.shown_data == Some(name.clone());
+                        curve.updater.settings_changed |= curve.updater.settings.radius.draw(ui);
+                        for (name, data) in &mut curve.updater.data {
+                            let active = curve.updater.shown_data == Some(name.clone());
                             ui.horizontal(|ui| {
                                 let mut change_active = active;
                                 ui.checkbox(&mut change_active, name.clone());
                                 if change_active != active {
                                     if !active {
-                                        curve.data_to_show = Some(Some(name.clone()))
+                                        curve.updater.data_to_show = Some(Some(name.clone()))
                                     } else {
-                                        curve.data_to_show = Some(None)
+                                        curve.updater.data_to_show = Some(None)
                                     }
                                 }
                                 match data {
-                                    CurveData::Scalar(_) => ui.label("Scalar"),
-                                    CurveData::Color(_) => ui.label("Color"),
-                                }
+                                    CurveData::Scalar(_, settings) => {ui.label("Scalar");
+                                        if settings.draw(ui) {
+                                            curve.updater.uniform_changed = true;
+                                        }
+                                    },
+                                    CurveData::Color(_) => {ui.label("Color");},
+                                };
                             });
                         }
                     });

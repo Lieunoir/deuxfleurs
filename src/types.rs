@@ -98,6 +98,15 @@ impl Vertices for ndarray::Array2<f32> {
     }
 }
 
+impl Vertices for ndarray::Array2<f64> {
+    fn into(self) -> Vec<[f32; 3]> {
+        self.rows()
+            .into_iter()
+            .map(|row| [row[0] as f32, row[1] as f32, row[2] as f32])
+            .collect()
+    }
+}
+
 impl Vertices for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 3]> {
         self.row_iter()
@@ -144,6 +153,12 @@ impl Scalar for Vec<f32> {
 impl Scalar for ndarray::Array1<f32> {
     fn into(self) -> Vec<f32> {
         self.into_raw_vec()
+    }
+}
+
+impl Scalar for ndarray::Array1<f64> {
+    fn into(self) -> Vec<f32> {
+        self.into_raw_vec().into_iter().map(|f| f as f32).collect()
     }
 }
 

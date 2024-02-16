@@ -222,9 +222,9 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	let view_dir = normalize(camera.view_pos.xyz - pos);
 	let half_dir = normalize(view_dir + light_dir);
 	let F0 = vec3<f32>(0.04, 0.04, 0.04);
-	let D = DistributionGGX(normal, half_dir, 0.15);
+	let D = DistributionGGX(normal, half_dir, 0.5);
 	let F = fresnelSchlick(dot(half_dir, normal), F0);
-	let G = GeometrySmith(normal, view_dir, light_dir, 0.01);
+	let G = GeometrySmith(normal, view_dir, light_dir, 0.5);
 	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
 	let kd = 1.0;
 	let lambertian = settings.color;

@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use crate::updater::Render;
+use indexmap::IndexMap;
 use std::iter;
 use std::ops::{Deref, DerefMut};
 use wgpu::util::DeviceExt;
@@ -15,20 +16,23 @@ use winit::{
 use wasm_bindgen::prelude::*;
 
 mod camera;
+pub mod curve;
+mod data;
 pub mod model;
 mod picker;
 pub mod point_cloud;
-pub mod curve;
 pub mod resources;
 mod screenshot;
+mod shader;
 mod texture;
 pub mod types;
 mod ui;
+mod updater;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
+use curve::Curve;
 use model::DrawModel;
 use point_cloud::PointCloud;
-use curve::Curve;
 use types::*;
 
 #[repr(C)]
@@ -46,7 +50,7 @@ pub trait ModelContainer {
     fn get_model(&mut self, name: &str) -> Option<&mut model::Model>;
 }
 
-impl ModelContainer for HashMap<String, model::Model> {
+impl ModelContainer for IndexMap<String, model::Model> {
     fn get_model(&mut self, name: &str) -> Option<&mut model::Model> {
         self.get_mut(name)
     }
@@ -71,11 +75,11 @@ pub struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     // 3D Model
-    models: HashMap<String, model::Model>,
+    models: IndexMap<String, model::Model>,
     //Points
-    clouds: HashMap<String, PointCloud>,
+    clouds: IndexMap<String, PointCloud>,
     //Curves
-    curves: HashMap<String, Curve>,
+    curves: IndexMap<String, Curve>,
     //Volume meshes
     // Lighting
     light_uniform: LightUniform,
@@ -238,9 +242,9 @@ impl<'a> State<'a> {
             label: Some("camera_light_bind_group"),
         });
 
-        let models = HashMap::new();
-        let clouds = HashMap::new();
-        let curves = HashMap::new();
+        let models = IndexMap::new();
+        let clouds = IndexMap::new();
+        let curves = IndexMap::new();
         // Create depth texture
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
@@ -367,7 +371,7 @@ impl<'a> State<'a> {
         }
 
         for cloud in self.clouds.values_mut() {
-            cloud.refresh_data(
+            cloud.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -376,7 +380,7 @@ impl<'a> State<'a> {
         }
 
         for curve in self.curves.values_mut() {
-            curve.refresh_data(
+            curve.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -444,7 +448,8 @@ impl<'a> State<'a> {
         if self.screenshot {
             self.screenshoter.copy_texture_to_buffer(&mut encoder);
             let index = self.queue.submit(iter::once(encoder.finish()));
-            self.screenshoter.create_png(&self.device, index);
+            self.screenshoter
+                .create_png(&self.device, index, self.config.format);
             self.screenshot = false;
         } else {
             self.queue.submit(

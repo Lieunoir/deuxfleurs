@@ -1,53 +1,42 @@
+use crate::data::*;
 use crate::texture;
 use crate::types::{Color, Scalar};
+use crate::updater::*;
 use crate::util;
-use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
-pub trait DataBufferBuilder {
-    fn build_data_buffer(&self, device: &wgpu::Device, positions: &[[f32; 3]]) -> wgpu::Buffer;
+pub enum CloudData {
+    Scalar(Vec<f32>, ColorMap),
+    Color(Vec<[f32; 3]>),
 }
 
-impl<T> DataBufferBuilder for Option<&T>
-where
-    T: DataBufferBuilder,
-{
-    fn build_data_buffer(&self, device: &wgpu::Device, positions: &[[f32; 3]]) -> wgpu::Buffer {
+impl DataUniformBuilder for CloudData {
+    fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
         match self {
-            Some(builder) => builder.build_data_buffer(device, positions),
-            None => {
-                let mut gpu_vertices = Vec::with_capacity(positions.len());
-                for position in positions.iter() {
-                    let vertex = PointData {
-                        position: *position,
-                        color: [0., 0., 0.],
-                    };
-                    gpu_vertices.push(vertex);
-                }
-                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("PC Data Buffer"),
-                    contents: bytemuck::cast_slice(&gpu_vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                })
-            }
+            CloudData::Scalar(_, colormap) => colormap.get_value().build_uniform(device),
+            _ => None,
+        }
+    }
+
+    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+        match self {
+            CloudData::Scalar(_, colormap) => colormap.get_value().refresh_buffer(queue, data_uniform),
+            _ => (),
         }
     }
 }
 
-pub struct CloudScalar(Vec<f32>);
+impl CloudData {
+    fn sphere_desc<'a>(&self) -> wgpu::VertexBufferLayout<'a> {
+        match self {
+            CloudData::Color(_) => SphereColorData::desc(),
+            CloudData::Scalar(..) => SphereScalarData::desc(),
+        }
+    }
 
-pub struct CloudColor(Vec<f32>);
-
-pub enum CloudData {
-    Scalar(Vec<f32>),
-    Color(Vec<[f32; 3]>),
-}
-
-impl DataBufferBuilder for CloudData {
-    fn build_data_buffer(&self, device: &wgpu::Device, positions: &[[f32; 3]]) -> wgpu::Buffer {
-        let mut gpu_vertices = Vec::with_capacity(positions.len());
-        let colors: Vec<_> = match self {
-            CloudData::Scalar(scalars) => {
+    fn build_sphere_data_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
+        match self {
+            CloudData::Scalar(scalars, _) => {
                 let mut min_d = scalars[0];
                 let mut max_d = scalars[0];
                 for data in scalars {
@@ -58,33 +47,31 @@ impl DataBufferBuilder for CloudData {
                         min_d = *data;
                     }
                 }
-                scalars
+                let gpu_vertices: Vec<_> = scalars
                     .iter()
                     .map(|data| {
-                        let mut color = [0.; 3];
                         let t = (data - min_d) / (max_d - min_d);
-                        color[0] = t * t;
-                        color[1] = 2. * t * (1. - t);
-                        color[2] = (1. - t) * (1. - t);
-                        color
+                        SphereScalarData { scalar: t }
                     })
-                    .collect()
+                    .collect();
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Cloud Sphere Center Buffer"),
+                    contents: bytemuck::cast_slice(&gpu_vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                })
             }
-            CloudData::Color(colors) => colors.clone(),
-        };
-        //for ((position, color), distance) in positions.iter().zip(colors).zip(distance) {
-        for (position, color) in positions.iter().zip(colors) {
-            let vertex = PointData {
-                position: *position,
-                color,
-            };
-            gpu_vertices.push(vertex);
+            CloudData::Color(colors) => {
+                let gpu_vertices: Vec<_> = colors
+                    .iter()
+                    .map(|color| SphereColorData { color: *color })
+                    .collect();
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Cloud Sphere Center Buffer"),
+                    contents: bytemuck::cast_slice(&gpu_vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                })
+            }
         }
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("PC Data Buffer"),
-            contents: bytemuck::cast_slice(&gpu_vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        })
     }
 }
 
@@ -93,31 +80,41 @@ pub trait Vertex {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PCSettings {
-    pub radius: f32,
-    pub _padding: [u32; 3],
-    pub color: [f32; 4],
+    pub radius: Radius,
+    pub color: ColorSettings,
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct PointVertex {
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct SphereVertex {
     position: [f32; 3],
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct PointData {
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct SphereCenter {
     position: [f32; 3],
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct SphereColorData {
     color: [f32; 3],
 }
 
-impl Vertex for PointVertex {
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct SphereScalarData {
+    scalar: f32,
+}
+
+impl Vertex for SphereVertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<PointVertex>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[wgpu::VertexAttribute {
                 offset: 0,
@@ -128,54 +125,92 @@ impl Vertex for PointVertex {
     }
 }
 
-impl Vertex for PointData {
+impl Vertex for SphereCenter {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<PointData>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-            ],
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 1,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
         }
     }
 }
 
-pub struct PointCloud {
+impl Vertex for SphereColorData {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 2,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
+        }
+    }
+}
+
+impl Vertex for SphereScalarData {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 2,
+                format: wgpu::VertexFormat::Float32,
+            }],
+        }
+    }
+}
+
+pub struct CloudItem {
     pub name: String,
     pub positions: Vec<[f32; 3]>,
     pub num_elements: u32,
-
-    pub datas: HashMap<String, CloudData>,
-    pub shown_data: Option<String>,
-    pub data_to_show: Option<Option<String>>,
-    pub settings: PCSettings,
-    pub property_changed: bool,
-    pub uniform_changed: bool,
-    pub show: bool,
-    //renderer
-    //picker
-    //
-    render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    data_buffer: wgpu::Buffer,
-    settings_bind_group: wgpu::BindGroup,
-    settings_buffer: wgpu::Buffer,
-    pipeline_layout: wgpu::PipelineLayout,
 }
 
-impl PointCloud {
-    fn build_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-        let s2 = 2_f32.sqrt();
+pub struct CloudFixedRenderer {
+    positions_len: u32,
+    vertex_buffer: wgpu::Buffer,
+    center_buffer: wgpu::Buffer,
+}
+
+pub struct CloudDataBuffer {
+    sphere_data_buffer: Option<wgpu::Buffer>,
+}
+
+pub struct CloudPipeline {
+    sphere_render_pipeline: wgpu::RenderPipeline,
+}
+
+impl DataBuffer for CloudDataBuffer {
+    type Settings = PCSettings;
+    type Data = CloudData;
+    type Item = CloudItem;
+
+    fn new(device: &wgpu::Device, item: &Self::Item, data: Option<&Self::Data>) -> Self {
+        let sphere_data_buffer = data.map(|d| d.build_sphere_data_buffer(device));
+        Self {
+            sphere_data_buffer,
+        }
+    }
+}
+
+impl FixedRenderer for CloudFixedRenderer {
+    type Settings = PCSettings;
+    type Data = CloudData;
+    type Item = CloudItem;
+
+    fn initialize(device: &wgpu::Device, item: &Self::Item, settings: &Self::Settings) -> Self {
+        //let s2 = 2_f32.sqrt();
+        let s2 = 1.;
         let positions = [
             [-s2, -s2, 0.],
             [s2, -s2, 0.],
@@ -184,36 +219,120 @@ impl PointCloud {
             [s2, s2, 0.],
             [-s2, s2, 0.],
         ];
-        let vertices = positions.map(|position| PointVertex { position });
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertices = positions.map(|position| SphereVertex { position });
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("PC Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
-        })
-    }
+        });
 
-    fn build_data_buffer(
-        device: &wgpu::Device,
-        positions: &Vec<[f32; 3]>,
-        colors: &Vec<[f32; 3]>,
-        //distance: &Vec<f32>,
-    ) -> wgpu::Buffer {
-        let mut gpu_vertices = Vec::with_capacity(positions.len());
-        //for ((position, color), distance) in positions.iter().zip(colors).zip(distance) {
-        for (position, color) in positions.iter().zip(colors) {
-            let vertex = PointData {
+        let mut gpu_vertices = Vec::with_capacity(item.positions.len());
+        for position in item.positions.iter() {
+            let vertex = SphereCenter {
                 position: *position,
-                color: *color,
             };
             gpu_vertices.push(vertex);
         }
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("PC Data Buffer"),
+        let center_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Cloud Sphere Center Buffer"),
             contents: bytemuck::cast_slice(&gpu_vertices),
             usage: wgpu::BufferUsages::VERTEX,
-        })
-    }
+        });
 
+        Self {
+            vertex_buffer,
+            center_buffer,
+            positions_len: item.positions.len() as u32,
+        }
+    }
+}
+
+impl RenderPipeline for CloudPipeline {
+    type Settings = PCSettings;
+    type Data = CloudData;
+    type Item = CloudItem;
+    type Fixed = CloudFixedRenderer;
+
+    fn new(
+        device: &wgpu::Device,
+        data: Option<&Self::Data>,
+        fixed: &Self::Fixed,
+        settings: &DataUniform,
+        data_uniform: Option<&DataUniform>,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self {
+        let bind_group_layouts = if let Some(uniform) = data_uniform{
+            vec![camera_light_bind_group_layout, &settings.bind_group_layout, &uniform.bind_group_layout]
+        } else {
+            vec![camera_light_bind_group_layout, &settings.bind_group_layout]
+        };
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Sphere cloud Render Pipeline Layout"),
+            bind_group_layouts: &bind_group_layouts,
+            push_constant_ranges: &[],
+        });
+
+        let shader = wgpu::ShaderModuleDescriptor {
+            label: Some("sphere cloud shader"),
+            source: wgpu::ShaderSource::Wgsl(get_shader(data.is_some()).into()),
+        };
+        let sphere_buffer_layout = if let Some(data) = &data {
+            vec![
+                SphereVertex::desc(),
+                SphereCenter::desc(),
+                data.sphere_desc(),
+            ]
+        } else {
+            vec![SphereVertex::desc(), SphereCenter::desc()]
+        };
+        let sphere_render_pipeline = util::create_render_pipeline(
+            device,
+            &pipeline_layout,
+            color_format,
+            Some(texture::Texture::DEPTH_FORMAT),
+            &sphere_buffer_layout,
+            shader,
+            Some("cloud sphere render"),
+        );
+        CloudPipeline {
+            sphere_render_pipeline,
+        }
+    }
+}
+
+pub type CloudRenderer =
+    Renderer<PCSettings, CloudData, CloudItem, CloudFixedRenderer, CloudDataBuffer, CloudPipeline>;
+
+impl Render for CloudRenderer {
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        render_pass.set_bind_group(1, &self.settings_uniform.bind_group, &[]);
+        if let Some(uniform) = &self.data_uniform {
+            render_pass.set_bind_group(2, &uniform.bind_group, &[]);
+        }
+        render_pass.set_pipeline(&self.pipeline.sphere_render_pipeline);
+        render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.fixed.center_buffer.slice(..));
+        if let Some(data_buffer) = &self.data_buffer.sphere_data_buffer {
+            render_pass.set_vertex_buffer(2, data_buffer.slice(..));
+        }
+        render_pass.draw(0..6, 0..(self.fixed.positions_len));
+    }
+}
+
+pub type PointCloud = MainDisplayItem<
+    PCSettings,
+    CloudData,
+    CloudItem,
+    CloudFixedRenderer,
+    CloudDataBuffer,
+    CloudPipeline,
+>;
+
+impl PointCloud {
     pub fn new(
         name: String,
         positions: Vec<[f32; 3]>,
@@ -222,205 +341,55 @@ impl PointCloud {
         //transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
-        let settings = PCSettings {
-            radius: 0.01,
-            _padding: [0; 3],
-            color: [0.2, 0.2, 0.8, 1.],
-        };
-        let settings_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("PC settings buffer"),
-            contents: bytemuck::cast_slice(&[settings]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-        let settings_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("pc_settings_bind_group_layout"),
-            });
-        let settings_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &settings_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: settings_buffer.as_entire_binding(),
-            }],
-            label: Some("pc_settings_bind_group"),
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Point cloud Render Pipeline Layout"),
-            bind_group_layouts: &[
-                camera_light_bind_group_layout,
-                //transform_bind_group_layout,
-                &settings_bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        });
-
-        let shader = wgpu::ShaderModuleDescriptor {
-            label: Some("point cloud shader"),
-            //TODO change shader
-            source: wgpu::ShaderSource::Wgsl(get_shader(false).into()),
-        };
-        let render_pipeline = util::create_render_pipeline(
-            device,
-            &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
-            &[PointVertex::desc(), PointData::desc()],
-            shader,
-            Some("point cloud field render"),
-        );
-
-        let vertex_buffer = Self::build_vertex_buffer(device);
-        let colors = vec![[0., 0., 0.]; positions.len()];
-        let data_buffer = Self::build_data_buffer(device, &positions, &colors);
-        Self {
+        let item = CloudItem {
             name,
             num_elements: positions.len() as u32,
             positions,
-            property_changed: false,
-            uniform_changed: false,
-            datas: HashMap::new(),
-            shown_data: None,
-            data_to_show: None,
-            settings,
-            show: true,
-            data_buffer,
-            render_pipeline,
-            settings_bind_group,
-            settings_buffer,
-            vertex_buffer,
-            pipeline_layout,
-        }
+        };
+        PointCloud::init(device, item, camera_light_bind_group_layout, color_format)
     }
 
     pub fn set_radius(&mut self, radius: f32) {
-        self.settings.radius = radius;
-        self.uniform_changed = true;
+        self.updater.settings.radius.radius = radius;
+        self.updater.settings_changed = true;
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) {
-        self.settings.color = color;
-        self.uniform_changed = true;
+        self.updater.settings.color.color = color;
+        self.updater.settings_changed = true;
     }
 
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut Self {
         let datas = datas.into();
-        assert!(datas.len() == self.positions.len());
-        if let Some(data_name) = &mut self.shown_data {
+        assert!(datas.len() == self.item.positions.len());
+        if let Some(data_name) = &mut self.updater.shown_data {
             if *data_name == name {
-                self.data_to_show = Some(Some(data_name.clone()));
-                self.shown_data = None;
+                self.updater.data_to_show = Some(Some(data_name.clone()));
+                self.updater.shown_data = None;
             }
         }
-        self.datas.insert(name, CloudData::Scalar(datas));
+        //TODO recover old settings
+        let settings = ColorMap::default();
+        self.updater.data.insert(name, CloudData::Scalar(datas, settings));
         self
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut Self {
         let datas = datas.into();
-        assert!(datas.len() == self.positions.len());
-        if let Some(data_name) = &mut self.shown_data {
+        assert!(datas.len() == self.item.positions.len());
+        if let Some(data_name) = &mut self.updater.shown_data {
             if *data_name == name {
-                self.data_to_show = Some(Some(data_name.clone()));
-                self.shown_data = None;
+                self.updater.data_to_show = Some(Some(data_name.clone()));
+                self.updater.shown_data = None;
             }
         }
-        self.datas.insert(name, CloudData::Color(datas));
+        self.updater.data.insert(name, CloudData::Color(datas));
         self
     }
 
     pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        self.data_to_show = Some(name);
+        self.updater.data_to_show = Some(name);
         self
-    }
-
-    pub fn refresh_data(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &mut wgpu::Queue,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> bool {
-        let mut refresh_screen = false;
-        if let Some(data) = self.data_to_show.clone() {
-            self.data_to_show = None;
-            self.shown_data = data;
-            let cloud_data = match &self.shown_data {
-                Some(data) => self.datas.get(data),
-                None => None,
-            };
-            self.data_buffer = cloud_data.build_data_buffer(device, &self.positions);
-            self.property_changed = true;
-            refresh_screen = true;
-        }
-        if self.property_changed {
-            let cloud_data = match &self.shown_data {
-                Some(data) => self.datas.get(data),
-                None => None,
-            };
-
-            let shader = wgpu::ShaderModuleDescriptor {
-                label: Some("point cloud shader"),
-                //TODO change shader
-                source: wgpu::ShaderSource::Wgsl(get_shader(cloud_data.is_some()).into()),
-            };
-            self.render_pipeline = util::create_render_pipeline(
-                device,
-                &self.pipeline_layout,
-                color_format,
-                Some(texture::Texture::DEPTH_FORMAT),
-                &[PointVertex::desc(), PointData::desc()],
-                shader,
-                Some("point cloud field render"),
-            );
-            self.property_changed = false;
-            self.uniform_changed = false;
-            true
-        } else if self.uniform_changed {
-            queue.write_buffer(
-                &self.settings_buffer,
-                0,
-                bytemuck::cast_slice(&[self.settings]),
-            );
-            self.uniform_changed = false;
-            true
-        } else {
-            refresh_screen
-        }
-    }
-
-    pub fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-        if self.show {
-            render_pass.set_bind_group(1, &self.settings_bind_group, &[]);
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_vertex_buffer(1, self.data_buffer.slice(..));
-            render_pass.draw(0..6, 0..(self.positions.len() as u32));
-        }
-    }
-
-    pub fn update(&mut self, queue: &mut wgpu::Queue) {
-        if self.property_changed {
-            queue.write_buffer(
-                &self.settings_buffer,
-                0,
-                bytemuck::cast_slice(&[self.settings]),
-            );
-            self.property_changed = false;
-        }
     }
 }
 

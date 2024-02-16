@@ -3,7 +3,7 @@ use crate::model::DrawModel;
 use crate::texture;
 use crate::util;
 use crate::UserEvent;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use wgpu::util::DeviceExt;
 use winit::event::*;
 
@@ -177,7 +177,7 @@ impl Picker {
         encoder: &mut wgpu::CommandEncoder,
         depth_texture_view: &wgpu::TextureView,
         camera_light_bind_group: &wgpu::BindGroup,
-        models: &HashMap<String, model::Model>,
+        models: &IndexMap<String, model::Model>,
     ) {
         if !self.pick_locked && self.item_to_pick.is_some() {
             {
@@ -312,7 +312,7 @@ impl Picker {
         }
     }
 
-    pub fn pick(&mut self, models: &HashMap<String, model::Model>) {
+    pub fn pick(&mut self, models: &IndexMap<String, model::Model>) {
         {
             let buffer_slice = self.buffer.slice(..);
             let data = buffer_slice.get_mapped_range();

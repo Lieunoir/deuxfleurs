@@ -87,12 +87,21 @@ pub async fn run() {
             curves.push([f[0], f[2]]);
         }
     }
-        //curves.push([(spot_v.len() - i) as u32, 100]);
-        //curves.push([i as u32, 100]);
+    //curves.push([(spot_v.len() - i) as u32, 100]);
+    //curves.push([i as u32, 100]);
     state
-        .register_curve("spot_uv".into(), spot_v.clone(), curves)
+        .register_curve("spot_c".into(), spot_v.clone(), curves)
+        //.register_point_cloud("spot_pc".into(), spot_v.clone())
         .add_scalar("x coord".into(), spot_data_1)
-        .set_data(Some("x coord".into()));
+        .set_data(Some("x coord".into()))
+        ;
+
+    state
+        .register_point_cloud("spot_pc".into(), spot_v.clone())
+        .set_radius(0.2)
+        //.add_scalar("x coord".into(), spot_data_1)
+        //.set_data(Some("x coord".into()))
+        ;
 
     let mut last_selected = 0;
     let mut last_selected_mesh = "".into();

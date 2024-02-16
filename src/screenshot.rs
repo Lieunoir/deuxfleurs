@@ -95,7 +95,12 @@ impl Screenshoter {
         );
     }
 
-    pub fn create_png(&mut self, device: &wgpu::Device, submission_index: wgpu::SubmissionIndex) {
+    pub fn create_png(
+        &mut self,
+        device: &wgpu::Device,
+        submission_index: wgpu::SubmissionIndex,
+        format: wgpu::TextureFormat,
+    ) {
         let png_output_path = format!("screenshot_{:03}.png", self.counter);
         // Note that we're not calling `.await` here.
         let buffer_slice = self.output_buffer.slice(..);
@@ -118,8 +123,23 @@ impl Screenshoter {
                 4 * self.buffer_dimensions.width * self.buffer_dimensions.height,
             );
             for chunk in data.chunks(self.buffer_dimensions.padded_bytes_per_row) {
-                for cp_data in &chunk[..self.buffer_dimensions.unpadded_bytes_per_row] {
-                    unpadded_data.push(*cp_data);
+                for cp_data in
+                    chunk[..self.buffer_dimensions.unpadded_bytes_per_row].chunks_exact(4)
+                {
+                    match format {
+                        wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => {
+                            unpadded_data.push(cp_data[2]);
+                            unpadded_data.push(cp_data[1]);
+                            unpadded_data.push(cp_data[0]);
+                            unpadded_data.push(cp_data[3]);
+                        }
+                        _ => {
+                            unpadded_data.push(cp_data[0]);
+                            unpadded_data.push(cp_data[1]);
+                            unpadded_data.push(cp_data[2]);
+                            unpadded_data.push(cp_data[3]);
+                        }
+                    }
                 }
             }
 

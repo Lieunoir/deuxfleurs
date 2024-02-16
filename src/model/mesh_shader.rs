@@ -163,17 +163,36 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
     return vec4<f32>(result, 1.);
 }}"};}
 
-const ISOLINES_UNIFORM: &str = "
+const COLORMAP_ISOLINES_UNIFORM: &str = "
 //vec4 because of alignment issues
 struct DataUniform {
     isoline_number: vec4<f32>,
+    k_red_vec4: vec4<f32>,
+    k_red_vec2: vec4<f32>,
+    k_green_vec4: vec4<f32>,
+    k_green_vec2: vec4<f32>,
+    k_blue_vec4: vec4<f32>,
+    k_blue_vec2: vec4<f32>,
 }
 
 @group(2) @binding(0)
 var<uniform> data_uniform: DataUniform;
+
+//https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
+fn colormap(x: f32) -> vec3<f32> {
+    let v4: vec4<f32> = vec4<f32>(1.0, x, x*x, x*x*x);
+    let v2: vec4<f32> = v4 * v4.w * x;
+    //let v2: vec2<f32> = vec2<f32>(0., 0.);
+    return vec3<f32>(
+        dot(v4, data_uniform.k_red_vec4) + dot(v2, data_uniform.k_red_vec2),
+        dot(v4, data_uniform.k_green_vec4) + dot(v2, data_uniform.k_green_vec2),
+        dot(v4, data_uniform.k_blue_vec4) + dot(v2, data_uniform.k_blue_vec2),
+    );
+}
 ";
 
-const ISOLINES: &str = "
+const COLORMAP_ISOLINES: &str = "
+    data_color = colormap(in.distance);
     let scaled_distance = in.distance * data_uniform.isoline_number.x;
     //var testVal = 1.;
     //var modVal = modf(scaled_distance, &testVal);
@@ -189,6 +208,36 @@ const ISOLINES: &str = "
     let remap_1 = smoothstep(0.5 - d_dist, 0.5, modVal);
     let remap_2 = 1. - smoothstep(0.5, 0.5 + d_dist, modVal);
     data_color = mix(data_color, data_color * .4, min(remap_1, remap_2));
+";
+
+const COLORMAP_UNIFORM: &str = "
+struct DataUniform {
+    k_red_vec4: vec4<f32>,
+    k_red_vec2: vec4<f32>,
+    k_green_vec4: vec4<f32>,
+    k_green_vec2: vec4<f32>,
+    k_blue_vec4: vec4<f32>,
+    k_blue_vec2: vec4<f32>,
+}
+
+@group(2) @binding(0)
+var<uniform> data_uniform: DataUniform;
+
+//https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
+fn colormap(x: f32) -> vec3<f32> {
+    let v4: vec4<f32> = vec4<f32>(1.0, x, x*x, x*x*x);
+    let v2: vec4<f32> = v4 * v4.w * x;
+    //let v2: vec2<f32> = vec2<f32>(0., 0.);
+    return vec3<f32>(
+        dot(v4, data_uniform.k_red_vec4) + dot(v2, data_uniform.k_red_vec2),
+        dot(v4, data_uniform.k_green_vec4) + dot(v2, data_uniform.k_green_vec2),
+        dot(v4, data_uniform.k_blue_vec4) + dot(v2, data_uniform.k_blue_vec2),
+    );
+}
+";
+
+const COLORMAP: &str = "
+    data_color = colormap(in.distance);
 ";
 
 const COLOR_UNIFORM: &str = "
@@ -273,7 +322,8 @@ pub fn get_shader(data_format: Option<&MeshData>, smooth: bool, show_edge: bool)
     let uniform = if let Some(mesh_data) = data_format {
         match mesh_data {
             MeshData::UVMap(_, _) | MeshData::UVCornerMap(_, _) => CHECKERBOARD_UNIFORM,
-            MeshData::VertexScalar(_, _) => ISOLINES_UNIFORM,
+            MeshData::VertexScalar(_, _) => COLORMAP_ISOLINES_UNIFORM,
+            MeshData::FaceScalar(_, _) => COLORMAP_UNIFORM,
             _ => "",
         }
     } else {
@@ -292,7 +342,8 @@ pub fn get_shader(data_format: Option<&MeshData>, smooth: bool, show_edge: bool)
     };
     let render_modif = match data_format {
         Some(MeshData::UVMap(_, _)) | Some(MeshData::UVCornerMap(_, _)) => CHECKERBOARD,
-        Some(MeshData::VertexScalar(_, _)) => ISOLINES,
+        Some(MeshData::VertexScalar(_, _)) => COLORMAP_ISOLINES,
+        Some(MeshData::FaceScalar(_, _)) => COLORMAP,
         _ => "",
     };
     let edge_shader = if show_edge { WITH_EDGE_SHADER } else { "" };
