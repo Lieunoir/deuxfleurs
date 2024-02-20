@@ -18,7 +18,6 @@ use wasm_bindgen::prelude::*;
 mod camera;
 pub mod curve;
 mod data;
-pub mod model;
 mod picker;
 pub mod point_cloud;
 pub mod resources;
@@ -29,9 +28,11 @@ pub mod types;
 mod ui;
 mod updater;
 mod util;
+mod surface;
+mod attachment;
 use camera::{Camera, CameraController, CameraUniform};
 use curve::Curve;
-use model::DrawModel;
+use surface::Surface;
 use point_cloud::PointCloud;
 use types::*;
 
@@ -44,16 +45,6 @@ struct LightUniform {
     color: [f32; 3],
     // Due to uniforms requiring 16 byte (4 float) spacing, we need to use a padding field here
     _padding2: u32,
-}
-
-pub trait ModelContainer {
-    fn get_model(&mut self, name: &str) -> Option<&mut model::Model>;
-}
-
-impl ModelContainer for IndexMap<String, model::Model> {
-    fn get_model(&mut self, name: &str) -> Option<&mut model::Model> {
-        self.get_mut(name)
-    }
 }
 
 pub struct State<'a> {
@@ -75,7 +66,7 @@ pub struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     // 3D Model
-    models: IndexMap<String, model::Model>,
+    surfaces: IndexMap<String, Surface>,
     //Points
     clouds: IndexMap<String, PointCloud>,
     //Curves
@@ -106,9 +97,8 @@ pub enum UserEvent {
 
 impl<'a> State<'a> {
     // Initialize the state
-    pub async fn new<'b: 'a>(window: &'b Window) -> State<'a> {
+    pub async fn new<'b: 'a>(window: &'b Window, width: u32, height: u32) -> State<'a> {
         let size = window.inner_size();
-
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -160,14 +150,16 @@ impl<'a> State<'a> {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.width,
-            height: size.height,
+            width: size.width.max(1),
+            height: size.height.max(1),
             present_mode: surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
-            desired_maximum_frame_latency: 10,
+            desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
+
+        window.request_inner_size(PhysicalSize::new(width, height));
 
         // Bind the camera to the shaders
         let camera = Camera::new(config.width as f32 / config.height as f32);
@@ -242,20 +234,20 @@ impl<'a> State<'a> {
             label: Some("camera_light_bind_group"),
         });
 
-        let models = IndexMap::new();
         let clouds = IndexMap::new();
         let curves = IndexMap::new();
+        let surfaces = IndexMap::new();
         // Create depth texture
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
         // Create texture for screenshots
         let screenshoter =
-            screenshot::Screenshoter::new(&device, size.width, size.height, surface_format);
+            screenshot::Screenshoter::new(&device, size.width.max(1), size.height.max(1), surface_format);
 
         // Clear color used for mouse input interaction
         //let ui = ui::UI::new(&device, target_format, event_loop);
-        let picker = picker::Picker::new(&device, size.width, size.height);
+        let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
         Self {
             surface,
             device,
@@ -269,14 +261,13 @@ impl<'a> State<'a> {
             camera_controller,
             camera_buffer,
             camera_uniform,
-            models,
+            surfaces,
             clouds,
             curves,
             light_uniform,
             light_buffer,
             camera_light_bind_group_layout,
             camera_light_bind_group,
-            //ui,
             picker,
         }
     }
@@ -311,7 +302,7 @@ impl<'a> State<'a> {
         false
     }
 
-    fn update(&mut self) {
+    fn update(&mut self) -> bool {
         // Sync local app state with camera
         self.camera_controller.update_camera(&mut self.camera);
         self.camera_uniform.update_view_proj(&self.camera);
@@ -329,6 +320,36 @@ impl<'a> State<'a> {
             0,
             bytemuck::cast_slice(&[self.light_uniform]),
         );
+
+        let mut changed = false;
+
+        for surface in self.surfaces.values_mut() {
+            changed |= surface.refresh(
+                &self.device,
+                &mut self.queue,
+                &self.camera_light_bind_group_layout,
+                self.config.format,
+            );
+        }
+
+        for cloud in self.clouds.values_mut() {
+            changed |= cloud.refresh(
+                &self.device,
+                &mut self.queue,
+                &self.camera_light_bind_group_layout,
+                self.config.format,
+            );
+        }
+
+        for curve in self.curves.values_mut() {
+            changed |= curve.refresh(
+                &self.device,
+                &mut self.queue,
+                &self.camera_light_bind_group_layout,
+                self.config.format,
+            );
+        }
+        changed
     }
 
     // Primary render flow
@@ -361,39 +382,14 @@ impl<'a> State<'a> {
             self.size.height,
         );
 
-        for model in self.models.values_mut() {
-            model.refresh_data(
-                &self.device,
-                &mut self.queue,
-                &self.camera_light_bind_group_layout,
-                self.config.format,
-            );
-        }
-
-        for cloud in self.clouds.values_mut() {
-            cloud.refresh(
-                &self.device,
-                &mut self.queue,
-                &self.camera_light_bind_group_layout,
-                self.config.format,
-            );
-        }
-
-        for curve in self.curves.values_mut() {
-            curve.refresh(
-                &self.device,
-                &mut self.queue,
-                &self.camera_light_bind_group_layout,
-                self.config.format,
-            );
-        }
-
         self.picker.render(
             &self.device,
             &mut encoder,
             &self.depth_texture.view,
             &self.camera_light_bind_group,
-            &self.models,
+            &self.surfaces,
+            &self.clouds,
+            &self.curves,
         );
 
         {
@@ -427,13 +423,11 @@ impl<'a> State<'a> {
 
             render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
 
-            // Draw the models
-            for model in self.models.values() {
-                render_pass.draw_model(model);
+            for surface in self.surfaces.values() {
+                surface.render(&mut render_pass);
             }
             for cloud in self.clouds.values() {
                 cloud.render(&mut render_pass);
-                //render_pass.draw_model(cloud);
             }
             for curve in self.curves.values() {
                 curve.render(&mut render_pass);
@@ -464,15 +458,15 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn register_mesh<V: Vertices, I: Into<SurfaceIndices>>(
+    pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
         &mut self,
-        mesh_name: &'_ str,
+        name: String,
         //vertices: &Vec<[f32; 3]>,
         vertices: V,
         indices: I,
-    ) -> &mut model::Model {
-        let model = model::Model::new(
-            mesh_name,
+    ) -> &mut Surface {
+        let surface = Surface::new(
+            name.clone(),
             vertices.into(),
             indices.into(),
             &self.device,
@@ -480,9 +474,17 @@ impl<'a> State<'a> {
             &self.picker.bind_group_layout,
             self.config.format,
         );
-        self.models.insert(mesh_name.into(), model);
+        self.surfaces.insert(name.clone(), surface);
         self.picker.counters_dirty = true;
-        self.models.get_mut(mesh_name).unwrap()
+        self.surfaces.get_mut(&name).unwrap()
+    }
+
+    pub fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
+        self.surfaces.get_mut(name)
+    }
+
+    pub fn get_surface(&self, name: &str) -> Option<&Surface> {
+        self.surfaces.get(name)
     }
 
     pub fn register_point_cloud<V: Vertices>(
@@ -495,11 +497,20 @@ impl<'a> State<'a> {
             positions.into(),
             &self.device,
             &self.camera_light_bind_group_layout,
-            //&self.picker.bind_group_layout,
+            &self.picker.bind_group_layout,
             self.config.format,
         );
         self.clouds.insert(name.clone(), model);
+        self.picker.counters_dirty = true;
         self.clouds.get_mut(&name).unwrap()
+    }
+
+    pub fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
+        self.clouds.get_mut(name)
+    }
+
+    pub fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
+        self.clouds.get(name)
     }
 
     pub fn register_curve<V: Vertices>(
@@ -514,63 +525,24 @@ impl<'a> State<'a> {
             connections,
             &self.device,
             &self.camera_light_bind_group_layout,
-            //&self.picker.bind_group_layout,
+            &self.picker.bind_group_layout,
             self.config.format,
         );
         self.curves.insert(name.clone(), model);
+        self.picker.counters_dirty = true;
         self.curves.get_mut(&name).unwrap()
+    }
+
+    pub fn get_curve_mut(&mut self, name: &str) -> Option<&mut Curve> {
+        self.curves.get_mut(name)
+    }
+
+    pub fn get_curve(&self, name: &str) -> Option<& Curve> {
+        self.curves.get(name)
     }
 
     pub fn screenshot(&mut self) {
         self.screenshot = true;
-    }
-
-    /*
-    pub async fn register_mesh_from_path(&mut self, mesh_name: &'_ str, mesh_path: &'_ str) {
-        // Bind the texture to the renderer
-        // This creates a general texture bind group
-        let texture_bind_group_layout =
-            self.device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Texture {
-                                multisampled: false,
-                                view_dimension: wgpu::TextureViewDimension::D2,
-                                sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                            count: None,
-                        },
-                    ],
-                    label: Some("texture_bind_group_layout"),
-                });
-        let mut obj_model = resources::load_model(
-            mesh_path,
-            &self.device,
-            &self.queue,
-            &texture_bind_group_layout,
-        )
-        .await
-        .expect("Couldn't load model. Maybe path is wrong?");
-        obj_model.mesh.build_vertex_buffer(&self.device);
-        self.models.insert(mesh_name.into(), obj_model);
-    }
-    */
-
-    pub fn get_model(&mut self, name: &str) -> Option<&mut model::Model> {
-        self.models.get_mut(name)
-    }
-
-    pub fn get_model_ref(&self, name: &str) -> Option<&model::Model> {
-        self.models.get(name)
     }
 
     pub fn get_picked(&self) -> &Option<(String, usize)> {
@@ -582,8 +554,10 @@ impl<'a> StateWrapper<'a> {
     pub async fn new<'b: 'a>(
         event_loop: &EventLoop<UserEvent>,
         window: &'b Window,
+        width: u32,
+        height: u32,
     ) -> StateWrapper<'a> {
-        let state = State::new(window).await;
+        let state = State::new(window, width, height).await;
         let ui = ui::UI::new(
             &state.device,
             state.config.format,
@@ -603,10 +577,10 @@ impl<'a> StateWrapper<'a> {
         event_loop.run(move |event, elwt| {
             match event {
                 Event::UserEvent(UserEvent::LoadMesh(mesh_v, mesh_f)) => {
-                    self.state.register_mesh("loaded mesh", mesh_v, mesh_f);
+                    self.state.register_surface("loaded mesh".into(), mesh_v, mesh_f);
                 }
                 Event::UserEvent(UserEvent::Pick) => {
-                    self.state.picker.pick(&self.state.models);
+                    self.state.picker.pick(&self.state.surfaces, &self.state.clouds, &self.state.curves);
                 }
                 Event::WindowEvent {
                     ref event,
@@ -625,11 +599,6 @@ impl<'a> StateWrapper<'a> {
                                         state: ElementState::Pressed,
                                         ..
                                     },
-                                //KeyboardInput {
-                                //    state: ElementState::Pressed,
-                                //    virtual_keycode: Some(VirtualKeyCode::Escape),
-                                //    ..
-                                //},
                                 ..
                             } => elwt.exit(),
                             WindowEvent::Resized(physical_size) => {
@@ -640,10 +609,11 @@ impl<'a> StateWrapper<'a> {
                             //    //self.state.resize(**new_inner_size);
                             //}
                             WindowEvent::RedrawRequested => {
-                                self.state.update();
+                                //draw ui
+                                window.request_redraw();
                                 self.ui.draw_models(
                                     window,
-                                    &mut self.state.models,
+                                    &mut self.state.surfaces,
                                     &mut self.state.clouds,
                                     &mut self.state.curves,
                                     self.state.camera.build_view(),
@@ -654,6 +624,8 @@ impl<'a> StateWrapper<'a> {
                                     &mut self.state,
                                     &mut self.callback,
                                 );
+                                self.state.update();
+                                //actual rendering
                                 match self.state.render(&event_loop_proxy, &mut self.ui) {
                                     Ok(()) => self.ui.handle_platform_output(window),
                                     // Reconfigure the surface if it's lost or outdated
@@ -670,13 +642,12 @@ impl<'a> StateWrapper<'a> {
                             }
                             _ => {}
                         }
-                    }
-                }
-                Event::AboutToWait => {
-                    // RedrawRequested will only trigger once, unless we manually
-                    // request it.
-                    window.request_redraw();
-                }
+                    }                }
+                //Event::AboutToWait => {
+                //    // RedrawRequested will only trigger once, unless we manually
+                //    // request it.
+                //    window.request_redraw();
+                //}
                 _ => {}
             }
         });

@@ -1,8 +1,9 @@
-use crate::model::Mesh;
-use crate::model::Transform;
+use crate::data::TransformSettings;
 use crate::texture;
 use crate::util::create_render_pipeline;
+use super::{SurfaceSettings, SurfaceGeometry};
 use wgpu::util::DeviceExt;
+use crate::updater::{Render, ElementPicker};
 
 const PICKER_SHADER: &str = "
 // Vertex shader
@@ -115,21 +116,20 @@ trait Vertex {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct ModelVertex {
+struct VertexData {
     pub position: [f32; 3],
     pub barycentric_coords: [f32; 3],
-    //TODO move this part in instance buffer?
     pub vertex_index_1: u32,
     pub vertex_index_2: u32,
     pub vertex_index_3: u32,
     pub face_index: u32,
 }
 
-impl Vertex for ModelVertex {
+impl Vertex for VertexData {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<ModelVertex>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -167,7 +167,7 @@ impl Vertex for ModelVertex {
     }
 }
 
-pub struct MeshPicker {
+pub struct Picker {
     vertex_buffer: wgpu::Buffer,
     num_elements: u32,
     transform_bind_group: wgpu::BindGroup,
@@ -183,7 +183,7 @@ fn build_render_pipeline(
     transform_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("Mesh Picker Pipeline Layout"),
+        label: Some("SurfaceGeometry Picker Pipeline Layout"),
         bind_group_layouts: &[
             camera_light_bind_group_layout,
             counter_bind_group_layout,
@@ -192,7 +192,7 @@ fn build_render_pipeline(
         push_constant_ranges: &[],
     });
     let shader = wgpu::ShaderModuleDescriptor {
-        label: Some("Mesh Picker Shader"),
+        label: Some("SurfaceGeometry Picker Shader"),
         source: wgpu::ShaderSource::Wgsl(PICKER_SHADER.into()),
     };
     create_render_pipeline(
@@ -200,17 +200,17 @@ fn build_render_pipeline(
         &render_pipeline_layout,
         texture::Texture::PICKER_FORMAT,
         Some(texture::Texture::DEPTH_FORMAT),
-        &[ModelVertex::desc()],
+        &[VertexData::desc()],
         shader,
-        Some("mesh picker"),
+        Some("surface picker"),
     )
 }
 
-fn build_vertex_buffer(device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
-    let mut gpu_vertices = Vec::with_capacity(3 * mesh.internal_indices.len());
-    let face_offset = mesh.vertices.len();
-    //let edges_offset = face_offset + mesh.indices.len();
-    for (i, indices) in mesh.indices.into_iter().enumerate() {
+fn build_vertex_buffer(device: &wgpu::Device, surface: &SurfaceGeometry) -> wgpu::Buffer {
+    let mut gpu_vertices = Vec::with_capacity(3 * surface.internal_indices.len());
+    let face_offset = surface.vertices.len();
+    //let edges_offset = face_offset + surface.indices.len();
+    for (i, indices) in surface.indices.into_iter().enumerate() {
         let bars = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
         //for (bar, index) in bars.iter().zip(indices) {
         for j in 1..indices.len() - 1 {
@@ -219,8 +219,8 @@ fn build_vertex_buffer(device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
             let index2 = indices[j + 1];
             let v_indices = [index0, index1, index2];
             for k in 0..3 {
-                gpu_vertices.push(ModelVertex {
-                    position: mesh.vertices[v_indices[k] as usize],
+                gpu_vertices.push(VertexData {
+                    position: surface.vertices[v_indices[k] as usize],
                     barycentric_coords: bars[k],
                     vertex_index_1: index0,
                     vertex_index_2: index1,
@@ -231,7 +231,7 @@ fn build_vertex_buffer(device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
         }
     }
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some(&format!("{:?} Picker Vertex Buffer", mesh.name)),
+        label: Some("Picker Vertex Buffer"),
         contents: bytemuck::cast_slice(&gpu_vertices),
         usage: wgpu::BufferUsages::VERTEX,
     })
@@ -239,26 +239,29 @@ fn build_vertex_buffer(device: &wgpu::Device, mesh: &Mesh) -> wgpu::Buffer {
 
 fn build_transform_buffer(
     device: &wgpu::Device,
-    name: &str,
-    transform: &Transform,
+    transform: &TransformSettings,
 ) -> wgpu::Buffer {
     let transform_raw = transform.to_raw();
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some(&format!("{:?} Picker Transform Buffer", name)),
+        label: Some("Picker Transform Buffer"),
         contents: bytemuck::cast_slice(&[transform_raw]),
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     })
 }
 
-impl MeshPicker {
-    pub fn new(
+impl ElementPicker for Picker {
+    type Geometry = SurfaceGeometry;
+    type Settings = SurfaceSettings;
+    fn new(
+        surface: &Self::Geometry,
+        settings: &Self::Settings,
+        transform: &TransformSettings,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        mesh: &Mesh,
     ) -> Self {
-        let vertex_buffer = build_vertex_buffer(device, mesh);
-        let transform_buffer = build_transform_buffer(device, &mesh.name, &mesh.transform);
+        let vertex_buffer = build_vertex_buffer(device, surface);
+        let transform_buffer = build_transform_buffer(device, transform);
         let transform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -283,14 +286,14 @@ impl MeshPicker {
             label: Some("transform_bind_group"),
         });
 
-        let num_elements = (mesh.internal_indices.len() * 3) as u32;
+        let num_elements = (surface.internal_indices.len() * 3) as u32;
         let render_pipeline = build_render_pipeline(
             device,
             camera_light_bind_group_layout,
             counter_bind_group_layout,
             &transform_bind_group_layout,
         );
-        let tot_elements = (mesh.vertices.len() + mesh.indices.size()) as u32;
+        let tot_elements = (surface.vertices.len() + surface.indices.size()) as u32;
         Self {
             vertex_buffer,
             num_elements,
@@ -301,25 +304,25 @@ impl MeshPicker {
         }
     }
 
-    pub fn update(&self, queue: &mut wgpu::Queue, mesh: &Mesh) -> bool {
-        let mut refresh_screen = false;
-        if mesh.transform_changed {
-            let transform_raw = mesh.transform.to_raw();
-            queue.write_buffer(
-                &self.transform_buffer,
-                0,
-                bytemuck::cast_slice(&[transform_raw]),
-            );
-            refresh_screen = true;
-        }
-        refresh_screen
+    fn update_transform(&self, queue: &mut wgpu::Queue, transform: &TransformSettings) {
+        let transform_raw = transform.to_raw();
+        queue.write_buffer(
+            &self.transform_buffer,
+            0,
+            bytemuck::cast_slice(&[transform_raw]),
+        );
     }
 
-    pub fn get_total_elements(&self) -> u32 {
+    fn update_settings(&self, queue: &mut wgpu::Queue, settings: &Self::Settings) {
+    }
+
+    fn get_total_elements(&self) -> u32 {
         self.tot_elements
     }
+}
 
-    pub fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+impl Render for Picker {
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
     {

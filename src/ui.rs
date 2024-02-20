@@ -7,11 +7,19 @@ use winit::event_loop::EventLoop;
 use winit::window::Window;
 
 use crate::curve::CurveData;
-use crate::model::data::MeshData;
 use crate::point_cloud::CloudData;
 
 pub trait UiDataElement {
-    fn draw(&mut self, ui: &mut egui::Ui) -> bool;
+    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool;
+
+    fn draw_gizmo(&mut self,
+        ui: &mut egui::Ui,
+        name: &str,
+        view: cgmath::Matrix4<f32>,
+        proj: cgmath::Matrix4<f32>,
+    ) -> bool {
+        false
+    }
 }
 
 pub struct UI {
@@ -70,7 +78,7 @@ impl UI {
     pub fn draw_models(
         &mut self,
         window: &Window,
-        models: &mut IndexMap<String, crate::model::Model>,
+        surfaces: &mut IndexMap<String, crate::surface::Surface>,
         clouds: &mut IndexMap<String, crate::point_cloud::PointCloud>,
         curves: &mut IndexMap<String, crate::curve::Curve>,
         view: cgmath::Matrix4<f32>,
@@ -82,233 +90,19 @@ impl UI {
         egui::Window::new("Models")
             .anchor(egui::Align2::LEFT_TOP, [5., 5.])
             .resizable(false)
+            .vscroll(true)
+            .min_height(650.)
             .show(&self.ctx, |ui| {
-                for (name, model) in models.iter_mut() {
+                for (name, surface) in surfaces.iter_mut() {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} vertices, {} faces",
                         name,
-                        model.mesh.vertices.len(),
-                        model.mesh.indices.size()
+                        surface.geometry.vertices.len(),
+                        surface.geometry.indices.size(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.checkbox(&mut model.mesh.show, "Show");
-                            let mut show_edges = model.mesh.show_edges;
-                            ui.checkbox(&mut show_edges, "Edges");
-                            model.mesh.show_edges(show_edges);
-                            let mut smooth = model.mesh.smooth;
-                            ui.checkbox(&mut smooth, "Smooth");
-                            model.mesh.set_smooth(smooth);
-                        });
-
-                        let mut picker_changed = model.mesh.color.draw(ui);
-
-                        if model.mesh.shown_data.is_none() && picker_changed {
-                            model.mesh.uniform_changed = true;
-                        }
-                        ui.horizontal(|ui| {
-                            ui.checkbox(&mut model.mesh.show_gizmo, "Show Gizmo");
-                            egui::ComboBox::from_label("Guizmo Mode")
-                                .selected_text(format!("{:?}", model.mesh.gizmo_mode))
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut model.mesh.gizmo_mode,
-                                        GizmoMode::Rotate,
-                                        "Rotate",
-                                    );
-                                    ui.selectable_value(
-                                        &mut model.mesh.gizmo_mode,
-                                        GizmoMode::Translate,
-                                        "Translate",
-                                    );
-                                    ui.selectable_value(
-                                        &mut model.mesh.gizmo_mode,
-                                        GizmoMode::Scale,
-                                        "Scale",
-                                    );
-                                });
-                        });
-                        ui.horizontal(|ui| {
-                            if ui.add(egui::Button::new("Reset")).clicked() {
-                                model.mesh.transform = crate::model::Transform::default();
-                                model.mesh.refresh_transform();
-                            }
-                            if ui.add(egui::Button::new("Center")).clicked() {
-                                let mut min_x = std::f32::MAX;
-                                let mut min_y = std::f32::MAX;
-                                let mut min_z = std::f32::MAX;
-                                let mut max_x = std::f32::MIN;
-                                let mut max_y = std::f32::MIN;
-                                let mut max_z = std::f32::MIN;
-
-                                let transfo_matrix: cgmath::Matrix4<f32> =
-                                    model.mesh.transform.0.into();
-                                for vertex in &model.mesh.vertices {
-                                    let threed_point: cgmath::Point3<f32> = (*vertex).into();
-                                    use cgmath::Matrix;
-                                    let position = cgmath::Point3::<f32>::from_homogeneous(
-                                        transfo_matrix * threed_point.to_homogeneous(),
-                                    );
-                                    if position[0] < min_x {
-                                        min_x = position[0];
-                                    }
-                                    if position[1] < min_y {
-                                        min_y = position[1];
-                                    }
-                                    if position[2] < min_z {
-                                        min_z = position[2];
-                                    }
-                                    if position[0] > max_x {
-                                        max_x = position[0];
-                                    }
-                                    if position[1] > max_y {
-                                        max_y = position[1];
-                                    }
-                                    if position[2] > max_z {
-                                        max_z = position[2];
-                                    }
-                                }
-                                let x = (max_x + min_x) / 2.;
-                                let y = (max_y + min_y) / 2.;
-                                let z = (max_z + min_z) / 2.;
-                                model.mesh.transform.0[3][0] -= x;
-                                model.mesh.transform.0[3][1] -= y;
-                                model.mesh.transform.0[3][2] -= z;
-                                model.mesh.refresh_transform();
-                            }
-                            if ui.add(egui::Button::new("Unit Scale")).clicked() {
-                                let mut min_x = std::f32::MAX;
-                                let mut min_y = std::f32::MAX;
-                                let mut min_z = std::f32::MAX;
-                                let mut max_x = std::f32::MIN;
-                                let mut max_y = std::f32::MIN;
-                                let mut max_z = std::f32::MIN;
-
-                                let transfo_matrix: cgmath::Matrix4<f32> =
-                                    model.mesh.transform.0.into();
-                                for vertex in &model.mesh.vertices {
-                                    let threed_point: cgmath::Point3<f32> = (*vertex).into();
-                                    use cgmath::Matrix;
-                                    let position = cgmath::Point3::<f32>::from_homogeneous(
-                                        transfo_matrix * threed_point.to_homogeneous(),
-                                    );
-                                    if position[0] < min_x {
-                                        min_x = position[0];
-                                    }
-                                    if position[1] < min_y {
-                                        min_y = position[1];
-                                    }
-                                    if position[2] < min_z {
-                                        min_z = position[2];
-                                    }
-                                    if position[0] > max_x {
-                                        max_x = position[0];
-                                    }
-                                    if position[1] > max_y {
-                                        max_y = position[1];
-                                    }
-                                    if position[2] > max_z {
-                                        max_z = position[2];
-                                    }
-                                }
-                                let x = max_x - min_x;
-                                let y = max_y - min_y;
-                                let z = max_z - min_z;
-                                let scale = 1. / (x * x + y * y + z * z).sqrt();
-                                for (i, row) in model.mesh.transform.0.iter_mut().enumerate() {
-                                    for value in row.iter_mut() {
-                                        if i < 3 {
-                                            *value *= scale;
-                                        }
-                                    }
-                                }
-                                model.mesh.refresh_transform();
-                            }
-                        });
-                        for (name, field) in &mut model.mesh.vector_fields {
-                            ui.horizontal(|ui| {
-                                ui.checkbox(&mut field.shown, name.clone());
-                            });
-                            egui::CollapsingHeader::new(name)
-                                .default_open(false)
-                                .show(ui, |ui| {
-                                    if egui::Slider::new(
-                                        &mut field.field.settings.magnitude,
-                                        0.1..=100.0,
-                                    )
-                                    .text("Magnitude")
-                                    .clamp_to_range(false)
-                                    .logarithmic(true)
-                                    .ui(ui)
-                                    .changed()
-                                    {
-                                        field.field.settings_changed = true;
-                                    }
-
-                                    let mut vec_color = egui::Rgba::from_rgba_unmultiplied(
-                                        field.field.settings.color[0],
-                                        field.field.settings.color[1],
-                                        field.field.settings.color[2],
-                                        field.field.settings.color[3],
-                                    );
-                                    let mut picker_changed = false;
-                                    ui.horizontal(|ui| {
-                                        picker_changed =
-                                            egui::widgets::color_picker::color_edit_button_rgba(
-                                                ui,
-                                                &mut vec_color,
-                                                egui::widgets::color_picker::Alpha::Opaque,
-                                            )
-                                            .changed();
-                                        ui.label("Field color");
-                                    });
-                                    field.field.settings.color = vec_color.to_array();
-
-                                    if picker_changed {
-                                        field.field.settings_changed = true;
-                                    }
-                                });
-                        }
-                        for (name, data) in &mut model.mesh.datas {
-                            let active = model.mesh.shown_data == Some(name.clone());
-                            let mut job = egui::text::LayoutJob::default();
-                            job.append(&name, 0.0, egui::text::TextFormat::default());
-                            let data_type = match data {
-                                MeshData::UVMap(..) => "UV Map",
-                                MeshData::UVCornerMap(..) => "UV Corner Map",
-                                MeshData::VertexScalar(..) => "Vertex Scalar",
-                                MeshData::FaceScalar(..) => "Face Scalar",
-                                MeshData::Color(..) => "Color",
-                                _ => "",
-                            };
-                            job.append(
-                                data_type,
-                                10.0,
-                                egui::text::TextFormat {
-                                    color: egui::Color32::DARK_GRAY,
-                                    ..Default::default()
-                                },
-                            );
-
-                            egui::CollapsingHeader::new(job)
-                                .default_open(false)
-                                .show(ui, |ui| {
-                                    let mut change_active = active;
-                                    ui.checkbox(&mut change_active, "Show");
-                                    if change_active != active {
-                                        if !active {
-                                            model.mesh.data_to_show = Some(Some(name.clone()))
-                                        } else {
-                                            model.mesh.data_to_show = Some(None)
-                                        }
-                                    }
-                                    let changed = data.draw(ui);
-                                    if active && changed {
-                                        model.mesh.uniform_changed = true;
-                                    }
-                                });
-                        }
+                        surface.draw_ui(ui);
                     });
                 }
 
@@ -316,41 +110,11 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points",
                         name,
-                        cloud.item.positions.len(),
+                        cloud.geometry.positions.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.checkbox(&mut cloud.show, "Show");
-
-                            let picker_changed = cloud.updater.settings.color.draw(ui);
-                            if picker_changed {
-                                cloud.updater.settings_changed = true;
-                            }
-                        });
-                        cloud.updater.settings_changed |= cloud.updater.settings.radius.draw(ui);
-                        for (name, data) in &mut cloud.updater.data {
-                            let active = cloud.updater.shown_data == Some(name.clone());
-                            ui.horizontal(|ui| {
-                                let mut change_active = active;
-                                ui.checkbox(&mut change_active, name.clone());
-                                if change_active != active {
-                                    if !active {
-                                        cloud.updater.data_to_show = Some(Some(name.clone()))
-                                    } else {
-                                        cloud.updater.data_to_show = Some(None)
-                                    }
-                                }
-                                match data {
-                                    CloudData::Scalar(_, settings) => {
-                                        ui.label("Scalar");
-                                        if settings.draw(ui) {
-                                            cloud.updater.uniform_changed = true;
-                                        }}
-                                    CloudData::Color(_) => {ui.label("Color");},
-                                };
-                            });
-                        }
+                        cloud.draw_ui(ui);
                     });
                 }
 
@@ -358,41 +122,12 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points, {} edges",
                         name,
-                        curve.item.positions.len(),
-                        curve.item.connections.len(),
+                        curve.geometry.positions.len(),
+                        curve.geometry.connections.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.checkbox(&mut curve.show, "Show");
-                            let picker_changed = curve.updater.settings.color.draw(ui);
-                            if picker_changed {
-                                curve.updater.settings_changed = true;
-                            }
-                        });
-                        curve.updater.settings_changed |= curve.updater.settings.radius.draw(ui);
-                        for (name, data) in &mut curve.updater.data {
-                            let active = curve.updater.shown_data == Some(name.clone());
-                            ui.horizontal(|ui| {
-                                let mut change_active = active;
-                                ui.checkbox(&mut change_active, name.clone());
-                                if change_active != active {
-                                    if !active {
-                                        curve.updater.data_to_show = Some(Some(name.clone()))
-                                    } else {
-                                        curve.updater.data_to_show = Some(None)
-                                    }
-                                }
-                                match data {
-                                    CurveData::Scalar(_, settings) => {ui.label("Scalar");
-                                        if settings.draw(ui) {
-                                            curve.updater.uniform_changed = true;
-                                        }
-                                    },
-                                    CurveData::Color(_) => {ui.label("Color");},
-                                };
-                            });
-                        }
+                        curve.draw_ui(ui);
                     });
                 }
                 ui.allocate_space(ui.available_size());
@@ -402,23 +137,17 @@ impl UI {
             .show(&self.ctx, |ui| {
                 //Fix for not having a correct area
                 //ui.with_layer_id(egui::LayerId::background(), |ui| {
-                for (name, model) in models.iter_mut() {
-                    if model.mesh.show_gizmo {
-                        let gizmo = egui_gizmo::Gizmo::new(format!("{} gizmo", name))
-                            .view_matrix(view)
-                            .projection_matrix(proj)
-                            .model_matrix(model.mesh.transform.0)
-                            .viewport(ui.clip_rect())
-                            .mode(model.mesh.gizmo_mode);
-                        let last_gizmo_response = gizmo.interact(ui);
-
-                        if let Some(gizmo_response) = last_gizmo_response {
-                            model.mesh.transform.0 = gizmo_response.transform().to_cols_array_2d();
-                            model.mesh.refresh_transform();
-                        }
+                ui.with_layer_id(egui::LayerId::background(), |ui| {
+                });
+                    for (_, surface) in surfaces.iter_mut() {
+                        surface.draw_gizmo(ui, view, proj);
                     }
-                }
-                //});
+                    for (_, curve) in curves.iter_mut() {
+                        curve.draw_gizmo(ui, view, proj);
+                    }
+                    for (_, cloud) in clouds.iter_mut() {
+                        cloud.draw_gizmo(ui, view, proj);
+                    }
             });
     }
 
@@ -461,15 +190,15 @@ impl UI {
                     wasm_bindgen_futures::spawn_local(f);
                 }
                 if let Some((picked_name, picked_number)) = state.get_picked() {
-                    ui.label(format!("Picked model : {}", picked_name));
-                    let picked_type;
                     let mut picked_number = *picked_number;
-                    if let Some(mesh) = state.get_model_ref(&picked_name) {
-                        (picked_type, picked_number) = mesh.get_element_info(picked_number);
-                    } else {
-                        picked_type = "".into();
+                    ui.label(format!("Picked {}", picked_name));
+                    if let Some(surface) = state.get_surface(&picked_name) {
+                        surface.draw_element_info(picked_number, ui);
+                    } else if let Some(cloud) = state.get_point_cloud(&picked_name) {
+                        cloud.draw_element_info(picked_number, ui);
+                    } else if let Some(curve) = state.get_curve(&picked_name) {
+                        curve.draw_element_info(picked_number, ui);
                     }
-                    ui.label(format!("Picked {} number {}", picked_type, picked_number));
                 }
 
                 if let Some(callback) = callback {

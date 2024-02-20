@@ -13,7 +13,7 @@ fn main() {
 pub async fn run() {
     let (event_loop, window) = create_window(1080, 720).await;
     // State::new uses async code, so we're going to wait for it to finish
-    let mut state = StateWrapper::new(&event_loop, &window).await;
+    let mut state = StateWrapper::new(&event_loop, &window, 1080, 720).await;
     /*
     let (banana_v, banana_f) = resources::load_mesh("banana.obj").await.unwrap();
     let mut banana_data = vec![0.; banana_v.len()];
@@ -60,20 +60,19 @@ pub async fn run() {
         let value = spot_v[spot_f[i][0] as usize][0];
         *face = value;
     }
-    state
-        .register_mesh("spot_uv", spot_uv_mesh, spot_f.clone())
-        .mesh
+    let surface1 = state .register_surface("spot_uv".into(), spot_uv_mesh, spot_f.clone());
+    surface1.show_edges(true);
+    surface1.add_vertex_scalar("x coord".into(), spot_data_1.clone()) ;
+    let surface2 = state
+        .register_surface("spot".into(), spot_v.clone(), spot_f.clone())
         .show_edges(true);
-    state
-        .register_mesh("spot", spot_v.clone(), spot_f.clone())
-        .mesh
-        .show_edges(true)
-        .add_vertex_scalar("x coord".into(), spot_data_1.clone())
-        .add_vertex_scalar("y coord".into(), spot_data_2)
-        .add_uv_map("uv".into(), spot_uv_map)
-        .add_corner_uv_map("corner uv".into(), spot_corner_uv_map)
-        .add_face_scalar("face scalar".into(), spot_face_scalar)
-        .set_data(Some("y coord".into()));
+        surface2.add_vertex_scalar("x coord".into(), spot_data_1.clone());
+        surface2.add_vertex_vector_field("positions".into(), spot_v.clone()).set_magnitude(0.1);
+        surface2.add_vertex_scalar("y coord".into(), spot_data_2);
+        surface2.add_uv_map("uv".into(), spot_uv_map);
+        surface2.add_corner_uv_map("corner uv".into(), spot_corner_uv_map);
+        surface2.add_face_scalar("face scalar".into(), spot_face_scalar);
+        surface2.set_data(Some("y coord".into()));
 
     let mut curves = Vec::new();
     for f in &spot_f {
@@ -89,22 +88,19 @@ pub async fn run() {
     }
     //curves.push([(spot_v.len() - i) as u32, 100]);
     //curves.push([i as u32, 100]);
-    state
-        .register_curve("spot_c".into(), spot_v.clone(), curves)
-        //.register_point_cloud("spot_pc".into(), spot_v.clone())
-        .add_scalar("x coord".into(), spot_data_1)
-        .set_data(Some("x coord".into()))
-        ;
+    let curve = state.register_curve("spot_c".into(), spot_v.clone(), curves);
+    //.register_point_cloud("spot_pc".into(), spot_v.clone())
+    curve.add_scalar("x coord".into(), spot_data_1.clone());
+    curve.set_data(Some("x coord".into()));
 
-    state
-        .register_point_cloud("spot_pc".into(), spot_v.clone())
-        .set_radius(0.2)
-        //.add_scalar("x coord".into(), spot_data_1)
+    let pc = state.register_point_cloud("spot_pc".into(), spot_v.clone());
+    pc.add_scalar("x coord".into(), spot_data_1);
+    pc.set_radius(0.02)
         //.set_data(Some("x coord".into()))
         ;
 
     let mut last_selected = 0;
-    let mut last_selected_mesh = "".into();
+    let mut last_selected_geometry = "".into();
     state.set_callback(move |ui, state| {
         ui.label("User defined stuff here : ");
         if ui
@@ -114,13 +110,13 @@ pub async fn run() {
             let mut vertices = Vec::new();
             let mut indices = Vec::new();
             let mut filtered = false;
-            if let Some(model) = state.get_model("loaded mesh") {
-                //let mut vertices = model.mesh.vertices.clone();
-                vertices = vec![[0., 0., 0.]; model.mesh.vertices.len()];
-                for (vertex, orig_vertex) in vertices.iter_mut().zip(model.mesh.vertices.iter()) {
+            if let Some(surface) = state.get_surface("loaded mesh") {
+                //let mut vertices = surface.geometry.vertices.clone();
+                vertices = vec![[0., 0., 0.]; surface.geometry.vertices.len()];
+                for (vertex, orig_vertex) in vertices.iter_mut().zip(surface.geometry.vertices.iter()) {
                     *vertex = *orig_vertex;
                 }
-                indices = match &model.mesh.indices {
+                indices = match &surface.geometry.indices {
                     SurfaceIndices::Triangles(t) => t.clone(),
                     _ => panic!(),
                 };
@@ -148,28 +144,27 @@ pub async fn run() {
                         vertex[i] = vertex[i] / (weight as f32);
                     }
                 }
-                state.register_mesh("loaded mesh", new_pos, indices);
+                state.register_surface("loaded mesh".into(), new_pos, indices);
             }
         }
 
-        if let Some((model_name, item)) = state.get_picked().clone() {
-            if last_selected != item || last_selected_mesh != *model_name {
-                if let Some(model) = state.get_model(&model_name) {
-                    let n_v = model.mesh.vertices.len();
+        if let Some((surface_name, item)) = state.get_picked().clone() {
+            if last_selected != item || last_selected_geometry != *surface_name {
+                if let Some(surface) = state.get_surface_mut(&surface_name) {
+                    let n_v = surface.geometry.vertices.len();
                     if item < n_v {
                         let mut selected = vec![0.; n_v];
                         last_selected = item;
-                        last_selected_mesh = model_name.clone();
+                        last_selected_geometry = surface_name.clone();
                         selected[item] = 1.;
-                        model
-                            .mesh
+                        surface
                             .add_vertex_scalar("selected vertex".into(), selected);
                     } else {
-                        let mut selected = vec![0.; model.mesh.indices.size()];
+                        let mut selected = vec![0.; surface.geometry.indices.size()];
                         last_selected = item;
-                        last_selected_mesh = model_name.clone();
+                        last_selected_geometry = surface_name.clone();
                         selected[item - n_v] = 1.;
-                        model.mesh.add_face_scalar("selected face".into(), selected);
+                        surface.add_face_scalar("selected face".into(), selected);
                     }
                 }
             }

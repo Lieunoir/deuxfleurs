@@ -1,10 +1,11 @@
 use crate::texture;
 use crate::util;
 use wgpu::util::DeviceExt;
+use crate::data::*;
 
 pub struct VectorField {
     pub vectors: Vec<[f32; 3]>,
-    pub vectors_offsets: Vec<[f32; 3]>,
+    pub offsets: Vec<[f32; 3]>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     vector_buffer: wgpu::Buffer,
@@ -15,12 +16,67 @@ pub struct VectorField {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct VectorFieldSettingsRaw {
+    magnitude: f32,
+    _padding: [u32; 3],
+    color: ColorSettings,
+}
+
 pub struct VectorFieldSettings {
+    pub show: bool,
     pub magnitude: f32,
-    pub _padding1: [u32; 3],
-    pub color: [f32; 4],
-    //TODO make private
+    pub color: ColorSettings,
+}
+
+impl Default for VectorFieldSettings {
+    fn default() -> VectorFieldSettings {
+        Self {
+            show: true,
+            magnitude: 1.,
+            color: ColorSettings::default(),
+        }
+    }
+}
+
+impl VectorFieldSettings {
+    fn to_raw(&self) -> VectorFieldSettingsRaw {
+        VectorFieldSettingsRaw {
+            magnitude: self.magnitude,
+            _padding: [0; 3],
+            color: self.color,
+        }
+    }
+
+    pub fn set_magnitude(&mut self, magnitude: f32) {
+        self.magnitude = magnitude;
+    }
+
+    pub fn show(&mut self, show: bool) {
+        self.show = show;
+    }
+
+    pub fn set_color(&mut self, color: [f32; 4]) {
+        self.color.color = color;
+    }
+}
+
+pub(crate) struct NewVectorField {
+    pub(crate) name: String,
+    vectors: Vec<[f32; 3]>,
+    offsets: Vec<[f32; 3]>,
+    pub(crate) settings: VectorFieldSettings,
+}
+
+impl NewVectorField {
+    pub(crate) fn new(name: String, vectors: Vec<[f32; 3]>, offsets: Vec<[f32; 3]>) -> NewVectorField {
+        NewVectorField {
+            name,
+            vectors,
+            offsets,
+            settings: VectorFieldSettings::default(),
+        }
+    }
 }
 
 pub trait Vertex {
@@ -125,10 +181,10 @@ impl VectorField {
     fn build_vector_buffer(
         device: &wgpu::Device,
         vectors: &Vec<[f32; 3]>,
-        vectors_offsets: &Vec<[f32; 3]>,
+        offsets: &Vec<[f32; 3]>,
     ) -> wgpu::Buffer {
         let mut gpu_vertices = Vec::with_capacity(vectors.len());
-        for (vector, offset) in vectors.iter().zip(vectors_offsets) {
+        for (vector, offset) in vectors.iter().zip(offsets) {
             let vertex = VectorData {
                 orig_position: *offset,
                 vector: *vector,
@@ -147,15 +203,17 @@ impl VectorField {
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
-        vectors: Vec<[f32; 3]>,
-        vectors_offsets: Vec<[f32; 3]>,
-        settings: VectorFieldSettings,
+        NewVectorField {
+            name,
+        vectors,
+        offsets,
+        settings, }: NewVectorField
     ) -> Self {
-        assert!(vectors.len() == vectors_offsets.len());
+        assert!(vectors.len() == offsets.len());
 
         let settings_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vector field settings buffer"),
-            contents: bytemuck::cast_slice(&[settings]),
+            contents: bytemuck::cast_slice(&[settings.to_raw()]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let settings_bind_group_layout =
@@ -192,7 +250,7 @@ impl VectorField {
         });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("arrow shader"),
-            source: wgpu::ShaderSource::Wgsl(super::arrow_shader::ARROW_SHADER.into()),
+            source: wgpu::ShaderSource::Wgsl(super::vector_shader::ARROW_SHADER.into()),
         };
         let render_pipeline = util::create_render_pipeline(
             device,
@@ -205,10 +263,10 @@ impl VectorField {
         );
 
         let vertex_buffer = Self::build_vertex_buffer(device);
-        let vector_buffer = Self::build_vector_buffer(device, &vectors, &vectors_offsets);
+        let vector_buffer = Self::build_vector_buffer(device, &vectors, &offsets);
         Self {
             vectors,
-            vectors_offsets,
+            offsets,
             render_pipeline,
             vertex_buffer,
             vector_buffer,
@@ -223,21 +281,26 @@ impl VectorField {
     where
         'a: 'b,
     {
-        render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
-        render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+        if self.settings.show {
+            render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
+            render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+        }
     }
 
-    pub fn update(&mut self, queue: &mut wgpu::Queue) {
+    pub fn update(&mut self, queue: &mut wgpu::Queue) -> bool {
         if self.settings_changed {
             queue.write_buffer(
                 &self.settings_buffer,
                 0,
-                bytemuck::cast_slice(&[self.settings]),
+                bytemuck::cast_slice(&[self.settings.to_raw()]),
             );
             self.settings_changed = false;
+            true
+        } else {
+            false
         }
     }
 }

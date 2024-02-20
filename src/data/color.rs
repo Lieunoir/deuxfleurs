@@ -15,7 +15,7 @@ impl Default for ColorSettings {
 }
 
 impl UiDataElement for ColorSettings {
-    fn draw(&mut self, ui: &mut egui::Ui) -> bool {
+    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
         let mut mesh_color = egui::Rgba::from_rgba_unmultiplied(
             self.color[0],
             self.color[1],

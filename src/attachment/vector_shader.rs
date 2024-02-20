@@ -70,16 +70,21 @@ fn vs_main(
     let right_axis = (model_matrix * vec4<f32>(normalize(cross(view_axis, arrow_axis)), 0.)).xyz;
     let depth_axis = (model_matrix * vec4<f32>(-normalize(cross(arrow_axis, right_axis)), 0.)).xyz;
     let radius = min(length(depth_axis), length(right_axis));
-    out.radius = radius * arrow_ampl;
-    //let right_axis = radius * normalize(cross(view_axis, arrow_axis));
-    //let depth_axis = -radius * normalize(cross(arrow_axis, right_axis));
+    //Change this for fully scaled arrows
+    //out.radius = radius * 0.1;
+    out.radius = radius * arrow_ampl * 0.1;
+
     let rotation_mat = mat3x3<f32>(
         right_axis,
         world_vector_arrow,
         depth_axis);
-    //let model_matrix_2 = mat3x3<f32>(model_matrix[0].xyz, model_matrix[1].xyz, model_matrix[2].xyz);
-    //let position = rotation_mat * model_matrix_2 * model.position * settings.magnitude * 0.1 + world_vector_pos;
-    let position = rotation_mat * model.position * settings.magnitude * arrow_ampl * 0.1 + world_vector_pos;
+
+    var corrected_pos = model.position;
+    //Change this for fully scaled arrows
+    //corrected_pos.y = corrected_pos.y * arrow_ampl;
+    corrected_pos = corrected_pos * arrow_ampl;
+
+    let position = rotation_mat * corrected_pos * settings.magnitude + world_vector_pos;
     out.world_pos = position;
     out.clip_position = camera.view_proj * vec4<f32>(position, 1.0);
     return out;
@@ -89,44 +94,44 @@ fn vs_main(
 // https://iquilezles.org/articles/intersectors/
 fn dot2(v: vec3<f32>) -> f32 { return dot(v, v); }
 
-fn iCappedCone(ro: vec3<f32>, rd: vec3<f32>, 
-                  pa: vec3<f32>, pb: vec3<f32>, 
+fn iCappedCone(ro: vec3<f32>, rd: vec3<f32>,
+                  pa: vec3<f32>, pb: vec3<f32>,
                   ra: f32, rb: f32 ) -> vec4<f32>
 {
     let  ba = pb - pa;
     let  oa = ro - pa;
     let  ob = ro - pb;
-    
+
     let m0 = dot(ba,ba);
     let m1 = dot(oa,ba);
-    let m2 = dot(ob,ba); 
+    let m2 = dot(ob,ba);
     let m3 = dot(rd,ba);
 
     //caps
          if( m1<0.0 ) { if( dot2(oa*m3-rd*m1)<(ra*ra*m3*m3) ) { return vec4<f32>(-m1/m3,-ba*inverseSqrt(m0)); } }
     else if( m2>0.0 ) { if( dot2(ob*m3-rd*m2)<(rb*rb*m3*m3) ) { return vec4<f32>(-m2/m3, ba*inverseSqrt(m0)); } }
-    
+
     // body
     let m4 = dot(rd,oa);
     let m5 = dot(oa,oa);
     let rr = ra - rb;
     let hy = m0 + rr*rr;
-    
+
     let k2 = m0*m0    - m3*m3*hy;
     let k1 = m0*m0*m4 - m1*m3*hy + m0*ra*(rr*m3*1.0        );
     let k0 = m0*m0*m5 - m1*m1*hy + m0*ra*(rr*m1*2.0 - m0*ra);
-    
+
     let h = k1*k1 - k2*k0;
     if( h<0.0 ) { return vec4(-1.0); }
 
     let t = (-k1-sqrt(h))/k2;
 
     let y = m1 + t*m3;
-    if( y>0.0 && y<m0 ) 
+    if( y>0.0 && y<m0 )
     {
         return vec4<f32>(t, normalize(m0*(m0*(oa+t*rd)+rr*ba*ra)-ba*hy*y));
     }
-    
+
     return vec4<f32>(-1.0);
 }
 
@@ -163,11 +168,11 @@ fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {
     let a2     = a*a;
     let NdotH  = max(dot(N, H), 0.0);
     let NdotH2 = NdotH*NdotH;
-	
+
     let nom    = a2;
     var denom  = (NdotH2 * (a2 - 1.0) + 1.0);
     denom        = PI * denom * denom;
-	
+
     return nom / denom;
 }
 
@@ -175,17 +180,17 @@ fn GeometrySchlickGGX(NdotV: f32, k: f32) -> f32
 {
     let nom   = NdotV;
     let denom = NdotV * (1.0 - k) + k;
-	
+
     return nom / denom;
 }
-  
+
 fn GeometrySmith(N: vec3<f32>, V: vec3<f32>, L: vec3<f32>, k: f32) -> f32
 {
     let NdotV = max(dot(N, V), 0.0);
     let NdotL = max(dot(N, L), 0.0);
     let ggx1 = GeometrySchlickGGX(NdotV, k);
     let ggx2 = GeometrySchlickGGX(NdotL, k);
-	
+
     return ggx1 * ggx2;
 }
 
@@ -204,18 +209,18 @@ fn fs_main(in: VertexOutput) -> FragOutput {
     let ro = camera.view_pos.xyz;
 	let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let pa = in.orig_position;
-    let pb1 = in.orig_position + 0.5 * in.arrow * 0.1;
-    let pb2 = in.orig_position + in.arrow * 0.1;
+    let pb1 = in.orig_position + 0.5 * in.arrow;
+    let pb2 = in.orig_position + in.arrow;
 
     var out: FragOutput;
 
-    let traced_1 = iCappedCone(ro, rd, pb1, pb2, 0.1 * 0.1 * in.radius * settings.magnitude, 0.);
-    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.05 * 0.1 * in.radius * settings.magnitude);
+    let traced_1 = iCappedCone(ro, rd, pb1, pb2, in.radius * settings.magnitude, 0.);
+    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.5 * in.radius * settings.magnitude);
 	if(max(traced_1.x, traced_2.x) < 0.) {
 		discard;
 	}
 	let traced = select(traced_1, traced_2, traced_1.x < 0. || (traced_2.x < traced_1.x && traced_2.x > 0.));
-	
+
 	let pos = ro + traced.x * rd;
 	let normal = traced.yzw;
 	let light_dir = normalize(light.position - pos);

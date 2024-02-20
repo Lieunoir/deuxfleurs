@@ -67,7 +67,7 @@ struct ColorMapUniform {
     k_blue_vec2: vec4<f32>,
 }
 
-@group(2) @binding(0)
+@group(3) @binding(0)
 var<uniform> colormap_uniform: ColorMapUniform;
 
 //https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7

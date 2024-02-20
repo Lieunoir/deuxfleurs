@@ -11,7 +11,7 @@ anyhow = "1.0.65"
 bytemuck = { version = "1.12.1", features = [ "derive" ] }
 cfg-if = "1.0.0"
 cgmath = "0.18.0"
-egui = "0.26"
+egui = "0.26.2"
 # Includes dirty fix so that gizmo can grab focus
 egui-gizmo = { git = "https://github.com/Lieunoir/egui-gizmo", rev = "781851db0e" }
 egui-wgpu = { version = "0.26", features = ["winit"] }
@@ -26,7 +26,7 @@ rfd = "0.10.0"
 tobj = { version = "4.0", features = [
     "async",
 ]}
-wgpu = "0.19"
+wgpu = { version = "0.19", default-features = false }
 winit = "0.29.10"
 
 ndarray = "0.15"
@@ -39,7 +39,7 @@ console_error_panic_hook = "0.1.6"
 console_log = "0.2.0"
 getrandom = { version = "0.2", features = ["js"] }
 reqwest = { version = "0.11" }
-wgpu = { version = "0.19", features = ["webgl"]}
+wgpu = { version = "0.19", default-features = false, features = ["webgl"]}
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.64", features = [

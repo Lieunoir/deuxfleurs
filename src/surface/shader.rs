@@ -1,4 +1,4 @@
-use super::MeshData;
+use super::SurfaceData;
 
 // macro rules cuz used in format
 // forces {{ and }} instead of regular { and }
@@ -22,6 +22,10 @@ struct TransformUniform {{
     normal: mat4x4<f32>,
 }}
 
+struct SettingsUniform {{
+    color: vec3<f32>,
+}}
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
@@ -29,6 +33,9 @@ var<uniform> light: Light;
 
 @group(1) @binding(0)
 var<uniform> transform: TransformUniform;
+
+@group(2) @binding(0)
+var<uniform> settings: SettingsUniform;
 
 {}
 
@@ -38,13 +45,12 @@ var<uniform> transform: TransformUniform;
 // e.g. 0 = 1st \"set\" of data, 1 = 2nd \"set\"
 struct VertexInput {{
     @location(0) position: vec3<f32>,
-    @location(1) tex_coords: vec2<f32>,
-    @location(2) normal: vec3<f32>,
-    @location(3) face_normal: vec3<f32>,
-    @location(4) color: vec3<f32>,
-    @location(5) barycentric_coords: vec3<f32>,
-    @location(6) distance: f32,
+    @location(1) normal: vec3<f32>,
+    @location(2) face_normal: vec3<f32>,
+    @location(3) barycentric_coords: vec3<f32>,
 }};
+
+{}
 
 // The output we send to our fragment shader
 struct VertexOutput {{
@@ -54,15 +60,17 @@ struct VertexOutput {{
     // In this case, we pass the color down
     @location(0) world_normal: vec3<f32>,
     @location(1) world_position: vec3<f32>,
-    @location(2) color: vec3<f32>,
-    @location(3) tex_coords: vec2<f32>,
-    @location(4) barycentric_coords: vec3<f32>,
-    @location(5) distance: f32,
+    @location(2) barycentric_coords: vec3<f32>,
+    {}
+    //@location(2) color: vec3<f32>,
+    //@location(3) tex_coords: vec2<f32>,
+    //@location(5) distance: f32,
 }};
 
 @vertex
 fn vs_main(
     model: VertexInput,
+    {}
 ) -> VertexOutput {{
     let model_matrix = transform.model;
     let normal_matrix = transform.normal;
@@ -71,16 +79,16 @@ fn vs_main(
     var out: VertexOutput;
 
     // smooth normals
-    {} 
+    {}
     let world_position: vec4<f32> = model_matrix * vec4<f32>(model.position, 1.0);
     out.world_position = world_position.xyz;
 
-    // use which color
+    // output assignement
     {}
 
-    out.tex_coords = model.tex_coords;
+    //out.tex_coords = model.tex_coords;
     out.barycentric_coords = model.barycentric_coords;
-    out.distance = model.distance;
+    //out.distance = model.distance;
 
     // We set the \"position\" by using the `clip_position` property
     // We multiply it by the camera position matrix and the instance position matrix
@@ -95,11 +103,11 @@ fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {{
     let a2     = a*a;
     let NdotH  = max(dot(N, H), 0.0);
     let NdotH2 = NdotH*NdotH;
-	
+
     let nom    = a2;
     var denom  = (NdotH2 * (a2 - 1.0) + 1.0);
     denom        = PI * denom * denom;
-	
+
     return nom / denom;
 }}
 
@@ -107,17 +115,17 @@ fn GeometrySchlickGGX(NdotV: f32, k: f32) -> f32
 {{
     let nom   = NdotV;
     let denom = NdotV * (1.0 - k) + k;
-	
+
     return nom / denom;
 }}
-  
+
 fn GeometrySmith(N: vec3<f32>, V: vec3<f32>, L: vec3<f32>, k: f32) -> f32
 {{
     let NdotV = max(dot(N, V), 0.0);
     let NdotL = max(dot(N, L), 0.0);
     let ggx1 = GeometrySchlickGGX(NdotV, k);
     let ggx2 = GeometrySchlickGGX(NdotL, k);
-	
+
     return ggx1 * ggx2;
 }}
 
@@ -130,7 +138,7 @@ fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32>
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
     // We use the special function `textureSample` to combine the texture data with coords
-    
+
     // We don't need (or want) much ambient light, so 0.1 is fine
     let ambient_strength = 0.1;
     let ambient_color = light.color * ambient_strength;
@@ -145,7 +153,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
         normal *= -1.;
     }}
 
-    var data_color = in.color;
+    //var data_color = in.color;
+    var data_color = settings.color;
     // use checkerboard or not
     {}
     // show edges
@@ -175,7 +184,7 @@ struct DataUniform {
     k_blue_vec2: vec4<f32>,
 }
 
-@group(2) @binding(0)
+@group(3) @binding(0)
 var<uniform> data_uniform: DataUniform;
 
 //https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
@@ -192,16 +201,16 @@ fn colormap(x: f32) -> vec3<f32> {
 ";
 
 const COLORMAP_ISOLINES: &str = "
-    data_color = colormap(in.distance);
-    let scaled_distance = in.distance * data_uniform.isoline_number.x;
+    data_color = colormap(in.data);
+    let scaled_distance = in.data * data_uniform.isoline_number.x;
     //var testVal = 1.;
     //var modVal = modf(scaled_distance, &testVal);
     var modVal = modf(scaled_distance).fract;
     if(modVal < 0.) {{
         modVal += 1.;
     }}
-    let d_dist_x = dpdx(in.distance) * data_uniform.isoline_number.x;
-    let d_dist_y = dpdy(in.distance) * data_uniform.isoline_number.x;
+    let d_dist_x = dpdx(in.data) * data_uniform.isoline_number.x;
+    let d_dist_y = dpdy(in.data) * data_uniform.isoline_number.x;
     let d_dist = sqrt(d_dist_x * d_dist_x + d_dist_y * d_dist_y);
     //let remap_1 = smoothstep(0.45, 0.48, modVal);
     //let remap_2 = 1. - smoothstep(0.52, 0.55, modVal);
@@ -220,7 +229,7 @@ struct DataUniform {
     k_blue_vec2: vec4<f32>,
 }
 
-@group(2) @binding(0)
+@group(3) @binding(0)
 var<uniform> data_uniform: DataUniform;
 
 //https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
@@ -237,7 +246,7 @@ fn colormap(x: f32) -> vec3<f32> {
 ";
 
 const COLORMAP: &str = "
-    data_color = colormap(in.distance);
+    data_color = colormap(in.data);
 ";
 
 const COLOR_UNIFORM: &str = "
@@ -245,17 +254,8 @@ struct DataUniform {
     color: vec4<f32>,
 }
 
-@group(2) @binding(0)
+@group(3) @binding(0)
 var<uniform> data_uniform: DataUniform;
-";
-
-const USE_UNIFORM_COLOR: &str = "
-    out.color = data_uniform.color.xyz;
-
-";
-
-const USE_INPUT_COLOR: &str = "
-    out.color = model.color;
 ";
 
 const CHECKERBOARD_UNIFORM: &str = "
@@ -265,7 +265,7 @@ struct DataUniform {
     period: f32,
 }
 
-@group(2) @binding(0)
+@group(3) @binding(0)
 var<uniform> data_uniform: DataUniform;
 ";
 
@@ -274,17 +274,17 @@ const CHECKERBOARD: &str = "
     //Trash value
     //var check_mod_period = 1.;
     let tex_color = data_uniform.color_1.xyz;
-    //let check_mod_x = modf(in.tex_coords.x * check_period, &check_mod_period);
-    let check_mod_x = modf(in.tex_coords.x * check_period).fract;
+    //let check_mod_x = modf(in.data.x * check_period, &check_mod_period);
+    let check_mod_x = modf(in.data.x * check_period).fract;
     let check_min_x = 2. * (max(abs(check_mod_x), 1. - abs(check_mod_x)) - .5);
-    let check_mod_y = modf(in.tex_coords.y * check_period).fract;
+    let check_mod_y = modf(in.data.y * check_period).fract;
     let check_min_y = 2. * (max(abs(check_mod_y), 1. - abs(check_mod_y)) - .5);
 
     let v_check = (check_min_x - .5) * (check_min_y - .5);
 
     // Not exactly the derivative of v, sign is wrong due to abs/max stuff but it doesn't matter coz it all ends up squared
-    let d_check_x = 2. * check_period * ((check_min_y - 0.5) * dpdx(in.tex_coords.x) + (check_min_x - 0.5) * dpdx(in.tex_coords.y));
-    let d_check_y = 2. * check_period * ((check_min_x - 0.5) * dpdy(in.tex_coords.y) + (check_min_y - 0.5) * dpdy(in.tex_coords.x));
+    let d_check_x = 2. * check_period * ((check_min_y - 0.5) * dpdx(in.data.x) + (check_min_x - 0.5) * dpdx(in.data.y));
+    let d_check_y = 2. * check_period * ((check_min_x - 0.5) * dpdy(in.data.y) + (check_min_y - 0.5) * dpdy(in.data.x));
     let d_check = sqrt(d_check_x * d_check_x + d_check_y * d_check_y);
     let s_check = smoothstep(-d_check, d_check, v_check);
     data_color = mix(tex_color, data_uniform.color_2.xyz, s_check);
@@ -318,21 +318,40 @@ const WITH_EDGE_SHADER: &str = "
     data_color = mix(data_color, edge_color, 1. - wire_frame);
 ";
 
-pub fn get_shader(data_format: Option<&MeshData>, smooth: bool, show_edge: bool) -> String {
+pub fn get_shader(data_format: Option<&SurfaceData>, smooth: bool, show_edge: bool) -> String {
     let uniform = if let Some(mesh_data) = data_format {
         match mesh_data {
-            MeshData::UVMap(_, _) | MeshData::UVCornerMap(_, _) => CHECKERBOARD_UNIFORM,
-            MeshData::VertexScalar(_, _) => COLORMAP_ISOLINES_UNIFORM,
-            MeshData::FaceScalar(_, _) => COLORMAP_UNIFORM,
+            SurfaceData::UVMap(_, _) | SurfaceData::UVCornerMap(_, _) => CHECKERBOARD_UNIFORM,
+            SurfaceData::VertexScalar(_, _) => COLORMAP_ISOLINES_UNIFORM,
+            SurfaceData::FaceScalar(_, _) => COLORMAP_UNIFORM,
             _ => "",
         }
     } else {
         COLOR_UNIFORM
     };
-    let color_input = if data_format.is_some() {
-        USE_INPUT_COLOR
-    } else {
-        USE_UNIFORM_COLOR
+
+    let (data_decl, data_out) = match data_format {
+        Some(data) => match data {
+            SurfaceData::UVMap(..) | SurfaceData::UVCornerMap(..) => ("
+struct DataInput {
+    @location(4) data: vec2<f32>,
+};", "@location(3) data: vec2<f32>,"),
+            SurfaceData::VertexScalar(..) | SurfaceData::FaceScalar(..) => ("
+struct DataInput {
+    @location(4) data: f32,
+};", "@location(3) data: f32,"),
+            SurfaceData::Color(..) => ("
+struct DataInput {
+    @location(4) data: vec3<f32>,
+};", "@location(3) data: vec3<f32>,"),
+        },
+        None => ("", ""),
+    };
+
+    let (data_input, data_assign) = match data_format {
+        Some(data) => ("
+    data: DataInput,", "out.data = data.data;"),
+        None => ("", ""),
     };
 
     let normal_interpolation = if smooth {
@@ -341,14 +360,14 @@ pub fn get_shader(data_format: Option<&MeshData>, smooth: bool, show_edge: bool)
         FLAT_NORMAL_INTERPOLATION
     };
     let render_modif = match data_format {
-        Some(MeshData::UVMap(_, _)) | Some(MeshData::UVCornerMap(_, _)) => CHECKERBOARD,
-        Some(MeshData::VertexScalar(_, _)) => COLORMAP_ISOLINES,
-        Some(MeshData::FaceScalar(_, _)) => COLORMAP,
+        Some(SurfaceData::UVMap(_, _)) | Some(SurfaceData::UVCornerMap(_, _)) => CHECKERBOARD,
+        Some(SurfaceData::VertexScalar(_, _)) => COLORMAP_ISOLINES,
+        Some(SurfaceData::FaceScalar(_, _)) => COLORMAP,
         _ => "",
     };
     let edge_shader = if show_edge { WITH_EDGE_SHADER } else { "" };
     format!(
         SHADER!(),
-        uniform, normal_interpolation, color_input, render_modif, edge_shader
+        uniform, data_decl, data_out, data_input, normal_interpolation, data_assign, render_modif, edge_shader
     )
 }

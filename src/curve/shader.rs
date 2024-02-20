@@ -12,6 +12,11 @@ struct Light {{
     color: vec3<f32>,
 }}
 
+struct TransformUniform {{
+    model: mat4x4<f32>,
+    normal: mat4x4<f32>,
+}}
+
 struct SettingsUniform {{
     radius: f32,
     color: vec3<f32>,
@@ -23,6 +28,9 @@ var<uniform> camera: CameraUniform;
 var<uniform> light: Light;
 
 @group(1) @binding(0)
+var<uniform> transform: TransformUniform;
+
+@group(2) @binding(0)
 var<uniform> settings: SettingsUniform;
 struct VertexInput {{
     @location(0) position: vec3<f32>,
@@ -53,18 +61,20 @@ fn vs_main(
     pos: PosInput,
     {}
 ) -> VertexOutput {{
+    let model_matrix = transform.model;
+    //let center_vector = (model_matrix * vec4<f32>(pos.position_2 - pos.position_1, 1.)).xyz;
     let center_vector = pos.position_2 - pos.position_1;
 
     //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    let view_axis = normalize(pos.position_1 - camera.view_pos.xyz);
+    let view_axis = normalize((model_matrix * vec4<f32>(pos.position_1, 1.)).xyz - camera.view_pos.xyz);
     let camera_up = normalize(cross(center_vector, view_axis));
     //let camera_up = normalize(vec3<f32>(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
-    let world_position = pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius);
+    let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius), 1.)).xyz;
     out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
-    out.world_pos_1 = pos.position_1;
-    out.world_pos_2 = pos.position_2;
+    out.world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
+    out.world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
     out.world_pos = world_position;
     let t = 0.5 * (model.position.x + 1.);
 
@@ -119,7 +129,8 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
 	let rd = normalize(in.world_pos - camera.view_pos.xyz);
 	let a = in.world_pos_1;
 	let b = in.world_pos_2;
-    let r = settings.radius;
+    let det = determinant(transform.normal);
+    let r = settings.radius / pow(det, 1. / 3.);
 	let t = cylIntersect(ro, rd, a, b, r);
 
     var out: FragOutput;

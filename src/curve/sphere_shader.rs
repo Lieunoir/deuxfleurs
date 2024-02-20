@@ -12,10 +12,10 @@ struct Light {{
     color: vec3<f32>,
 }}
 
-//struct TransformUniform {{
-//    model: mat4x4<f32>,
-//    normal: mat4x4<f32>,
-//}}
+struct TransformUniform {{
+    model: mat4x4<f32>,
+    normal: mat4x4<f32>,
+}}
 
 struct SettingsUniform {{
     radius: f32,
@@ -27,9 +27,9 @@ var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
 var<uniform> light: Light;
 
-//@group(1) @binding(0)
-//var<uniform> transform: TransformUniform;
 @group(1) @binding(0)
+var<uniform> transform: TransformUniform;
+@group(2) @binding(0)
 var<uniform> settings: SettingsUniform;
 struct VertexInput {{
     @location(0) position: vec3<f32>,
@@ -59,8 +59,7 @@ fn vs_main(
     pos: PosInput,
     {}
 ) -> VertexOutput {{
-    //let model_matrix = transform.model;
-    //let normal_matrix = transform.normal;
+    let model_matrix = transform.model;
 
     //let world_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
     //// Do we want to scale a vector field if we scale its attached mesh?
@@ -73,10 +72,10 @@ fn vs_main(
 
     let camera_right = normalize(vec3<f32>(camera.view_proj.x.x, camera.view_proj.y.x, camera.view_proj.z.x));
     let camera_up = normalize(vec3<f32>(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
-    let world_position = pos.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius;
+    let world_position = (model_matrix * vec4<f32>(pos.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;
     out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.world_pos = world_position;
-    out.center = pos.position;
+    out.center = (model_matrix * vec4<f32>(pos.position, 1.)).xyz;
     // Set output
     {}
     return out;
@@ -106,7 +105,8 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
     let ro = camera.view_pos.xyz;
 	let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let ce = in.center;
-    let r = settings.radius;
+    let det = determinant(transform.normal);
+    let r = settings.radius / pow(det, 1. / 3.);
     //let pa = in.orig_position;
     //let pb1 = in.orig_position + 0.5 * in.arrow * 0.1;
     //let pb2 = in.orig_position + in.arrow * 0.1;

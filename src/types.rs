@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub enum SurfaceIndices {
     Triangles(Vec<[u32; 3]>),
     Quads(Vec<[u32; 4]>),

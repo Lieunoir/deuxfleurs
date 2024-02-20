@@ -226,7 +226,7 @@ impl ColorMap {
 }
 
 impl UiDataElement for ColorMap {
-    fn draw(&mut self, ui: &mut egui::Ui) -> bool {
+    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
         let mut changed = false;
         egui::ComboBox::from_label("ColorMap")
             .selected_text(self.get_name())

@@ -1,5 +1,6 @@
-use crate::model;
-use crate::model::DrawModel;
+use crate::surface::Surface;
+use crate::point_cloud::PointCloud;
+use crate::curve::Curve;
 use crate::texture;
 use crate::util;
 use crate::UserEvent;
@@ -105,7 +106,7 @@ impl Picker {
             orig_pos: (0., 0.),
             bind_group_layout,
             bind_groups,
-            counters_dirty: false,
+            counters_dirty: true,
         }
     }
 
@@ -177,7 +178,9 @@ impl Picker {
         encoder: &mut wgpu::CommandEncoder,
         depth_texture_view: &wgpu::TextureView,
         camera_light_bind_group: &wgpu::BindGroup,
-        models: &IndexMap<String, model::Model>,
+        surfaces: &IndexMap<String, Surface>,
+        clouds: &IndexMap<String, PointCloud>,
+        curves: &IndexMap<String, Curve>,
     ) {
         if !self.pick_locked && self.item_to_pick.is_some() {
             {
@@ -217,16 +220,16 @@ impl Picker {
 
                 if self.counters_dirty {
                     let mut counter = 1;
-                    self.bind_groups = models
+                    self.bind_groups = surfaces
                         .values()
-                        .map(|model| {
+                        .map(|surface| {
                             let counter_uniform = CounterUniform {
                                 count: counter,
                                 _padding_1: 0,
                                 _padding_2: 0,
                                 _padding_3: 0,
                             };
-                            counter += model.get_total_elements();
+                            counter += surface.get_total_elements();
 
                             //TODO use one dynamic buffer instead
                             let counter_buffer =
@@ -248,12 +251,81 @@ impl Picker {
                         })
                         .collect();
 
+                    for cloud in clouds.values() {
+                        let counter_uniform = CounterUniform {
+                            count: counter,
+                            _padding_1: 0,
+                            _padding_2: 0,
+                            _padding_3: 0,
+                        };
+                        counter += cloud.get_total_elements();
+
+                        let counter_buffer =
+                            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("counter buffer"),
+                                contents: bytemuck::cast_slice(&[counter_uniform]),
+                                usage: wgpu::BufferUsages::UNIFORM
+                                    | wgpu::BufferUsages::COPY_DST,
+                            });
+                        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            layout: &self.bind_group_layout,
+                            entries: &[wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: counter_buffer.as_entire_binding(),
+                            }],
+                            label: Some("camera_light_bind_group"),
+                        });
+                        self.bind_groups.push(bind_group);
+                    }
+
+                    for curve in curves.values() {
+                        let counter_uniform = CounterUniform {
+                            count: counter,
+                            _padding_1: 0,
+                            _padding_2: 0,
+                            _padding_3: 0,
+                        };
+                        counter += curve.get_total_elements();
+
+                        let counter_buffer =
+                            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("counter buffer"),
+                                contents: bytemuck::cast_slice(&[counter_uniform]),
+                                usage: wgpu::BufferUsages::UNIFORM
+                                    | wgpu::BufferUsages::COPY_DST,
+                            });
+                        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            layout: &self.bind_group_layout,
+                            entries: &[wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: counter_buffer.as_entire_binding(),
+                            }],
+                            label: Some("camera_light_bind_group"),
+                        });
+                        self.bind_groups.push(bind_group);
+                    }
+
                     self.counters_dirty = false;
                 }
 
-                for (model, counter_bind_group) in models.values().zip(&self.bind_groups) {
+                let mut index = 0;
+                for surface in surfaces.values() {
+                    let counter_bind_group = &self.bind_groups[index];
+                    index += 1;
                     render_pass.set_bind_group(1, counter_bind_group, &[]);
-                    render_pass.draw_picker(model);
+                    surface.render_picker(&mut render_pass);
+                }
+                for cloud in clouds.values() {
+                    let counter_bind_group = &self.bind_groups[index];
+                    index += 1;
+                    render_pass.set_bind_group(1, counter_bind_group, &[]);
+                    cloud.render_picker(&mut render_pass);
+                }
+                for curve in curves.values() {
+                    let counter_bind_group = &self.bind_groups[index];
+                    index += 1;
+                    render_pass.set_bind_group(1, counter_bind_group, &[]);
+                    curve.render_picker(&mut render_pass);
                 }
             }
             {
@@ -312,7 +384,7 @@ impl Picker {
         }
     }
 
-    pub fn pick(&mut self, models: &IndexMap<String, model::Model>) {
+    pub fn pick(&mut self, surfaces: &IndexMap<String, Surface>, clouds: &IndexMap<String, PointCloud>, curves: &IndexMap<String, Curve>) {
         {
             let buffer_slice = self.buffer.slice(..);
             let data = buffer_slice.get_mapped_range();
@@ -323,13 +395,29 @@ impl Picker {
                     | (data[index + 1] as u32) << 8
                     | (data[index] as u32);
                 let mut c = 1;
-                if let Some((name, _model)) = models.iter().find(|(_key, model)| {
-                    let found = c <= value && value < c + model.get_total_elements();
+                if let Some(name) = surfaces.iter().find(|(_key, surface)| {
+                    let found = c <= value && value < c + surface.get_total_elements();
                     if !found {
-                        c += model.get_total_elements();
+                        c += surface.get_total_elements();
                     }
                     found
-                }) {
+                }).map(|(n, s)| n).or_else( ||
+                    clouds.iter().find(|(_key, cloud)| {
+                    let found = c <= value && value < c + cloud.get_total_elements();
+                    if !found {
+                        c += cloud.get_total_elements();
+                    }
+                    found
+                }).map(|(n, pc)| n)).or_else( ||
+                    curves.iter().find(|(_key, curve)| {
+                    let found = c <= value && value < c + curve.get_total_elements();
+                    if !found {
+                        c += curve.get_total_elements();
+                    }
+                    found
+                }).map(|(n, pc)| n))
+
+                {
                     self.picked_item = Some((name.clone(), (value - c) as usize));
                 } else {
                     self.picked_item = None;
