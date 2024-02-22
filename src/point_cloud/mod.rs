@@ -253,9 +253,7 @@ impl FixedRenderer for CloudFixedRenderer {
             [-s2, -s2, 0.],
             [s2, -s2, 0.],
             [-s2, s2, 0.],
-            [s2, -s2, 0.],
             [s2, s2, 0.],
-            [-s2, s2, 0.],
         ];
         let vertices = positions.map(|position| SphereVertex { position });
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -326,7 +324,7 @@ impl RenderPipeline for CloudPipeline {
         } else {
             vec![SphereVertex::desc(), SphereCenter::desc()]
         };
-        let sphere_render_pipeline = util::create_render_pipeline(
+        let sphere_render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
             color_format,
@@ -360,7 +358,8 @@ impl Render for CloudRenderer {
         if let Some(data_buffer) = &self.data_buffer.sphere_data_buffer {
             render_pass.set_vertex_buffer(2, data_buffer.slice(..));
         }
-        render_pass.draw(0..6, 0..(self.fixed.positions_len));
+        //render_pass.draw(0..6, 0..(self.fixed.positions_len));
+        render_pass.draw(0..4, 0..(self.fixed.positions_len));
     }
 }
 

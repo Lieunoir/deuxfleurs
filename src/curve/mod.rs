@@ -410,9 +410,7 @@ impl FixedRenderer for CurveFixedRenderer {
             [-s2, -s2, 0.],
             [s2, -s2, 0.],
             [-s2, s2, 0.],
-            [s2, -s2, 0.],
             [s2, s2, 0.],
-            [-s2, s2, 0.],
         ];
         let vertices = positions.map(|position| SphereVertex { position });
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -498,7 +496,7 @@ impl RenderPipeline for CurvePipeline {
         } else {
             vec![SphereVertex::desc(), SphereCenter::desc()]
         };
-        let sphere_render_pipeline = util::create_render_pipeline(
+        let sphere_render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
             color_format,
@@ -520,7 +518,7 @@ impl RenderPipeline for CurvePipeline {
         } else {
             vec![SphereVertex::desc(), CylinderData::desc()]
         };
-        let cylinder_render_pipeline = util::create_render_pipeline(
+        let cylinder_render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
             color_format,
@@ -555,7 +553,7 @@ impl Render for CurveRenderer {
         if let Some(data_buffer) = &self.data_buffer.sphere_data_buffer {
             render_pass.set_vertex_buffer(2, data_buffer.slice(..));
         }
-        render_pass.draw(0..6, 0..(self.fixed.positions_len));
+        render_pass.draw(0..4, 0..(self.fixed.positions_len));
 
         render_pass.set_pipeline(&self.pipeline.cylinder_render_pipeline);
         render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
@@ -563,7 +561,7 @@ impl Render for CurveRenderer {
         if let Some(data_buffer) = &self.data_buffer.cylinder_data_buffer {
             render_pass.set_vertex_buffer(2, data_buffer.slice(..));
         }
-        render_pass.draw(0..6, 0..(self.fixed.connections_len));
+        render_pass.draw(0..4, 0..(self.fixed.connections_len));
     }
 }
 

@@ -71,8 +71,8 @@ impl UI {
         }
     }
 
-    pub fn process_event(&mut self, window: &Window, event: &winit::event::WindowEvent) -> bool {
-        self.state.on_window_event(window, event).consumed
+    pub fn process_event(&mut self, window: &Window, event: &winit::event::WindowEvent) -> egui_winit::EventResponse {
+        self.state.on_window_event(window, event)
     }
 
     pub fn draw_models(
@@ -137,8 +137,8 @@ impl UI {
             .show(&self.ctx, |ui| {
                 //Fix for not having a correct area
                 //ui.with_layer_id(egui::LayerId::background(), |ui| {
-                ui.with_layer_id(egui::LayerId::background(), |ui| {
-                });
+                //ui.with_layer_id(egui::LayerId::background(), |ui| {
+                //});
                     for (_, surface) in surfaces.iter_mut() {
                         surface.draw_gizmo(ui, view, proj);
                     }

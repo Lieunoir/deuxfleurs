@@ -119,7 +119,11 @@ impl CameraController {
                 let prev = self.prev_mouse.unwrap();
                 self.pan_delta = Some(((position.x - prev.x) as f32, (position.y - prev.y) as f32));
                 self.prev_mouse = Some(*position);
-                true
+                if self.is_mouse_left_pressed || self.is_mouse_right_pressed {
+                    true
+                } else {
+                    false
+                }
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 if *button == MouseButton::Left {
@@ -127,7 +131,7 @@ impl CameraController {
                 } else if *button == MouseButton::Right {
                     self.is_mouse_right_pressed = *state == ElementState::Pressed;
                 }
-                true
+                false
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 self.wheel_delta = Some(match delta {

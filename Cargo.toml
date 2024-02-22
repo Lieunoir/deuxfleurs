@@ -26,7 +26,7 @@ rfd = "0.10.0"
 tobj = { version = "4.0", features = [
     "async",
 ]}
-wgpu = { version = "0.19", default-features = false }
+wgpu = "0.19"
 winit = "0.29.10"
 
 ndarray = "0.15"

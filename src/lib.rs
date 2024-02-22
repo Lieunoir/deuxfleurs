@@ -30,6 +30,7 @@ mod updater;
 mod util;
 mod surface;
 mod attachment;
+mod deferred;
 use camera::{Camera, CameraController, CameraUniform};
 use curve::Curve;
 use surface::Surface;
@@ -79,9 +80,21 @@ pub struct State<'a> {
     camera_light_bind_group: wgpu::BindGroup,
     // egui
     //ui: ui::UI,
+    //time: std::time::Instant,
+    dirty: bool,
+    egui_dirty: bool,
 
     // Item picker
     picker: picker::Picker,
+
+    copy: deferred::TextureCopy,
+}
+
+struct Settings {
+    vsync: bool,
+    show_fps: bool,
+    continuous_refresh: bool,
+    rerender: bool,
 }
 
 pub struct StateWrapper<'a> {
@@ -108,7 +121,7 @@ impl<'a> State<'a> {
         let surface = instance.create_surface(window).unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::LowPower,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             })
@@ -152,7 +165,8 @@ impl<'a> State<'a> {
             format: surface_format,
             width: size.width.max(1),
             height: size.height.max(1),
-            present_mode: surface_caps.present_modes[0],
+            //present_mode: surface_caps.present_modes[0],
+            present_mode: wgpu::PresentMode::AutoVsync,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -248,6 +262,8 @@ impl<'a> State<'a> {
         // Clear color used for mouse input interaction
         //let ui = ui::UI::new(&device, target_format, event_loop);
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
+
+        let copy = deferred::TextureCopy::new(&device, surface_format, size.width.max(1), size.height.max(1));
         Self {
             surface,
             device,
@@ -269,6 +285,10 @@ impl<'a> State<'a> {
             camera_light_bind_group_layout,
             camera_light_bind_group,
             picker,
+            //time: std::time::Instant::now(),
+            dirty: true,
+            egui_dirty: true,
+            copy,
         }
     }
 
@@ -291,15 +311,17 @@ impl<'a> State<'a> {
             self.camera.resize(new_size.width, new_size.height);
             self.picker
                 .resize(&self.device, new_size.width, new_size.height);
+            self.copy
+                .resize(&self.device, self.config.format, new_size.width, new_size.height);
         }
     }
 
     // Handle input using WindowEvent
     fn input(&mut self, event: &WindowEvent) -> bool {
         // Send any input to camera controller
-        self.camera_controller.process_events(event);
-        self.picker.input(event);
-        false
+        let changed = self.camera_controller.process_events(event);
+        self.dirty |= changed;
+        self.picker.input(event) || changed
     }
 
     fn update(&mut self) -> bool {
@@ -321,7 +343,7 @@ impl<'a> State<'a> {
             bytemuck::cast_slice(&[self.light_uniform]),
         );
 
-        let mut changed = false;
+        let mut changed = self.dirty;
 
         for surface in self.surfaces.values_mut() {
             changed |= surface.refresh(
@@ -349,6 +371,8 @@ impl<'a> State<'a> {
                 self.config.format,
             );
         }
+
+        self.dirty = false;
         changed
     }
 
@@ -357,16 +381,11 @@ impl<'a> State<'a> {
         &mut self,
         event_loop_proxy: &winit::event_loop::EventLoopProxy<crate::UserEvent>,
         ui: &mut ui::UI,
+        scene_changed: bool,
     ) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let view_ref = if !self.screenshot {
-            &view
-        } else {
-            self.screenshoter.get_view()
-        };
+        //println!("{}", self.time.elapsed().as_millis());
+        //println!("{}", 1000. / (self.time.elapsed().as_millis()) as f32);
+        //self.time = std::time::Instant::now();
 
         let mut encoder = self
             .device
@@ -392,49 +411,110 @@ impl<'a> State<'a> {
             &self.curves,
         );
 
+        let output = self.surface.get_current_texture()?;
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: view_ref,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 0.0,
+            let view = output
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+
+            let mut render = false;
+            let mut render_copy = false;
+
+            if scene_changed {
+                self.copy.dirty = true;
+                render = true;
+            } else {
+                if self.copy.dirty {
+                    render = true;
+                    render_copy = true;
+                    self.copy.dirty = false;
+                }
+            }
+
+            if render || self.screenshot {
+                let view_ref = if self.screenshot {
+                    self.screenshoter.get_view()
+                } else if render_copy {
+                    self.copy.get_view()
+                } else {
+                    &view
+                };
+
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: view_ref,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.1,
+                                g: 0.2,
+                                b: 0.3,
+                                a: 0.0,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    // Create a depth stencil buffer using the depth texture
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth_texture.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
                         }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                // Create a depth stencil buffer using the depth texture
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
+                        stencil_ops: None,
                     }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
 
-            render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
 
-            for surface in self.surfaces.values() {
-                surface.render(&mut render_pass);
-            }
-            for cloud in self.clouds.values() {
-                cloud.render(&mut render_pass);
-            }
-            for curve in self.curves.values() {
-                curve.render(&mut render_pass);
-            }
+                for surface in self.surfaces.values() {
+                    surface.render(&mut render_pass);
+                }
+                for cloud in self.clouds.values() {
+                    cloud.render(&mut render_pass);
+                }
+                for curve in self.curves.values() {
+                    curve.render(&mut render_pass);
+                }
 
-            // Draw the gui
-            if !self.screenshot {
+                // Draw the gui
+                if !self.screenshot && !render_copy {
+                    ui.render(&mut render_pass, &clipped_primitives, &screen_descriptor);
+                }
+            }
+            if !self.screenshot && (!render || render_copy) {
+                //copy
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Copy Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.1,
+                                g: 0.2,
+                                b: 0.3,
+                                a: 0.0,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    // Create a depth stencil buffer using the depth texture
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth_texture.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                self.copy.copy(&mut render_pass);
                 ui.render(&mut render_pass, &clipped_primitives, &screen_descriptor);
             }
         }
@@ -476,6 +556,7 @@ impl<'a> State<'a> {
         );
         self.surfaces.insert(name.clone(), surface);
         self.picker.counters_dirty = true;
+        self.dirty = true;
         self.surfaces.get_mut(&name).unwrap()
     }
 
@@ -502,6 +583,7 @@ impl<'a> State<'a> {
         );
         self.clouds.insert(name.clone(), model);
         self.picker.counters_dirty = true;
+        self.dirty = true;
         self.clouds.get_mut(&name).unwrap()
     }
 
@@ -530,6 +612,7 @@ impl<'a> State<'a> {
         );
         self.curves.insert(name.clone(), model);
         self.picker.counters_dirty = true;
+        self.dirty = true;
         self.curves.get_mut(&name).unwrap()
     }
 
@@ -547,6 +630,10 @@ impl<'a> State<'a> {
 
     pub fn get_picked(&self) -> &Option<(String, usize)> {
         &self.picker.picked_item
+    }
+
+    pub fn refresh(&mut self) {
+        self.dirty = true;
     }
 }
 
@@ -587,7 +674,20 @@ impl<'a> StateWrapper<'a> {
                     window_id,
                 } if window_id == window.id() => {
                     let processed = self.ui.process_event(window, event);
-                    if !processed && !self.state.input(event) {
+                    if processed.repaint {
+                        match event {
+                            WindowEvent::RedrawRequested => {
+                                if self.egui_dirty {
+                                    window.request_redraw();
+                                    self.egui_dirty = false;
+                                } else {
+                                    self.egui_dirty = true;
+                                }
+                            },
+                            _ => window.request_redraw(),
+                        }
+                    }
+                    if !processed.consumed && !self.state.input(event) {
                         // Handle window events (like resizing, or key inputs)
                         // This is stuff from `winit` -- see their docs for more info
                         match event {
@@ -603,6 +703,7 @@ impl<'a> StateWrapper<'a> {
                             } => elwt.exit(),
                             WindowEvent::Resized(physical_size) => {
                                 self.state.resize(*physical_size);
+                                window.request_redraw();
                             }
                             //WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                             //    // new_inner_size is &&mut so w have to dereference it twice
@@ -610,7 +711,6 @@ impl<'a> StateWrapper<'a> {
                             //}
                             WindowEvent::RedrawRequested => {
                                 //draw ui
-                                window.request_redraw();
                                 self.ui.draw_models(
                                     window,
                                     &mut self.state.surfaces,
@@ -624,9 +724,9 @@ impl<'a> StateWrapper<'a> {
                                     &mut self.state,
                                     &mut self.callback,
                                 );
-                                self.state.update();
+                                let scene_changed = self.state.update();
                                 //actual rendering
-                                match self.state.render(&event_loop_proxy, &mut self.ui) {
+                                match self.state.render(&event_loop_proxy, &mut self.ui, scene_changed) {
                                     Ok(()) => self.ui.handle_platform_output(window),
                                     // Reconfigure the surface if it's lost or outdated
                                     Err(
@@ -642,7 +742,10 @@ impl<'a> StateWrapper<'a> {
                             }
                             _ => {}
                         }
-                    }                }
+                    } else {
+                        window.request_redraw();
+                    }
+                }
                 //Event::AboutToWait => {
                 //    // RedrawRequested will only trigger once, unless we manually
                 //    // request it.
