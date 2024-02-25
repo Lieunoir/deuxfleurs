@@ -118,7 +118,9 @@ where
 
     pub fn draw_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.checkbox(&mut self.show, "Show");
+            if ui.checkbox(&mut self.show, "Show").changed() {
+                self.updater.dirty = true;
+            }
         });
         self.updater.draw(ui, self.geometry.get_positions());
     }
@@ -157,6 +159,7 @@ pub(crate) struct Updater<Settings: Default + DataUniformBuilder + UiDataElement
     pub(crate) uniform_changed: bool,
     pub(crate) settings_changed: bool,
     pub(crate) transform_changed: bool,
+    pub(crate) dirty: bool,
 }
 
 impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBuilder + UiDataElement + DataSettings > Updater<Settings, Data> {
@@ -173,6 +176,7 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
             uniform_changed: false,
             settings_changed: false,
             transform_changed: false,
+            dirty: false,
         }
     }
 
@@ -207,7 +211,8 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
         renderer: &mut Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>,
         picker: &mut Picker,
     ) -> bool {
-        let mut refresh_screen = false;
+        let mut refresh_screen = self.dirty;
+        self.dirty = false;
         if let Some(data) = self.data_to_show.take() {
             self.data_to_show = None;
             self.shown_data = data.clone();
@@ -244,8 +249,10 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
             if let Some(data) = data {
                 if let Some(data_uniform) = renderer.get_data_uniform() {
                     data.refresh_buffer(queue, data_uniform);
+                    refresh_screen = true;
                 }
             }
+            self.uniform_changed = false;
         }
         refresh_screen |= !self.queued_attached_data.is_empty();
         for queued in self.queued_attached_data.drain(..) {
@@ -301,7 +308,9 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
                 .default_open(false)
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.checkbox(&mut field.settings.show, "Show");
+                        if ui.checkbox(&mut field.settings.show, "Show").changed() {
+                            self.dirty = true;
+                        }
                     });
                     //TODO move this
                     if egui::Slider::new(
