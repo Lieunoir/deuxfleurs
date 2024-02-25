@@ -17,6 +17,10 @@ struct Light {{
     color: vec3<f32>,
 }}
 
+struct Jitter {{
+    jitter: vec4<f32>,
+}}
+
 struct TransformUniform {{
     model: mat4x4<f32>,
     normal: mat4x4<f32>,
@@ -30,6 +34,8 @@ struct SettingsUniform {{
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
 var<uniform> light: Light;
+@group(0) @binding(2)
+var<uniform> jitter: Jitter;
 
 @group(1) @binding(0)
 var<uniform> transform: TransformUniform;
@@ -92,7 +98,8 @@ fn vs_main(
 
     // We set the \"position\" by using the `clip_position` property
     // We multiply it by the camera position matrix and the instance position matrix
-    out.clip_position = camera.view_proj * model_matrix * vec4<f32>(model.position, 1.0);
+    let clip_pos = camera.view_proj * model_matrix * vec4<f32>(model.position, 1.0);
+    out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     return out;
 }}
 
@@ -134,24 +141,21 @@ fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32>
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }}
 
+struct MaterialOutput {{
+    @location(0) position: vec4<f32>,
+    @location(1) albedo: vec4<f32>,
+    @location(2) normal: vec4<f32>,
+}};
+
 // Fragment shader
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
+fn fs_main(in: VertexOutput) -> MaterialOutput {{
     // We use the special function `textureSample` to combine the texture data with coords
-
-    // We don't need (or want) much ambient light, so 0.1 is fine
-    let ambient_strength = 0.1;
-    let ambient_color = light.color * ambient_strength;
-
     let light_dir = normalize(light.position - in.world_position);
     let view_dir = normalize(camera.view_pos.xyz - in.world_position);
     let half_dir = normalize(view_dir + light_dir);
 
-    // smooth shading
-    var normal = in.world_normal;
-    if(dot(normal, view_dir) < 0.) {{
-        normal *= -1.;
-    }}
+    let normal = select(in.world_normal, -in.world_normal, dot(in.world_normal, view_dir) < 0.);
 
     //var data_color = in.color;
     var data_color = settings.color;
@@ -160,16 +164,14 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
     // show edges
     {}
 
-    let F0 = vec3<f32>(0.04, 0.04, 0.04);
-	let D = DistributionGGX(normal, half_dir, 0.6);
-    let F = fresnelSchlick(dot(half_dir, normal), F0);
-    let G = GeometrySmith(normal, view_dir, light_dir, 0.6);
-    let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
-    let kd = 1.0;
-    let lambertian = data_color;
-    let result = (kd * lambertian + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
+    var out: MaterialOutput;
+    out.position = vec4<f32>(in.world_position, 1.);
+    out.albedo = vec4<f32>(data_color, 1.);
+    //out.normal = vec4<f32>((normal + vec3<f32>(256. / 255.)) * 255. / 256. / 2., 0.);
+    out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
+    //out.normal = vec4<f32>(normal, 0.);
 
-    return vec4<f32>(result, 1.);
+    return out;
 }}"};}
 
 const COLORMAP_ISOLINES_UNIFORM: &str = "

@@ -4,7 +4,7 @@ use super::{PCSettings, CloudGeometry};
 use wgpu::util::DeviceExt;
 use super::{Vertex, SphereVertex};
 use crate::texture;
-use crate::util::create_render_pipeline;
+use crate::util::create_picker_pipeline;
 
 pub struct Picker {
     num_elements: u32,
@@ -129,7 +129,7 @@ impl ElementPicker for Picker {
             label: Some("Point cloud Picker Shader"),
             source: wgpu::ShaderSource::Wgsl(SPHERE_PICKER_SHADER.into()),
         };
-        let render_pipeline = create_render_pipeline(
+        let render_pipeline = create_picker_pipeline(
             device,
             &render_pipeline_layout,
             texture::Texture::PICKER_FORMAT,

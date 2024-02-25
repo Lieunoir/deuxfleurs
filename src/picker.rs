@@ -181,7 +181,7 @@ impl Picker {
         surfaces: &IndexMap<String, Surface>,
         clouds: &IndexMap<String, PointCloud>,
         curves: &IndexMap<String, Curve>,
-    ) {
+    ) -> bool {
         if !self.pick_locked && self.item_to_pick.is_some() {
             {
                 let tex_view = &self.texture_view;
@@ -352,6 +352,9 @@ impl Picker {
                     },
                 );
             }
+            true
+        } else {
+            false
         }
     }
 

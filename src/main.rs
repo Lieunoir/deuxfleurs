@@ -98,7 +98,6 @@ pub async fn run() {
     pc.set_radius(0.02)
         //.set_data(Some("x coord".into()))
         ;
-
     let mut last_selected = 0;
     let mut last_selected_geometry = "".into();
     state.set_callback(move |ui, state| {

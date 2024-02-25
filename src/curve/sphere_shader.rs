@@ -17,6 +17,10 @@ struct TransformUniform {{
     normal: mat4x4<f32>,
 }}
 
+struct Jitter {{
+    jitter: vec4<f32>,
+}}
+
 struct SettingsUniform {{
     radius: f32,
     color: vec3<f32>,
@@ -26,6 +30,8 @@ struct SettingsUniform {{
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
 var<uniform> light: Light;
+@group(0) @binding(2)
+var<uniform> jitter: Jitter;
 
 @group(1) @binding(0)
 var<uniform> transform: TransformUniform;
@@ -73,16 +79,14 @@ fn vs_main(
     let camera_right = normalize(vec3<f32>(camera.view_proj.x.x, camera.view_proj.y.x, camera.view_proj.z.x));
     let camera_up = normalize(vec3<f32>(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
     let world_position = (model_matrix * vec4<f32>(pos.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;
-    out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
+    out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     out.world_pos = world_position;
     out.center = (model_matrix * vec4<f32>(pos.position, 1.)).xyz;
     // Set output
     {}
     return out;
 }}
-
-// PBR functions
-{}
 
 fn sphIntersect( ro: vec3<f32>, rd: vec3<f32>, ce: vec3<f32>, ra: f32 ) -> vec2<f32>
 {{
@@ -97,7 +101,9 @@ fn sphIntersect( ro: vec3<f32>, rd: vec3<f32>, ce: vec3<f32>, ra: f32 ) -> vec2<
 
 struct FragOutput {{
     @builtin(frag_depth) depth: f32,
-    @location(0) color: vec4<f32>,
+    @location(0) position: vec4<f32>,
+    @location(1) albedo: vec4<f32>,
+    @location(2) normal: vec4<f32>,
 }}
 
 @fragment
@@ -122,10 +128,10 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
 
     {}
 
-    {}
-
-	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
-	out.color = vec4<f32>(result, 1.);
+    let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+	out.albedo = vec4<f32>(lambertian, 1.);
+    out.position = vec4<f32>(pos, 0.);
+    out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;
 	return out;
 }}
@@ -182,8 +188,6 @@ struct DataInput {
         output_val,
         input_val,
         set_output,
-        shader::PBR_FUN,
         color_output,
-        shader::PBR_FRAG
     )
 }

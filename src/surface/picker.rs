@@ -1,6 +1,6 @@
 use crate::data::TransformSettings;
 use crate::texture;
-use crate::util::create_render_pipeline;
+use crate::util::create_picker_pipeline;
 use super::{SurfaceSettings, SurfaceGeometry};
 use wgpu::util::DeviceExt;
 use crate::updater::{Render, ElementPicker};
@@ -195,7 +195,7 @@ fn build_render_pipeline(
         label: Some("SurfaceGeometry Picker Shader"),
         source: wgpu::ShaderSource::Wgsl(PICKER_SHADER.into()),
     };
-    create_render_pipeline(
+    create_picker_pipeline(
         device,
         &render_pipeline_layout,
         texture::Texture::PICKER_FORMAT,

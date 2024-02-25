@@ -139,36 +139,11 @@ impl VectorField {
             [-0.1, 0., -0.1],
             [0.1, 0., -0.1],
             [-0.1, 0., 0.1],
-            [-0.1, 0., 0.1],
-            [0.1, 0., -0.1],
             [0.1, 0., 0.1],
-            [0.1, 1., -0.1],
-            [-0.1, 1., -0.1],
-            [-0.1, 1., 0.1],
-            [0.1, 1., -0.1],
             [-0.1, 1., 0.1],
             [0.1, 1., 0.1],
-            /*
-            [-0.1, 0., -0.1],
-            [-0.1, 0., 0.1],
             [-0.1, 1., -0.1],
-            [-0.1, 1., -0.1],
-            [-0.1, 0., 0.1],
-            [-0.1, 1., 0.1],
-
-            [0.1, 0., 0.1],
-            [0.1, 0., -0.1],
             [0.1, 1., -0.1],
-            [0.1, 0., 0.1],
-            [0.1, 1., -0.1],
-            [0.1, 1., 0.1],
-            */
-            [-0.1, 0., 0.1],
-            [0.1, 0., 0.1],
-            [-0.1, 1., 0.1],
-            [-0.1, 1., 0.1],
-            [0.1, 0., 0.1],
-            [0.1, 1., 0.1],
         ];
         let vertices = positions.map(|position| VectorVertex { position });
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -252,7 +227,7 @@ impl VectorField {
             label: Some("arrow shader"),
             source: wgpu::ShaderSource::Wgsl(super::vector_shader::ARROW_SHADER.into()),
         };
-        let render_pipeline = util::create_render_pipeline(
+        let render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
             color_format,
@@ -286,7 +261,8 @@ impl VectorField {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
-            render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+            //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+            render_pass.draw(0..8, 0..(self.vectors.len() as u32));
         }
     }
 

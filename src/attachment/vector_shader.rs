@@ -19,10 +19,16 @@ struct SettingsUniform {
     color: vec3<f32>,
 }
 
+struct Jitter {
+    jitter: vec4<f32>,
+}
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
 var<uniform> light: Light;
+@group(0) @binding(2)
+var<uniform> jitter: Jitter;
 
 @group(1) @binding(0)
 var<uniform> transform: TransformUniform;
@@ -86,7 +92,8 @@ fn vs_main(
 
     let position = rotation_mat * corrected_pos * settings.magnitude + world_vector_pos;
     out.world_pos = position;
-    out.clip_position = camera.view_proj * vec4<f32>(position, 1.0);
+    let clip_pos = camera.view_proj * vec4<f32>(position, 1.0);
+    out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     return out;
 }
 
@@ -161,48 +168,13 @@ fn cylIntersect( ro: vec3<f32>, rd: vec3<f32>, pa: vec3<f32>, pb: vec3<f32>, ra:
     return vec4<f32>(-1.0);//no intersection
 }
 
-const PI: f32 = 3.14159;
-
-// PBR functions taken from https://learnopengl.com/PBR/Theory
-fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {
-    let a2     = a*a;
-    let NdotH  = max(dot(N, H), 0.0);
-    let NdotH2 = NdotH*NdotH;
-
-    let nom    = a2;
-    var denom  = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom        = PI * denom * denom;
-
-    return nom / denom;
-}
-
-fn GeometrySchlickGGX(NdotV: f32, k: f32) -> f32
-{
-    let nom   = NdotV;
-    let denom = NdotV * (1.0 - k) + k;
-
-    return nom / denom;
-}
-
-fn GeometrySmith(N: vec3<f32>, V: vec3<f32>, L: vec3<f32>, k: f32) -> f32
-{
-    let NdotV = max(dot(N, V), 0.0);
-    let NdotL = max(dot(N, L), 0.0);
-    let ggx1 = GeometrySchlickGGX(NdotV, k);
-    let ggx2 = GeometrySchlickGGX(NdotL, k);
-
-    return ggx1 * ggx2;
-}
-
-fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32>
-{
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
 struct FragOutput {
     @builtin(frag_depth) depth: f32,
-    @location(0) color: vec4<f32>,
+    @location(0) position: vec4<f32>,
+    @location(1) albedo: vec4<f32>,
+    @location(2) normal: vec4<f32>,
 }
+
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragOutput {
@@ -223,21 +195,11 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 
 	let pos = ro + traced.x * rd;
 	let normal = traced.yzw;
-	let light_dir = normalize(light.position - pos);
-	let view_dir = normalize(camera.view_pos.xyz - pos);
-	let half_dir = normalize(view_dir + light_dir);
-	let F0 = vec3<f32>(0.04, 0.04, 0.04);
-	let D = DistributionGGX(normal, half_dir, 0.5);
-	let F = fresnelSchlick(dot(half_dir, normal), F0);
-	let G = GeometrySmith(normal, view_dir, light_dir, 0.5);
-	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
-	let kd = 1.0;
-	let lambertian = settings.color;
-	let result = (kd * lambertian + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
-	out.color = vec4<f32>(result, 1.);
+	out.albedo = vec4<f32>(settings.color, 1.);
+    out.position = vec4<f32>(pos, 0.);
+    out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
 	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;
-	//out.depth = in.clip_position.z;
 	return out;
 }
 ";
