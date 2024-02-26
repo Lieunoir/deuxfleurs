@@ -170,9 +170,8 @@ fn cylIntersect( ro: vec3<f32>, rd: vec3<f32>, pa: vec3<f32>, pb: vec3<f32>, ra:
 
 struct FragOutput {
     @builtin(frag_depth) depth: f32,
-    @location(0) position: vec4<f32>,
-    @location(1) albedo: vec4<f32>,
-    @location(2) normal: vec4<f32>,
+    @location(0) albedo: vec4<f32>,
+    @location(1) normal: vec4<f32>,
 }
 
 
@@ -196,7 +195,6 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	let pos = ro + traced.x * rd;
 	let normal = traced.yzw;
 	out.albedo = vec4<f32>(settings.color, 0.1);
-    out.position = vec4<f32>(pos, 0.);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
 	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;

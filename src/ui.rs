@@ -41,7 +41,7 @@ impl UI {
         let rpass = Renderer::new(
             device,
             target_format,
-            Some(crate::texture::Texture::DEPTH_FORMAT),
+            None,
             1,
         );
         let ctx = egui::Context::default();

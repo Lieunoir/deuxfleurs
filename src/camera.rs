@@ -54,6 +54,7 @@ impl Camera {
 pub struct CameraUniform {
     view_position: [f32; 4],
     view_proj: [[f32; 4]; 4],
+    view_inv: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -61,13 +62,16 @@ impl CameraUniform {
         Self {
             view_position: [0.0; 4],
             view_proj: cgmath::Matrix4::identity().into(),
+            view_inv: cgmath::Matrix4::identity().into(),
         }
     }
 
     pub fn update_view_proj(&mut self, camera: &Camera) {
         // We're using Vector4 because ofthe camera_uniform 16 byte spacing requirement
         self.view_position = camera.eye.to_homogeneous().into();
-        self.view_proj = camera.build_view_projection_matrix().into();
+        let view_proj = camera.build_view_projection_matrix();
+        self.view_proj = view_proj.into();
+        self.view_inv = view_proj.inverse_transform().unwrap().into();
     }
 }
 

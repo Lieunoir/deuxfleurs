@@ -296,7 +296,7 @@ impl<'a> State<'a> {
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
 
         let copy = deferred::TextureCopy::new(&device, surface_format, size.width.max(1), size.height.max(1));
-        let pbr_renderer = deferred::PBR::new(&device, surface_format, &camera_light_bind_group_layout, size.width.max(1), size.height.max(1));
+        let pbr_renderer = deferred::PBR::new(&device, surface_format, &depth_texture.view, &camera_light_bind_group_layout, size.width.max(1), size.height.max(1));
         Self {
             surface,
             device,
@@ -351,7 +351,7 @@ impl<'a> State<'a> {
             self.copy
                 .resize(&self.device, self.config.format, new_size.width, new_size.height);
             self.pbr_renderer
-                .resize(&self.device, self.config.format, new_size.width, new_size.height);
+                .resize(&self.device, self.config.format, &self.depth_texture.view, new_size.width, new_size.height);
         }
     }
 
@@ -461,7 +461,6 @@ impl<'a> State<'a> {
             let mut render_copy = false;
 
             let jitter = if scene_changed {
-                self.copy.dirty = true;
                 request_redraw = true;
                 render = true;
                 self.taa_counter = 0;
@@ -474,7 +473,6 @@ impl<'a> State<'a> {
                 if self.taa_counter < self.taa_frames {
                     render = true;
                     render_copy = true;
-                    self.copy.dirty = false;
                     request_redraw = true;
                 }
 
@@ -521,15 +519,7 @@ impl<'a> State<'a> {
                                 },
                             }),
                         ],
-                        // Create a depth stencil buffer using the depth texture
-                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.depth_texture.view,
-                            depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
-                                store: wgpu::StoreOp::Store,
-                            }),
-                            stencil_ops: None,
-                        }),
+                        depth_stencil_attachment: None,
                         occlusion_query_set: None,
                         timestamp_writes: None,
                     });
@@ -538,19 +528,6 @@ impl<'a> State<'a> {
                 let mut material_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Material Render Pass"),
                     color_attachments: &[
-                        Some(wgpu::RenderPassColorAttachment {
-                            view: self.pbr_renderer.get_positions_view(),
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.0,
-                                    g: 0.0,
-                                    b: 0.0,
-                                    a: 0.0,
-                                }),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        }),
                         Some(wgpu::RenderPassColorAttachment {
                             view: self.pbr_renderer.get_albedo_view(),
                             resolve_target: None,
@@ -578,7 +555,6 @@ impl<'a> State<'a> {
                             },
                         }),
                     ],
-                    // Create a depth stencil buffer using the depth texture
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &self.depth_texture.view,
                         depth_ops: Some(wgpu::Operations {
@@ -624,14 +600,7 @@ impl<'a> State<'a> {
                         },
                     })],
                     // Create a depth stencil buffer using the depth texture
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
+                    depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
@@ -647,8 +616,8 @@ impl<'a> State<'a> {
 
             //do blending with previous frame
             if render_copy {
-                let factor = (self.taa_counter as f32 - 1.) / (self.taa_counter as f32);
-                self.copy.blend(&mut self.queue, &mut encoder, factor);
+                let factor = (self.taa_counter as f64 - 1.) / (self.taa_counter as f64);
+                self.copy.blend(&mut encoder, factor, self.taa_counter == 1);
             }
 
             if self.screenshot || (!render || render_copy) {
@@ -673,14 +642,7 @@ impl<'a> State<'a> {
                             store: wgpu::StoreOp::Store,
                         },
                     })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
+                    depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
@@ -690,7 +652,6 @@ impl<'a> State<'a> {
                     ui.render(&mut render_pass, &clipped_primitives, &screen_descriptor);
                 }
                 drop(render_pass);
-                self.copy.save_old(&mut encoder);
             }
         }
 

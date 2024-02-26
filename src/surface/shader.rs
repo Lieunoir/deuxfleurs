@@ -142,18 +142,15 @@ fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32>
 }}
 
 struct MaterialOutput {{
-    @location(0) position: vec4<f32>,
-    @location(1) albedo: vec4<f32>,
-    @location(2) normal: vec4<f32>,
+    @location(0) albedo: vec4<f32>,
+    @location(1) normal: vec4<f32>,
 }};
 
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> MaterialOutput {{
     // We use the special function `textureSample` to combine the texture data with coords
-    let light_dir = normalize(light.position - in.world_position);
     let view_dir = normalize(camera.view_pos.xyz - in.world_position);
-    let half_dir = normalize(view_dir + light_dir);
 
     let normal = select(in.world_normal, -in.world_normal, dot(in.world_normal, view_dir) < 0.);
 
@@ -165,7 +162,6 @@ fn fs_main(in: VertexOutput) -> MaterialOutput {{
     {}
 
     var out: MaterialOutput;
-    out.position = vec4<f32>(in.world_position, 1.);
     out.albedo = vec4<f32>(data_color, 0.6);
     //out.normal = vec4<f32>((normal + vec3<f32>(256. / 255.)) * 255. / 256. / 2., 0.);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);

@@ -49,18 +49,13 @@ pub fn create_render_pipeline(
             entry_point: "fs_main",
             targets: &[
                 Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Rgba16Float,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                }),
-                Some(wgpu::ColorTargetState {
                     format: color_format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 }),
                 Some(wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Rgba8Unorm,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 }),
             ],
@@ -116,7 +111,7 @@ pub fn create_picker_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format: color_format,
-                blend: Some(wgpu::BlendState::REPLACE),
+                blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             }), ],
         }),
@@ -172,13 +167,8 @@ pub fn create_quad_pipeline(
             entry_point: "fs_main",
             targets: &[
                 Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::Rgba16Float,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            }),
-                Some(wgpu::ColorTargetState {
                 format: color_format,
-                blend: Some(wgpu::BlendState::REPLACE),
+                blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             }),
                 Some(wgpu::ColorTargetState {
@@ -222,6 +212,7 @@ pub fn create_copy_quad_pipeline(
     color_format: wgpu::TextureFormat,
     depth_format: Option<wgpu::TextureFormat>,
     vertex_layouts: &[wgpu::VertexBufferLayout],
+    blend_state: Option<wgpu::BlendState>,
     shader: wgpu::ShaderModuleDescriptor,
     label: Option<&str>,
 ) -> wgpu::RenderPipeline {
@@ -240,7 +231,7 @@ pub fn create_copy_quad_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format: color_format,
-                blend: None,
+                blend: blend_state,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
