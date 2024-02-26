@@ -184,13 +184,18 @@ struct DataUniform {
     k_green_vec2: vec4<f32>,
     k_blue_vec4: vec4<f32>,
     k_blue_vec2: vec4<f32>,
+    min: f32,
+    max: f32,
+    _pad1: f32,
+    _pad2: f32,
 }
 
 @group(3) @binding(0)
 var<uniform> data_uniform: DataUniform;
 
 //https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
-fn colormap(x: f32) -> vec3<f32> {
+fn colormap(dist: f32) -> vec3<f32> {
+    let x = (clamp(dist, data_uniform.min, data_uniform.max) - data_uniform.min) / (data_uniform.max - data_uniform.min);
     let v4: vec4<f32> = vec4<f32>(1.0, x, x*x, x*x*x);
     let v2: vec4<f32> = v4 * v4.w * x;
     //let v2: vec2<f32> = vec2<f32>(0., 0.);
@@ -204,15 +209,16 @@ fn colormap(x: f32) -> vec3<f32> {
 
 const COLORMAP_ISOLINES: &str = "
     data_color = colormap(in.data);
-    let scaled_distance = in.data * data_uniform.isoline_number.x;
+    let dist = (clamp(in.data, data_uniform.min, data_uniform.max) - data_uniform.min) / (data_uniform.max - data_uniform.min);
+    let scaled_distance = dist * data_uniform.isoline_number.x;
     //var testVal = 1.;
     //var modVal = modf(scaled_distance, &testVal);
     var modVal = modf(scaled_distance).fract;
     if(modVal < 0.) {{
         modVal += 1.;
     }}
-    let d_dist_x = dpdx(in.data) * data_uniform.isoline_number.x;
-    let d_dist_y = dpdy(in.data) * data_uniform.isoline_number.x;
+    let d_dist_x = dpdx(dist) * data_uniform.isoline_number.x;
+    let d_dist_y = dpdy(dist) * data_uniform.isoline_number.x;
     let d_dist = sqrt(d_dist_x * d_dist_x + d_dist_y * d_dist_y);
     //let remap_1 = smoothstep(0.45, 0.48, modVal);
     //let remap_2 = 1. - smoothstep(0.52, 0.55, modVal);
@@ -229,13 +235,18 @@ struct DataUniform {
     k_green_vec2: vec4<f32>,
     k_blue_vec4: vec4<f32>,
     k_blue_vec2: vec4<f32>,
+    min: f32,
+    max: f32,
+    _pad1: f32,
+    _pad2: f32,
 }
 
 @group(3) @binding(0)
 var<uniform> data_uniform: DataUniform;
 
 //https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
-fn colormap(x: f32) -> vec3<f32> {
+fn colormap(dist: f32) -> vec3<f32> {
+    let x = (clamp(dist, data_uniform.min, data_uniform.max) - data_uniform.min) / (data_uniform.max - data_uniform.min);
     let v4: vec4<f32> = vec4<f32>(1.0, x, x*x, x*x*x);
     let v2: vec4<f32> = v4 * v4.w * x;
     //let v2: vec2<f32> = vec2<f32>(0., 0.);

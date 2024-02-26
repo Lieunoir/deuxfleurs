@@ -32,6 +32,7 @@ mod util;
 mod surface;
 mod attachment;
 mod deferred;
+mod settings;
 use camera::{Camera, CameraController, CameraUniform};
 use curve::Curve;
 use surface::Surface;
@@ -476,7 +477,6 @@ impl<'a> State<'a> {
                     render_copy = true;
                     self.copy.dirty = false;
                     request_redraw = true;
-                    //self.refresh();
                 }
 
                 let mut rng = rand::thread_rng();

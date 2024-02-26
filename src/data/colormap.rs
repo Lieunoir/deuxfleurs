@@ -1,16 +1,28 @@
 use crate::ui::UiDataElement;
 use wgpu::util::DeviceExt;
+use egui::{Color32, DragValue, Pos2, Stroke, Visuals};
+use epaint::PathShape;
+use egui::Shape::Path;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct ColorMapValues {
+pub struct ColorsValues {
     pub red: [f32; 8],
     pub green: [f32; 8],
     pub blue: [f32; 8],
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ColorMapValues {
+    colors: ColorsValues,
+    min: f32,
+    max: f32,
+    _pad: [u32; 2],
+}
+
 #[derive(Copy, Clone, PartialEq)]
-pub enum ColorMap {
+pub enum Colors {
     Turbo,
     Viridis,
     Inferno,
@@ -19,13 +31,35 @@ pub enum ColorMap {
     Coolwarm,
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub struct ColorMap {
+    colors: Colors,
+    min: f64,
+    max: f64,
+}
+
 impl Default for ColorMap {
     fn default() -> Self {
-        ColorMap::Plasma
+        Self {
+            colors: Colors::Plasma,
+            min: 0.,
+            max: 1.,
+        }
     }
 }
 
 impl ColorMap {
+    pub fn get_value(&self) -> ColorMapValues {
+        ColorMapValues {
+            colors: self.colors.get_value(),
+            min: self.min as f32,
+            max: self.max as f32,
+            _pad: [0; 2],
+        }
+    }
+}
+
+impl Colors {
     pub const LAYOUT_ENTRY: wgpu::BindGroupLayoutEntry = wgpu::BindGroupLayoutEntry {
         binding: 1,
         visibility: wgpu::ShaderStages::FRAGMENT,
@@ -38,7 +72,7 @@ impl ColorMap {
     };
 
     // from https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
-    pub const TURBO: ColorMapValues = ColorMapValues {
+    pub const TURBO: ColorsValues = ColorsValues {
         red: [
             0.13572138,
             4.61539260,
@@ -70,7 +104,7 @@ impl ColorMap {
             0.,
         ],
     };
-    pub const VIRIDIS: ColorMapValues = ColorMapValues {
+    pub const VIRIDIS: ColorsValues = ColorsValues {
         red: [
             0.26626816, 3.7648385, -60.260567, 359.6886, -1049.4519, 1574.2263, -1160.1252,
             332.88736,
@@ -90,7 +124,7 @@ impl ColorMap {
             -168.89499,
         ],
     };
-    pub const INFERNO: ColorMapValues = ColorMapValues {
+    pub const INFERNO: ColorsValues = ColorsValues {
         red: [
             -0.00016338378,
             -0.073518544,
@@ -123,7 +157,7 @@ impl ColorMap {
         ],
     };
 
-    pub const MAGMA: ColorMapValues = ColorMapValues {
+    pub const MAGMA: ColorsValues = ColorsValues {
         red: [
             0.00021596998,
             -0.5137123,
@@ -156,7 +190,7 @@ impl ColorMap {
         ],
     };
 
-    pub const PLASMA: ColorMapValues = ColorMapValues {
+    pub const PLASMA: ColorsValues = ColorsValues {
         red: [
             0.05102612, 2.7417765, -10.374987, 47.75827, -122.86391, 167.50691, -115.23589,
             31.357975,
@@ -176,7 +210,7 @@ impl ColorMap {
         ],
     };
 
-    pub const COOLWARM: ColorMapValues = ColorMapValues {
+    pub const COOLWARM: ColorsValues = ColorsValues {
         red: [
             0.23141083,
             1.0209837,
@@ -202,54 +236,164 @@ impl ColorMap {
         ],
     };
 
-    pub fn get_value(&self) -> ColorMapValues {
+    pub fn get_value(&self) -> ColorsValues {
         match self {
-            ColorMap::Turbo => ColorMap::TURBO,
-            ColorMap::Viridis => ColorMap::VIRIDIS,
-            ColorMap::Inferno => ColorMap::INFERNO,
-            ColorMap::Magma => ColorMap::MAGMA,
-            ColorMap::Plasma => ColorMap::PLASMA,
-            ColorMap::Coolwarm => ColorMap::COOLWARM,
+            Colors::Turbo => Colors::TURBO,
+            Colors::Viridis => Colors::VIRIDIS,
+            Colors::Inferno => Colors::INFERNO,
+            Colors::Magma => Colors::MAGMA,
+            Colors::Plasma => Colors::PLASMA,
+            Colors::Coolwarm => Colors::COOLWARM,
         }
     }
 
     pub fn get_name(&self) -> &str {
         match self {
-            ColorMap::Turbo => "Turbo",
-            ColorMap::Viridis => "Viridis",
-            ColorMap::Inferno => "Inferno",
-            ColorMap::Magma => "Magma",
-            ColorMap::Plasma => "Plasma",
-            ColorMap::Coolwarm => "Coolwarm",
+            Colors::Turbo => "Turbo",
+            Colors::Viridis => "Viridis",
+            Colors::Inferno => "Inferno",
+            Colors::Magma => "Magma",
+            Colors::Plasma => "Plasma",
+            Colors::Coolwarm => "Coolwarm",
         }
     }
+}
+
+pub fn windowing_ui(
+    ui: &mut egui::Ui,
+    width: &f64,
+    height: &f64,
+    min: f64,
+    max: f64,
+    lb: &mut f64,
+    ub: &mut f64,
+) -> egui::Response {
+    let desired_size = egui::vec2(*width as f32, *height as f32 / 10.0);
+    let (rect, mut response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
+    let color: Color32;
+    let range = max - min;
+    if ui.visuals() == &Visuals::dark() {
+        color = Color32::WHITE;
+    } else {
+        color = Color32::BLACK;
+    }
+    if ui.is_rect_visible(rect) {
+        let visuals = ui.style().interact(&response);
+        let bar_line = vec![rect.left_center(), rect.right_center()];
+        ui.painter().add(Path(PathShape::line(
+            bar_line,
+            Stroke::new(*height as f32 / 20.0, visuals.bg_fill),
+        )));
+        let mut bounds_i = [0.0; 2];
+        bounds_i[0] = *lb / range * width;
+        bounds_i[1] = *ub / range * width;
+        let mut lb_pos = Pos2 {
+            x: rect.left_center().x + bounds_i[0] as f32,
+            y: rect.left_center().y,
+        };
+        let mut ub_pos = Pos2 {
+            x: rect.left_center().x + bounds_i[1] as f32,
+            y: rect.right_center().y,
+        };
+
+        if response.dragged() {
+            let pos = response.interact_pointer_pos();
+
+            match pos {
+                None => {}
+                Some(p) => {
+                    if lb_pos.x - *width as f32 / 10.0 < p.x
+                        && p.x < lb_pos.x + *width as f32 / 10.0
+                            && lb_pos.y - *height as f32 / 5.0 < p.y
+                            && p.y < lb_pos.y + *height as f32 / 5.0
+                    {
+                        // dragging the lower one
+                        lb_pos.x = f32::min(f32::max(p.x, rect.left_center().x), ub_pos.x);
+                        response.mark_changed();
+                    } else if ub_pos.x - *width as f32 / 10.0 < p.x
+                        && p.x < ub_pos.x + *width as f32 / 10.0
+                            && ub_pos.y - *height as f32 / 5.0 < p.y
+                            && p.y < ub_pos.y + *height as f32 / 5.0
+                    {
+                        // dragging the upper one
+                        ub_pos.x = f32::max(f32::min(p.x, rect.right_center().x), lb_pos.x);
+                        response.mark_changed();
+                    }
+                }
+            }
+        }
+
+        bounds_i[0] = lb_pos.x as f64 - rect.left_center().x as f64;
+        *lb = bounds_i[0] / width * range;
+        bounds_i[1] = ub_pos.x as f64 - rect.left_center().x as f64;
+        *ub = bounds_i[1] / width * range;
+
+        let bar_line = vec![lb_pos, ub_pos];
+        ui.painter().add(Path(PathShape::line(
+            bar_line,
+            Stroke::new(*height as f32 / 20.0, visuals.fg_stroke.color),
+        )));
+        let radius = *width as f32 / 20.;
+        ui.painter().add(epaint::CircleShape {
+            center: lb_pos,
+            radius: radius,
+            fill: visuals.bg_fill,
+            stroke: visuals.fg_stroke,
+        });
+        ui.painter().add(epaint::CircleShape {
+            center: ub_pos,
+            radius: radius,
+            fill: visuals.bg_fill,
+            stroke: visuals.fg_stroke,
+        });
+
+        /*
+        ui.vertical_centered(|ui| {
+            ui.horizontal(|ui| {
+                ui.add(
+                    DragValue::new( lb)
+                        .clamp_range(min..=*ub),
+                );
+                //ui.add_space(2.0 * ui.available_width() - *width as f32 / 0.85);
+                ui.add(
+                    DragValue::new( ub)
+                        .clamp_range(*lb..=max),
+                );
+            });
+        });*/
+    }
+    response
 }
 
 impl UiDataElement for ColorMap {
     fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
         let mut changed = false;
         egui::ComboBox::from_label("ColorMap")
-            .selected_text(self.get_name())
+            .selected_text(self.colors.get_name())
             .show_ui(ui, |ui| {
                 changed |= ui
-                    .selectable_value(self, ColorMap::Turbo, "Turbo")
+                    .selectable_value(&mut self.colors, Colors::Turbo, "Turbo")
                     .changed();
                 changed |= ui
-                    .selectable_value(self, ColorMap::Viridis, "Viridis")
+                    .selectable_value(&mut self.colors, Colors::Viridis, "Viridis")
                     .changed();
                 changed |= ui
-                    .selectable_value(self, ColorMap::Inferno, "Inferno")
+                    .selectable_value(&mut self.colors, Colors::Inferno, "Inferno")
                     .changed();
                 changed |= ui
-                    .selectable_value(self, ColorMap::Magma, "Magma")
+                    .selectable_value(&mut self.colors, Colors::Magma, "Magma")
                     .changed();
                 changed |= ui
-                    .selectable_value(self, ColorMap::Plasma, "Plasma")
+                    .selectable_value(&mut self.colors, Colors::Plasma, "Plasma")
                     .changed();
                 changed |= ui
-                    .selectable_value(self, ColorMap::Coolwarm, "Coolwarm")
+                    .selectable_value(&mut self.colors, Colors::Coolwarm, "Coolwarm")
                     .changed();
             });
+        ui.horizontal(|ui| {
+            changed |= windowing_ui(ui, &100., &100., 0., 1., &mut self.min, &mut self.max).changed();
+            ui.label("Range");
+        });
         changed
     }
 }
