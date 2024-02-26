@@ -225,6 +225,7 @@ impl TextureCopy {
             Some("blend render"),
         );
 
+
         Self {
             square,
             copy_bind_group_layout,
@@ -323,6 +324,7 @@ pub struct PBR {
     normals: wgpu::Texture,
     normals_view: wgpu::TextureView,
     square: wgpu::Buffer,
+	sampler: wgpu::Sampler,
 
     material_bind_group: wgpu::BindGroup,
     material_bind_group_layout: wgpu::BindGroupLayout,
@@ -391,6 +393,10 @@ impl PBR {
                         binding: 2,
                         resource: wgpu::BindingResource::TextureView(depth_view),
                     },
+					wgpu::BindGroupEntry {
+						binding: 3,
+						resource: wgpu::BindingResource::Sampler(&self.sampler),
+					}
                 ],
                 label: Some("pbr_material_bind_group"),
             }
@@ -447,6 +453,15 @@ impl PBR {
         let albedo_view = albedo.create_view(&wgpu::TextureViewDescriptor::default());
         let normals = device.create_texture(&descriptor);
         let normals_view = normals.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
 
         let material_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -477,10 +492,19 @@ impl PBR {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Depth,
+                            //sample_type: wgpu::TextureSampleType::Depth,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
                         },
                         count: None,
                     },
+					wgpu::BindGroupLayoutEntry {
+						binding: 3,
+						visibility: wgpu::ShaderStages::FRAGMENT,
+						// This should match the filterable field of the
+						// corresponding Texture entry above.
+						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+						count: None,
+					},
                 ],
                 label: Some("pbr_material_bind_group_layout"),
             });
@@ -501,6 +525,10 @@ impl PBR {
                         binding: 2,
                         resource: wgpu::BindingResource::TextureView(depth_view),
                     },
+					wgpu::BindGroupEntry {
+						binding: 3,
+						resource: wgpu::BindingResource::Sampler(&sampler),
+					}
                 ],
                 label: Some("pbr_material_bind_group"),
             }
@@ -536,6 +564,7 @@ impl PBR {
             normals,
             normals_view,
             square,
+			sampler,
 
             material_bind_group,
             material_bind_group_layout,
@@ -576,7 +605,10 @@ var t_a: texture_2d<f32>;
 @group(1) @binding(1)
 var t_n: texture_2d<f32>;
 @group(1) @binding(2)
-var t_d: texture_depth_2d;
+//var t_d: texture_depth_2d;
+var t_d: texture_2d<f32>;
+@group(1) @binding(3)
+var s: sampler;
 
 
 struct VertexInput {
@@ -649,9 +681,10 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) vec4<f32> {
     if(albedo.w < 0.01) {
         discard;
     }
-    let depth = textureLoad(t_d, coords, 0);
     //let position = textureLoad(t_pos, coords, 0).xyz;
     let buffer_size = textureDimensions(t_d);
+    //let depth = textureLoad(t_d, coords, 0).x;
+    let depth = textureSample(t_d, s, fcoords.xy / vec2<f32>(buffer_size)).x;
     let position = world_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size), depth);
     let normal   = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
     //let normal   = textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.);
