@@ -936,7 +936,7 @@ fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32>
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let albedo   = textureSample(t_a  , s, in.tex_coords);
-    if(albedo.w < 0.1) {
+    if(albedo.w < 0.01) {
         discard;
     }
     let position = textureSample(t_pos, s, in.tex_coords).xyz;
@@ -955,9 +955,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	let light_dir = normalize(light.position - position);
 	let half_dir = normalize(view_dir + light_dir);
 	let F0 = vec3<f32>(0.04, 0.04, 0.04);
-	let D = DistributionGGX(normal, half_dir, 0.6);
+	let D = DistributionGGX(normal, half_dir, albedo.w);
 	let F = fresnelSchlick(dot(half_dir, normal), F0);
-	let G = GeometrySmith(normal, view_dir, light_dir, 0.6);
+	let G = GeometrySmith(normal, view_dir, light_dir, albedo.w);
 	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
 	let kd = 1.0;
 	let result = (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);

@@ -178,7 +178,7 @@ pub fn create_quad_pipeline(
             }),
                 Some(wgpu::ColorTargetState {
                 format: color_format,
-                blend: None,
+                blend: Some(wgpu::BlendState::REPLACE),
                 write_mask: wgpu::ColorWrites::ALL,
             }),
                 Some(wgpu::ColorTargetState {

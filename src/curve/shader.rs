@@ -147,7 +147,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
     {}
 
     let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
-	out.albedo = vec4<f32>(lambertian, 1.);
+	out.albedo = vec4<f32>(lambertian, 0.3);
     out.position = vec4<f32>(pos, 0.);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;

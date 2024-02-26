@@ -540,7 +540,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	let pos = ro + t.x * rd;
 	let normal = normalize(pos - ce);
 
-	out.albedo = vec4<f32>(settings.color, 1.);
+	out.albedo = vec4<f32>(settings.color, 0.2);
     out.position = vec4<f32>(pos, 0.);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
 	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);

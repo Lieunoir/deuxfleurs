@@ -1,6 +1,6 @@
 use crate::ui::UiDataElement;
 use wgpu::util::DeviceExt;
-use egui::{Color32, DragValue, Pos2, Stroke, Visuals};
+use egui::{Pos2, Stroke};
 use epaint::PathShape;
 use egui::Shape::Path;
 
@@ -269,14 +269,8 @@ pub fn windowing_ui(
     ub: &mut f64,
 ) -> egui::Response {
     let desired_size = egui::vec2(*width as f32, *height as f32 / 10.0);
-    let (rect, mut response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
-    let color: Color32;
+    let (rect, mut response) = ui.allocate_exact_size(desired_size, egui::Sense::drag());
     let range = max - min;
-    if ui.visuals() == &Visuals::dark() {
-        color = Color32::WHITE;
-    } else {
-        color = Color32::BLACK;
-    }
     if ui.is_rect_visible(rect) {
         let visuals = ui.style().interact(&response);
         let bar_line = vec![rect.left_center(), rect.right_center()];
@@ -302,19 +296,14 @@ pub fn windowing_ui(
             match pos {
                 None => {}
                 Some(p) => {
-                    if lb_pos.x - *width as f32 / 10.0 < p.x
-                        && p.x < lb_pos.x + *width as f32 / 10.0
-                            && lb_pos.y - *height as f32 / 5.0 < p.y
-                            && p.y < lb_pos.y + *height as f32 / 5.0
+                    let dist_1 = (lb_pos.x - p.x).abs();
+                    let dist_2 = (ub_pos.x - p.x).abs();
+                    if dist_1 < dist_2
                     {
                         // dragging the lower one
                         lb_pos.x = f32::min(f32::max(p.x, rect.left_center().x), ub_pos.x);
                         response.mark_changed();
-                    } else if ub_pos.x - *width as f32 / 10.0 < p.x
-                        && p.x < ub_pos.x + *width as f32 / 10.0
-                            && ub_pos.y - *height as f32 / 5.0 < p.y
-                            && p.y < ub_pos.y + *height as f32 / 5.0
-                    {
+                    } else                     {
                         // dragging the upper one
                         ub_pos.x = f32::max(f32::min(p.x, rect.right_center().x), lb_pos.x);
                         response.mark_changed();
