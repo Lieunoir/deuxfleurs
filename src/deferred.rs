@@ -199,7 +199,7 @@ impl TextureCopy {
             color_format,
             None,
             &[SquareVertex::desc()],
-            None,
+            Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
             copy_shader.clone(),
             Some("copy render"),
         );
@@ -246,9 +246,9 @@ impl TextureCopy {
     {
         let load_op = if first {
             wgpu::LoadOp::Clear(wgpu::Color {
-                r: 0.1,
-                g: 0.2,
-                b: 0.3,
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
                 a: 0.0,
             })
         } else {
@@ -709,5 +709,684 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) vec4<f32> {
 	let result = (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
 
     return vec4<f32>(result, 1.0);
+}
+";
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct GroundLevel {
+    level: f32,
+    padding: [f32; 3],
+}
+
+pub struct Ground {
+    square: wgpu::Buffer,
+    blur_pipeline: wgpu::RenderPipeline,
+    h_blur_pipeline: wgpu::RenderPipeline,
+    pipeline: wgpu::RenderPipeline,
+    blurred_texture: wgpu::Texture,
+    blurred_texture_view: wgpu::TextureView,
+    h_blurred_texture_view: wgpu::TextureView,
+    low_blurred_texture_view: wgpu::TextureView,
+    low_h_blurred_texture_view: wgpu::TextureView,
+    material_bind_group: wgpu::BindGroup,
+    blur_bind_group: wgpu::BindGroup,
+    h_blur_bind_group: wgpu::BindGroup,
+    low_blur_bind_group: wgpu::BindGroup,
+    low_h_blur_bind_group: wgpu::BindGroup,
+    material_bind_group_layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+    level_buffer: wgpu::Buffer,
+    pub level: f32,
+}
+
+impl Ground {
+    pub fn get_texture_view(&self) -> &wgpu::TextureView {
+        &self.blurred_texture_view
+    }
+
+    pub fn set_level(&mut self, queue: &mut wgpu::Queue, level: f32) {
+        self.level = level;
+        let level = GroundLevel {
+            level,
+            padding: [0.; 3],
+        };
+        queue.write_buffer(
+            &self.level_buffer,
+            0,
+            bytemuck::cast_slice(&[level]),
+        );
+    }
+
+    pub fn new(
+        device: &wgpu::Device,
+        color_format: wgpu::TextureFormat,
+        depth_view: &wgpu::TextureView,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        level: f32,
+    ) -> Self {
+        let level = GroundLevel {
+            level,
+            padding: [0.; 3],
+        };
+        let positions = [
+            [0., 0., 0.],
+            [1., 0., 0.],
+            [0., 1., 0.],
+            [1., 1., 0.],
+        ];
+        let vertices = positions.map(|position| SquareVertex { position });
+        let square = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Shadow Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let size = wgpu::Extent3d {
+            width: 1024,
+            height: 1024,
+            depth_or_array_layers: 1,
+        };
+        let low_size = wgpu::Extent3d {
+            width: 512,
+            height: 512,
+            depth_or_array_layers: 1,
+        };
+        let desc = wgpu::TextureDescriptor {
+            label: Some("Shadow texture"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: texture::Texture::SHADOW_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        };
+        let low_desc = wgpu::TextureDescriptor {
+            label: Some("Shadow texture"),
+            size: low_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: texture::Texture::SHADOW_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        };
+        let blurred_texture = device.create_texture(&desc);
+        let h_blurred_texture = device.create_texture(&desc);
+        let blurred_texture_view = blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let h_blurred_texture_view = h_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let low_blurred_texture = device.create_texture(&low_desc);
+        let low_h_blurred_texture = device.create_texture(&low_desc);
+        let low_blurred_texture_view = low_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let low_h_blurred_texture_view = low_h_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let material_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+					wgpu::BindGroupLayoutEntry {
+						binding: 1,
+						visibility: wgpu::ShaderStages::FRAGMENT,
+						// This should match the filterable field of the
+						// corresponding Texture entry above.
+						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+						count: None,
+					},
+                ],
+                label: Some("shadow_material_bind_group_layout"),
+            });
+
+        let material_ground_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+					wgpu::BindGroupLayoutEntry {
+						binding: 1,
+						visibility: wgpu::ShaderStages::FRAGMENT,
+						// This should match the filterable field of the
+						// corresponding Texture entry above.
+						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+						count: None,
+					},
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+                label: Some("shadow_material_bind_group_layout"),
+            });
+
+        let h_blur_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &material_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&blurred_texture_view),
+                    },
+					wgpu::BindGroupEntry {
+						binding: 1,
+						resource: wgpu::BindingResource::Sampler(&sampler),
+					}
+                ],
+                label: Some("blur_shadow_material_bind_group"),
+            }
+        );
+
+        let blur_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &material_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&h_blurred_texture_view),
+                    },
+					wgpu::BindGroupEntry {
+						binding: 1,
+						resource: wgpu::BindingResource::Sampler(&sampler),
+					}
+                ],
+                label: Some("blur_shadow_material_bind_group"),
+            }
+        );
+        let low_h_blur_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &material_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&low_blurred_texture_view),
+                    },
+					wgpu::BindGroupEntry {
+						binding: 1,
+						resource: wgpu::BindingResource::Sampler(&sampler),
+					}
+                ],
+                label: Some("blur_shadow_material_bind_group"),
+            }
+        );
+
+        let low_blur_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &material_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&low_h_blurred_texture_view),
+                    },
+					wgpu::BindGroupEntry {
+						binding: 1,
+						resource: wgpu::BindingResource::Sampler(&sampler),
+					}
+                ],
+                label: Some("blur_shadow_material_bind_group"),
+            }
+        );
+
+        let level_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Ground Level Buffer"),
+            contents: bytemuck::cast_slice(&[level]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let material_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &material_ground_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&blurred_texture_view),
+                    },
+					wgpu::BindGroupEntry {
+						binding: 1,
+						resource: wgpu::BindingResource::Sampler(&sampler),
+					},
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: level_buffer.as_entire_binding(),
+                    },
+                ],
+                label: Some("shadow_material_bind_group"),
+            }
+        );
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Shadow Pipeline Layout"),
+            bind_group_layouts: &[
+                camera_light_bind_group_layout,
+                &material_ground_bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
+
+        let blur_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Shadow Pipeline Layout"),
+            bind_group_layouts: &[
+                camera_light_bind_group_layout,
+                &material_bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
+
+        let shader = wgpu::ShaderModuleDescriptor {
+            label: Some("shadow shader"),
+            source: wgpu::ShaderSource::Wgsl(SHADOW_SHADER.into()),
+        };
+
+        let blur_shader = wgpu::ShaderModuleDescriptor {
+            label: Some("shadow shader"),
+            source: wgpu::ShaderSource::Wgsl(BLUR_SHADER.into()),
+        };
+
+        let h_blur_shader = wgpu::ShaderModuleDescriptor {
+            label: Some("shadow shader"),
+            source: wgpu::ShaderSource::Wgsl(H_BLUR_SHADER.into()),
+        };
+        let pipeline = util::create_double_sided_copy_quad_pipeline(
+            device,
+            &pipeline_layout,
+            color_format,
+            Some(texture::Texture::DEPTH_FORMAT),
+            &[SquareVertex::desc()],
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            shader,
+            Some("shadow render"),
+        );
+
+        let blur_pipeline = util::create_double_sided_copy_quad_pipeline(
+            device,
+            &blur_pipeline_layout,
+            texture::Texture::SHADOW_FORMAT,
+            None,
+            &[SquareVertex::desc()],
+            None,
+            blur_shader,
+            Some("blur shadow render"),
+        );
+
+        let h_blur_pipeline = util::create_double_sided_copy_quad_pipeline(
+            device,
+            &blur_pipeline_layout,
+            texture::Texture::SHADOW_FORMAT,
+            None,
+            &[SquareVertex::desc()],
+            None,
+            h_blur_shader,
+            Some("horizontal blur shadow render"),
+        );
+
+        Self {
+            square,
+            pipeline,
+            blur_pipeline,
+            h_blur_pipeline,
+            blurred_texture,
+            blurred_texture_view,
+            h_blurred_texture_view,
+            low_blurred_texture_view,
+            low_h_blurred_texture_view,
+            material_bind_group,
+            blur_bind_group,
+            h_blur_bind_group,
+            low_blur_bind_group,
+            low_h_blur_bind_group,
+            material_bind_group_layout,
+            sampler,
+            level_buffer,
+            level: level.level,
+        }
+    }
+
+    pub fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(1, &self.material_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.square.slice(..));
+        render_pass.draw(0..4, 0..1);
+    }
+
+    fn first_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_light_bind_group: &wgpu::BindGroup) {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Horizontal Blur Shadow Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.low_h_blurred_texture_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        render_pass.set_pipeline(&self.h_blur_pipeline);
+        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.h_blur_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.square.slice(..));
+        render_pass.draw(0..4, 0..1);
+        drop(render_pass);
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Blur Shadow Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.low_blurred_texture_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        render_pass.set_pipeline(&self.blur_pipeline);
+        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.low_blur_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.square.slice(..));
+        render_pass.draw(0..4, 0..1);
+    }
+
+    fn second_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_light_bind_group: &wgpu::BindGroup) {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Horizontal Blur Shadow Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.h_blurred_texture_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        render_pass.set_pipeline(&self.h_blur_pipeline);
+        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.low_h_blur_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.square.slice(..));
+        render_pass.draw(0..4, 0..1);
+        drop(render_pass);
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Blur Shadow Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.blurred_texture_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        render_pass.set_pipeline(&self.blur_pipeline);
+        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.blur_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.square.slice(..));
+        render_pass.draw(0..4, 0..1);
+    }
+
+    pub fn blur(&self, encoder: &mut wgpu::CommandEncoder, camera_light_bind_group: &wgpu::BindGroup) {
+        self.first_pass(encoder, camera_light_bind_group);
+        self.second_pass(encoder, camera_light_bind_group);
+    }
+}
+
+const H_BLUR_SHADER: &str = "
+struct CameraUniform {
+    view_pos: vec4<f32>,
+    view_proj: mat4x4<f32>,
+    view_inv: mat4x4<f32>,
+    min_bb: vec2<f32>,
+    max_bb: vec2<f32>,
+}
+
+struct Light {
+    position: vec3<f32>,
+    color: vec3<f32>,
+}
+
+@group(0) @binding(0)
+var<uniform> camera: CameraUniform;
+@group(0) @binding(1)
+var<uniform> light: Light;
+@group(1) @binding(0)
+var t_a: texture_2d<f32>;
+@group(1) @binding(1)
+var s: sampler;
+
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) tex_coords: vec2<f32>,
+}
+
+@vertex
+fn vs_main(
+    model: VertexInput,
+    ) -> VertexOutput {
+    var out: VertexOutput;
+    let clip_pos = vec4<f32>(model.position.x * 2. - 1., model.position.y * 2. - 1., 0., 1.);
+
+    out.tex_coords = model.position.xy;
+    out.clip_position = clip_pos;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) f32 {
+    var OFFSET = array(0.0, 1.3846153846, 3.2307692308);
+    var WEIGHT = array(0.2270270270, 0.3162162162, 0.0702702703);
+    let buffer_size = vec2<f32>(textureDimensions(t_a));
+    let coords = in.tex_coords;
+    var weight = textureSample(t_a, s, coords).x * WEIGHT[0];
+    let dpx = buffer_size.x;
+    for (var r = 1; r < 3; r++) {
+        weight += textureSample(t_a, s, coords + vec2<f32>(OFFSET[r] / dpx ,0.)).x * WEIGHT[r];
+        weight += textureSample(t_a, s, coords - vec2<f32>(OFFSET[r] / dpx ,0.)).x * WEIGHT[r];
+    }
+    return weight;
+}
+";
+
+const BLUR_SHADER: &str = "
+struct CameraUniform {
+    view_pos: vec4<f32>,
+    view_proj: mat4x4<f32>,
+    view_inv: mat4x4<f32>,
+    min_bb: vec2<f32>,
+    max_bb: vec2<f32>,
+}
+
+struct Light {
+    position: vec3<f32>,
+    color: vec3<f32>,
+}
+
+@group(0) @binding(0)
+var<uniform> camera: CameraUniform;
+@group(0) @binding(1)
+var<uniform> light: Light;
+@group(1) @binding(0)
+var t_a: texture_2d<f32>;
+@group(1) @binding(1)
+var s: sampler;
+
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) tex_coords: vec2<f32>,
+}
+
+@vertex
+fn vs_main(
+    model: VertexInput,
+    ) -> VertexOutput {
+    var out: VertexOutput;
+    let clip_pos = vec4<f32>(model.position.x * 2. - 1., model.position.y * 2. - 1., 0., 1.);
+
+    out.clip_position = clip_pos;
+    out.tex_coords = model.position.xy;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) f32 {
+    var OFFSET = array(0.0, 1.3846153846, 3.2307692308);
+    var WEIGHT = array(0.2270270270, 0.3162162162, 0.0702702703);
+    let buffer_size = vec2<f32>(textureDimensions(t_a));
+    let coords = in.tex_coords;
+    var weight = textureSample(t_a, s, coords).x * WEIGHT[0];
+    let dpy = buffer_size.y;
+    for (var r = 1; r < 3; r++) {
+        weight += textureSample(t_a, s, coords + vec2<f32>(0., OFFSET[r] / dpy)).x * WEIGHT[r];
+        weight += textureSample(t_a, s, coords - vec2<f32>(0., OFFSET[r] / dpy)).x * WEIGHT[r];
+    }
+    return weight;
+}
+";
+
+const SHADOW_SHADER: &str = "
+struct CameraUniform {
+    view_pos: vec4<f32>,
+    view_proj: mat4x4<f32>,
+    view_inv: mat4x4<f32>,
+    min_bb: vec2<f32>,
+    max_bb: vec2<f32>,
+}
+
+struct Light {
+    position: vec3<f32>,
+    color: vec3<f32>,
+}
+
+struct GroundLevel {
+    level: f32,
+    _pad1: f32,
+    _pad2: f32,
+    _pad3: f32,
+}
+
+@group(0) @binding(0)
+var<uniform> camera: CameraUniform;
+@group(0) @binding(1)
+var<uniform> light: Light;
+@group(1) @binding(0)
+var t_a: texture_2d<f32>;
+@group(1) @binding(1)
+var s: sampler;
+@group(1) @binding(2)
+var<uniform> level: GroundLevel;
+
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) tex_coords: vec2<f32>,
+}
+
+@vertex
+fn vs_main(
+    model: VertexInput,
+    ) -> VertexOutput {
+    var out: VertexOutput;
+    let world_pos = vec4<f32>(camera.min_bb.x + model.position.x * camera.max_bb.x, level.level, camera.min_bb.y + model.position.y * camera.max_bb.y, 1.);
+
+    out.clip_position = camera.view_proj * world_pos;
+    out.tex_coords = vec2<f32>(model.position.x, 1. - model.position.y);
+    //out.clip_position = vec4<f32>(model.position, 1.);
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    //let coords = in.clip_position.xy;
+    //let weight = textureLoad(t_a, 0, coords);
+    let weight = textureSample(t_a, s, in.tex_coords).x;
+    //let buffer_size = vec2<f32>(textureDimensions(t_a));
+    //var weight = 0.;
+    //var tot_weight = 0.;
+    //let radius = 5;
+    ////let dpx = sqrt(dpdx(coords.x) * dpdx(coords.x) + dpdy(coords.x) * dpdy(coords.x)) * 200.;
+    ////let dpy = sqrt(dpdx(coords.y) * dpdx(coords.y) + dpdy(coords.y) * dpdy(coords.y)) * 200.;
+    //let dpx = buffer_size.x * camera.max_bb.x / 5.;
+    //let dpy = buffer_size.y * camera.max_bb.y / 5.;
+    //for (var r = 0; r < radius; r++) {
+    //    for (var c = 0; c < radius; c++) {
+    //        let w = exp((-f32(r*r)-f32(c*c))/(2.0*f32(radius*radius)));
+    //        //let w = 1.;
+    //        tot_weight += w;
+    //        weight += w*textureSample(t_a, s, in.tex_coords + vec2<f32>(f32(r- radius/2) / dpx , f32(c- radius/2) / dpy)).x;
+    //        //weight += textureSample(t_a, s, in.tex_coords + vec2<f32>(f32(r- radius/2) / dpx , f32(c- radius/2) / dpy)).x / f32(radius * radius);
+    //    }
+    //}
+    //weight = weight / tot_weight;
+    return vec4<f32>(0., 0., 0., 0.8 * weight);
 }
 ";

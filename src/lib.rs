@@ -32,6 +32,7 @@ mod surface;
 mod attachment;
 mod deferred;
 mod settings;
+mod aabb;
 use camera::{Camera, CameraController, CameraUniform};
 use curve::Curve;
 use surface::Surface;
@@ -99,8 +100,10 @@ pub struct State<'a> {
 
     copy: deferred::TextureCopy,
     pbr_renderer: deferred::PBR,
+    ground: deferred::Ground,
     taa_counter: u32,
     taa_frames: u32,
+    aabb: aabb::SBV,
 }
 
 pub struct StateWrapper<'a> {
@@ -186,7 +189,8 @@ impl<'a> State<'a> {
         let camera_controller = CameraController::new();
 
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        let aabb = aabb::SBV::default();
+        camera_uniform.update_view_proj(&camera, &aabb, 0.);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -291,12 +295,11 @@ impl<'a> State<'a> {
         let screenshoter =
             screenshot::Screenshoter::new(&device, size.width.max(1), size.height.max(1), surface_format);
 
-        // Clear color used for mouse input interaction
-        //let ui = ui::UI::new(&device, target_format, event_loop);
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
 
         let copy = deferred::TextureCopy::new(&device, surface_format, size.width.max(1), size.height.max(1));
         let pbr_renderer = deferred::PBR::new(&device, surface_format, &depth_texture.view, &camera_light_bind_group_layout, size.width.max(1), size.height.max(1));
+        let ground = deferred::Ground::new(&device, surface_format, &depth_texture.view, &camera_light_bind_group_layout, 0.);
         Self {
             surface,
             device,
@@ -324,9 +327,98 @@ impl<'a> State<'a> {
             egui_dirty: true,
             copy,
             pbr_renderer,
+            ground,
             taa_counter: 0,
             taa_frames: 16,
+            aabb: aabb::SBV::default(),
         }
+    }
+
+    fn set_floor(&mut self) {
+        use crate::updater::Positions;
+        let mut min_y = 0.;
+        for surface in self.surfaces.values() {
+            if surface.show {
+                for p in surface.geometry.get_positions() {
+                    if p[1] < min_y {
+                        min_y = p[1];
+                    }
+                }
+            }
+        }
+        for cloud in self.clouds.values() {
+            if cloud.show {
+                for p in cloud.geometry.get_positions() {
+                    if p[1] < min_y {
+                        min_y = p[1];
+                    }
+                }
+            }
+        }
+        for curve in self.curves.values() {
+            if curve.show {
+                for p in curve.geometry.get_positions() {
+                    if p[1] < min_y {
+                        min_y = p[1];
+                    }
+                }
+            }
+        }
+        self.ground.set_level(&mut self.queue, min_y);
+    }
+
+    //change camera to adapt to objects size
+    pub fn resize_scene(&mut self) {
+        let mut size = None;
+        let mut n = 0;
+        let mut center = cgmath::Point3::<f32>::new(0., 0., 0.);
+        for surface in self.surfaces.values() {
+            if surface.show {
+                let sbv = surface.sbv.transform(&surface.updater.transform.transform);
+                center += sbv.center.into();
+                n += 1;
+                if let Some(size) = &mut size {
+                    if sbv.radius > *size {
+                        *size = sbv.radius;
+                    }
+                } else {
+                    size = Some(sbv.radius);
+                }
+            }
+        }
+        for cloud in self.clouds.values() {
+            if cloud.show {
+                let sbv = cloud.sbv.transform(&cloud.updater.transform.transform);
+                center += sbv.center.into();
+                n += 1;
+                if let Some(size) = &mut size {
+                    if sbv.radius > *size {
+                        *size = sbv.radius;
+                    }
+                } else {
+                    size = Some(sbv.radius);
+                }
+            }
+        }
+        for curve in self.curves.values() {
+            if curve.show {
+                let sbv = curve.sbv.transform(&curve.updater.transform.transform);
+                center += sbv.center.into();
+                n += 1;
+                if let Some(size) = &mut size {
+                    if sbv.radius > *size {
+                        *size = sbv.radius;
+                    }
+                } else {
+                    size = Some(sbv.radius);
+                }
+            }
+        }
+        if n > 0 {
+            center = center / (n as f32);
+        }
+        self.dirty = true;
+        self.camera.set_scene_size(size.unwrap_or_else(|| 1.), center);
     }
 
     // Keeps state in sync with window size when changed
@@ -366,7 +458,7 @@ impl<'a> State<'a> {
     fn update(&mut self) -> bool {
         // Sync local app state with camera
         self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera);
+        self.camera_uniform.update_view_proj(&self.camera, &self.aabb, self.ground.level);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
@@ -384,12 +476,15 @@ impl<'a> State<'a> {
 
         let mut changed = self.dirty;
 
+        let mut sbv = None;
+
         for surface in self.surfaces.values_mut() {
             changed |= surface.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
                 self.config.format,
+                &mut sbv,
             );
         }
 
@@ -399,6 +494,7 @@ impl<'a> State<'a> {
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
                 self.config.format,
+                &mut sbv,
             );
         }
 
@@ -408,8 +504,10 @@ impl<'a> State<'a> {
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
                 self.config.format,
+                &mut sbv,
             );
         }
+        self.aabb = sbv.unwrap_or_else(aabb::SBV::default);
 
         self.dirty = false;
         changed
@@ -510,9 +608,9 @@ impl<'a> State<'a> {
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                                        r: 0.1,
-                                        g: 0.2,
-                                        b: 0.3,
+                                        r: 0.0,
+                                        g: 0.0,
+                                        b: 0.0,
                                         a: 0.0,
                                     }),
                                     store: wgpu::StoreOp::Store,
@@ -533,9 +631,9 @@ impl<'a> State<'a> {
                             resolve_target: None,
                             ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.1,
-                                    g: 0.2,
-                                    b: 0.3,
+                                    r: 0.0,
+                                    g: 0.0,
+                                    b: 0.0,
                                     a: 0.0,
                                 }),
                                 store: wgpu::StoreOp::Store,
@@ -584,22 +682,32 @@ impl<'a> State<'a> {
                 }
                 drop(material_render_pass);
 
+                let color = if !self.screenshot && !render_copy {
+                    wgpu::Color {
+                        r: 0.1,
+                        g: 0.2,
+                        b: 0.3,
+                        a: 0.0,
+                    }
+                } else {
+                    wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    }
+                };
+
                 let mut pbr_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("PBR Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: view_ref,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.1,
-                                g: 0.2,
-                                b: 0.3,
-                                a: 0.0,
-                            }),
+                            load: wgpu::LoadOp::Clear(color),
                             store: wgpu::StoreOp::Store,
                         },
                     })],
-                    // Create a depth stencil buffer using the depth texture
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
@@ -607,10 +715,79 @@ impl<'a> State<'a> {
 
                 pbr_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
                 self.pbr_renderer.render(&mut pbr_render_pass);
+                drop(pbr_render_pass);
+                let mut shadow_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Shadow Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: self.ground.get_texture_view(),
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(
+                                      wgpu::Color {
+                                          r: 0.,
+                                          g: 0.,
+                                          b: 0.,
+                                          a: 0.,
+                                      }
+                                  ),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                for surface in self.surfaces.values() {
+                    surface.render_shadow(&mut shadow_render_pass);
+                }
+
+                drop(shadow_render_pass);
+                self.ground.blur(&mut encoder, &self.camera_light_bind_group);
+                let mut ground_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Shadow Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: view_ref,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    // Create a depth stencil buffer using the depth texture
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth_texture.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                self.ground.render(&mut ground_render_pass);
+                drop(ground_render_pass);
 
                 // Draw the gui
                 if !self.screenshot && !render_copy {
-                    ui.render(&mut pbr_render_pass, &clipped_primitives, &screen_descriptor);
+                    let mut ui_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Ui Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: view_ref,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        // Create a depth stencil buffer using the depth texture
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
+                    ui.render(&mut ui_render_pass, &clipped_primitives, &screen_descriptor);
                 }
             }
 
@@ -621,10 +798,20 @@ impl<'a> State<'a> {
             }
 
             if self.screenshot || (!render || render_copy) {
-                let view_ref = if self.screenshot {
-                    self.screenshoter.get_view()
+                let (view_ref, color) = if self.screenshot {
+                    (self.screenshoter.get_view(), wgpu::Color {
+                        r: 0.,
+                        g: 0.,
+                        b: 0.,
+                        a: 0.,
+                    })
                 } else {
-                    &view
+                    (&view, wgpu::Color {
+                        r: 0.1,
+                        g: 0.2,
+                        b: 0.3,
+                        a: 0.0,
+                    })
                 };
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Copy Pass"),
@@ -633,12 +820,7 @@ impl<'a> State<'a> {
                         view: view_ref,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.1,
-                                g: 0.2,
-                                b: 0.3,
-                                a: 0.0,
-                            }),
+                            load: wgpu::LoadOp::Clear(color),
                             store: wgpu::StoreOp::Store,
                         },
                     })],
@@ -693,6 +875,8 @@ impl<'a> State<'a> {
         self.surfaces.insert(name.clone(), surface);
         self.picker.counters_dirty = true;
         self.dirty = true;
+        self.resize_scene();
+        self.set_floor();
         self.surfaces.get_mut(&name).unwrap()
     }
 
@@ -720,6 +904,8 @@ impl<'a> State<'a> {
         self.clouds.insert(name.clone(), model);
         self.picker.counters_dirty = true;
         self.dirty = true;
+        self.resize_scene();
+        self.set_floor();
         self.clouds.get_mut(&name).unwrap()
     }
 
@@ -749,6 +935,8 @@ impl<'a> State<'a> {
         self.curves.insert(name.clone(), model);
         self.picker.counters_dirty = true;
         self.dirty = true;
+        self.resize_scene();
+        self.set_floor();
         self.curves.get_mut(&name).unwrap()
     }
 
@@ -797,6 +985,8 @@ impl<'a> StateWrapper<'a> {
     pub fn run(mut self, event_loop: EventLoop<UserEvent>, window: &Window) {
         let event_loop_proxy = event_loop.create_proxy();
         //event_loop.set_control_flow(ControlFlow::Poll);
+        //TODO move objects in the scene
+        //move the camera at least
         event_loop.run(move |event, elwt| {
             match event {
                 Event::UserEvent(UserEvent::LoadMesh(mesh_v, mesh_f)) => {

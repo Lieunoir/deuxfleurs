@@ -3,7 +3,7 @@ use egui::Widget;
 use egui_gizmo::GizmoMode;
 
 pub struct TransformSettings {
-    transform: [[f32; 4]; 4],
+    pub transform: [[f32; 4]; 4],
     show_gizmo: bool,
     gizmo_mode: GizmoMode,
 }
@@ -96,7 +96,8 @@ impl TransformSettings {
                     }
                 }
                 let x = (max_x + min_x) / 2.;
-                let y = (max_y + min_y) / 2.;
+                //let y = (max_y + min_y) / 2.;
+                let y = min_y;
                 let z = (max_z + min_z) / 2.;
                 self.transform[3][0] -= x;
                 self.transform[3][1] -= y;

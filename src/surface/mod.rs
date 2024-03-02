@@ -12,7 +12,7 @@ mod data;
 mod shader;
 mod picker;
 use data::*;
-use shader::get_shader;
+use shader::{SHADOW_SHADER, get_shader};
 use picker::Picker;
 
 pub trait Vertex {
@@ -135,6 +135,7 @@ pub struct SurfaceDataBuffer {
 
 pub struct SurfacePipeline {
     surface_render_pipeline: wgpu::RenderPipeline,
+    shadow_render_pipeline: wgpu::RenderPipeline,
 }
 
 impl DataBuffer for SurfaceDataBuffer {
@@ -259,11 +260,23 @@ impl RenderPipeline for SurfacePipeline {
                 push_constant_ranges: &[],
             }),
         };
+        let shadow_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Surface Shadow Pipeline Layout"),
+            bind_group_layouts: &[
+                camera_light_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Normal Shader"),
             source: wgpu::ShaderSource::Wgsl(
                 get_shader(data, settings.smooth, settings.show_edges).into(),
             ),
+        };
+        let shadow_shader = wgpu::ShaderModuleDescriptor {
+            label: Some("Normal Shader"),
+            source: wgpu::ShaderSource::Wgsl(SHADOW_SHADER.into()),
         };
 
         let buffer_layout = match data {
@@ -280,8 +293,19 @@ impl RenderPipeline for SurfacePipeline {
             shader,
             Some("surface sphere render"),
         );
+
+        let shadow_render_pipeline = util::create_shadow_render_pipeline(
+            device,
+            &shadow_pipeline_layout,
+            texture::Texture::SHADOW_FORMAT,
+            None,
+            &[SurfaceVertex::desc()],
+            shadow_shader,
+            Some("surface sphere render"),
+        );
         SurfacePipeline {
             surface_render_pipeline,
+            shadow_render_pipeline,
         }
     }
 }
@@ -306,6 +330,16 @@ impl Render for SurfaceRenderer {
         }
         render_pass.draw(0..self.fixed.vertices_len, 0..1);
     }
+
+    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        render_pass.set_bind_group(1, &self.transform_uniform.bind_group, &[]);
+        render_pass.set_pipeline(&self.pipeline.shadow_render_pipeline);
+        render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
+        render_pass.draw(0..self.fixed.vertices_len, 0..1);
+    }
 }
 
 pub type Surface = MainDisplayGeometry<
@@ -326,7 +360,6 @@ impl Surface {
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        //transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let mut internal_indices = Vec::new();

@@ -161,6 +161,9 @@ impl UI {
             .anchor(egui::Align2::RIGHT_TOP, [-5., 5.])
             .resizable(false)
             .show(&self.ctx, |ui| {
+                if ui.add(egui::Button::new("Fit camera")).clicked() {
+                    state.resize_scene();
+                }
                 if ui.add(egui::Button::new("Screenshot")).clicked() {
                     state.screenshot();
                 }

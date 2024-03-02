@@ -1,6 +1,7 @@
 use crate::data::{DataUniform, DataUniformBuilder, DataSettings, TransformSettings};
 use crate::attachment::{VectorField, VectorFieldSettings, NewVectorField};
 use crate::ui::UiDataElement;
+use crate::aabb::SBV;
 use egui::Widget;
 use indexmap::IndexMap;
 
@@ -17,6 +18,7 @@ pub struct MainDisplayGeometry<
 {
     pub name: String,
     pub geometry: Geometry,
+    pub(crate) sbv: SBV,
     pub(crate) show: bool,
     pub(crate) updater: Updater<Settings, Data>,
     pub(crate) renderer: Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>,
@@ -42,6 +44,15 @@ where
         if self.show {
             self.renderer.render(render_pass);
             self.updater.render_attached_data(render_pass);
+        }
+    }
+
+    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        if self.show {
+            self.renderer.render_shadow(render_pass);
         }
     }
 }
@@ -82,11 +93,13 @@ where
             device,
             camera_light_bind_group_layout,
             counter_bind_group_layout);
+        let sbv = SBV::new(geometry.get_positions());
 
         Self {
             name,
             geometry,
             show: true,
+            sbv,
             renderer,
             updater,
             picker,
@@ -99,6 +112,7 @@ where
         queue: &mut wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
+        w_sbv: &mut Option<SBV>,
     ) -> bool {
         self.updater.refresh(
             &self.geometry,
@@ -108,6 +122,9 @@ where
             color_format,
             &mut self.renderer,
             &mut self.picker,
+            self.show,
+            &self.sbv,
+            w_sbv,
         )
     }
 
@@ -210,6 +227,9 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
         color_format: wgpu::TextureFormat,
         renderer: &mut Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>,
         picker: &mut Picker,
+        show: bool,
+        sbv: &SBV,
+        w_sbv: &mut Option<SBV>,
     ) -> bool {
         let mut refresh_screen = self.dirty;
         self.dirty = false;
@@ -270,6 +290,9 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
         }
         for (_, attached) in &mut self.attached_data {
             refresh_screen |= attached.update(queue);
+        }
+        if show {
+            SBV::merge(w_sbv, &sbv.transform(&self.transform.transform));
         }
         refresh_screen
     }
@@ -479,6 +502,12 @@ pub trait Render {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b;
+
+    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b {
+
+    }
 }
 
 pub trait ElementPicker: Render {

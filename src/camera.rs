@@ -1,5 +1,6 @@
 use cgmath::prelude::*;
 use winit::event::*;
+use crate::aabb::SBV;
 
 // Camera informations for easier updating
 pub struct Camera {
@@ -15,13 +16,13 @@ pub struct Camera {
 impl Camera {
     pub fn new(aspect: f32) -> Self {
         Self {
-            eye: (0.0, 0.0, -5.0).into(),
+            eye: (0.0, 0.0, -2.5).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             aspect,
             fovy: 45.0,
             znear: 0.1,
-            zfar: 100.0,
+            zfar: 10.0,
         }
     }
 
@@ -37,6 +38,16 @@ impl Camera {
 
     pub fn build_proj(&self) -> cgmath::Matrix4<f32> {
         cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar)
+    }
+
+    pub fn set_scene_size(&mut self, size: f32, center: cgmath::Point3<f32>) {
+        if size > 0. {
+            let dir = cgmath::Vector3::<f32>::new(0., 0., -3.);
+            self.eye = center + dir * size;
+            self.target = center;
+            self.zfar = size * 10.;
+            self.up = cgmath::Vector3::unit_y();
+        }
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -55,6 +66,8 @@ pub struct CameraUniform {
     view_position: [f32; 4],
     view_proj: [[f32; 4]; 4],
     view_inv: [[f32; 4]; 4],
+    floor_bb: [f32; 4],
+    floor_proj: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -63,15 +76,91 @@ impl CameraUniform {
             view_position: [0.0; 4],
             view_proj: cgmath::Matrix4::identity().into(),
             view_inv: cgmath::Matrix4::identity().into(),
+            floor_bb: [0.0; 4],
+            floor_proj: cgmath::Matrix4::identity().into(),
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &Camera) {
+    pub fn update_view_proj(&mut self, camera: &Camera, sbv: &SBV, level: f32) {
         // We're using Vector4 because ofthe camera_uniform 16 byte spacing requirement
         self.view_position = camera.eye.to_homogeneous().into();
         let view_proj = camera.build_view_projection_matrix();
         self.view_proj = view_proj.into();
-        self.view_inv = view_proj.inverse_transform().unwrap().into();
+		let view_inv = view_proj.inverse_transform().unwrap();
+        self.view_inv = view_inv.into();
+        //let orig : cgmath::Vector4<f32> = self.view_position.into();
+        let mut min_x = f32::MAX;
+        let mut min_z = f32::MAX;
+        let mut max_x = f32::MIN;
+        let mut max_z = f32::MIN;
+        let couples = [(-1., -1.), (-1., 1.), (1., -1.), (1., 1.)];
+        for (x,y) in couples {
+            let mut target = view_inv * cgmath::Vector4::new(x, y, 1., 1.);
+            target = target / target.w;
+            let mut origin = view_inv * cgmath::Vector4::new(x, y, 0., 1.);
+            origin = origin / origin.w;
+            let ray = target - origin;
+            if ray.y.abs() > 10e-7 {
+                let t = (level - origin.y) / ray.y;
+                if t <= 1. && t >= 0. {
+                    let pos = origin + t * ray;
+                    if pos.x < min_x {
+                        min_x = pos.x;
+                    }
+                    if pos.x > max_x {
+                        max_x = pos.x;
+                    }
+                    if pos.z < min_z {
+                        min_z = pos.z;
+                    }
+                    if pos.z > max_z {
+                        max_z = pos.z;
+                    }
+                }
+            }
+        }
+        let couples = [(-1., 0.), (-1., 1.), (1., 0.), (1., 1.)];
+        for (x,z) in couples {
+            let mut target = view_inv * cgmath::Vector4::new(x, -1., z, 1.);
+            target = target / target.w;
+            let mut origin = view_inv * cgmath::Vector4::new(x, 1., z, 1.);
+            origin = origin / origin.w;
+            let ray = target - origin;
+            if ray.y.abs() > 10e-7 {
+                let t = (level - origin.y) / ray.y;
+                if t <= 1. && t >= 0. {
+                    let pos = origin + t * ray;
+                    if pos.x < min_x {
+                        min_x = pos.x;
+                    }
+                    if pos.x > max_x {
+                        max_x = pos.x;
+                    }
+                    if pos.z < min_z {
+                        min_z = pos.z;
+                    }
+                    if pos.z > max_z {
+                        max_z = pos.z;
+                    }
+                }
+            }
+        }
+        let sbv_bb = sbv.get_bb();
+        min_x = min_x.max(sbv_bb[0]);
+        max_x = max_x.min(sbv_bb[1]);
+        min_z = min_z.max(sbv_bb[2]);
+        max_z = max_z.min(sbv_bb[3]);
+        let c_x = 0.5 * (min_x + max_x);
+        let c_z = 0.5 * (min_z + max_z);
+        let d_x = 0.5 * (max_x - min_x);
+        let d_z = 0.5 * (max_z - min_z);
+        let eye = cgmath::Point3::<f32>::new(c_x, camera.zfar, c_z);
+        let target = cgmath::Point3::<f32>::new(c_x, 0., c_z);
+        let up = cgmath::Vector3::<f32>::new(0., 0., 1.);
+        let view = cgmath::Matrix4::look_at_rh(eye, target, up);
+        let proj = cgmath::ortho(d_x, -d_x, -d_z, d_z, -camera.zfar, camera.zfar);
+        self.floor_bb = [min_x, min_z, max_x - min_x, max_z - min_z];
+        self.floor_proj = (proj * view).into();
     }
 }
 
