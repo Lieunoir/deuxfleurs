@@ -3,16 +3,16 @@ use wgpu::util::DeviceExt;
 mod color;
 mod colormap;
 mod isoline;
-mod uv;
 mod radius;
 mod transform;
+mod uv;
 
 pub use color::ColorSettings;
 pub use colormap::{ColorMap, ColorMapValues};
 pub use isoline::IsolineSettings;
-pub use uv::UVMapSettings;
 pub use radius::Radius;
-pub use transform::{TransformSettings, TransformRaw};
+pub use transform::TransformSettings;
+pub use uv::UVMapSettings;
 
 pub struct DataUniform {
     pub bind_group_layout: wgpu::BindGroupLayout,

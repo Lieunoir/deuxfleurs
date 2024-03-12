@@ -1,6 +1,6 @@
-use wgpu::util::DeviceExt;
-use crate::util;
 use crate::texture;
+use crate::util;
+use wgpu::util::DeviceExt;
 
 pub struct TextureCopy {
     square: wgpu::Buffer,
@@ -47,51 +47,48 @@ impl TextureCopy {
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
         width: u32,
-        height: u32) {
+        height: u32,
+    ) {
         let texture_size = wgpu::Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
         let texture_descriptor = wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: color_format,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                label: Some("copy_texture"),
-                view_formats: &[],
-            };
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: color_format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("copy_texture"),
+            view_formats: &[],
+        };
         self.old_blend_texture = device.create_texture(&texture_descriptor);
-        self.old_blend_texture_view = self.old_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.old_blend_texture_view = self
+            .old_blend_texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
         self.new_blend_texture = device.create_texture(&texture_descriptor);
-        self.new_blend_texture_view = self.new_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.new_blend_texture_view = self
+            .new_blend_texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.copy_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &self.copy_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&self.old_blend_texture_view),
-                    },
-                ],
-                label: Some("copy_bind_group"),
-            }
-        );
-        self.blend_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &self.copy_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&self.new_blend_texture_view),
-                    },
-                ],
-                label: Some("copy_bind_group"),
-            }
-        );
+        self.copy_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.copy_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&self.old_blend_texture_view),
+            }],
+            label: Some("copy_bind_group"),
+        });
+        self.blend_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.copy_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&self.new_blend_texture_view),
+            }],
+            label: Some("copy_bind_group"),
+        });
     }
 
     pub fn get_view(&self) -> &wgpu::TextureView {
@@ -102,14 +99,9 @@ impl TextureCopy {
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
         width: u32,
-        height: u32
+        height: u32,
     ) -> Self {
-        let positions = [
-            [-1., -1., 0.],
-            [1., -1., 0.],
-            [-1., 1., 0.],
-            [1., 1., 0.],
-        ];
+        let positions = [[-1., -1., 0.], [1., -1., 0.], [-1., 1., 0.], [1., 1., 0.]];
         let vertices = positions.map(|position| SquareVertex { position });
         let square = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Copy Vertex Buffer"),
@@ -123,72 +115,65 @@ impl TextureCopy {
             depth_or_array_layers: 1,
         };
         let texture_descriptor = wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: color_format,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                label: Some("copy_texture"),
-                view_formats: &[],
-            };
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: color_format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("copy_texture"),
+            view_formats: &[],
+        };
         let old_blend_texture = device.create_texture(&texture_descriptor);
-        let old_blend_texture_view = old_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let old_blend_texture_view =
+            old_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let new_blend_texture = device.create_texture(&texture_descriptor);
-        let new_blend_texture_view = new_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let new_blend_texture_view =
+            new_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let copy_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        },
-                        count: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     },
-                ],
+                    count: None,
+                }],
                 label: Some("texture_bind_group_layout"),
             });
 
-        let blend_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &copy_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&new_blend_texture_view),
-                    },
-                ],
-                label: Some("blend_bind_group"),
-            }
-        );
+        let blend_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &copy_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&new_blend_texture_view),
+            }],
+            label: Some("blend_bind_group"),
+        });
 
-        let copy_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &copy_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&old_blend_texture_view),
-                    },
-                ],
-                label: Some("copy_bind_group"),
-            }
-        );
+        let copy_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &copy_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&old_blend_texture_view),
+            }],
+            label: Some("copy_bind_group"),
+        });
         let copy_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Copy Pipeline Layout"),
             bind_group_layouts: &[&copy_bind_group_layout],
             push_constant_ranges: &[],
         });
-        let blend_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Blend Pipeline Layout"),
-            bind_group_layouts: &[&copy_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let blend_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Blend Pipeline Layout"),
+                bind_group_layouts: &[&copy_bind_group_layout],
+                push_constant_ranges: &[],
+            });
         let copy_shader = wgpu::ShaderModuleDescriptor {
             label: Some("copy shader"),
             source: wgpu::ShaderSource::Wgsl(COPY_SHADER.into()),
@@ -224,7 +209,6 @@ impl TextureCopy {
             copy_shader,
             Some("blend render"),
         );
-
 
         Self {
             square,
@@ -268,7 +252,7 @@ impl TextureCopy {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
-        render_pass.set_blend_constant(wgpu::Color{
+        render_pass.set_blend_constant(wgpu::Color {
             r: factor,
             g: factor,
             b: factor,
@@ -324,7 +308,7 @@ pub struct PBR {
     normals: wgpu::Texture,
     normals_view: wgpu::TextureView,
     square: wgpu::Buffer,
-	sampler: wgpu::Sampler,
+    sampler: wgpu::Sampler,
 
     material_bind_group: wgpu::BindGroup,
     material_bind_group_layout: wgpu::BindGroupLayout,
@@ -346,7 +330,8 @@ impl PBR {
         color_format: wgpu::TextureFormat,
         depth_view: &wgpu::TextureView,
         width: u32,
-        height: u32) {
+        height: u32,
+    ) {
         let texture_size = wgpu::Extent3d {
             width,
             height,
@@ -362,45 +347,46 @@ impl PBR {
             label: Some("pbr_texture"),
             view_formats: &[],
         };
-        self.albedo = device.create_texture( &
-            wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: color_format,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                label: Some("albedo_texture"),
-                view_formats: &[],
-            });
-        self.albedo_view = self.albedo.create_view(&wgpu::TextureViewDescriptor::default());
+        self.albedo = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: color_format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("albedo_texture"),
+            view_formats: &[],
+        });
+        self.albedo_view = self
+            .albedo
+            .create_view(&wgpu::TextureViewDescriptor::default());
         self.normals = device.create_texture(&descriptor);
-        self.normals_view = self.normals.create_view(&wgpu::TextureViewDescriptor::default());
+        self.normals_view = self
+            .normals
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.material_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &self.material_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&self.albedo_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(&self.normals_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::TextureView(depth_view),
-                    },
-					wgpu::BindGroupEntry {
-						binding: 3,
-						resource: wgpu::BindingResource::Sampler(&self.sampler),
-					}
-                ],
-                label: Some("pbr_material_bind_group"),
-            }
-        );
+        self.material_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.material_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.albedo_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&self.normals_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+            label: Some("pbr_material_bind_group"),
+        });
     }
 
     pub fn new(
@@ -409,14 +395,9 @@ impl PBR {
         depth_view: &wgpu::TextureView,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         width: u32,
-        height: u32
+        height: u32,
     ) -> Self {
-        let positions = [
-            [-1., -1., 0.],
-            [1., -1., 0.],
-            [-1., 1., 0.],
-            [1., 1., 0.],
-        ];
+        let positions = [[-1., -1., 0.], [1., -1., 0.], [-1., 1., 0.], [1., 1., 0.]];
         let vertices = positions.map(|position| SquareVertex { position });
         let square = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Copy Vertex Buffer"),
@@ -439,17 +420,16 @@ impl PBR {
             label: Some("pbr_texture"),
             view_formats: &[],
         };
-        let albedo = device.create_texture( &
-            wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: color_format,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                label: Some("albedo_texture"),
-                view_formats: &[],
-            });
+        let albedo = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: color_format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("albedo_texture"),
+            view_formats: &[],
+        });
         let albedo_view = albedo.create_view(&wgpu::TextureViewDescriptor::default());
         let normals = device.create_texture(&descriptor);
         let normals_view = normals.create_view(&wgpu::TextureViewDescriptor::default());
@@ -497,49 +477,44 @@ impl PBR {
                         },
                         count: None,
                     },
-					wgpu::BindGroupLayoutEntry {
-						binding: 3,
-						visibility: wgpu::ShaderStages::FRAGMENT,
-						// This should match the filterable field of the
-						// corresponding Texture entry above.
-						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-						count: None,
-					},
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        count: None,
+                    },
                 ],
                 label: Some("pbr_material_bind_group_layout"),
             });
 
-        let material_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &material_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&albedo_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(&normals_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::TextureView(depth_view),
-                    },
-					wgpu::BindGroupEntry {
-						binding: 3,
-						resource: wgpu::BindingResource::Sampler(&sampler),
-					}
-                ],
-                label: Some("pbr_material_bind_group"),
-            }
-        );
+        let material_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &material_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&albedo_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&normals_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: Some("pbr_material_bind_group"),
+        });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("PBR Pipeline Layout"),
-            bind_group_layouts: &[
-                camera_light_bind_group_layout,
-                &material_bind_group_layout,
-            ],
+            bind_group_layouts: &[camera_light_bind_group_layout, &material_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -564,7 +539,7 @@ impl PBR {
             normals,
             normals_view,
             square,
-			sampler,
+            sampler,
 
             material_bind_group,
             material_bind_group_layout,
@@ -751,17 +726,13 @@ impl Ground {
             level,
             padding: [0.; 3],
         };
-        queue.write_buffer(
-            &self.level_buffer,
-            0,
-            bytemuck::cast_slice(&[level]),
-        );
+        queue.write_buffer(&self.level_buffer, 0, bytemuck::cast_slice(&[level]));
     }
 
     pub fn new(
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
-        depth_view: &wgpu::TextureView,
+        _depth_view: &wgpu::TextureView,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         level: f32,
     ) -> Self {
@@ -769,12 +740,7 @@ impl Ground {
             level,
             padding: [0.; 3],
         };
-        let positions = [
-            [0., 0., 0.],
-            [1., 0., 0.],
-            [0., 1., 0.],
-            [1., 1., 0.],
-        ];
+        let positions = [[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [1., 1., 0.]];
         let vertices = positions.map(|position| SquareVertex { position });
         let square = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Shadow Vertex Buffer"),
@@ -813,12 +779,16 @@ impl Ground {
         };
         let blurred_texture = device.create_texture(&desc);
         let h_blurred_texture = device.create_texture(&desc);
-        let blurred_texture_view = blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let h_blurred_texture_view = h_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let blurred_texture_view =
+            blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let h_blurred_texture_view =
+            h_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let low_blurred_texture = device.create_texture(&low_desc);
         let low_h_blurred_texture = device.create_texture(&low_desc);
-        let low_blurred_texture_view = low_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let low_h_blurred_texture_view = low_h_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let low_blurred_texture_view =
+            low_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let low_h_blurred_texture_view =
+            low_h_blurred_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -842,14 +812,14 @@ impl Ground {
                         },
                         count: None,
                     },
-					wgpu::BindGroupLayoutEntry {
-						binding: 1,
-						visibility: wgpu::ShaderStages::FRAGMENT,
-						// This should match the filterable field of the
-						// corresponding Texture entry above.
-						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-						count: None,
-					},
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
                 ],
                 label: Some("shadow_material_bind_group_layout"),
             });
@@ -867,14 +837,14 @@ impl Ground {
                         },
                         count: None,
                     },
-					wgpu::BindGroupLayoutEntry {
-						binding: 1,
-						visibility: wgpu::ShaderStages::FRAGMENT,
-						// This should match the filterable field of the
-						// corresponding Texture entry above.
-						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-						count: None,
-					},
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
                         visibility: wgpu::ShaderStages::VERTEX,
@@ -889,72 +859,64 @@ impl Ground {
                 label: Some("shadow_material_bind_group_layout"),
             });
 
-        let h_blur_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &material_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&blurred_texture_view),
-                    },
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(&sampler),
-					}
-                ],
-                label: Some("blur_shadow_material_bind_group"),
-            }
-        );
+        let h_blur_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &material_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&blurred_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: Some("blur_shadow_material_bind_group"),
+        });
 
-        let blur_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &material_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&h_blurred_texture_view),
-                    },
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(&sampler),
-					}
-                ],
-                label: Some("blur_shadow_material_bind_group"),
-            }
-        );
-        let low_h_blur_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &material_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&low_blurred_texture_view),
-                    },
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(&sampler),
-					}
-                ],
-                label: Some("blur_shadow_material_bind_group"),
-            }
-        );
+        let blur_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &material_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&h_blurred_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: Some("blur_shadow_material_bind_group"),
+        });
+        let low_h_blur_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &material_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&low_blurred_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: Some("blur_shadow_material_bind_group"),
+        });
 
-        let low_blur_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &material_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&low_h_blurred_texture_view),
-                    },
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(&sampler),
-					}
-                ],
-                label: Some("blur_shadow_material_bind_group"),
-            }
-        );
+        let low_blur_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &material_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&low_h_blurred_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: Some("blur_shadow_material_bind_group"),
+        });
 
         let level_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Ground Level Buffer"),
@@ -962,26 +924,24 @@ impl Ground {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let material_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &material_ground_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&blurred_texture_view),
-                    },
-					wgpu::BindGroupEntry {
-						binding: 1,
-						resource: wgpu::BindingResource::Sampler(&sampler),
-					},
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: level_buffer.as_entire_binding(),
-                    },
-                ],
-                label: Some("shadow_material_bind_group"),
-            }
-        );
+        let material_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &material_ground_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&blurred_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: level_buffer.as_entire_binding(),
+                },
+            ],
+            label: Some("shadow_material_bind_group"),
+        });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
@@ -994,10 +954,7 @@ impl Ground {
 
         let blur_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
-            bind_group_layouts: &[
-                camera_light_bind_group_layout,
-                &material_bind_group_layout,
-            ],
+            bind_group_layouts: &[camera_light_bind_group_layout, &material_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -1080,7 +1037,11 @@ impl Ground {
         render_pass.draw(0..4, 0..1);
     }
 
-    fn first_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_light_bind_group: &wgpu::BindGroup) {
+    fn first_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        camera_light_bind_group: &wgpu::BindGroup,
+    ) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Horizontal Blur Shadow Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -1132,7 +1093,11 @@ impl Ground {
         render_pass.draw(0..4, 0..1);
     }
 
-    fn second_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_light_bind_group: &wgpu::BindGroup) {
+    fn second_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        camera_light_bind_group: &wgpu::BindGroup,
+    ) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Horizontal Blur Shadow Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -1184,7 +1149,11 @@ impl Ground {
         render_pass.draw(0..4, 0..1);
     }
 
-    pub fn blur(&self, encoder: &mut wgpu::CommandEncoder, camera_light_bind_group: &wgpu::BindGroup) {
+    pub fn blur(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        camera_light_bind_group: &wgpu::BindGroup,
+    ) {
         self.first_pass(encoder, camera_light_bind_group);
         self.second_pass(encoder, camera_light_bind_group);
     }
@@ -1387,6 +1356,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //    }
     //}
     //weight = weight / tot_weight;
-    return vec4<f32>(0., 0., 0., 0.8 * weight);
+    return vec4<f32>(0., 0., 0., 0.7 * weight);
 }
 ";

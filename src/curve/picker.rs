@@ -1,10 +1,10 @@
-use crate::updater::{ElementPicker, Render};
-use crate::data::{DataUniform,DataUniformBuilder, TransformSettings};
-use super::{PCSettings, CurveGeometry};
-use wgpu::util::DeviceExt;
-use super::{Vertex, SphereVertex};
+use super::{CurveGeometry, PCSettings};
+use super::{SphereVertex, Vertex};
+use crate::data::{DataUniform, DataUniformBuilder, TransformSettings};
 use crate::texture;
+use crate::updater::{ElementPicker, Render};
 use crate::util::create_picker_pipeline;
+use wgpu::util::DeviceExt;
 
 pub struct Picker {
     num_elements: u32,
@@ -33,7 +33,6 @@ struct CylinderData {
     position_2: [f32; 3],
     index: u32,
 }
-
 
 impl Vertex for VertexData {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
@@ -82,7 +81,6 @@ impl Vertex for CylinderData {
             ],
         }
     }
-
 }
 
 impl ElementPicker for Picker {
@@ -105,12 +103,12 @@ impl ElementPicker for Picker {
             [s2, s2, 0.],
             [-s2, s2, 0.],
         ];
-            let vertices = positions.map(|position| SphereVertex { position });
-            let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("PC Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
+        let vertices = positions.map(|position| SphereVertex { position });
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("PC Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
         let mut gpu_vertices = Vec::with_capacity(geometry.positions.len());
         for (i, position) in geometry.positions.iter().enumerate() {
             let vertex = VertexData {
@@ -169,16 +167,17 @@ impl ElementPicker for Picker {
             label: Some("transform_bind_group"),
         });
 
-        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Curve Picker Pipeline Layout"),
-            bind_group_layouts: &[
-                camera_light_bind_group_layout,
-                counter_bind_group_layout,
-                &transform_bind_group_layout,
-                &settings_uniform.bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        });
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Curve Picker Pipeline Layout"),
+                bind_group_layouts: &[
+                    camera_light_bind_group_layout,
+                    counter_bind_group_layout,
+                    &transform_bind_group_layout,
+                    &settings_uniform.bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Curve Sphere Picker Shader"),
             source: wgpu::ShaderSource::Wgsl(SPHERE_PICKER_SHADER.into()),

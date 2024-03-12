@@ -73,10 +73,7 @@ impl SBV {
             }
         }
         radius = radius.sqrt();
-        Self {
-            center,
-            radius,
-        }
+        Self { center, radius }
     }
 
     pub fn merge(box1: &mut Option<SBV>, box2: &SBV) {
@@ -90,9 +87,14 @@ impl SBV {
             } else if dist + box2.radius <= box1.radius {
                 ()
             } else {
-
-                box1.center[0] = ( box1.center[0] + box2.center[0] + (box1.center[0] - box2.center[0]) * (box1.radius - box2.radius) / dist ) / 2.;
-                box1.center[2] = ( box1.center[2] + box2.center[2] + (box1.center[2] - box2.center[2]) * (box1.radius - box2.radius) / dist ) / 2.;
+                box1.center[0] = (box1.center[0]
+                    + box2.center[0]
+                    + (box1.center[0] - box2.center[0]) * (box1.radius - box2.radius) / dist)
+                    / 2.;
+                box1.center[2] = (box1.center[2]
+                    + box2.center[2]
+                    + (box1.center[2] - box2.center[2]) * (box1.radius - box2.radius) / dist)
+                    / 2.;
                 box1.radius = 0.5 * (box1.radius + box2.radius + dist);
             }
         } else {
@@ -101,26 +103,29 @@ impl SBV {
     }
 
     pub fn get_bb(&self) -> [f32; 4] {
-        [self.center[0] - self.radius, self.center[0] + self.radius, self.center[2] - self.radius, self.center[2] + self.radius]
+        [
+            self.center[0] - self.radius,
+            self.center[0] + self.radius,
+            self.center[2] - self.radius,
+            self.center[2] + self.radius,
+        ]
     }
 
     pub fn transform(&self, transform: &[[f32; 4]; 4]) -> Self {
-        use cgmath::SquareMatrix;
         use cgmath::InnerSpace;
         let transform: cgmath::Matrix4<f32> = (*transform).into();
         let center: cgmath::Point3<f32> = self.center.into();
-        let mut center = transform * center.to_homogeneous();
+        let center = transform * center.to_homogeneous();
         let center = center / center.w;
         let center = [center.x, center.y, center.z];
         let volume = transform.x.truncate().magnitude().max(
-            transform.y.truncate().magnitude().max(
-                transform.z.truncate().magnitude()
-            )
+            transform
+                .y
+                .truncate()
+                .magnitude()
+                .max(transform.z.truncate().magnitude()),
         );
         let radius = self.radius * volume;
-        Self {
-            center,
-            radius,
-        }
+        Self { center, radius }
     }
 }

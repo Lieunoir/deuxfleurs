@@ -1,14 +1,14 @@
 use crate::data::*;
 use crate::texture;
 use crate::types::{Color, Scalar};
+use crate::ui::UiDataElement;
 use crate::updater::*;
 use crate::util;
 use wgpu::util::DeviceExt;
-use crate::ui::UiDataElement;
 
+mod picker;
 mod shader;
 mod sphere_shader;
-mod picker;
 use picker::Picker;
 
 pub enum CurveData {
@@ -28,12 +28,8 @@ impl DataSettings for CurveData {
 impl UiDataElement for CurveData {
     fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
         match self {
-            CurveData::Scalar(_, settings) => {
-                settings.draw(ui, property_changed)
-            },
-            CurveData::Color(_) => {
-                false
-            },
+            CurveData::Scalar(_, settings) => settings.draw(ui, property_changed),
+            CurveData::Color(_) => false,
         }
     }
 }
@@ -48,7 +44,9 @@ impl DataUniformBuilder for CurveData {
 
     fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
         match self {
-            CurveData::Scalar(_, colormap) => colormap.get_value().refresh_buffer(queue, data_uniform),
+            CurveData::Scalar(_, colormap) => {
+                colormap.get_value().refresh_buffer(queue, data_uniform)
+            }
             _ => (),
         }
     }
@@ -406,12 +404,7 @@ impl FixedRenderer for CurveFixedRenderer {
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self {
         //let s2 = 2_f32.sqrt();
         let s2 = 1.;
-        let positions = [
-            [-s2, -s2, 0.],
-            [s2, -s2, 0.],
-            [-s2, s2, 0.],
-            [s2, s2, 0.],
-        ];
+        let positions = [[-s2, -s2, 0.], [s2, -s2, 0.], [-s2, s2, 0.], [s2, s2, 0.]];
         let vertices = positions.map(|position| SphereVertex { position });
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("PC Vertex Buffer"),
@@ -464,18 +457,27 @@ impl RenderPipeline for CurvePipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        fixed: &Self::Fixed,
-        settings: &Self::Settings,
+        _fixed: &Self::Fixed,
+        _settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
-        let bind_group_layouts = if let Some(uniform) = data_uniform{
-            vec![camera_light_bind_group_layout, &transform_uniform.bind_group_layout, &settings_uniform.bind_group_layout, &uniform.bind_group_layout]
+        let bind_group_layouts = if let Some(uniform) = data_uniform {
+            vec![
+                camera_light_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+                &settings_uniform.bind_group_layout,
+                &uniform.bind_group_layout,
+            ]
         } else {
-            vec![camera_light_bind_group_layout, &transform_uniform.bind_group_layout, &settings_uniform.bind_group_layout]
+            vec![
+                camera_light_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+                &settings_uniform.bind_group_layout,
+            ]
         };
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Sphere cloud Render Pipeline Layout"),
@@ -534,8 +536,14 @@ impl RenderPipeline for CurvePipeline {
     }
 }
 
-type CurveRenderer =
-    Renderer<PCSettings, CurveData, CurveGeometry, CurveFixedRenderer, CurveDataBuffer, CurvePipeline>;
+type CurveRenderer = Renderer<
+    PCSettings,
+    CurveData,
+    CurveGeometry,
+    CurveFixedRenderer,
+    CurveDataBuffer,
+    CurvePipeline,
+>;
 
 impl Render for CurveRenderer {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -590,10 +598,17 @@ impl Curve {
             positions,
             connections,
         };
-        Curve::init(device, name, geometry, camera_light_bind_group_layout, counter_bind_group_layout, color_format)
+        Curve::init(
+            device,
+            name,
+            geometry,
+            camera_light_bind_group_layout,
+            counter_bind_group_layout,
+            color_format,
+        )
     }
 
-    pub fn set_radius(&mut self, radius: f32) -> &mut Self{
+    pub fn set_radius(&mut self, radius: f32) -> &mut Self {
         self.updater.settings.radius.radius = radius;
         self.updater.settings_changed = true;
         self
@@ -608,7 +623,8 @@ impl Curve {
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut CurveData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.positions.len());
-        self.updater.add_data(name, CurveData::Scalar(datas, ColorMap::default()))
+        self.updater
+            .add_data(name, CurveData::Scalar(datas, ColorMap::default()))
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut CurveData {
@@ -621,7 +637,10 @@ impl Curve {
         if element < self.geometry.positions.len() {
             ui.label(format!("Picked point number {}", element));
         } else if element - self.geometry.positions.len() < self.geometry.connections.len() {
-            ui.label(format!("Picked edge number {}", element - self.geometry.positions.len()));
+            ui.label(format!(
+                "Picked edge number {}",
+                element - self.geometry.positions.len()
+            ));
         }
     }
 }

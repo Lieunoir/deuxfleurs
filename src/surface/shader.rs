@@ -3,7 +3,9 @@ use super::SurfaceData;
 // macro rules cuz used in format
 // forces {{ and }} instead of regular { and }
 // kinda ugly, maybe should use some kind of templating
-macro_rules! SHADER { () => {"
+macro_rules! SHADER {
+    () => {
+        "
 // Vertex shader
 
 // Define any uniforms we expect from app
@@ -168,7 +170,9 @@ fn fs_main(in: VertexOutput) -> MaterialOutput {{
     //out.normal = vec4<f32>(normal, 0.);
 
     return out;
-}}"};}
+}}"
+    };
+}
 
 const COLORMAP_ISOLINES_UNIFORM: &str = "
 //vec4 because of alignment issues
@@ -341,25 +345,37 @@ pub fn get_shader(data_format: Option<&SurfaceData>, smooth: bool, show_edge: bo
 
     let (data_decl, data_out) = match data_format {
         Some(data) => match data {
-            SurfaceData::UVMap(..) | SurfaceData::UVCornerMap(..) => ("
+            SurfaceData::UVMap(..) | SurfaceData::UVCornerMap(..) => (
+                "
 struct DataInput {
     @location(4) data: vec2<f32>,
-};", "@location(3) data: vec2<f32>,"),
-            SurfaceData::VertexScalar(..) | SurfaceData::FaceScalar(..) => ("
+};",
+                "@location(3) data: vec2<f32>,",
+            ),
+            SurfaceData::VertexScalar(..) | SurfaceData::FaceScalar(..) => (
+                "
 struct DataInput {
     @location(4) data: f32,
-};", "@location(3) data: f32,"),
-            SurfaceData::Color(..) => ("
+};",
+                "@location(3) data: f32,",
+            ),
+            SurfaceData::Color(..) => (
+                "
 struct DataInput {
     @location(4) data: vec3<f32>,
-};", "@location(3) data: vec3<f32>,"),
+};",
+                "@location(3) data: vec3<f32>,",
+            ),
         },
         None => ("", ""),
     };
 
     let (data_input, data_assign) = match data_format {
-        Some(data) => ("
-    data: DataInput,", "out.data = data.data;"),
+        Some(_data) => (
+            "
+    data: DataInput,",
+            "out.data = data.data;",
+        ),
         None => ("", ""),
     };
 
@@ -377,7 +393,14 @@ struct DataInput {
     let edge_shader = if show_edge { WITH_EDGE_SHADER } else { "" };
     format!(
         SHADER!(),
-        uniform, data_decl, data_out, data_input, normal_interpolation, data_assign, render_modif, edge_shader
+        uniform,
+        data_decl,
+        data_out,
+        data_input,
+        normal_interpolation,
+        data_assign,
+        render_modif,
+        edge_shader
     )
 }
 

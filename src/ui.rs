@@ -1,22 +1,18 @@
-use egui::Widget;
-use egui_gizmo::GizmoMode;
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use indexmap::IndexMap;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
-use crate::curve::CurveData;
-use crate::point_cloud::CloudData;
-
 pub trait UiDataElement {
     fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool;
 
-    fn draw_gizmo(&mut self,
-        ui: &mut egui::Ui,
-        name: &str,
-        view: cgmath::Matrix4<f32>,
-        proj: cgmath::Matrix4<f32>,
+    fn draw_gizmo(
+        &mut self,
+        _ui: &mut egui::Ui,
+        _name: &str,
+        _view: cgmath::Matrix4<f32>,
+        _proj: cgmath::Matrix4<f32>,
     ) -> bool {
         false
     }
@@ -38,12 +34,7 @@ impl UI {
         event_loop: &EventLoop<T>,
         scale_factor: f64,
     ) -> Self {
-        let rpass = Renderer::new(
-            device,
-            target_format,
-            None,
-            1,
-        );
+        let rpass = Renderer::new(device, target_format, None, 1);
         let ctx = egui::Context::default();
         //TODO some kind of styling
         let visuals = egui::Visuals {
@@ -71,7 +62,11 @@ impl UI {
         }
     }
 
-    pub fn process_event(&mut self, window: &Window, event: &winit::event::WindowEvent) -> egui_winit::EventResponse {
+    pub fn process_event(
+        &mut self,
+        window: &Window,
+        event: &winit::event::WindowEvent,
+    ) -> egui_winit::EventResponse {
         self.state.on_window_event(window, event)
     }
 
@@ -139,15 +134,15 @@ impl UI {
                 //ui.with_layer_id(egui::LayerId::background(), |ui| {
                 //ui.with_layer_id(egui::LayerId::background(), |ui| {
                 //});
-                    for (_, surface) in surfaces.iter_mut() {
-                        surface.draw_gizmo(ui, view, proj);
-                    }
-                    for (_, curve) in curves.iter_mut() {
-                        curve.draw_gizmo(ui, view, proj);
-                    }
-                    for (_, cloud) in clouds.iter_mut() {
-                        cloud.draw_gizmo(ui, view, proj);
-                    }
+                for (_, surface) in surfaces.iter_mut() {
+                    surface.draw_gizmo(ui, view, proj);
+                }
+                for (_, curve) in curves.iter_mut() {
+                    curve.draw_gizmo(ui, view, proj);
+                }
+                for (_, cloud) in clouds.iter_mut() {
+                    cloud.draw_gizmo(ui, view, proj);
+                }
             });
     }
 
@@ -193,7 +188,7 @@ impl UI {
                     wasm_bindgen_futures::spawn_local(f);
                 }
                 if let Some((picked_name, picked_number)) = state.get_picked() {
-                    let mut picked_number = *picked_number;
+                    let picked_number = *picked_number;
                     ui.label(format!("Picked {}", picked_name));
                     if let Some(surface) = state.get_surface(&picked_name) {
                         surface.draw_element_info(picked_number, ui);

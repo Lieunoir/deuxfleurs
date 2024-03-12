@@ -1,8 +1,8 @@
 use crate::ui::UiDataElement;
-use wgpu::util::DeviceExt;
+use egui::Shape::Path;
 use egui::{Pos2, Stroke};
 use epaint::PathShape;
-use egui::Shape::Path;
+use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -298,12 +298,11 @@ pub fn windowing_ui(
                 Some(p) => {
                     let dist_1 = (lb_pos.x - p.x).abs();
                     let dist_2 = (ub_pos.x - p.x).abs();
-                    if dist_1 < dist_2
-                    {
+                    if dist_1 < dist_2 {
                         // dragging the lower one
                         lb_pos.x = f32::min(f32::max(p.x, rect.left_center().x), ub_pos.x);
                         response.mark_changed();
-                    } else                     {
+                    } else {
                         // dragging the upper one
                         ub_pos.x = f32::max(f32::min(p.x, rect.right_center().x), lb_pos.x);
                         response.mark_changed();
@@ -355,7 +354,7 @@ pub fn windowing_ui(
 }
 
 impl UiDataElement for ColorMap {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
+    fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
         let mut changed = false;
         egui::ComboBox::from_label("ColorMap")
             .selected_text(self.colors.get_name())
@@ -380,7 +379,8 @@ impl UiDataElement for ColorMap {
                     .changed();
             });
         ui.horizontal(|ui| {
-            changed |= windowing_ui(ui, &100., &100., 0., 1., &mut self.min, &mut self.max).changed();
+            changed |=
+                windowing_ui(ui, &100., &100., 0., 1., &mut self.min, &mut self.max).changed();
             ui.label("Range");
         });
         changed

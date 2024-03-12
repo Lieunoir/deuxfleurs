@@ -60,19 +60,21 @@ pub async fn run() {
         let value = spot_v[spot_f[i][0] as usize][0];
         *face = value;
     }
-    let surface1 = state .register_surface("spot_uv".into(), spot_uv_mesh, spot_f.clone());
+    let surface1 = state.register_surface("spot_uv".into(), spot_uv_mesh, spot_f.clone());
     surface1.show_edges(true);
-    surface1.add_vertex_scalar("x coord".into(), spot_data_1.clone()) ;
+    surface1.add_vertex_scalar("x coord".into(), spot_data_1.clone());
     let surface2 = state
         .register_surface("spot".into(), spot_v.clone(), spot_f.clone())
         .show_edges(true);
-        surface2.add_vertex_scalar("x coord".into(), spot_data_1.clone());
-        surface2.add_vertex_vector_field("positions".into(), spot_v.clone()).set_magnitude(0.1);
-        surface2.add_vertex_scalar("y coord".into(), spot_data_2);
-        surface2.add_uv_map("uv".into(), spot_uv_map);
-        surface2.add_corner_uv_map("corner uv".into(), spot_corner_uv_map);
-        surface2.add_face_scalar("face scalar".into(), spot_face_scalar);
-        surface2.set_data(Some("y coord".into()));
+    surface2.add_vertex_scalar("x coord".into(), spot_data_1.clone());
+    surface2
+        .add_vertex_vector_field("positions".into(), spot_v.clone())
+        .set_magnitude(0.1);
+    surface2.add_vertex_scalar("y coord".into(), spot_data_2);
+    surface2.add_uv_map("uv".into(), spot_uv_map);
+    surface2.add_corner_uv_map("corner uv".into(), spot_corner_uv_map);
+    surface2.add_face_scalar("face scalar".into(), spot_face_scalar);
+    surface2.set_data(Some("y coord".into()));
 
     let mut curves = Vec::new();
     for f in &spot_f {
@@ -112,7 +114,9 @@ pub async fn run() {
             if let Some(surface) = state.get_surface("loaded mesh") {
                 //let mut vertices = surface.geometry.vertices.clone();
                 vertices = vec![[0., 0., 0.]; surface.geometry.vertices.len()];
-                for (vertex, orig_vertex) in vertices.iter_mut().zip(surface.geometry.vertices.iter()) {
+                for (vertex, orig_vertex) in
+                    vertices.iter_mut().zip(surface.geometry.vertices.iter())
+                {
                     *vertex = *orig_vertex;
                 }
                 indices = match &surface.geometry.indices {
@@ -156,8 +160,7 @@ pub async fn run() {
                         last_selected = item;
                         last_selected_geometry = surface_name.clone();
                         selected[item] = 1.;
-                        surface
-                            .add_vertex_scalar("selected vertex".into(), selected);
+                        surface.add_vertex_scalar("selected vertex".into(), selected);
                     } else {
                         let mut selected = vec![0.; surface.geometry.indices.size()];
                         last_selected = item;

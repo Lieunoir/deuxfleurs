@@ -1,5 +1,5 @@
 use crate::ui::UiDataElement;
-use egui::Widget;
+
 use egui_gizmo::GizmoMode;
 
 pub struct TransformSettings {
@@ -33,21 +33,15 @@ impl TransformSettings {
             egui::ComboBox::from_label("Guizmo Mode")
                 .selected_text(format!("{:?}", self.gizmo_mode))
                 .show_ui(ui, |ui| {
-                    changed |= ui.selectable_value(
-                        &mut self.gizmo_mode,
-                        GizmoMode::Translate,
-                        "Translate",
-                    ).changed();
-                    changed |= ui.selectable_value(
-                        &mut self.gizmo_mode,
-                        GizmoMode::Rotate,
-                        "Rotate",
-                    ).changed();
-                    changed |= ui.selectable_value(
-                        &mut self.gizmo_mode,
-                        GizmoMode::Scale,
-                        "Scale",
-                    ).changed();
+                    changed |= ui
+                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
+                        .changed();
+                    changed |= ui
+                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
+                        .changed();
+                    changed |= ui
+                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
+                        .changed();
                 });
         });
         ui.horizontal(|ui| {
@@ -58,7 +52,7 @@ impl TransformSettings {
                     [0., 0., 1., 0.],
                     [0., 0., 0., 1.],
                 ];
-                    changed = true;
+                changed = true;
             }
             if ui.add(egui::Button::new("Center")).clicked() {
                 let mut min_x = std::f32::MAX;
@@ -68,11 +62,10 @@ impl TransformSettings {
                 let mut max_y = std::f32::MIN;
                 let mut max_z = std::f32::MIN;
 
-                let transfo_matrix: cgmath::Matrix4<f32> =
-                    self.transform.into();
+                let transfo_matrix: cgmath::Matrix4<f32> = self.transform.into();
                 for position in positions {
                     let threed_point: cgmath::Point3<f32> = (*position).into();
-                    use cgmath::Matrix;
+
                     let position = cgmath::Point3::<f32>::from_homogeneous(
                         transfo_matrix * threed_point.to_homogeneous(),
                     );
@@ -112,11 +105,10 @@ impl TransformSettings {
                 let mut max_y = std::f32::MIN;
                 let mut max_z = std::f32::MIN;
 
-                let transfo_matrix: cgmath::Matrix4<f32> =
-                    self.transform.into();
+                let transfo_matrix: cgmath::Matrix4<f32> = self.transform.into();
                 for vertex in positions {
                     let threed_point: cgmath::Point3<f32> = (*vertex).into();
-                    use cgmath::Matrix;
+
                     let position = cgmath::Point3::<f32>::from_homogeneous(
                         transfo_matrix * threed_point.to_homogeneous(),
                     );
@@ -152,33 +144,32 @@ impl TransformSettings {
                 }
                 changed = true;
             }
-            });
-            changed
-        }
+        });
+        changed
     }
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct TransformRaw {
-        model: [[f32; 4]; 4],
-        //Actually 3x3 but mat4 for alignment
-        normal: [[f32; 4]; 4],
+pub struct TransformRaw {
+    model: [[f32; 4]; 4],
+    //Actually 3x3 but mat4 for alignment
+    normal: [[f32; 4]; 4],
+}
+
+impl TransformRaw {
+    pub fn get_model(&self) -> [[f32; 4]; 4] {
+        self.model
     }
+}
 
-    impl TransformRaw {
-        pub fn get_model(&self) -> [[f32; 4]; 4] {
-            self.model
-        }
-    }
-
-    impl Default for TransformSettings {
-
+impl Default for TransformSettings {
     //pub fn new() -> Self {
-    //    
+    //
     //}
 
     fn default() -> Self {
-        TransformSettings{
+        TransformSettings {
             transform: [
                 [1., 0., 0., 0.],
                 [0., 1., 0., 0.],
@@ -192,28 +183,22 @@ impl TransformSettings {
 }
 
 impl UiDataElement for TransformSettings {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
+    fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
         let mut changed = false;
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
             egui::ComboBox::from_label("Guizmo Mode")
                 .selected_text(format!("{:?}", self.gizmo_mode))
                 .show_ui(ui, |ui| {
-                    changed |= ui.selectable_value(
-                        &mut self.gizmo_mode,
-                        GizmoMode::Translate,
-                        "Translate",
-                    ).changed();
-                    changed |= ui.selectable_value(
-                        &mut self.gizmo_mode,
-                        GizmoMode::Rotate,
-                        "Rotate",
-                    ).changed();
-                    changed |= ui.selectable_value(
-                        &mut self.gizmo_mode,
-                        GizmoMode::Scale,
-                        "Scale",
-                    ).changed();
+                    changed |= ui
+                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
+                        .changed();
+                    changed |= ui
+                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
+                        .changed();
+                    changed |= ui
+                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
+                        .changed();
                 });
         });
         ui.horizontal(|ui| {
@@ -230,7 +215,8 @@ impl UiDataElement for TransformSettings {
         changed
     }
 
-    fn draw_gizmo(&mut self,
+    fn draw_gizmo(
+        &mut self,
         ui: &mut egui::Ui,
         name: &str,
         view: cgmath::Matrix4<f32>,

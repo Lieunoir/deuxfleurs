@@ -1,7 +1,7 @@
+use crate::data::*;
 use crate::texture;
 use crate::util;
 use wgpu::util::DeviceExt;
-use crate::data::*;
 
 pub struct VectorField {
     pub vectors: Vec<[f32; 3]>,
@@ -69,7 +69,11 @@ pub(crate) struct NewVectorField {
 }
 
 impl NewVectorField {
-    pub(crate) fn new(name: String, vectors: Vec<[f32; 3]>, offsets: Vec<[f32; 3]>) -> NewVectorField {
+    pub(crate) fn new(
+        name: String,
+        vectors: Vec<[f32; 3]>,
+        offsets: Vec<[f32; 3]>,
+    ) -> NewVectorField {
         NewVectorField {
             name,
             vectors,
@@ -179,10 +183,11 @@ impl VectorField {
         transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         NewVectorField {
-            name,
-        vectors,
-        offsets,
-        settings, }: NewVectorField
+            name: _,
+            vectors,
+            offsets,
+            settings,
+        }: NewVectorField,
     ) -> Self {
         assert!(vectors.len() == offsets.len());
 

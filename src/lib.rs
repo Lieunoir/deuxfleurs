@@ -1,5 +1,6 @@
 use crate::updater::Render;
 use indexmap::IndexMap;
+use rand::Rng;
 use std::iter;
 use std::ops::{Deref, DerefMut};
 use wgpu::util::DeviceExt;
@@ -10,33 +11,32 @@ use winit::{
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
 };
-use rand::Rng;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+mod aabb;
+mod attachment;
 mod camera;
 pub mod curve;
 mod data;
+mod deferred;
 mod picker;
 pub mod point_cloud;
 pub mod resources;
 mod screenshot;
+mod settings;
 mod shader;
+mod surface;
 mod texture;
 pub mod types;
 mod ui;
 mod updater;
 mod util;
-mod surface;
-mod attachment;
-mod deferred;
-mod settings;
-mod aabb;
 use camera::{Camera, CameraController, CameraUniform};
 use curve::Curve;
-use surface::Surface;
 use point_cloud::PointCloud;
+use surface::Surface;
 use types::*;
 
 #[repr(C)]
@@ -52,7 +52,7 @@ struct LightUniform {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct JitterUniform{
+struct JitterUniform {
     x: f32,
     y: f32,
     _padding: [u32; 2],
@@ -292,14 +292,36 @@ impl<'a> State<'a> {
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
         // Create texture for screenshots
-        let screenshoter =
-            screenshot::Screenshoter::new(&device, size.width.max(1), size.height.max(1), surface_format);
+        let screenshoter = screenshot::Screenshoter::new(
+            &device,
+            size.width.max(1),
+            size.height.max(1),
+            surface_format,
+        );
 
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
 
-        let copy = deferred::TextureCopy::new(&device, surface_format, size.width.max(1), size.height.max(1));
-        let pbr_renderer = deferred::PBR::new(&device, surface_format, &depth_texture.view, &camera_light_bind_group_layout, size.width.max(1), size.height.max(1));
-        let ground = deferred::Ground::new(&device, surface_format, &depth_texture.view, &camera_light_bind_group_layout, 0.);
+        let copy = deferred::TextureCopy::new(
+            &device,
+            surface_format,
+            size.width.max(1),
+            size.height.max(1),
+        );
+        let pbr_renderer = deferred::PBR::new(
+            &device,
+            surface_format,
+            &depth_texture.view,
+            &camera_light_bind_group_layout,
+            size.width.max(1),
+            size.height.max(1),
+        );
+        let ground = deferred::Ground::new(
+            &device,
+            surface_format,
+            &depth_texture.view,
+            &camera_light_bind_group_layout,
+            0.,
+        );
         Self {
             surface,
             device,
@@ -340,6 +362,9 @@ impl<'a> State<'a> {
         for surface in self.surfaces.values() {
             if surface.show {
                 for p in surface.geometry.get_positions() {
+                    let p = cgmath::Matrix4::from(surface.updater.transform.transform)
+                        * cgmath::Point3::from(*p).to_homogeneous();
+                    let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
                     }
@@ -349,6 +374,9 @@ impl<'a> State<'a> {
         for cloud in self.clouds.values() {
             if cloud.show {
                 for p in cloud.geometry.get_positions() {
+                    let p = cgmath::Matrix4::from(cloud.updater.transform.transform)
+                        * cgmath::Point3::from(*p).to_homogeneous();
+                    let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
                     }
@@ -358,6 +386,9 @@ impl<'a> State<'a> {
         for curve in self.curves.values() {
             if curve.show {
                 for p in curve.geometry.get_positions() {
+                    let p = cgmath::Matrix4::from(curve.updater.transform.transform)
+                        * cgmath::Point3::from(*p).to_homogeneous();
+                    let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
                     }
@@ -418,7 +449,9 @@ impl<'a> State<'a> {
             center = center / (n as f32);
         }
         self.dirty = true;
-        self.camera.set_scene_size(size.unwrap_or_else(|| 1.), center);
+        self.camera
+            .set_scene_size(size.unwrap_or_else(|| 1.), center);
+        self.set_floor();
     }
 
     // Keeps state in sync with window size when changed
@@ -440,10 +473,19 @@ impl<'a> State<'a> {
             self.camera.resize(new_size.width, new_size.height);
             self.picker
                 .resize(&self.device, new_size.width, new_size.height);
-            self.copy
-                .resize(&self.device, self.config.format, new_size.width, new_size.height);
-            self.pbr_renderer
-                .resize(&self.device, self.config.format, &self.depth_texture.view, new_size.width, new_size.height);
+            self.copy.resize(
+                &self.device,
+                self.config.format,
+                new_size.width,
+                new_size.height,
+            );
+            self.pbr_renderer.resize(
+                &self.device,
+                self.config.format,
+                &self.depth_texture.view,
+                new_size.width,
+                new_size.height,
+            );
         }
     }
 
@@ -458,7 +500,8 @@ impl<'a> State<'a> {
     fn update(&mut self) -> bool {
         // Sync local app state with camera
         self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera, &self.aabb, self.ground.level);
+        self.camera_uniform
+            .update_view_proj(&self.camera, &self.aabb, self.ground.level);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
@@ -576,16 +619,13 @@ impl<'a> State<'a> {
 
                 let mut rng = rand::thread_rng();
                 JitterUniform {
-                    x:  2. * (rng.gen::<f32>() - 0.5) / self.size.width as f32,
-                    y:  2. * (rng.gen::<f32>() - 0.5) / self.size.height as f32,
+                    x: 2. * (rng.gen::<f32>() - 0.5) / self.size.width as f32,
+                    y: 2. * (rng.gen::<f32>() - 0.5) / self.size.height as f32,
                     _padding: [0; 2],
                 }
             };
-            self.queue.write_buffer(
-                &self.jitter_buffer,
-                0,
-                bytemuck::cast_slice(&[jitter]),
-            );
+            self.queue
+                .write_buffer(&self.jitter_buffer, 0, bytemuck::cast_slice(&[jitter]));
 
             if render || self.screenshot {
                 let view_ref = if self.screenshot {
@@ -602,6 +642,28 @@ impl<'a> State<'a> {
                 {
                     encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("Material Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: self.pbr_renderer.get_albedo_view(),
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color {
+                                    r: 0.0,
+                                    g: 0.0,
+                                    b: 0.0,
+                                    a: 0.0,
+                                }),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
+                }
+
+                let mut material_render_pass =
+                    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Material Render Pass"),
                         color_attachments: &[
                             Some(wgpu::RenderPassColorAttachment {
                                 view: self.pbr_renderer.get_albedo_view(),
@@ -616,54 +678,31 @@ impl<'a> State<'a> {
                                     store: wgpu::StoreOp::Store,
                                 },
                             }),
+                            Some(wgpu::RenderPassColorAttachment {
+                                view: self.pbr_renderer.get_normals_view(),
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: 0.0,
+                                        g: 0.0,
+                                        b: 0.0,
+                                        a: 0.0,
+                                    }),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            }),
                         ],
-                        depth_stencil_attachment: None,
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.depth_texture.view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
                         occlusion_query_set: None,
                         timestamp_writes: None,
                     });
-                }
-
-                let mut material_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Material Render Pass"),
-                    color_attachments: &[
-                        Some(wgpu::RenderPassColorAttachment {
-                            view: self.pbr_renderer.get_albedo_view(),
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.0,
-                                    g: 0.0,
-                                    b: 0.0,
-                                    a: 0.0,
-                                }),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        }),
-                        Some(wgpu::RenderPassColorAttachment {
-                            view: self.pbr_renderer.get_normals_view(),
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.0,
-                                    g: 0.0,
-                                    b: 0.0,
-                                    a: 0.0,
-                                }),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        }),
-                    ],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
 
                 material_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
 
@@ -716,64 +755,37 @@ impl<'a> State<'a> {
                 pbr_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
                 self.pbr_renderer.render(&mut pbr_render_pass);
                 drop(pbr_render_pass);
-                let mut shadow_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Shadow Render Pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: self.ground.get_texture_view(),
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(
-                                      wgpu::Color {
-                                          r: 0.,
-                                          g: 0.,
-                                          b: 0.,
-                                          a: 0.,
-                                      }
-                                  ),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
+                let mut shadow_render_pass =
+                    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Shadow Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: self.ground.get_texture_view(),
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color {
+                                    r: 0.,
+                                    g: 0.,
+                                    b: 0.,
+                                    a: 0.,
+                                }),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
                 shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
                 for surface in self.surfaces.values() {
                     surface.render_shadow(&mut shadow_render_pass);
                 }
 
                 drop(shadow_render_pass);
-                self.ground.blur(&mut encoder, &self.camera_light_bind_group);
-                let mut ground_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Shadow Render Pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: view_ref,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    // Create a depth stencil buffer using the depth texture
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                self.ground.render(&mut ground_render_pass);
-                drop(ground_render_pass);
-
-                // Draw the gui
-                if !self.screenshot && !render_copy {
-                    let mut ui_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("Ui Render Pass"),
+                self.ground
+                    .blur(&mut encoder, &self.camera_light_bind_group);
+                let mut ground_render_pass =
+                    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Shadow Render Pass"),
                         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                             view: view_ref,
                             resolve_target: None,
@@ -783,10 +795,39 @@ impl<'a> State<'a> {
                             },
                         })],
                         // Create a depth stencil buffer using the depth texture
-                        depth_stencil_attachment: None,
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.depth_texture.view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
                         occlusion_query_set: None,
                         timestamp_writes: None,
                     });
+                ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                self.ground.render(&mut ground_render_pass);
+                drop(ground_render_pass);
+
+                // Draw the gui
+                if !self.screenshot && !render_copy {
+                    let mut ui_render_pass =
+                        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("Ui Render Pass"),
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: view_ref,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Load,
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })],
+                            // Create a depth stencil buffer using the depth texture
+                            depth_stencil_attachment: None,
+                            occlusion_query_set: None,
+                            timestamp_writes: None,
+                        });
                     ui.render(&mut ui_render_pass, &clipped_primitives, &screen_descriptor);
                 }
             }
@@ -799,24 +840,29 @@ impl<'a> State<'a> {
 
             if self.screenshot || (!render || render_copy) {
                 let (view_ref, color) = if self.screenshot {
-                    (self.screenshoter.get_view(), wgpu::Color {
-                        r: 0.,
-                        g: 0.,
-                        b: 0.,
-                        a: 0.,
-                    })
+                    (
+                        self.screenshoter.get_view(),
+                        wgpu::Color {
+                            r: 0.,
+                            g: 0.,
+                            b: 0.,
+                            a: 0.,
+                        },
+                    )
                 } else {
-                    (&view, wgpu::Color {
-                        r: 0.1,
-                        g: 0.2,
-                        b: 0.3,
-                        a: 0.0,
-                    })
+                    (
+                        &view,
+                        wgpu::Color {
+                            r: 0.1,
+                            g: 0.2,
+                            b: 0.3,
+                            a: 0.0,
+                        },
+                    )
                 };
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Copy Pass"),
-                    color_attachments: &[
-                        Some(wgpu::RenderPassColorAttachment {
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: view_ref,
                         resolve_target: None,
                         ops: wgpu::Operations {
@@ -944,7 +990,7 @@ impl<'a> State<'a> {
         self.curves.get_mut(name)
     }
 
-    pub fn get_curve(&self, name: &str) -> Option<& Curve> {
+    pub fn get_curve(&self, name: &str) -> Option<&Curve> {
         self.curves.get(name)
     }
 

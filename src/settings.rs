@@ -19,7 +19,5 @@ impl Default for Settings {
 }
 
 impl Settings {
-    pub fn ui(&mut self, ui: &mut egui::Ui) {
-
-    }
+    pub fn ui(&mut self, _ui: &mut egui::Ui) {}
 }

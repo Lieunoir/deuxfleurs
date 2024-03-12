@@ -1,19 +1,19 @@
-use crate::data::*;
 use crate::attachment::{NewVectorField, VectorFieldSettings};
+use crate::data::*;
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
+use crate::types::{SurfaceIndices, Vertices2D};
+use crate::ui::UiDataElement;
 use crate::updater::*;
 use crate::util;
-use crate::types::{Vertices2D, SurfaceIndices};
 use wgpu::util::DeviceExt;
-use crate::ui::UiDataElement;
 
 mod data;
-mod shader;
 mod picker;
+mod shader;
 use data::*;
-use shader::{SHADOW_SHADER, get_shader};
 use picker::Picker;
+use shader::{get_shader, SHADOW_SHADER};
 
 pub trait Vertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
@@ -34,15 +34,11 @@ pub struct SurfaceSettings {
 
 impl DataUniformBuilder for SurfaceSettings {
     fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
-        SurfaceSettingsValue {
-            color: self.color,
-        }.build_uniform(device)
+        SurfaceSettingsValue { color: self.color }.build_uniform(device)
     }
 
     fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
-        SurfaceSettingsValue {
-            color: self.color,
-        }.refresh_buffer(queue, data_uniform)
+        SurfaceSettingsValue { color: self.color }.refresh_buffer(queue, data_uniform)
     }
 }
 
@@ -55,17 +51,18 @@ impl UiDataElement for SurfaceSettings {
             *property_changed |= ui.checkbox(&mut self.show_edges, "Edges").changed();
             *property_changed |= ui.checkbox(&mut self.smooth, "Smooth").changed();
         });
-//        self.transform.draw(ui, property_changed);
+        //        self.transform.draw(ui, property_changed);
         changed
     }
 
-    fn draw_gizmo(&mut self,
-        ui: &mut egui::Ui,
-        name: &str,
-        view: cgmath::Matrix4<f32>,
-        proj: cgmath::Matrix4<f32>,
+    fn draw_gizmo(
+        &mut self,
+        _ui: &mut egui::Ui,
+        _name: &str,
+        _view: cgmath::Matrix4<f32>,
+        _proj: cgmath::Matrix4<f32>,
     ) -> bool {
-//        self.transform.draw_gizmo(ui, name, view, proj)
+        //        self.transform.draw_gizmo(ui, name, view, proj)
         false
     }
 }
@@ -145,10 +142,11 @@ impl DataBuffer for SurfaceDataBuffer {
 
     fn new(device: &wgpu::Device, geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self {
         //let sphere_data_buffer = data.map(|d| d.build_sphere_data_buffer(device));
-        let data_buffer = data.map(|d| d.build_vertex_buffer(device, &geometry.indices, &geometry.internal_indices));
+        let data_buffer = data
+            .map(|d| d.build_vertex_buffer(device, &geometry.indices, &geometry.internal_indices));
         Self {
             data_buffer,
-           // sphere_data_buffer,
+            // sphere_data_buffer,
         }
     }
 }
@@ -164,7 +162,7 @@ impl FixedRenderer for SurfaceFixedRenderer {
         let face_normals = compute_face_normals(&geometry.vertices, &geometry.indices);
         let mut gpu_vertices = Vec::with_capacity(3 * geometry.internal_indices.len());
         for (face, face_normal) in geometry.indices.into_iter().zip(face_normals) {
-            let fmin2 = face.len() - 2;
+            let _fmin2 = face.len() - 2;
             for j in 1..face.len() - 1 {
                 for k in 0..3 {
                     let barycentric_coords = if face.len() == 3 {
@@ -175,27 +173,21 @@ impl FixedRenderer for SurfaceFixedRenderer {
                         }
                     } else {
                         match j {
-                            1 => {
-                                match k {
-                                    0 => [1., 1., 0.],
-                                    1 => [0., 1.1, 0.],
-                                    _ => [0., 1., 1.],
-                                }
+                            1 => match k {
+                                0 => [1., 1., 0.],
+                                1 => [0., 1.1, 0.],
+                                _ => [0., 1., 1.],
                             },
-                            fmin2 => {
-                                match k {
-                                    0 => [1., 0., 1.],
-                                    1 => [0., 1., 1.],
-                                    _ => [0., 0., 1.1],
-                                }
+                            _fmin2 => match k {
+                                0 => [1., 0., 1.],
+                                1 => [0., 1., 1.],
+                                _ => [0., 0., 1.1],
                             },
-                            _ => {
-                                match k {
-                                    0 => [1., 1., 1.],
-                                    1 => [0., 1.1, 1.],
-                                    _ => [0., 1., 1.1],
-                                }
-                            }
+                            _ => match k {
+                                0 => [1., 1., 1.],
+                                1 => [0., 1.1, 1.],
+                                _ => [0., 1., 1.1],
+                            },
                         }
                     };
                     let index = if k != 0 { (j - 1 + k) as usize } else { 0 };
@@ -233,7 +225,7 @@ impl RenderPipeline for SurfacePipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        fixed: &Self::Fixed,
+        _fixed: &Self::Fixed,
         settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
@@ -254,20 +246,23 @@ impl RenderPipeline for SurfacePipeline {
             }),
             None => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[camera_light_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-                &settings_uniform.bind_group_layout],
+                bind_group_layouts: &[
+                    camera_light_bind_group_layout,
+                    &transform_uniform.bind_group_layout,
+                    &settings_uniform.bind_group_layout,
+                ],
                 push_constant_ranges: &[],
             }),
         };
-        let shadow_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Surface Shadow Pipeline Layout"),
-            bind_group_layouts: &[
-                camera_light_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        });
+        let shadow_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Surface Shadow Pipeline Layout"),
+                bind_group_layouts: &[
+                    camera_light_bind_group_layout,
+                    &transform_uniform.bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Normal Shader"),
             source: wgpu::ShaderSource::Wgsl(
@@ -310,8 +305,14 @@ impl RenderPipeline for SurfacePipeline {
     }
 }
 
-type SurfaceRenderer =
-    Renderer<SurfaceSettings, SurfaceData, SurfaceGeometry, SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>;
+type SurfaceRenderer = Renderer<
+    SurfaceSettings,
+    SurfaceData,
+    SurfaceGeometry,
+    SurfaceFixedRenderer,
+    SurfaceDataBuffer,
+    SurfacePipeline,
+>;
 
 impl Render for SurfaceRenderer {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -374,7 +375,14 @@ impl Surface {
             vertices,
             internal_indices,
         };
-        Surface::init(device, name, geometry, camera_light_bind_group_layout, counter_bind_group_layout, color_format)
+        Surface::init(
+            device,
+            name,
+            geometry,
+            camera_light_bind_group_layout,
+            counter_bind_group_layout,
+            color_format,
+        )
     }
 
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
@@ -393,20 +401,34 @@ impl Surface {
         self
     }
 
-    pub fn add_face_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut FaceScalarSettings {
+    pub fn add_face_scalar<S: Scalar>(
+        &mut self,
+        name: String,
+        datas: S,
+    ) -> &mut FaceScalarSettings {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
-        if let SurfaceData::FaceScalar(_, settings) = self.updater.add_data(name, SurfaceData::FaceScalar(datas, FaceScalarSettings::default())) {
+        if let SurfaceData::FaceScalar(_, settings) = self.updater.add_data(
+            name,
+            SurfaceData::FaceScalar(datas, FaceScalarSettings::default()),
+        ) {
             settings
         } else {
             panic!()
         }
     }
 
-    pub fn add_vertex_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut VertexScalarSettings {
+    pub fn add_vertex_scalar<S: Scalar>(
+        &mut self,
+        name: String,
+        datas: S,
+    ) -> &mut VertexScalarSettings {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        if let SurfaceData::VertexScalar(_, settings) = self.updater.add_data(name, SurfaceData::VertexScalar(datas, VertexScalarSettings::default())) {
+        if let SurfaceData::VertexScalar(_, settings) = self.updater.add_data(
+            name,
+            SurfaceData::VertexScalar(datas, VertexScalarSettings::default()),
+        ) {
             settings
         } else {
             panic!()
@@ -416,17 +438,27 @@ impl Surface {
     pub fn add_uv_map<UV: Vertices2D>(&mut self, name: String, datas: UV) -> &mut UVMapSettings {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        if let SurfaceData::UVMap(_, settings) = self.updater.add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default())) {
+        if let SurfaceData::UVMap(_, settings) = self
+            .updater
+            .add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default()))
+        {
             settings
         } else {
             panic!()
         }
     }
 
-    pub fn add_corner_uv_map<UV: Vertices2D>(&mut self, name: String, datas: UV) -> &mut UVMapSettings {
+    pub fn add_corner_uv_map<UV: Vertices2D>(
+        &mut self,
+        name: String,
+        datas: UV,
+    ) -> &mut UVMapSettings {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
-        if let SurfaceData::UVCornerMap(_, settings) = self.updater.add_data(name, SurfaceData::UVCornerMap(datas, UVMapSettings::default())) {
+        if let SurfaceData::UVCornerMap(_, settings) = self.updater.add_data(
+            name,
+            SurfaceData::UVCornerMap(datas, UVMapSettings::default()),
+        ) {
             settings
         } else {
             panic!()
@@ -449,7 +481,12 @@ impl Surface {
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
         let vector_field = NewVectorField::new(name, vectors, offsets);
         self.updater.queued_attached_data.push(vector_field);
-        &mut self.updater.queued_attached_data.last_mut().unwrap().settings
+        &mut self
+            .updater
+            .queued_attached_data
+            .last_mut()
+            .unwrap()
+            .settings
     }
 
     pub fn add_face_vector_field<V: Vertices>(
@@ -460,7 +497,8 @@ impl Surface {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.indices.size());
         let offsets: Vec<[f32; 3]> = self
-            .geometry.indices
+            .geometry
+            .indices
             .into_iter()
             .map(|face| {
                 let mut res0 = 0.;
@@ -480,14 +518,22 @@ impl Surface {
             .collect();
         let vector_field = NewVectorField::new(name, vectors, offsets);
         self.updater.queued_attached_data.push(vector_field);
-        &mut self.updater.queued_attached_data.last_mut().unwrap().settings
+        &mut self
+            .updater
+            .queued_attached_data
+            .last_mut()
+            .unwrap()
+            .settings
     }
 
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
         if element < self.geometry.vertices.len() {
             ui.label(format!("Picked vertex number {}", element));
         } else if element < self.geometry.vertices.len() + self.geometry.indices.size() {
-            ui.label(format!("Picked face number {}", element - self.geometry.vertices.len()));
+            ui.label(format!(
+                "Picked face number {}",
+                element - self.geometry.vertices.len()
+            ));
         }
     }
 }
@@ -518,8 +564,7 @@ fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[f32;
         }
     }
     for normal in &mut normals {
-        let norm =
-            (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+        let norm = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
         normal[0] /= norm;
         normal[1] /= norm;
         normal[2] /= norm;
@@ -547,8 +592,7 @@ fn compute_face_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<
         }
     }
     for normal in &mut normals {
-        let norm =
-            (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+        let norm = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
         normal[0] /= norm;
         normal[1] /= norm;
         normal[2] /= norm;

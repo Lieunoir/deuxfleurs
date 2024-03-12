@@ -109,13 +109,11 @@ pub fn create_shadow_render_pipeline(
         fragment: Some(wgpu::FragmentState {
             module: &shader,
             entry_point: "fs_main",
-            targets: &[
-                Some(wgpu::ColorTargetState {
-                    format: color_format,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                }),
-            ],
+            targets: &[Some(wgpu::ColorTargetState {
+                format: color_format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -170,7 +168,7 @@ pub fn create_picker_pipeline(
                 format: color_format,
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
-            }), ],
+            })],
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -199,7 +197,6 @@ pub fn create_picker_pipeline(
     })
 }
 
-
 pub fn create_quad_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
@@ -224,15 +221,15 @@ pub fn create_quad_pipeline(
             entry_point: "fs_main",
             targets: &[
                 Some(wgpu::ColorTargetState {
-                format: color_format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            }),
+                    format: color_format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                }),
                 Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            }),
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                }),
             ],
         }),
         primitive: wgpu::PrimitiveState {

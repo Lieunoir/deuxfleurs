@@ -1,6 +1,6 @@
+use crate::aabb::SBV;
 use cgmath::prelude::*;
 use winit::event::*;
-use crate::aabb::SBV;
 
 // Camera informations for easier updating
 pub struct Camera {
@@ -86,7 +86,7 @@ impl CameraUniform {
         self.view_position = camera.eye.to_homogeneous().into();
         let view_proj = camera.build_view_projection_matrix();
         self.view_proj = view_proj.into();
-		let view_inv = view_proj.inverse_transform().unwrap();
+        let view_inv = view_proj.inverse_transform().unwrap();
         self.view_inv = view_inv.into();
         //let orig : cgmath::Vector4<f32> = self.view_position.into();
         let mut min_x = f32::MAX;
@@ -94,7 +94,7 @@ impl CameraUniform {
         let mut max_x = f32::MIN;
         let mut max_z = f32::MIN;
         let couples = [(-1., -1.), (-1., 1.), (1., -1.), (1., 1.)];
-        for (x,y) in couples {
+        for (x, y) in couples {
             let mut target = view_inv * cgmath::Vector4::new(x, y, 1., 1.);
             target = target / target.w;
             let mut origin = view_inv * cgmath::Vector4::new(x, y, 0., 1.);
@@ -120,7 +120,7 @@ impl CameraUniform {
             }
         }
         let couples = [(-1., 0.), (-1., 1.), (1., 0.), (1., 1.)];
-        for (x,z) in couples {
+        for (x, z) in couples {
             let mut target = view_inv * cgmath::Vector4::new(x, -1., z, 1.);
             target = target / target.w;
             let mut origin = view_inv * cgmath::Vector4::new(x, 1., z, 1.);
@@ -158,7 +158,7 @@ impl CameraUniform {
         let target = cgmath::Point3::<f32>::new(c_x, 0., c_z);
         let up = cgmath::Vector3::<f32>::new(0., 0., 1.);
         let view = cgmath::Matrix4::look_at_rh(eye, target, up);
-        let proj = cgmath::ortho(d_x, -d_x, -d_z, d_z, -camera.zfar, camera.zfar);
+        let proj = cgmath::ortho(d_x, -d_x, -d_z, d_z, -camera.zfar, 2. * camera.zfar);
         self.floor_bb = [min_x, min_z, max_x - min_x, max_z - min_z];
         self.floor_proj = (proj * view).into();
     }
@@ -250,8 +250,8 @@ impl CameraController {
         }
         */
         if let Some(delta) = self.wheel_delta {
-            camera.eye += forward_norm * delta;
-            camera.target += forward_norm * delta;
+            camera.eye += forward_norm * delta * camera.zfar * 0.02;
+            camera.target += forward_norm * delta * camera.zfar * 0.02;
             self.wheel_delta = None;
         }
         /*
@@ -282,8 +282,8 @@ impl CameraController {
                     rotation.rotate_vector(old_eye + camera.up - origin) - (camera.eye - origin);
                 //camera.target = camera.eye + forward;
             } else if self.is_mouse_right_pressed {
-                camera.eye += 0.03 * (-dx * right + dy * camera.up);
-                camera.target += 0.03 * (-dx * right + dy * camera.up);
+                camera.eye += camera.zfar * 0.0006 * (-dx * right + dy * camera.up);
+                camera.target += camera.zfar * 0.0006 * (-dx * right + dy * camera.up);
             }
             self.pan_delta = None;
         }

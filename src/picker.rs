@@ -1,6 +1,6 @@
-use crate::surface::Surface;
-use crate::point_cloud::PointCloud;
 use crate::curve::Curve;
+use crate::point_cloud::PointCloud;
+use crate::surface::Surface;
 use crate::texture;
 use crate::util;
 use crate::UserEvent;
@@ -264,8 +264,7 @@ impl Picker {
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                                 label: Some("counter buffer"),
                                 contents: bytemuck::cast_slice(&[counter_uniform]),
-                                usage: wgpu::BufferUsages::UNIFORM
-                                    | wgpu::BufferUsages::COPY_DST,
+                                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                             });
                         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                             layout: &self.bind_group_layout,
@@ -291,8 +290,7 @@ impl Picker {
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                                 label: Some("counter buffer"),
                                 contents: bytemuck::cast_slice(&[counter_uniform]),
-                                usage: wgpu::BufferUsages::UNIFORM
-                                    | wgpu::BufferUsages::COPY_DST,
+                                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                             });
                         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                             layout: &self.bind_group_layout,
@@ -387,7 +385,12 @@ impl Picker {
         }
     }
 
-    pub fn pick(&mut self, surfaces: &IndexMap<String, Surface>, clouds: &IndexMap<String, PointCloud>, curves: &IndexMap<String, Curve>) {
+    pub fn pick(
+        &mut self,
+        surfaces: &IndexMap<String, Surface>,
+        clouds: &IndexMap<String, PointCloud>,
+        curves: &IndexMap<String, Curve>,
+    ) {
         {
             let buffer_slice = self.buffer.slice(..);
             let data = buffer_slice.get_mapped_range();
@@ -398,28 +401,40 @@ impl Picker {
                     | (data[index + 1] as u32) << 8
                     | (data[index] as u32);
                 let mut c = 1;
-                if let Some(name) = surfaces.iter().find(|(_key, surface)| {
-                    let found = c <= value && value < c + surface.get_total_elements();
-                    if !found {
-                        c += surface.get_total_elements();
-                    }
-                    found
-                }).map(|(n, s)| n).or_else( ||
-                    clouds.iter().find(|(_key, cloud)| {
-                    let found = c <= value && value < c + cloud.get_total_elements();
-                    if !found {
-                        c += cloud.get_total_elements();
-                    }
-                    found
-                }).map(|(n, pc)| n)).or_else( ||
-                    curves.iter().find(|(_key, curve)| {
-                    let found = c <= value && value < c + curve.get_total_elements();
-                    if !found {
-                        c += curve.get_total_elements();
-                    }
-                    found
-                }).map(|(n, pc)| n))
-
+                if let Some(name) = surfaces
+                    .iter()
+                    .find(|(_key, surface)| {
+                        let found = c <= value && value < c + surface.get_total_elements();
+                        if !found {
+                            c += surface.get_total_elements();
+                        }
+                        found
+                    })
+                    .map(|(n, _s)| n)
+                    .or_else(|| {
+                        clouds
+                            .iter()
+                            .find(|(_key, cloud)| {
+                                let found = c <= value && value < c + cloud.get_total_elements();
+                                if !found {
+                                    c += cloud.get_total_elements();
+                                }
+                                found
+                            })
+                            .map(|(n, _pc)| n)
+                    })
+                    .or_else(|| {
+                        curves
+                            .iter()
+                            .find(|(_key, curve)| {
+                                let found = c <= value && value < c + curve.get_total_elements();
+                                if !found {
+                                    c += curve.get_total_elements();
+                                }
+                                found
+                            })
+                            .map(|(n, _pc)| n)
+                    })
                 {
                     self.picked_item = Some((name.clone(), (value - c) as usize));
                 } else {

@@ -1,10 +1,10 @@
 use crate::data::*;
 use crate::texture;
 use crate::types::{Color, Scalar};
+use crate::ui::UiDataElement;
 use crate::updater::*;
 use crate::util;
 use wgpu::util::DeviceExt;
-use crate::ui::UiDataElement;
 
 mod picker;
 use picker::Picker;
@@ -26,12 +26,8 @@ impl DataSettings for CloudData {
 impl UiDataElement for CloudData {
     fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
         match self {
-            CloudData::Scalar(_, settings) => {
-                settings.draw(ui, property_changed)
-            },
-            CloudData::Color(_) => {
-                false
-            },
+            CloudData::Scalar(_, settings) => settings.draw(ui, property_changed),
+            CloudData::Color(_) => false,
         }
     }
 }
@@ -46,7 +42,9 @@ impl DataUniformBuilder for CloudData {
 
     fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
         match self {
-            CloudData::Scalar(_, colormap) => colormap.get_value().refresh_buffer(queue, data_uniform),
+            CloudData::Scalar(_, colormap) => {
+                colormap.get_value().refresh_buffer(queue, data_uniform)
+            }
             _ => (),
         }
     }
@@ -233,11 +231,9 @@ impl DataBuffer for CloudDataBuffer {
     type Data = CloudData;
     type Geometry = CloudGeometry;
 
-    fn new(device: &wgpu::Device, geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self {
+    fn new(device: &wgpu::Device, _geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self {
         let sphere_data_buffer = data.map(|d| d.build_sphere_data_buffer(device));
-        Self {
-            sphere_data_buffer,
-        }
+        Self { sphere_data_buffer }
     }
 }
 
@@ -249,12 +245,7 @@ impl FixedRenderer for CloudFixedRenderer {
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self {
         let s2 = 2_f32.sqrt();
         //let s2 = 1.;
-        let positions = [
-            [-s2, -s2, 0.],
-            [s2, -s2, 0.],
-            [-s2, s2, 0.],
-            [s2, s2, 0.],
-        ];
+        let positions = [[-s2, -s2, 0.], [s2, -s2, 0.], [-s2, s2, 0.], [s2, s2, 0.]];
         let vertices = positions.map(|position| SphereVertex { position });
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("PC Vertex Buffer"),
@@ -292,18 +283,27 @@ impl RenderPipeline for CloudPipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        fixed: &Self::Fixed,
-        settings: &Self::Settings,
+        _fixed: &Self::Fixed,
+        _settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
-        let bind_group_layouts = if let Some(uniform) = data_uniform{
-            vec![camera_light_bind_group_layout, &transform_uniform.bind_group_layout, &settings_uniform.bind_group_layout, &uniform.bind_group_layout]
+        let bind_group_layouts = if let Some(uniform) = data_uniform {
+            vec![
+                camera_light_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+                &settings_uniform.bind_group_layout,
+                &uniform.bind_group_layout,
+            ]
         } else {
-            vec![camera_light_bind_group_layout, &transform_uniform.bind_group_layout, &settings_uniform.bind_group_layout]
+            vec![
+                camera_light_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+                &settings_uniform.bind_group_layout,
+            ]
         };
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Sphere cloud Render Pipeline Layout"),
@@ -339,8 +339,14 @@ impl RenderPipeline for CloudPipeline {
     }
 }
 
-type CloudRenderer =
-    Renderer<PCSettings, CloudData, CloudGeometry, CloudFixedRenderer, CloudDataBuffer, CloudPipeline>;
+type CloudRenderer = Renderer<
+    PCSettings,
+    CloudData,
+    CloudGeometry,
+    CloudFixedRenderer,
+    CloudDataBuffer,
+    CloudPipeline,
+>;
 
 impl Render for CloudRenderer {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -386,7 +392,14 @@ impl PointCloud {
             num_elements: positions.len() as u32,
             positions,
         };
-        PointCloud::init(device, name, geometry, camera_light_bind_group_layout, counter_bind_group_layout, color_format)
+        PointCloud::init(
+            device,
+            name,
+            geometry,
+            camera_light_bind_group_layout,
+            counter_bind_group_layout,
+            color_format,
+        )
     }
 
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
@@ -404,7 +417,8 @@ impl PointCloud {
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut CloudData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.positions.len());
-        self.updater.add_data(name, CloudData::Scalar(datas, ColorMap::default()))
+        self.updater
+            .add_data(name, CloudData::Scalar(datas, ColorMap::default()))
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut CloudData {

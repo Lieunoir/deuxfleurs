@@ -181,11 +181,6 @@ struct DataInput {
 
     format!(
         SHADER!(),
-        data_struct,
-        uniform,
-        output_val,
-        input_val,
-        set_output,
-        color_output,
+        data_struct, uniform, output_val, input_val, set_output, color_output,
     )
 }

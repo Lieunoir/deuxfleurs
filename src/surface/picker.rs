@@ -1,9 +1,9 @@
+use super::{SurfaceGeometry, SurfaceSettings};
 use crate::data::TransformSettings;
 use crate::texture;
+use crate::updater::{ElementPicker, Render};
 use crate::util::create_picker_pipeline;
-use super::{SurfaceSettings, SurfaceGeometry};
 use wgpu::util::DeviceExt;
-use crate::updater::{Render, ElementPicker};
 
 const PICKER_SHADER: &str = "
 // Vertex shader
@@ -237,10 +237,7 @@ fn build_vertex_buffer(device: &wgpu::Device, surface: &SurfaceGeometry) -> wgpu
     })
 }
 
-fn build_transform_buffer(
-    device: &wgpu::Device,
-    transform: &TransformSettings,
-) -> wgpu::Buffer {
+fn build_transform_buffer(device: &wgpu::Device, transform: &TransformSettings) -> wgpu::Buffer {
     let transform_raw = transform.to_raw();
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Picker Transform Buffer"),
@@ -254,7 +251,7 @@ impl ElementPicker for Picker {
     type Settings = SurfaceSettings;
     fn new(
         surface: &Self::Geometry,
-        settings: &Self::Settings,
+        _settings: &Self::Settings,
         transform: &TransformSettings,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
@@ -313,8 +310,7 @@ impl ElementPicker for Picker {
         );
     }
 
-    fn update_settings(&self, queue: &mut wgpu::Queue, settings: &Self::Settings) {
-    }
+    fn update_settings(&self, _queue: &mut wgpu::Queue, _settings: &Self::Settings) {}
 
     fn get_total_elements(&self) -> u32 {
         self.tot_elements

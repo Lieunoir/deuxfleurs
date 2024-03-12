@@ -1,7 +1,7 @@
-use crate::data::{DataUniform, DataUniformBuilder, DataSettings, TransformSettings};
-use crate::attachment::{VectorField, VectorFieldSettings, NewVectorField};
-use crate::ui::UiDataElement;
 use crate::aabb::SBV;
+use crate::attachment::{NewVectorField, VectorField};
+use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
+use crate::ui::UiDataElement;
 use egui::Widget;
 use indexmap::IndexMap;
 
@@ -69,7 +69,7 @@ impl<
 where
     Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>: Render,
 {
-    pub fn init(
+    pub(crate) fn init(
         device: &wgpu::Device,
         name: String,
         geometry: Geometry,
@@ -92,7 +92,8 @@ where
             &updater.transform,
             device,
             camera_light_bind_group_layout,
-            counter_bind_group_layout);
+            counter_bind_group_layout,
+        );
         let sbv = SBV::new(geometry.get_positions());
 
         Self {
@@ -106,7 +107,7 @@ where
         }
     }
 
-    pub fn refresh(
+    pub(crate) fn refresh(
         &mut self,
         device: &wgpu::Device,
         queue: &mut wgpu::Queue,
@@ -133,7 +134,7 @@ where
         self
     }
 
-    pub fn draw_ui(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn draw_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             if ui.checkbox(&mut self.show, "Show").changed() {
                 self.updater.dirty = true;
@@ -142,7 +143,8 @@ where
         self.updater.draw(ui, self.geometry.get_positions());
     }
 
-    pub fn draw_gizmo(&mut self,
+    pub(crate) fn draw_gizmo(
+        &mut self,
         ui: &mut egui::Ui,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
@@ -150,7 +152,7 @@ where
         self.updater.draw_gizmo(ui, &self.name, view, proj);
     }
 
-    pub fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    pub(crate) fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
     {
@@ -164,7 +166,10 @@ where
     }
 }
 
-pub(crate) struct Updater<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBuilder + UiDataElement> {
+pub(crate) struct Updater<
+    Settings: Default + DataUniformBuilder + UiDataElement,
+    Data: DataUniformBuilder + UiDataElement,
+> {
     pub(crate) transform: TransformSettings,
     pub(crate) settings: Settings,
     pub(crate) data: IndexMap<String, Data>,
@@ -179,7 +184,11 @@ pub(crate) struct Updater<Settings: Default + DataUniformBuilder + UiDataElement
     pub(crate) dirty: bool,
 }
 
-impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBuilder + UiDataElement + DataSettings > Updater<Settings, Data> {
+impl<
+        Settings: Default + DataUniformBuilder + UiDataElement,
+        Data: DataUniformBuilder + UiDataElement + DataSettings,
+    > Updater<Settings, Data>
+{
     pub fn new() -> Self {
         Self {
             transform: TransformSettings::default(),
@@ -197,14 +206,14 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
         }
     }
 
-    pub fn add_data(&mut self, name: String, data: Data) -> &mut Data {
+    pub(crate) fn add_data(&mut self, name: String, data: Data) -> &mut Data {
         if let Some(data_name) = &mut self.shown_data {
             if *data_name == name {
                 self.data_to_show = Some(Some(data_name.clone()));
                 self.shown_data = None;
             }
         }
-        let old_data  = self.data.insert(name.clone(), data);
+        let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         if let Some(old_data) = old_data {
             data.apply_settings(old_data);
@@ -212,7 +221,7 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
         data
     }
 
-    pub fn refresh<
+    pub(crate) fn refresh<
         Geometry,
         Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
         DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -248,7 +257,9 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
             refresh_screen = true;
         }
         if self.transform_changed {
-            self.transform.to_raw().refresh_buffer(queue, &renderer.transform_uniform);
+            self.transform
+                .to_raw()
+                .refresh_buffer(queue, &renderer.transform_uniform);
             self.transform_changed = false;
             picker.update_transform(queue, &self.transform);
             refresh_screen = true;
@@ -259,7 +270,13 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
             if let Some(data_uniform) = data_uniform {
                 renderer.set_data_uniform(data_uniform);
             }
-            renderer.build_pipeline(device, data, &self.settings, camera_light_bind_group_layout, color_format);
+            renderer.build_pipeline(
+                device,
+                data,
+                &self.settings,
+                camera_light_bind_group_layout,
+                color_format,
+            );
             self.property_changed = false;
             self.settings_changed = false;
             self.uniform_changed = false;
@@ -336,15 +353,12 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
                         }
                     });
                     //TODO move this
-                    if egui::Slider::new(
-                        &mut field.settings.magnitude,
-                        0.1..=100.0,
-                    )
+                    if egui::Slider::new(&mut field.settings.magnitude, 0.1..=100.0)
                         .text("Magnitude")
-                            .clamp_to_range(false)
-                            .logarithmic(true)
-                            .ui(ui)
-                            .changed()
+                        .clamp_to_range(false)
+                        .logarithmic(true)
+                        .ui(ui)
+                        .changed()
                     {
                         field.settings_changed = true;
                     }
@@ -354,7 +368,8 @@ impl<Settings: Default + DataUniformBuilder + UiDataElement, Data: DataUniformBu
         }
     }
 
-    fn draw_gizmo(&mut self,
+    fn draw_gizmo(
+        &mut self,
         ui: &mut egui::Ui,
         name: &str,
         view: cgmath::Matrix4<f32>,
@@ -437,7 +452,12 @@ impl<
         settings.refresh_buffer(queue, &self.settings_uniform);
     }
 
-    fn build_data_buffer(&mut self, device: &wgpu::Device, geometry: &Geometry, data: Option<&Data>) {
+    fn build_data_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        geometry: &Geometry,
+        data: Option<&Data>,
+    ) {
         self.data_buffer = DataB::new(device, geometry, data);
     }
 
@@ -463,7 +483,7 @@ impl<
     }
 }
 
-pub trait FixedRenderer {
+pub(crate) trait FixedRenderer {
     type Settings;
     type Data;
     type Geometry;
@@ -471,7 +491,7 @@ pub trait FixedRenderer {
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self;
 }
 
-pub trait DataBuffer {
+pub(crate) trait DataBuffer {
     type Settings;
     type Data;
     type Geometry;
@@ -479,7 +499,7 @@ pub trait DataBuffer {
     fn new(device: &wgpu::Device, geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self;
 }
 
-pub trait RenderPipeline {
+pub(crate) trait RenderPipeline {
     type Settings;
     type Data;
     type Geometry;
@@ -498,19 +518,19 @@ pub trait RenderPipeline {
     ) -> Self;
 }
 
-pub trait Render {
+pub(crate) trait Render {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b;
 
-    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    fn render_shadow<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'a: 'b {
-
+        'a: 'b,
+    {
     }
 }
 
-pub trait ElementPicker: Render {
+pub(crate) trait ElementPicker: Render {
     type Geometry;
     type Settings: DataUniformBuilder;
 
