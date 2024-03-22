@@ -1116,7 +1116,6 @@ impl<'a> StateWrapper<'a> {
                                     Err(
                                         wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
                                     ) => {
-                                        println!("eh");
                                         self.state.resize(self.state.size)
                                     },
                                     // The system is out of memory, we should probably quit
