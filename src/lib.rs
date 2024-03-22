@@ -27,7 +27,7 @@ pub mod resources;
 mod screenshot;
 mod settings;
 mod shader;
-mod surface;
+pub mod surface;
 mod texture;
 pub mod types;
 mod ui;
@@ -464,7 +464,7 @@ impl<'a> State<'a> {
             // Make sure to current window size to depth texture - required for calc
             self.depth_texture =
                 texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
-            self.screenshoter = screenshot::Screenshoter::new(
+            self.screenshoter.resize(
                 &self.device,
                 new_size.width,
                 new_size.height,
@@ -592,11 +592,16 @@ impl<'a> State<'a> {
             &self.curves,
         );
 
-        let output = self.surface.get_current_texture()?;
+        let output = if !self.screenshot {
+            Some(self.surface.get_current_texture()?)
+        } else {
+            None
+        };
+
         {
-            let view = output
-                .texture
-                .create_view(&wgpu::TextureViewDescriptor::default());
+            let view = output.as_ref().map(|o|
+                o.texture
+                .create_view(&wgpu::TextureViewDescriptor::default()));
 
             let mut render = false;
             let mut render_copy = false;
@@ -634,7 +639,7 @@ impl<'a> State<'a> {
                     self.taa_counter += 1;
                     self.copy.get_view()
                 } else {
-                    &view
+                    &view.as_ref().unwrap()
                 };
 
                 //Fix for clearing bug
@@ -851,7 +856,7 @@ impl<'a> State<'a> {
                     )
                 } else {
                     (
-                        &view,
+                        view.as_ref().unwrap(),
                         wgpu::Color {
                             r: 0.1,
                             g: 0.2,
@@ -895,7 +900,7 @@ impl<'a> State<'a> {
                     .into_iter()
                     .chain(iter::once(encoder.finish())),
             );
-            output.present();
+            output.unwrap().present();
         }
 
         self.picker.post_render(event_loop_proxy);
@@ -1110,7 +1115,10 @@ impl<'a> StateWrapper<'a> {
                                     // Reconfigure the surface if it's lost or outdated
                                     Err(
                                         wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
-                                    ) => self.state.resize(self.state.size),
+                                    ) => {
+                                        println!("eh");
+                                        self.state.resize(self.state.size)
+                                    },
                                     // The system is out of memory, we should probably quit
                                     Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
 

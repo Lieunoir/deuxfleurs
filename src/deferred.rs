@@ -1356,6 +1356,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //    }
     //}
     //weight = weight / tot_weight;
-    return vec4<f32>(0., 0., 0., 0.7 * weight);
+    return vec4<f32>(0., 0., 0., 0.4 * weight);
 }
 ";

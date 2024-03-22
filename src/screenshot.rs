@@ -66,6 +66,46 @@ impl Screenshoter {
         }
     }
 
+    pub fn resize(&mut self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        color_format: wgpu::TextureFormat,
+        ) {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+        let desc = wgpu::TextureDescriptor {
+            label: Some("screen texture"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: color_format,
+            usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        };
+        self.texture = device.create_texture(&desc);
+        self.view = self.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // we need to store this for later
+        self.buffer_dimensions = BufferDimensions::new::<u32>(width as usize, height as usize);
+
+        let output_buffer_size = (self.buffer_dimensions.padded_bytes_per_row * self.buffer_dimensions.height)
+            as wgpu::BufferAddress;
+        let output_buffer_desc = wgpu::BufferDescriptor {
+            size: output_buffer_size,
+            usage: wgpu::BufferUsages::COPY_DST
+                // this tells wpgu that we want to read this buffer from the cpu
+                | wgpu::BufferUsages::MAP_READ,
+            label: None,
+            mapped_at_creation: false,
+        };
+        self.output_buffer = device.create_buffer(&output_buffer_desc);
+    }
+
     pub fn get_view(&self) -> &wgpu::TextureView {
         &self.view
     }
@@ -108,7 +148,9 @@ impl Screenshoter {
         //let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
         let (sender, receiver) = oneshot::channel();
 
-        buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+        buffer_slice.map_async(wgpu::MapMode::Read, move |v| {
+            sender.send(v).unwrap()
+        });
 
         // Poll the device in a blocking manner so that our future resolves.
         // In an actual application, `device.poll(...)` should
