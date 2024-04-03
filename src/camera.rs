@@ -100,7 +100,7 @@ impl CameraUniform {
             let mut origin = view_inv * cgmath::Vector4::new(x, y, 0., 1.);
             origin = origin / origin.w;
             let ray = target - origin;
-            if ray.y.abs() > 10e-7 {
+            if ray.y.abs() > 10e-9 {
                 let t = (level - origin.y) / ray.y;
                 if t <= 1. && t >= 0. {
                     let pos = origin + t * ray;
@@ -126,7 +126,33 @@ impl CameraUniform {
             let mut origin = view_inv * cgmath::Vector4::new(x, 1., z, 1.);
             origin = origin / origin.w;
             let ray = target - origin;
-            if ray.y.abs() > 10e-7 {
+            if ray.y.abs() > 10e-9 {
+                let t = (level - origin.y) / ray.y;
+                if t <= 1. && t >= 0. {
+                    let pos = origin + t * ray;
+                    if pos.x < min_x {
+                        min_x = pos.x;
+                    }
+                    if pos.x > max_x {
+                        max_x = pos.x;
+                    }
+                    if pos.z < min_z {
+                        min_z = pos.z;
+                    }
+                    if pos.z > max_z {
+                        max_z = pos.z;
+                    }
+                }
+            }
+        }
+        let couples = [(-1., 0.), (-1., 1.), (1., 0.), (1., 1.)];
+        for (y, z) in couples {
+            let mut target = view_inv * cgmath::Vector4::new(-1., y, z, 1.);
+            target = target / target.w;
+            let mut origin = view_inv * cgmath::Vector4::new(1., y, z, 1.);
+            origin = origin / origin.w;
+            let ray = target - origin;
+            if ray.y.abs() > 10e-9 {
                 let t = (level - origin.y) / ray.y;
                 if t <= 1. && t >= 0. {
                     let pos = origin + t * ray;

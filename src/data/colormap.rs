@@ -60,17 +60,6 @@ impl ColorMap {
 }
 
 impl Colors {
-    pub const LAYOUT_ENTRY: wgpu::BindGroupLayoutEntry = wgpu::BindGroupLayoutEntry {
-        binding: 1,
-        visibility: wgpu::ShaderStages::FRAGMENT,
-        ty: wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        },
-        count: None,
-    };
-
     // from https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
     pub const TURBO: ColorsValues = ColorsValues {
         red: [

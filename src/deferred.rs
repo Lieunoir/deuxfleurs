@@ -699,7 +699,6 @@ pub struct Ground {
     blur_pipeline: wgpu::RenderPipeline,
     h_blur_pipeline: wgpu::RenderPipeline,
     pipeline: wgpu::RenderPipeline,
-    blurred_texture: wgpu::Texture,
     blurred_texture_view: wgpu::TextureView,
     h_blurred_texture_view: wgpu::TextureView,
     low_blurred_texture_view: wgpu::TextureView,
@@ -709,8 +708,7 @@ pub struct Ground {
     h_blur_bind_group: wgpu::BindGroup,
     low_blur_bind_group: wgpu::BindGroup,
     low_h_blur_bind_group: wgpu::BindGroup,
-    material_bind_group_layout: wgpu::BindGroupLayout,
-    sampler: wgpu::Sampler,
+
     level_buffer: wgpu::Buffer,
     pub level: f32,
 }
@@ -1010,7 +1008,6 @@ impl Ground {
             pipeline,
             blur_pipeline,
             h_blur_pipeline,
-            blurred_texture,
             blurred_texture_view,
             h_blurred_texture_view,
             low_blurred_texture_view,
@@ -1020,8 +1017,6 @@ impl Ground {
             h_blur_bind_group,
             low_blur_bind_group,
             low_h_blur_bind_group,
-            material_bind_group_layout,
-            sampler,
             level_buffer,
             level: level.level,
         }
