@@ -22,9 +22,6 @@ log = "0.4.17"
 oneshot = "0.1.5"
 pollster = "0.2.5"
 rfd = "0.10.0"
-tobj = { version = "4.0", features = [
-    "async",
-]}
 wgpu = "0.19.3"
 winit = "0.29.10"
 
