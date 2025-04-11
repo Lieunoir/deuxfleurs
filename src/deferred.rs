@@ -673,17 +673,66 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) vec4<f32> {
     ////let n_z = n_z_t;
     //let normal = vec3<f32>(n_xy, n_z);
 
-	let light_dir = normalize(light.position - position);
+    let F0 = vec3<f32>(0.04, 0.04, 0.04);
+    let kd = 1.;
+
+	let up =  normalize(vec3<f32>(
+	    camera.view_proj[0].y,
+	    camera.view_proj[1].y,
+		camera.view_proj[2].y
+	));
+	let right =  normalize(vec3<f32>(
+	    camera.view_proj[0].x,
+	    camera.view_proj[1].x,
+		camera.view_proj[2].x
+	));
+	let forward =  normalize(vec3<f32>(
+	    camera.view_proj[0].z,
+	    camera.view_proj[1].z,
+		camera.view_proj[2].z
+	));
+	let light_dir = normalize(right - up - forward);
+	//let light_dir = normalize(light.position - position);
 	let half_dir = normalize(view_dir + light_dir);
-	let F0 = vec3<f32>(0.04, 0.04, 0.04);
 	let D = DistributionGGX(normal, half_dir, albedo.w);
 	let F = fresnelSchlick(dot(half_dir, normal), F0);
 	let G = GeometrySmith(normal, view_dir, light_dir, albedo.w);
 	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
-	let kd = 1.0;
-	let result = (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
+	var result = 0.4 * (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
 
-    return vec4<f32>(result, 1.0);
+	let light_dir_2 = normalize(-right + up - forward);
+	//let light_dir_2 = normalize(vec3<f32>(1., 1., -1.));
+	let half_dir_2 = normalize(view_dir + light_dir_2);
+	let D2 = DistributionGGX(normal, half_dir_2, albedo.w);
+	let F2 = fresnelSchlick(dot(half_dir_2, normal), F0);
+	let G2 = GeometrySmith(normal, view_dir, light_dir_2, albedo.w);
+	let f_ct_2 = D2 * F2 * G2 / (4. * dot(view_dir, normal) * dot(light_dir_2, normal));
+	result += 1.1 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_2), 0.0);
+
+	let light_dir_3 = normalize(right + up + forward);
+	let half_dir_3 = normalize(view_dir + light_dir_3);
+	let D3 = DistributionGGX(normal, half_dir_3, albedo.w);
+	let F3 = fresnelSchlick(dot(half_dir_3, normal), F0);
+	let G3 = GeometrySmith(normal, view_dir, light_dir_3, albedo.w);
+	let f_ct_3 = D3 * F3 * G3 / (4. * dot(view_dir, normal) * dot(light_dir_3, normal));
+	result += 1. * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_3), 0.0);
+
+	//Tone mapping
+	let m1 = mat3x3(
+        0.59719, 0.07600, 0.02840,
+        0.35458, 0.90834, 0.13383,
+        0.04823, 0.01566, 0.83777,
+    );
+    let m2 = mat3x3(
+        1.60475, -0.10208, -0.00327,
+        -0.53108,  1.10813, -0.07276,
+        -0.07367, -0.00605,  1.07602,
+    );
+    let v = m1 * result;
+    let a = v * (v + 0.0245786) - 0.000090537;
+    let b = v * (0.983729 * v + 0.4329510) + 0.238081;
+    return vec4<f32>(clamp(m2 * (a / b), vec3(0.0), vec3(1.0)), 1.0);
+    //return vec4<f32>(result, 1.0);
 }
 ";
 
@@ -1057,7 +1106,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
-        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
         render_pass.set_bind_group(1, &self.h_blur_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.square.slice(..));
         render_pass.draw(0..4, 0..1);
@@ -1082,7 +1131,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
-        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
         render_pass.set_bind_group(1, &self.low_blur_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.square.slice(..));
         render_pass.draw(0..4, 0..1);
@@ -1113,7 +1162,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
-        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
         render_pass.set_bind_group(1, &self.low_h_blur_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.square.slice(..));
         render_pass.draw(0..4, 0..1);
@@ -1138,7 +1187,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
-        render_pass.set_bind_group(0, &camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
         render_pass.set_bind_group(1, &self.blur_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.square.slice(..));
         render_pass.draw(0..4, 0..1);
