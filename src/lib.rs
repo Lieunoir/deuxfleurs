@@ -21,6 +21,7 @@ mod camera;
 pub mod curve;
 mod data;
 mod deferred;
+mod obj_load;
 mod picker;
 pub mod point_cloud;
 pub mod resources;
