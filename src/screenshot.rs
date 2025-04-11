@@ -66,12 +66,13 @@ impl Screenshoter {
         }
     }
 
-    pub fn resize(&mut self,
+    pub fn resize(
+        &mut self,
         device: &wgpu::Device,
         width: u32,
         height: u32,
         color_format: wgpu::TextureFormat,
-        ) {
+    ) {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -88,12 +89,15 @@ impl Screenshoter {
             view_formats: &[],
         };
         self.texture = device.create_texture(&desc);
-        self.view = self.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.view = self
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
         // we need to store this for later
         self.buffer_dimensions = BufferDimensions::new::<u32>(width as usize, height as usize);
 
-        let output_buffer_size = (self.buffer_dimensions.padded_bytes_per_row * self.buffer_dimensions.height)
+        let output_buffer_size = (self.buffer_dimensions.padded_bytes_per_row
+            * self.buffer_dimensions.height)
             as wgpu::BufferAddress;
         let output_buffer_desc = wgpu::BufferDescriptor {
             size: output_buffer_size,
@@ -148,9 +152,7 @@ impl Screenshoter {
         //let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
         let (sender, receiver) = oneshot::channel();
 
-        buffer_slice.map_async(wgpu::MapMode::Read, move |v| {
-            sender.send(v).unwrap()
-        });
+        buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
 
         // Poll the device in a blocking manner so that our future resolves.
         // In an actual application, `device.poll(...)` should
@@ -168,17 +170,18 @@ impl Screenshoter {
                 for cp_data in
                     chunk[..self.buffer_dimensions.unpadded_bytes_per_row].chunks_exact(4)
                 {
+                    let alpha: u16 = cp_data[3] as u16;
                     match format {
                         wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => {
-                            unpadded_data.push(cp_data[2]);
-                            unpadded_data.push(cp_data[1]);
-                            unpadded_data.push(cp_data[0]);
+                            unpadded_data.push((cp_data[2] as u16 * alpha / 255) as u8);
+                            unpadded_data.push((cp_data[1] as u16 * alpha / 255) as u8);
+                            unpadded_data.push((cp_data[0] as u16 * alpha / 255) as u8);
                             unpadded_data.push(cp_data[3]);
                         }
                         _ => {
-                            unpadded_data.push(cp_data[0]);
-                            unpadded_data.push(cp_data[1]);
-                            unpadded_data.push(cp_data[2]);
+                            unpadded_data.push((cp_data[0] as u16 * alpha / 255) as u8);
+                            unpadded_data.push((cp_data[1] as u16 * alpha / 255) as u8);
+                            unpadded_data.push((cp_data[2] as u16 * alpha / 255) as u8);
                             unpadded_data.push(cp_data[3]);
                         }
                     }
