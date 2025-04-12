@@ -1,15 +1,21 @@
 use crate::aabb::SBV;
 use cgmath::prelude::*;
+use serde::{Deserialize, Serialize};
 use winit::event::*;
 
 // Camera informations for easier updating
+#[derive(Serialize, Deserialize)]
 pub struct Camera {
     eye: cgmath::Point3<f32>,
     target: cgmath::Point3<f32>,
     up: cgmath::Vector3<f32>,
+    #[serde(skip)]
     aspect: f32,
+    #[serde(skip)]
     fovy: f32,
+    #[serde(skip)]
     znear: f32,
+    #[serde(skip)]
     zfar: f32,
 }
 
@@ -21,7 +27,7 @@ impl Camera {
             up: cgmath::Vector3::unit_y(),
             aspect,
             fovy: 45.0,
-            znear: 0.1,
+            znear: 0.01,
             zfar: 10.0,
         }
     }
@@ -45,6 +51,7 @@ impl Camera {
             let dir = cgmath::Vector3::<f32>::new(0., 0., -3.);
             self.eye = center + dir * size;
             self.target = center;
+            self.znear = size * 0.01;
             self.zfar = size * 10.;
             self.up = cgmath::Vector3::unit_y();
         }
@@ -56,6 +63,18 @@ impl Camera {
 
     pub fn get_position(&self) -> [f32; 3] {
         self.eye.into()
+    }
+
+    pub fn copy(&self) -> Result<String, ()> {
+        serde_json::to_string(self).map_err(|_e| ())
+    }
+
+    pub fn set(&mut self, new_camera: String) {
+        if let Ok(new_c) = serde_json::from_str::<Camera>(&new_camera) {
+            self.eye = new_c.eye;
+            self.target = new_c.target;
+            self.up = new_c.up;
+        }
     }
 }
 
