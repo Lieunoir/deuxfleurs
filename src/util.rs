@@ -43,6 +43,7 @@ pub fn create_render_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: vertex_layouts,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -59,6 +60,7 @@ pub fn create_render_pipeline(
                     write_mask: wgpu::ColorWrites::ALL,
                 }),
             ],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -84,6 +86,7 @@ pub fn create_render_pipeline(
         // If the pipeline will be used with a multiview render pass, this
         // indicates how many array layers the attachments will have.
         multiview: None,
+        cache: None,
     })
 }
 
@@ -105,6 +108,7 @@ pub fn create_shadow_render_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: vertex_layouts,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -114,6 +118,7 @@ pub fn create_shadow_render_pipeline(
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -139,6 +144,7 @@ pub fn create_shadow_render_pipeline(
         // If the pipeline will be used with a multiview render pass, this
         // indicates how many array layers the attachments will have.
         multiview: None,
+        cache: None,
     })
 }
 
@@ -160,6 +166,7 @@ pub fn create_picker_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: vertex_layouts,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -169,6 +176,7 @@ pub fn create_picker_pipeline(
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -194,6 +202,7 @@ pub fn create_picker_pipeline(
         // If the pipeline will be used with a multiview render pass, this
         // indicates how many array layers the attachments will have.
         multiview: None,
+        cache: None,
     })
 }
 
@@ -215,6 +224,7 @@ pub fn create_quad_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: vertex_layouts,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -231,6 +241,7 @@ pub fn create_quad_pipeline(
                     write_mask: wgpu::ColorWrites::ALL,
                 }),
             ],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -257,6 +268,7 @@ pub fn create_quad_pipeline(
         // If the pipeline will be used with a multiview render pass, this
         // indicates how many array layers the attachments will have.
         multiview: None,
+        cache: None,
     })
 }
 
@@ -279,6 +291,7 @@ pub fn create_copy_quad_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: vertex_layouts,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -288,6 +301,7 @@ pub fn create_copy_quad_pipeline(
                 blend: blend_state,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -313,6 +327,7 @@ pub fn create_copy_quad_pipeline(
         // If the pipeline will be used with a multiview render pass, this
         // indicates how many array layers the attachments will have.
         multiview: None,
+        cache: None,
     })
 }
 
@@ -335,6 +350,7 @@ pub fn create_double_sided_copy_quad_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: vertex_layouts,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -344,6 +360,7 @@ pub fn create_double_sided_copy_quad_pipeline(
                 blend: blend_state,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -369,5 +386,6 @@ pub fn create_double_sided_copy_quad_pipeline(
         // If the pipeline will be used with a multiview render pass, this
         // indicates how many array layers the attachments will have.
         multiview: None,
+        cache: None,
     })
 }

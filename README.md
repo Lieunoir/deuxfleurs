@@ -6,3 +6,4 @@ Can be used in webpages thanks to wasm (such as reveal.js slides). Current repo 
 A few things that should be added :
 * state saving/loading
 * documentation
+* optimization (better quantization, leading vertices for flat shading, why loading takes time?)

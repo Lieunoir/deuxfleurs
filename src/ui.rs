@@ -1,7 +1,10 @@
+use egui::style::{WidgetVisuals, Widgets};
+use egui::Shadow;
+use egui::{Color32, Rounding, Stroke};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use indexmap::IndexMap;
-use winit::event_loop::EventLoop;
+use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
 pub trait UiDataElement {
@@ -27,20 +30,127 @@ pub struct UI {
     platform_output: Option<egui::output::PlatformOutput>,
 }
 
+fn blue_visuals() -> egui::Visuals {
+    egui::Visuals {
+        window_fill: egui::Color32::from_rgba_premultiplied(12, 0, 70, 220),
+        window_stroke: egui::Stroke::NONE,
+        extreme_bg_color: egui::Color32::from_rgba_premultiplied(10, 0, 50, 240),
+        faint_bg_color: egui::Color32::from_rgba_premultiplied(10, 0, 50, 200),
+        window_rounding: egui::Rounding::same(1.0),
+        window_highlight_topmost: false,
+        window_shadow: Shadow::NONE,
+        widgets: Widgets {
+            noninteractive: WidgetVisuals {
+                weak_bg_fill: Color32::from_gray(27),
+                bg_fill: Color32::from_gray(27),
+                bg_stroke: Stroke::new(1.0, egui::Color32::from_black_alpha(200)), // separators, indentation lines
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(240)), // normal text color
+                rounding: Rounding::same(2.0),
+                expansion: 0.0,
+            },
+            inactive: WidgetVisuals {
+                weak_bg_fill: egui::Color32::from_black_alpha(160), // button background
+                bg_fill: egui::Color32::from_black_alpha(160),      // checkbox background
+                bg_stroke: Default::default(),
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(240)), // button text
+                rounding: Rounding::same(2.0),
+                expansion: 0.0,
+            },
+            hovered: WidgetVisuals {
+                weak_bg_fill: egui::Color32::from_black_alpha(180), // button background
+                bg_fill: egui::Color32::from_black_alpha(180),      // checkbox background
+                bg_stroke: Stroke::new(1.0, Color32::from_gray(250)), // e.g. hover over window edge or button
+                fg_stroke: Stroke::new(1.5, Color32::from_gray(250)),
+                rounding: Rounding::same(3.0),
+                expansion: 1.0,
+            },
+            active: WidgetVisuals {
+                weak_bg_fill: egui::Color32::from_black_alpha(150),
+                bg_fill: egui::Color32::from_black_alpha(150),
+                bg_stroke: Stroke::new(1.0, Color32::WHITE),
+                fg_stroke: Stroke::new(2.0, Color32::WHITE),
+                rounding: Rounding::same(2.0),
+                expansion: 1.0,
+            },
+            open: WidgetVisuals {
+                weak_bg_fill: Color32::from_gray(45),
+                bg_fill: Color32::from_gray(27),
+                bg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
+                rounding: Rounding::same(2.0),
+                expansion: 0.0,
+            },
+        },
+        ..Default::default()
+    }
+}
+
+fn transparent_visuals() -> egui::Visuals {
+    egui::Visuals {
+        window_fill: egui::Color32::from_black_alpha(220),
+        window_stroke: egui::Stroke::NONE,
+        extreme_bg_color: egui::Color32::from_black_alpha(220),
+        faint_bg_color: egui::Color32::from_black_alpha(100),
+        window_rounding: egui::Rounding::same(1.0),
+        window_highlight_topmost: false,
+        window_shadow: Shadow::NONE,
+        widgets: Widgets {
+            noninteractive: WidgetVisuals {
+                weak_bg_fill: Color32::from_gray(27),
+                bg_fill: Color32::from_gray(27),
+                bg_stroke: Stroke::new(1.0, egui::Color32::from_black_alpha(80)), // separators, indentation lines
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(180)), // normal text color
+                rounding: Rounding::same(2.0),
+                expansion: 0.0,
+            },
+            inactive: WidgetVisuals {
+                weak_bg_fill: egui::Color32::from_black_alpha(100), // button background
+                bg_fill: egui::Color32::from_black_alpha(100),      // checkbox background
+                bg_stroke: Default::default(),
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(200)), // button text
+                rounding: Rounding::same(2.0),
+                expansion: 0.0,
+            },
+            hovered: WidgetVisuals {
+                weak_bg_fill: egui::Color32::from_black_alpha(110), // button background
+                bg_fill: egui::Color32::from_black_alpha(110),      // checkbox background
+                bg_stroke: Stroke::new(1.0, Color32::from_gray(200)), // e.g. hover over window edge or button
+                fg_stroke: Stroke::new(1.5, Color32::from_gray(220)),
+                rounding: Rounding::same(3.0),
+                expansion: 1.0,
+            },
+            active: WidgetVisuals {
+                weak_bg_fill: egui::Color32::from_black_alpha(95),
+                bg_fill: egui::Color32::from_black_alpha(95),
+                bg_stroke: Stroke::new(1.0, Color32::WHITE),
+                fg_stroke: Stroke::new(2.0, Color32::WHITE),
+                rounding: Rounding::same(2.0),
+                expansion: 1.0,
+            },
+            open: WidgetVisuals {
+                weak_bg_fill: Color32::from_gray(45),
+                bg_fill: Color32::from_gray(27),
+                bg_stroke: Stroke::new(1.0, Color32::from_gray(60)),
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
+                rounding: Rounding::same(2.0),
+                expansion: 0.0,
+            },
+        },
+        ..Default::default()
+    }
+}
+
 impl UI {
-    pub fn new<T>(
+    pub fn new(
         device: &wgpu::Device,
+        event_loop: &ActiveEventLoop,
         target_format: wgpu::TextureFormat,
-        event_loop: &EventLoop<T>,
         scale_factor: f64,
     ) -> Self {
-        let rpass = Renderer::new(device, target_format, None, 1);
+        let rpass = Renderer::new(device, target_format, None, 1, true);
         let ctx = egui::Context::default();
         //TODO some kind of styling
-        let visuals = egui::Visuals {
-            window_fill: egui::Color32::from_rgba_premultiplied(10, 0, 50, 192),
-            ..Default::default()
-        };
+        let visuals = blue_visuals();
         ctx.set_visuals(visuals);
         /*
         let mut style: egui::Style = (*ctx.style()).clone();
@@ -52,6 +162,7 @@ impl UI {
             egui::viewport::ViewportId::ROOT,
             event_loop,
             Some(scale_factor as f32),
+            None,
             None,
         );
         Self {
@@ -80,12 +191,13 @@ impl UI {
         proj: cgmath::Matrix4<f32>,
     ) {
         let input = self.state.take_egui_input(window);
-        self.ctx.begin_frame(input);
+        self.ctx.begin_pass(input);
 
         egui::Window::new("Models")
             .anchor(egui::Align2::LEFT_TOP, [5., 5.])
             .resizable(false)
             .vscroll(true)
+            .default_width(270.)
             .min_height(650.)
             .show(&self.ctx, |ui| {
                 for (name, surface) in surfaces.iter_mut() {
@@ -127,7 +239,7 @@ impl UI {
                 }
                 ui.allocate_space(ui.available_size());
             });
-        egui::Area::new("Viewport")
+        egui::Area::new("Viewport".into())
             .fixed_pos((0.0, 0.0))
             .show(&self.ctx, |ui| {
                 //Fix for not having a correct area
@@ -146,11 +258,11 @@ impl UI {
             });
     }
 
-    pub fn draw_callback(
+    pub fn draw_callback<T: FnMut(&mut egui::Ui, &mut crate::State)>(
         &mut self,
         event_loop_proxy: &winit::event_loop::EventLoopProxy<crate::UserEvent>,
         state: &mut crate::State,
-        callback: &mut Option<Box<dyn FnMut(&mut egui::Ui, &mut crate::State)>>,
+        callback: &mut Option<T>,
     ) {
         egui::Window::new("Interactions")
             .anchor(egui::Align2::RIGHT_TOP, [-5., 5.])
@@ -163,29 +275,45 @@ impl UI {
                     state.screenshot();
                 }
                 if ui.add(egui::Button::new("Load obj")).clicked() {
-                    let file = rfd::AsyncFileDialog::new()
-                        .add_filter("obj", &["obj"])
-                        //.set_directory("/")
-                        .pick_file();
                     let event_loop_proxy = event_loop_proxy.clone();
-                    let f = async move {
-                        let file = file.await;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let file = rfd::FileDialog::new()
+                            .add_filter("obj", &["obj"])
+                            //.set_directory("/")
+                            .pick_file();
                         if let Some(file_handle) = file {
-                            let data = file_handle.read().await;
+                            let data = file_handle;
                             if let Ok((mesh_v, mesh_f)) =
-                                crate::resources::load_preloaded_mesh(data).await
+                                crate::resources::load_mesh_blocking(data.into())
                             {
                                 event_loop_proxy
                                     .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f))
                                     .ok();
                             }
                         }
-                    };
-                    //TODO avoid pollster blocking here
-                    #[cfg(not(target_arch = "wasm32"))]
-                    pollster::block_on(f);
+                    }
                     #[cfg(target_arch = "wasm32")]
-                    wasm_bindgen_futures::spawn_local(f);
+                    {
+                        let file = rfd::AsyncFileDialog::new()
+                            .add_filter("obj", &["obj"])
+                            //.set_directory("/")
+                            .pick_file();
+                        let f = async move {
+                            let file = file.await;
+                            if let Some(file_handle) = file {
+                                let data = file_handle.read().await;
+                                if let Ok((mesh_v, mesh_f)) =
+                                    crate::resources::load_preloaded_mesh(data).await
+                                {
+                                    event_loop_proxy
+                                        .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f))
+                                        .ok();
+                                }
+                            }
+                        };
+                        wasm_bindgen_futures::spawn_local(f);
+                    }
                 }
                 if let Some((picked_name, picked_number)) = state.get_picked() {
                     let picked_number = *picked_number;
@@ -218,7 +346,7 @@ impl UI {
         Vec<egui::ClippedPrimitive>,
         ScreenDescriptor,
     ) {
-        let full_output = self.ctx.end_frame();
+        let full_output = self.ctx.end_pass();
         let textures_delta = full_output.textures_delta;
         let clipped_primitives = self
             .ctx
@@ -245,14 +373,14 @@ impl UI {
         (user_cmd_bufs, clipped_primitives, screen_descriptor)
     }
 
-    pub fn render<'a, 'b: 'a>(
-        &'b self,
-        render_pass: &mut wgpu::RenderPass<'a>,
-        clipped_primitives: &'a [egui::ClippedPrimitive],
-        screen_descriptor: &'a ScreenDescriptor,
+    pub fn render(
+        &self,
+        mut render_pass: wgpu::RenderPass<'static>,
+        clipped_primitives: &[egui::ClippedPrimitive],
+        screen_descriptor: &ScreenDescriptor,
     ) {
         self.rpass
-            .render(render_pass, clipped_primitives, screen_descriptor);
+            .render(&mut render_pass, clipped_primitives, screen_descriptor);
     }
 
     pub fn handle_platform_output(&mut self, window: &Window) {

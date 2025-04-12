@@ -1,3 +1,6 @@
+use wgpu::Color;
+
+#[derive(Clone)]
 pub struct Settings {
     //vsync: bool,
     //show_fps: bool,
@@ -5,6 +8,8 @@ pub struct Settings {
     pub rerender: bool,
     pub taa: bool,
     pub taa_frames: u32,
+    pub shadow: bool,
+    pub color: Color,
 }
 
 impl Default for Settings {
@@ -14,6 +19,13 @@ impl Default for Settings {
             rerender: false,
             taa: true,
             taa_frames: 16,
+            shadow: true,
+            color: Color {
+                r: 0.1,
+                g: 0.2,
+                b: 0.3,
+                a: 0.0,
+            },
         }
     }
 }
