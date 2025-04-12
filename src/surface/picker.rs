@@ -99,10 +99,6 @@ trait Vertex {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct VertexData {
     pub position: [f32; 3],
-    //pub barycentric_coords: [i8; 4],
-    //pub vertex_index_1: u32,
-    //pub vertex_index_2: u32,
-    //pub vertex_index_3: u32,
     pub face_index: u32,
 }
 
@@ -123,26 +119,6 @@ impl Vertex for VertexData {
                     shader_location: 1,
                     format: wgpu::VertexFormat::Uint32,
                 },
-                //wgpu::VertexAttribute {
-                //    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
-                //    shader_location: 2,
-                //    format: wgpu::VertexFormat::Uint32,
-                //},
-                //wgpu::VertexAttribute {
-                //    offset: mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
-                //    shader_location: 3,
-                //    format: wgpu::VertexFormat::Uint32,
-                //},
-                //wgpu::VertexAttribute {
-                //    offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
-                //    shader_location: 4,
-                //    format: wgpu::VertexFormat::Uint32,
-                //},
-                //wgpu::VertexAttribute {
-                //    offset: mem::size_of::<[f32; 9]>() as wgpu::BufferAddress,
-                //    shader_location: 5,
-                //    format: wgpu::VertexFormat::Uint32,
-                //},
             ],
         }
     }
@@ -189,10 +165,8 @@ fn build_render_pipeline(
 
 fn build_vertex_buffer(device: &wgpu::Device, surface: &SurfaceGeometry) -> wgpu::Buffer {
     let mut gpu_vertices = Vec::with_capacity(3 * surface.internal_indices.len());
-    //let edges_offset = face_offset + surface.indices.len();
     let mut count = 0;
     for indices in surface.indices.into_iter() {
-        //for (bar, index) in bars.iter().zip(indices) {
         for j in 1..indices.len() - 1 {
             let index0 = indices[0];
             let index1 = indices[j];

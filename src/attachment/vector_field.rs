@@ -5,7 +5,7 @@ use wgpu::util::DeviceExt;
 
 pub struct VectorField {
     pub vectors: Vec<[f32; 3]>,
-    pub offsets: Vec<[f32; 3]>,
+    pub _offsets: Vec<[f32; 3]>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     vector_buffer: wgpu::Buffer,
@@ -248,7 +248,7 @@ impl VectorField {
         let vector_buffer = Self::build_vector_buffer(device, &vectors, &offsets);
         Self {
             vectors,
-            offsets,
+            _offsets: offsets,
             render_pipeline,
             vertex_buffer,
             vector_buffer,

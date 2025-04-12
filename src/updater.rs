@@ -3,7 +3,7 @@ use crate::attachment::{NewVectorField, VectorField};
 use crate::camera::Camera;
 use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
 use crate::ui::UiDataElement;
-use egui::Widget;
+use egui::{SliderClamping, Widget};
 use indexmap::IndexMap;
 
 pub struct MainDisplayGeometry<
@@ -355,7 +355,7 @@ impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSet
                     //TODO move this
                     if egui::Slider::new(&mut field.settings.magnitude, 0.1..=100.0)
                         .text("Magnitude")
-                        .clamp_to_range(false)
+                        .clamping(SliderClamping::Never)
                         .logarithmic(true)
                         .ui(ui)
                         .changed()

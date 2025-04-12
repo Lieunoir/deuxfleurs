@@ -106,11 +106,6 @@ impl Vertex for SurfaceVertex {
                     shader_location: 2,
                     format: wgpu::VertexFormat::Snorm8x4,
                 },
-                //wgpu::VertexAttribute {
-                //    offset: mem::size_of::<[f32; 9]>() as wgpu::BufferAddress,
-                //    shader_location: 3,
-                //    format: wgpu::VertexFormat::Float32x3,
-                //},
             ],
         }
     }
@@ -118,7 +113,6 @@ impl Vertex for SurfaceVertex {
 
 pub struct SurfaceGeometry {
     pub vertices: Vec<[f32; 3]>,
-    //pub normals: Vec<[f32; 3]>,
     pub indices: SurfaceIndices,
     pub num_elements: u32,
     internal_indices: Vec<[u32; 3]>,
