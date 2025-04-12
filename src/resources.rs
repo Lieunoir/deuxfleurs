@@ -1,5 +1,8 @@
 use crate::types::SurfaceIndices;
-use std::io::{BufReader, Cursor};
+use std::{
+    io::{BufReader, Cursor},
+    path::PathBuf,
+};
 
 use cfg_if::cfg_if;
 
@@ -68,42 +71,6 @@ pub fn load_mesh_blocking(file_name: PathBuf) -> anyhow::Result<(Vec<[f32; 3]>, 
     };
 
     Ok((v, indices))
-
-    //let (models, _obj_materials) = tobj::load_obj_buf(
-    //    &mut obj_reader,
-    //    &tobj::LoadOptions {
-    //        triangulate: false,
-    //        single_index: false,
-    //        ignore_lines: true,
-    //        ignore_points: true,
-    //        ..Default::default()
-    //    },
-    //    |_p| {
-    //        //if let Ok(mat_text) = load_string(&p).await {
-    //        //    tobj::load_mtl_buf(&mut BufReader::new(Cursor::new(mat_text)))
-    //        //} else {
-    //        //    Ok((Vec::new(), ahash::AHashMap::new()))
-    //        //}
-    //        Ok((Vec::new(), ahash::AHashMap::new()))
-    //    },
-    //)?;
-    //let mesh = &models.get(0).unwrap().mesh;
-    //let vertices = mesh
-    //    .positions
-    //    .chunks(3)
-    //    .map(|vertex| vertex.try_into().unwrap())
-    //    .collect::<Vec<_>>();
-    //let arity_len = mesh.face_arities.len();
-    //let indices = if arity_len > 0 {
-    //    (mesh.indices.clone(), mesh.face_arities.clone()).into()
-    //} else {
-    //    mesh.indices
-    //        .chunks(3)
-    //        .map(|face| face.try_into().unwrap())
-    //        .collect::<Vec<[u32; 3]>>()
-    //        .into()
-    //};
-    //Ok((vertices, indices))
 }
 
 pub async fn load_preloaded_mesh(data: Vec<u8>) -> anyhow::Result<(Vec<[f32; 3]>, SurfaceIndices)> {
