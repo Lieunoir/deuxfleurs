@@ -179,6 +179,13 @@ impl UiDataElement for PCSettings {
     }
 }
 
+impl NamedSettings for PCSettings {
+    fn set_name(mut self, name: &str) -> Self {
+        self.color = ColorSettings::new(name);
+        self
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct SphereVertex {

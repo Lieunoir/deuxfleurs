@@ -21,7 +21,7 @@ impl UiDataElement for IsolineSettings {
     fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
         egui::Slider::new(&mut self.isoline_number, 0.0..=100.0)
             .text("Isolines")
-            .clamp_to_range(false)
+            .clamping(egui::SliderClamping::Never)
             .ui(ui)
             .changed()
     }

@@ -15,7 +15,7 @@ impl Default for UVMapSettings {
         Self {
             color_1: [0.9, 0.9, 0.9, 1.],
             color_2: [0.6, 0.2, 0.4, 1.],
-            period: 100.,
+            period: 20.,
             _padding: [0.; 3],
         }
     }
@@ -27,7 +27,7 @@ impl UiDataElement for UVMapSettings {
         //ui.add(egui::Slider::new(&mut self.period, 0.0..=100.0).text("Period"));
         changed |= egui::Slider::new(&mut self.period, 0.0..=100.0)
             .text("Period")
-            .clamp_to_range(false)
+            .clamping(egui::SliderClamping::Never)
             .ui(ui)
             .changed();
         let mut color_1 = egui::Rgba::from_rgba_unmultiplied(

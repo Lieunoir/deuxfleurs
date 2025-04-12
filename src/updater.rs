@@ -1,12 +1,13 @@
 use crate::aabb::SBV;
 use crate::attachment::{NewVectorField, VectorField};
+use crate::camera::Camera;
 use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
 use crate::ui::UiDataElement;
 use egui::Widget;
 use indexmap::IndexMap;
 
 pub struct MainDisplayGeometry<
-    Settings: Default + DataUniformBuilder + UiDataElement,
+    Settings: NamedSettings,
     Data: DataUniformBuilder + UiDataElement + DataSettings,
     Geometry: Positions,
     Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -26,7 +27,7 @@ pub struct MainDisplayGeometry<
 }
 
 impl<
-        Settings: Default + DataUniformBuilder + UiDataElement,
+        Settings: NamedSettings,
         Data: DataUniformBuilder + UiDataElement + DataSettings,
         Geometry: Positions,
         Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -58,7 +59,7 @@ where
 }
 
 impl<
-        Settings: Default + DataUniformBuilder + UiDataElement,
+        Settings: NamedSettings,
         Data: DataUniformBuilder + UiDataElement + DataSettings,
         Geometry: Positions,
         Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -77,7 +78,7 @@ where
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
-        let updater = Updater::new();
+        let updater = Updater::new(&name);
         let renderer = Renderer::new(
             device,
             &geometry,
@@ -166,10 +167,11 @@ where
     }
 }
 
-pub(crate) struct Updater<
-    Settings: Default + DataUniformBuilder + UiDataElement,
-    Data: DataUniformBuilder + UiDataElement,
-> {
+pub(crate) trait NamedSettings: Default + DataUniformBuilder + UiDataElement {
+    fn set_name(self, name: &str) -> Self;
+}
+
+pub(crate) struct Updater<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement> {
     pub(crate) transform: TransformSettings,
     pub(crate) settings: Settings,
     pub(crate) data: IndexMap<String, Data>,
@@ -184,15 +186,13 @@ pub(crate) struct Updater<
     pub(crate) dirty: bool,
 }
 
-impl<
-        Settings: Default + DataUniformBuilder + UiDataElement,
-        Data: DataUniformBuilder + UiDataElement + DataSettings,
-    > Updater<Settings, Data>
+impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSettings>
+    Updater<Settings, Data>
 {
-    pub fn new() -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
             transform: TransformSettings::default(),
-            settings: Settings::default(),
+            settings: Settings::default().set_name(name),
             data: IndexMap::new(),
             queued_attached_data: Vec::new(),
             attached_data: IndexMap::new(),
@@ -309,7 +309,7 @@ impl<
             refresh_screen |= attached.update(queue);
         }
         if show {
-            SBV::merge(w_sbv, &sbv.transform(&self.transform.transform));
+            SBV::merge(w_sbv, &sbv.transform(&self.transform.get_transform()));
         }
         refresh_screen
     }
@@ -548,6 +548,18 @@ pub(crate) trait ElementPicker: Render {
     fn update_settings(&self, queue: &mut wgpu::Queue, settings: &Self::Settings);
 
     fn get_total_elements(&self) -> u32;
+
+    fn get_element(
+        &self,
+        _geometry: &Self::Geometry,
+        _transform: &TransformSettings,
+        _camera: &Camera,
+        item: u32,
+        _pos_x: f32,
+        _pos_y: f32,
+    ) -> u32 {
+        item
+    }
 }
 
 pub trait Positions {

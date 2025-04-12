@@ -1,19 +1,37 @@
 use crate::ui::UiDataElement;
-
-use egui_gizmo::GizmoMode;
+//use egui_gizmo::GizmoMode;
+use transform_gizmo_egui::math::{DMat4, DQuat, DVec3, Transform};
+use transform_gizmo_egui::prelude::*;
 
 pub struct TransformSettings {
-    pub transform: [[f32; 4]; 4],
+    //pub transform: [[f64; 4]; 4],
     show_gizmo: bool,
-    gizmo_mode: GizmoMode,
+    //gizmo_mode: GizmoMode,
+    scale: DVec3,
+    rotation: DQuat,
+    translation: DVec3,
+    gizmo: Gizmo,
 }
 
 impl TransformSettings {
+    pub fn get_transform(&self) -> [[f32; 4]; 4] {
+        let model_m =
+            DMat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation);
+        let mut model: [[f32; 4]; 4] = [[0.; 4]; 4];
+        for (row_m, row) in model_m.to_cols_array_2d().into_iter().zip(model.iter_mut()) {
+            for (v_m, v) in row_m.into_iter().zip(row.iter_mut()) {
+                *v = v_m as f32;
+            }
+        }
+        model
+    }
+
     pub fn to_raw(&self) -> TransformRaw {
         use cgmath::Matrix;
         use cgmath::SquareMatrix;
-        let model = self.transform;
+        //let model = self.transform;
         let mut normal: [[f32; 3]; 3] = [[0.; 3]; 3];
+        let model = self.get_transform();
         for (row, row_orig) in normal.iter_mut().zip(model) {
             *row = row_orig[0..3].try_into().unwrap();
         }
@@ -30,28 +48,25 @@ impl TransformSettings {
         let mut changed = false;
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
-            egui::ComboBox::from_label("Guizmo Mode")
-                .selected_text(format!("{:?}", self.gizmo_mode))
-                .show_ui(ui, |ui| {
-                    changed |= ui
-                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
-                        .changed();
-                    changed |= ui
-                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
-                        .changed();
-                    changed |= ui
-                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
-                        .changed();
-                });
+            //egui::ComboBox::from_label("Guizmo Mode")
+            //    .selected_text(format!("{:?}", self.gizmo_mode))
+            //    .show_ui(ui, |ui| {
+            //        changed |= ui
+            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
+            //            .changed();
+            //        changed |= ui
+            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
+            //            .changed();
+            //        changed |= ui
+            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
+            //            .changed();
+            //    });
         });
         ui.horizontal(|ui| {
             if ui.add(egui::Button::new("Reset")).clicked() {
-                self.transform = [
-                    [1., 0., 0., 0.],
-                    [0., 1., 0., 0.],
-                    [0., 0., 1., 0.],
-                    [0., 0., 0., 1.],
-                ];
+                self.translation = DVec3::ZERO;
+                self.scale = DVec3::ONE;
+                self.rotation = DQuat::IDENTITY;
                 changed = true;
             }
             if ui.add(egui::Button::new("Center")).clicked() {
@@ -62,7 +77,9 @@ impl TransformSettings {
                 let mut max_y = std::f32::MIN;
                 let mut max_z = std::f32::MIN;
 
-                let transfo_matrix: cgmath::Matrix4<f32> = self.transform.into();
+                let model = self.get_transform();
+
+                let transfo_matrix: cgmath::Matrix4<f32> = model.into();
                 for position in positions {
                     let threed_point: cgmath::Point3<f32> = (*position).into();
 
@@ -92,9 +109,7 @@ impl TransformSettings {
                 //let y = (max_y + min_y) / 2.;
                 let y = min_y;
                 let z = (max_z + min_z) / 2.;
-                self.transform[3][0] -= x;
-                self.transform[3][1] -= y;
-                self.transform[3][2] -= z;
+                self.translation += DVec3::from_array([-x as f64, -y as f64, -z as f64]);
                 changed = true;
             }
             if ui.add(egui::Button::new("Unit Scale")).clicked() {
@@ -105,7 +120,9 @@ impl TransformSettings {
                 let mut max_y = std::f32::MIN;
                 let mut max_z = std::f32::MIN;
 
-                let transfo_matrix: cgmath::Matrix4<f32> = self.transform.into();
+                let model = self.get_transform();
+
+                let transfo_matrix: cgmath::Matrix4<f32> = model.into();
                 for vertex in positions {
                     let threed_point: cgmath::Point3<f32> = (*vertex).into();
 
@@ -135,13 +152,7 @@ impl TransformSettings {
                 let y = max_y - min_y;
                 let z = max_z - min_z;
                 let scale = 1. / (x * x + y * y + z * z).sqrt();
-                for (i, row) in self.transform.iter_mut().enumerate() {
-                    for value in row.iter_mut() {
-                        if i < 3 {
-                            *value *= scale;
-                        }
-                    }
-                }
+                self.scale *= scale as f64;
                 changed = true;
             }
         });
@@ -170,14 +181,12 @@ impl Default for TransformSettings {
 
     fn default() -> Self {
         TransformSettings {
-            transform: [
-                [1., 0., 0., 0.],
-                [0., 1., 0., 0.],
-                [0., 0., 1., 0.],
-                [0., 0., 0., 1.],
-            ],
+            translation: DVec3::ZERO,
+            scale: DVec3::ONE,
+            rotation: DQuat::IDENTITY,
             show_gizmo: false,
-            gizmo_mode: GizmoMode::Translate,
+            gizmo: Gizmo::default(),
+            //gizmo_mode: GizmoMode::Translate,
         }
     }
 }
@@ -187,28 +196,25 @@ impl UiDataElement for TransformSettings {
         let mut changed = false;
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
-            egui::ComboBox::from_label("Guizmo Mode")
-                .selected_text(format!("{:?}", self.gizmo_mode))
-                .show_ui(ui, |ui| {
-                    changed |= ui
-                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
-                        .changed();
-                    changed |= ui
-                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
-                        .changed();
-                    changed |= ui
-                        .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
-                        .changed();
-                });
+            //egui::ComboBox::from_label("Guizmo Mode")
+            //    .selected_text(format!("{:?}", self.gizmo_mode))
+            //    .show_ui(ui, |ui| {
+            //        changed |= ui
+            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
+            //            .changed();
+            //        changed |= ui
+            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
+            //            .changed();
+            //        changed |= ui
+            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
+            //            .changed();
+            //    });
         });
         ui.horizontal(|ui| {
             if ui.add(egui::Button::new("Reset")).clicked() {
-                self.transform = [
-                    [1., 0., 0., 0.],
-                    [0., 1., 0., 0.],
-                    [0., 0., 1., 0.],
-                    [0., 0., 0., 1.],
-                ];
+                self.translation = DVec3::ZERO;
+                self.scale = DVec3::ONE;
+                self.rotation = DQuat::IDENTITY;
                 changed = true;
             }
         });
@@ -218,25 +224,104 @@ impl UiDataElement for TransformSettings {
     fn draw_gizmo(
         &mut self,
         ui: &mut egui::Ui,
-        name: &str,
+        _name: &str,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
     ) -> bool {
         if self.show_gizmo {
-            let gizmo = egui_gizmo::Gizmo::new(format!("{} gizmo", name))
-                .view_matrix(view)
-                .projection_matrix(proj)
-                .model_matrix(self.transform)
-                .viewport(ui.clip_rect())
-                .mode(self.gizmo_mode);
-            let last_gizmo_response = gizmo.interact(ui);
+            let viewport = ui.clip_rect();
+            let view: [[f32; 4]; 4] = view.into();
+            let proj: [[f32; 4]; 4] = proj.into();
+            let mut view_m = DMat4::ZERO;
+            let mut proj_m = DMat4::ZERO;
+            for (i, (row_m, row)) in view_m
+                .to_cols_array_2d()
+                .iter_mut()
+                .zip(view.into_iter())
+                .enumerate()
+            {
+                for (v_m, v) in row_m.iter_mut().zip(row.into_iter()) {
+                    *v_m = v as f64;
+                }
+                match i {
+                    0 => view_m.x_axis = (*row_m).into(),
+                    1 => view_m.y_axis = (*row_m).into(),
+                    2 => view_m.z_axis = (*row_m).into(),
+                    _ => view_m.w_axis = (*row_m).into(),
+                }
+            }
+            for (i, (row_m, row)) in proj_m
+                .to_cols_array_2d()
+                .iter_mut()
+                .zip(proj.into_iter())
+                .enumerate()
+            {
+                for (v_m, v) in row_m.iter_mut().zip(row.into_iter()) {
+                    *v_m = v as f64;
+                }
+                match i {
+                    0 => proj_m.x_axis = (*row_m).into(),
+                    1 => proj_m.y_axis = (*row_m).into(),
+                    2 => proj_m.z_axis = (*row_m).into(),
+                    _ => proj_m.w_axis = (*row_m).into(),
+                }
+            }
+            self.gizmo.update_config(GizmoConfig {
+                view_matrix: view_m.into(),
+                projection_matrix: proj_m.into(),
+                modes: GizmoMode::all()
+                    .difference(GizmoMode::all_scale())
+                    .difference(enum_set!(GizmoMode::TranslateView))
+                    .difference(enum_set!(GizmoMode::RotateView))
+                    .union(enum_set!(GizmoMode::ScaleUniform)),
+                orientation: GizmoOrientation::Local,
+                viewport,
+                ..Default::default()
+            });
 
-            if let Some(gizmo_response) = last_gizmo_response {
-                self.transform = gizmo_response.transform().to_cols_array_2d();
+            let mut transform = Transform::from_scale_rotation_translation(
+                self.scale,
+                self.rotation,
+                self.translation,
+            );
+
+            let res = if let Some((_result, new_transforms)) = self.gizmo.interact(ui, &[transform])
+            {
+                for (new_transform, transform) in
+                    new_transforms.iter().zip(std::iter::once(&mut transform))
+                {
+                    // Apply the modified transforms
+                    *transform = *new_transform;
+                }
+                self.scale = transform.scale.into();
+                self.rotation = transform.rotation.into();
+                self.translation = transform.translation.into();
+
                 true
             } else {
                 false
+            };
+            if self.gizmo.is_focused() {
+                let hover = ui.input(|i| i.pointer.hover_pos()).unwrap();
+                let rect = Rect::from_min_size(hover, egui::vec2(1., 1.));
+                ui.allocate_rect(rect, egui::Sense::click_and_drag());
+            } else {
             }
+            res
+            //let gizmo = egui_gizmo::Gizmo::new(format!("{} gizmo", name))
+            //    .view_matrix(view)
+            //    .projection_matrix(proj)
+            //    .model_matrix(self.transform)
+            //    .viewport(ui.clip_rect())
+            //    .mode(self.gizmo_mode);
+            //let last_gizmo_response = gizmo.interact(ui);
+
+            //if let Some(gizmo_response) = last_gizmo_response {
+            //    self.transform = gizmo_response.transform().to_cols_array_2d();
+            //    true
+            //} else {
+            //    false
+            //}
         } else {
             false
         }

@@ -74,11 +74,13 @@ impl NewVectorField {
         vectors: Vec<[f32; 3]>,
         offsets: Vec<[f32; 3]>,
     ) -> NewVectorField {
+        let mut settings = VectorFieldSettings::default();
+        settings.color = ColorSettings::new(&name);
         NewVectorField {
             name,
             vectors,
             offsets,
-            settings: VectorFieldSettings::default(),
+            settings,
         }
     }
 }

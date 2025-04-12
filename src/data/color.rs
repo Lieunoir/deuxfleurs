@@ -6,6 +6,44 @@ pub struct ColorSettings {
     pub color: [f32; 4],
 }
 
+const RED: ColorSettings = ColorSettings {
+    color: [0.55, 0.1, 0.1, 1.],
+};
+const YELLOW: ColorSettings = ColorSettings {
+    color: [0.63, 0.63, 0.09, 1.],
+};
+const WHITE: ColorSettings = ColorSettings {
+    color: [1., 1., 1., 1.],
+};
+const GREEN: ColorSettings = ColorSettings {
+    color: [0.1, 0.50, 0.20, 1.],
+};
+const PINK: ColorSettings = ColorSettings {
+    color: [0.50, 0.1, 0.44, 1.],
+};
+const BLUE: ColorSettings = ColorSettings {
+    color: [0.2, 0.2, 0.8, 1.],
+};
+
+impl ColorSettings {
+    pub fn new(name: &str) -> Self {
+        let mut value = 0_u8;
+        for &x in name.as_bytes() {
+            value = value.wrapping_add(x);
+        }
+        value = value % 6;
+        match value {
+            0 => BLUE,
+            1 => YELLOW,
+            2 => WHITE,
+            3 => GREEN,
+            4 => PINK,
+            5 => RED,
+            _ => BLUE,
+        }
+    }
+}
+
 impl Default for ColorSettings {
     fn default() -> Self {
         Self {
