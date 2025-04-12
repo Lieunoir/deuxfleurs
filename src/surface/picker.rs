@@ -1,8 +1,10 @@
 use super::{SurfaceGeometry, SurfaceSettings};
+use crate::camera::Camera;
 use crate::data::TransformSettings;
-use crate::texture;
 use crate::updater::{ElementPicker, Render};
 use crate::util::create_picker_pipeline;
+use crate::{texture, SurfaceIndices};
+use cgmath::InnerSpace;
 use wgpu::util::DeviceExt;
 
 const PICKER_SHADER: &str = "
@@ -48,24 +50,13 @@ var<uniform> transform: TransformUniform;
 // e.g. 0 = 1st \"set\" of data, 1 = 2nd \"set\"
 struct VertexInput {
     @location(0) position: vec3<f32>,
-    @location(1) coords: vec3<f32>,
-    @location(2) vertex_index_1: u32,
-    @location(3) vertex_index_2: u32,
-    @location(4) vertex_index_3: u32,
-    @location(5) face_index: u32,
+    @location(1) face_index: u32,
 };
 
 // The output we send to our fragment shader
 struct VertexOutput {
-    // This property is \"builtin\" (aka used to render our vertex shader)
     @builtin(position) clip_position: vec4<f32>,
-    // These are \"custom\" properties we can create to pass down
-    // In this case, we pass the color down
-    @location(0) coords: vec3<f32>,
-    @location(1) vertex_index_1: u32,
-    @location(2) vertex_index_2: u32,
-    @location(3) vertex_index_3: u32,
-    @location(4) face_index: u32,
+    @location(0) face_index: u32,
 };
 
 @vertex
@@ -76,11 +67,7 @@ fn vs_main(
     var out: VertexOutput;
     let model_matrix = transform.model;
 
-    out.coords = model.coords;
-    out.vertex_index_1 = model.vertex_index_1;
-    out.vertex_index_2 = model.vertex_index_2;
-    out.vertex_index_3 = model.vertex_index_3;
-    out.face_index = model.face_index;
+    out.face_index = counter.count + model.face_index;
 
     // We set the \"position\" by using the `clip_position` property
     // We multiply it by the camera position matrix and the instance position matrix
@@ -92,21 +79,15 @@ fn vs_main(
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 //u32 {
-    // We use the special function `textureSample` to combine the texture data with coords
-    let dist = min(1. - in.coords.x, min(1. - in.coords.y, 1. - in.coords.z));
-    let thresh = min(0.3, dist);
-    let res =   counter.count +
-                in.face_index * u32(1. - step(dist, 0.3)) +
-                in.vertex_index_1 * u32(step(1. - in.coords.x, thresh)) +
-                in.vertex_index_2 * u32(step(1. - in.coords.y, thresh)) +
-                in.vertex_index_3 * u32(step(1. - in.coords.z, thresh));
+    //return bitcast<vec4<f32>>(res);
     // webgl dosen't support rendering to u32, so we have to resort to this
+    let res = in.face_index;
     let f1 = f32((res >> u32(24))) / 255.;
     let f2 = f32(((res << u32(8)) >> u32(24))) / 255.;
     let f3 = f32(((res << u32(16)) >> u32(24))) / 255.;
     let f4 = f32(((res << u32(24)) >> u32(24))) / 255.;
     return vec4<f32>(f4, f3, f2, f1);
-    //return bitcast<vec4<f32>>(res);
+    //return unpack4x8unorm(in.face_index);
 }
 ";
 
@@ -118,10 +99,10 @@ trait Vertex {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct VertexData {
     pub position: [f32; 3],
-    pub barycentric_coords: [f32; 3],
-    pub vertex_index_1: u32,
-    pub vertex_index_2: u32,
-    pub vertex_index_3: u32,
+    //pub barycentric_coords: [i8; 4],
+    //pub vertex_index_1: u32,
+    //pub vertex_index_2: u32,
+    //pub vertex_index_3: u32,
     pub face_index: u32,
 }
 
@@ -140,28 +121,28 @@ impl Vertex for VertexData {
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
-                    shader_location: 2,
                     format: wgpu::VertexFormat::Uint32,
                 },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
-                    shader_location: 3,
-                    format: wgpu::VertexFormat::Uint32,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
-                    shader_location: 4,
-                    format: wgpu::VertexFormat::Uint32,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 9]>() as wgpu::BufferAddress,
-                    shader_location: 5,
-                    format: wgpu::VertexFormat::Uint32,
-                },
+                //wgpu::VertexAttribute {
+                //    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
+                //    shader_location: 2,
+                //    format: wgpu::VertexFormat::Uint32,
+                //},
+                //wgpu::VertexAttribute {
+                //    offset: mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
+                //    shader_location: 3,
+                //    format: wgpu::VertexFormat::Uint32,
+                //},
+                //wgpu::VertexAttribute {
+                //    offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                //    shader_location: 4,
+                //    format: wgpu::VertexFormat::Uint32,
+                //},
+                //wgpu::VertexAttribute {
+                //    offset: mem::size_of::<[f32; 9]>() as wgpu::BufferAddress,
+                //    shader_location: 5,
+                //    format: wgpu::VertexFormat::Uint32,
+                //},
             ],
         }
     }
@@ -208,10 +189,9 @@ fn build_render_pipeline(
 
 fn build_vertex_buffer(device: &wgpu::Device, surface: &SurfaceGeometry) -> wgpu::Buffer {
     let mut gpu_vertices = Vec::with_capacity(3 * surface.internal_indices.len());
-    let face_offset = surface.vertices.len();
     //let edges_offset = face_offset + surface.indices.len();
-    for (i, indices) in surface.indices.into_iter().enumerate() {
-        let bars = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]];
+    let mut count = 0;
+    for indices in surface.indices.into_iter() {
         //for (bar, index) in bars.iter().zip(indices) {
         for j in 1..indices.len() - 1 {
             let index0 = indices[0];
@@ -221,13 +201,10 @@ fn build_vertex_buffer(device: &wgpu::Device, surface: &SurfaceGeometry) -> wgpu
             for k in 0..3 {
                 gpu_vertices.push(VertexData {
                     position: surface.vertices[v_indices[k] as usize],
-                    barycentric_coords: bars[k],
-                    vertex_index_1: index0,
-                    vertex_index_2: index1,
-                    vertex_index_3: index2,
-                    face_index: (i + face_offset) as u32,
+                    face_index: count,
                 });
             }
+            count += 1;
         }
     }
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -290,7 +267,8 @@ impl ElementPicker for Picker {
             counter_bind_group_layout,
             &transform_bind_group_layout,
         );
-        let tot_elements = (surface.vertices.len() + surface.indices.size()) as u32;
+        //let tot_elements = (surface.vertices.len() + surface.indices.size()) as u32;
+        let tot_elements = surface.indices.tot_triangles() as u32;
         Self {
             vertex_buffer,
             num_elements,
@@ -314,6 +292,103 @@ impl ElementPicker for Picker {
 
     fn get_total_elements(&self) -> u32 {
         self.tot_elements
+    }
+
+    fn get_element(
+        &self,
+        surface: &Self::Geometry,
+        transform: &TransformSettings,
+        camera: &Camera,
+        item: u32,
+        pos_x: f32,
+        pos_y: f32,
+    ) -> u32 {
+        let indices = &surface.indices;
+        let vertices = &surface.vertices;
+        let (face_index, face_indices) = match indices {
+            SurfaceIndices::Triangles(t) => (item, t[item as usize]),
+            SurfaceIndices::Quads(t) => (
+                item / 2,
+                if item % 2 == 0 {
+                    [
+                        t[item as usize / 2][0],
+                        t[item as usize / 2][1],
+                        t[item as usize / 2][2],
+                    ]
+                } else {
+                    [
+                        t[item as usize / 2][0],
+                        t[item as usize / 2][2],
+                        t[item as usize / 2][3],
+                    ]
+                },
+            ),
+            SurfaceIndices::Polygons(indices, s) => {
+                let mut elapsed = 0;
+                let mut index = 0;
+                let mut face = [0, 0, 0];
+                for (i, size) in s.iter().enumerate() {
+                    if elapsed + size - 2 > item {
+                        for j in 0..(size - 2) {
+                            if elapsed + j == item {
+                                index = i as u32;
+                                face = [
+                                    indices[elapsed as usize + i * 2 + 0],
+                                    indices[elapsed as usize + i * 2 + j as usize + 1],
+                                    indices[elapsed as usize + i * 2 + j as usize + 2],
+                                ];
+                                break;
+                            }
+                        }
+                        break;
+                    } else {
+                        elapsed += size - 2;
+                    }
+                }
+                (index, face)
+            }
+        };
+        let v1: cgmath::Point3<f32> = vertices[face_indices[0] as usize].into();
+        let v2: cgmath::Point3<f32> = vertices[face_indices[1] as usize].into();
+        let v3: cgmath::Point3<f32> = vertices[face_indices[2] as usize].into();
+        let v1 = v1.to_homogeneous();
+        let v2 = v2.to_homogeneous();
+        let v3 = v3.to_homogeneous();
+        let model: cgmath::Matrix4<f32> = transform.to_raw().get_model().into();
+        let camera = camera.build_view_projection_matrix();
+        let v1 = camera * model * v1;
+        let v2 = camera * model * v2;
+        let v3 = camera * model * v3;
+        let w1 = v1.w;
+        let w2 = v2.w;
+        let w3 = v3.w;
+        let v1 = v1 / v1.w;
+        let v2 = v2 / v2.w;
+        let v3 = v3 / v3.w;
+        let p = cgmath::vec3(pos_x, pos_y, 0.);
+        let v1 = cgmath::vec3(v1.x, v1.y, 0.);
+        let v2 = cgmath::vec3(v2.x, v2.y, 0.);
+        let v3 = cgmath::vec3(v3.x, v3.y, 0.);
+
+        let c3 = (v1 - p).cross(v2 - p).magnitude();
+        let c1 = (v2 - p).cross(v3 - p).magnitude();
+        let c2 = (v3 - p).cross(v1 - p).magnitude();
+        let tot = c3 + c1 + c2;
+        let c1 = c1 / tot;
+        let c2 = c2 / tot;
+        let c3 = c3 / tot;
+        let c1 = c1 / w1 / (c1 / w1 + c2 / w2 + c3 / w3);
+        let c2 = c2 / w2 / (c1 / w1 + c2 / w2 + c3 / w3);
+        let c3 = c3 / w3 / (c1 / w1 + c2 / w2 + c3 / w3);
+        if c1 > 0.7 {
+            face_indices[0]
+        } else if c2 > 0.7 {
+            face_indices[1]
+        } else if c3 > 0.7 {
+            face_indices[2]
+        } else {
+            vertices.len() as u32 + face_index
+        }
     }
 }
 

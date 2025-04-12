@@ -1,7 +1,9 @@
+use crate::camera::Camera;
 use crate::curve::Curve;
 use crate::point_cloud::PointCloud;
 use crate::surface::Surface;
 use crate::texture;
+use crate::updater::ElementPicker;
 use crate::util;
 use crate::UserEvent;
 use indexmap::IndexMap;
@@ -16,13 +18,15 @@ pub struct Picker {
     pub picked_item: Option<(String, usize)>,
     item_to_pick: Option<(usize, usize)>,
     //lock to ensure buffer isn't used while mapped
-    pick_locked: bool,
+    pub pick_locked: bool,
     dragging: bool,
     cur_pos: (f32, f32),
     orig_pos: (f32, f32),
     pub bind_group_layout: wgpu::BindGroupLayout,
     bind_groups: Vec<wgpu::BindGroup>,
     pub counters_dirty: bool,
+    width: u32,
+    height: u32,
 }
 
 #[repr(C)]
@@ -69,7 +73,7 @@ impl Picker {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -107,6 +111,8 @@ impl Picker {
             bind_group_layout,
             bind_groups,
             counters_dirty: true,
+            width,
+            height,
         }
     }
 
@@ -143,6 +149,8 @@ impl Picker {
         };
         self.buffer = device.create_buffer(&picker_buffer_desc);
         self.item_to_pick = None;
+        self.width = width;
+        self.height = height;
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
@@ -390,13 +398,14 @@ impl Picker {
         surfaces: &IndexMap<String, Surface>,
         clouds: &IndexMap<String, PointCloud>,
         curves: &IndexMap<String, Curve>,
+        camera: &Camera,
     ) {
         {
             let buffer_slice = self.buffer.slice(..);
             let data = buffer_slice.get_mapped_range();
             if let Some((i, j)) = self.item_to_pick {
                 let index = j * self.buffer_dimensions.padded_bytes_per_row + 4 * i;
-                let value = (data[index + 3] as u32) << 24
+                let mut value = (data[index + 3] as u32) << 24
                     | (data[index + 2] as u32) << 16
                     | (data[index + 1] as u32) << 8
                     | (data[index] as u32);
@@ -410,7 +419,22 @@ impl Picker {
                         }
                         found
                     })
-                    .map(|(n, _s)| n)
+                    .map(|(n, s)| {
+                        let transform = &s.updater.transform;
+                        let pos_x = (i as f32 / self.width as f32) * 2. - 1.;
+                        let pos_y = -((j as f32 / self.height as f32) * 2. - 1.);
+                        let new_value = s.picker.get_element(
+                            &s.geometry,
+                            transform,
+                            camera,
+                            value - c,
+                            pos_x,
+                            pos_y,
+                        );
+                        value = new_value;
+                        c = 0;
+                        n
+                    })
                     .or_else(|| {
                         clouds
                             .iter()

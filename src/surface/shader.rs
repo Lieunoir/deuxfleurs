@@ -53,9 +53,9 @@ var<uniform> settings: SettingsUniform;
 // e.g. 0 = 1st \"set\" of data, 1 = 2nd \"set\"
 struct VertexInput {{
     @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) face_normal: vec3<f32>,
-    @location(3) barycentric_coords: vec3<f32>,
+    @location(1) normal: vec4<f32>,
+    @location(2) face_normal: vec4<f32>,
+    //@location(3) barycentric_coords: vec3<f32>,
 }};
 
 {}
@@ -95,7 +95,13 @@ fn vs_main(
     {}
 
     //out.tex_coords = model.tex_coords;
-    out.barycentric_coords = model.barycentric_coords;
+    let b_codes = u32(model.normal.w * 127.);
+    //let b_codes = 4;
+    //let b_codes = max(-1, min(1, model.normal.w));
+    let b_1 = select(vec3<f32>(0.), vec3<f32>(1., 0., 0.), bool(b_codes & 4));
+    let b_2 = select(vec3<f32>(0.), vec3<f32>(0., 1., 0.), bool(b_codes & 2));
+    let b_3 = select(vec3<f32>(0.), vec3<f32>(0., 0., 1.), bool(b_codes & 1));
+    out.barycentric_coords = b_1 + b_2 + b_3;
     //out.distance = model.distance;
 
     // We set the \"position\" by using the `clip_position` property
@@ -284,10 +290,7 @@ var<uniform> data_uniform: DataUniform;
 
 const CHECKERBOARD: &str = "
     let check_period = data_uniform.period;
-    //Trash value
-    //var check_mod_period = 1.;
     let tex_color = data_uniform.color_1.xyz;
-    //let check_mod_x = modf(in.data.x * check_period, &check_mod_period);
     let check_mod_x = modf(in.data.x * check_period).fract;
     let check_min_x = 2. * (max(abs(check_mod_x), 1. - abs(check_mod_x)) - .5);
     let check_mod_y = modf(in.data.y * check_period).fract;
@@ -310,10 +313,10 @@ const FLAT_NORMAL_INTERPOLATION: &str = "
     var normal = normalize(cross(tan_x, tan_y));
 ";*/
 const FLAT_NORMAL_INTERPOLATION: &str = "
-    out.world_normal = normalize((normal_matrix * vec4<f32>(model.face_normal, 0.0)).xyz);
+    out.world_normal = normalize((normal_matrix * vec4<f32>(model.face_normal.xyz, 0.0)).xyz);
 ";
 const SMOOTH_NORMAL_INTERPOLATION: &str = "
-    out.world_normal = normalize((normal_matrix * vec4<f32>(model.normal, 0.0)).xyz);
+    out.world_normal = normalize((normal_matrix * vec4<f32>(model.normal.xyz, 0.0)).xyz);
 ";
 
 const WITH_EDGE_SHADER: &str = "
@@ -447,9 +450,8 @@ var<uniform> transform: TransformUniform;
 struct VertexInput {
     @builtin(vertex_index) index: u32,
     @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) face_normal: vec3<f32>,
-    @location(3) barycentric_coords: vec3<f32>,
+    @location(1) normal: vec4<f32>,
+    @location(2) face_normal: vec4<f32>,
 };
 
 @vertex

@@ -6,6 +6,7 @@ use crate::types::{SurfaceIndices, Vertices2D};
 use crate::ui::UiDataElement;
 use crate::updater::*;
 use crate::util;
+use cgmath::num_traits::ToPrimitive;
 use wgpu::util::DeviceExt;
 
 mod data;
@@ -66,13 +67,21 @@ impl UiDataElement for SurfaceSettings {
         false
     }
 }
+
+impl NamedSettings for SurfaceSettings {
+    fn set_name(mut self, name: &str) -> Self {
+        self.color = ColorSettings::new(name);
+        self
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SurfaceVertex {
     pub position: [f32; 3],
-    pub normal: [f32; 3],
-    pub face_normal: [f32; 3],
-    pub barycentric_coords: [f32; 3],
+    pub normal: [i8; 4],
+    //held in normal's 4th coordinate
+    //pub barycentric_coords: i8,
+    pub face_normal: [i8; 4],
 }
 
 impl Vertex for SurfaceVertex {
@@ -90,18 +99,18 @@ impl Vertex for SurfaceVertex {
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
+                    format: wgpu::VertexFormat::Snorm8x4,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
+                    offset: mem::size_of::<([f32; 3], [i8; 4])>() as wgpu::BufferAddress,
                     shader_location: 2,
-                    format: wgpu::VertexFormat::Float32x3,
+                    format: wgpu::VertexFormat::Snorm8x4,
                 },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 9]>() as wgpu::BufferAddress,
-                    shader_location: 3,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
+                //wgpu::VertexAttribute {
+                //    offset: mem::size_of::<[f32; 9]>() as wgpu::BufferAddress,
+                //    shader_location: 3,
+                //    format: wgpu::VertexFormat::Float32x3,
+                //},
             ],
         }
     }
@@ -162,40 +171,41 @@ impl FixedRenderer for SurfaceFixedRenderer {
         let face_normals = compute_face_normals(&geometry.vertices, &geometry.indices);
         let mut gpu_vertices = Vec::with_capacity(3 * geometry.internal_indices.len());
         for (face, face_normal) in geometry.indices.into_iter().zip(face_normals) {
-            let _fmin2 = face.len() - 2;
             for j in 1..face.len() - 1 {
                 for k in 0..3 {
                     let barycentric_coords = if face.len() == 3 {
                         match k {
-                            0 => [1., 0., 0.],
-                            1 => [0., 1., 0.],
-                            _ => [0., 0., 1.],
+                            0 => 4,
+                            1 => 2,
+                            _ => 1,
                         }
                     } else {
                         match j {
                             1 => match k {
-                                0 => [1., 1., 0.],
-                                1 => [0., 1.1, 0.],
-                                _ => [0., 1., 1.],
+                                0 => 6,
+                                1 => 2,
+                                _ => 3,
                             },
-                            _fmin2 => match k {
-                                0 => [1., 0., 1.],
-                                1 => [0., 1., 1.],
-                                _ => [0., 0., 1.1],
+                            _ if j == (face.len() - 2) => match k {
+                                0 => 5,
+                                1 => 3,
+                                _ => 1,
                             },
                             _ => match k {
-                                0 => [1., 1., 1.],
-                                1 => [0., 1.1, 1.],
-                                _ => [0., 1., 1.1],
+                                0 => 7,
+                                1 => 3,
+                                _ => 3,
                             },
                         }
                     };
                     let index = if k != 0 { (j - 1 + k) as usize } else { 0 };
+                    let mut normal = normals[face[index] as usize];
+                    normal[3] = barycentric_coords;
                     gpu_vertices.push(SurfaceVertex {
                         position: geometry.vertices[face[index] as usize],
-                        normal: normals[face[index] as usize],
+                        normal,
                         face_normal,
-                        barycentric_coords,
+                        //barycentric_coords,
                     });
                 }
             }
@@ -385,6 +395,27 @@ impl Surface {
         )
     }
 
+    pub(crate) fn change_vertices(
+        &mut self,
+        vertices: Vec<[f32; 3]>,
+        indices: SurfaceIndices,
+        device: &wgpu::Device,
+    ) {
+        let mut internal_indices = Vec::new();
+        for face in &indices {
+            for i in 1..face.len() - 1 {
+                internal_indices.push([face[0], face[i], face[i + 1]]);
+            }
+        }
+        self.geometry = SurfaceGeometry {
+            num_elements: indices.size() as u32,
+            indices,
+            vertices,
+            internal_indices,
+        };
+        self.renderer.fixed = SurfaceFixedRenderer::initialize(device, &self.geometry);
+    }
+
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.updater.settings.show_edges != show_edges {
             self.updater.settings.show_edges = show_edges;
@@ -538,7 +569,7 @@ impl Surface {
     }
 }
 
-fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[f32; 3]> {
+fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[i8; 4]> {
     let mut normals = vec![[0., 0., 0.]; vertices.len()];
     for face in indices {
         for i in 1..face.len() - 1 {
@@ -565,37 +596,58 @@ fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[f32;
     }
     for normal in &mut normals {
         let norm = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-        normal[0] /= norm;
-        normal[1] /= norm;
-        normal[2] /= norm;
-    }
-    normals
-}
-
-fn compute_face_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[f32; 3]> {
-    let mut normals = vec![[0., 0., 0.]; indices.size()];
-    for (normal, face) in normals.iter_mut().zip(indices) {
-        for i in 1..face.len() - 1 {
-            let i0 = face[0] as usize;
-            let i1 = face[i] as usize;
-            let i2 = face[i + 1] as usize;
-            let v0: cgmath::Vector3<f32> = vertices[i0].into();
-            let v1: cgmath::Vector3<f32> = vertices[i1].into();
-            let v2: cgmath::Vector3<f32> = vertices[i2].into();
-            let e1 = v1 - v0;
-            let e2 = v2 - v0;
-            let cross_p = e1.cross(e2);
-            let n = AsRef::<[f32; 3]>::as_ref(&cross_p);
-            for (a, b) in normal.iter_mut().zip(n) {
-                *a += b
-            }
+        if norm > 0. {
+            normal[0] /= norm;
+            normal[1] /= norm;
+            normal[2] /= norm;
         }
     }
-    for normal in &mut normals {
-        let norm = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-        normal[0] /= norm;
-        normal[1] /= norm;
-        normal[2] /= norm;
-    }
     normals
+        .into_iter()
+        .map(|n| {
+            [
+                (n[0] * 127.).to_i8().unwrap(),
+                (n[1] * 127.).to_i8().unwrap(),
+                (n[2] * 127.).to_i8().unwrap(),
+                0,
+            ]
+        })
+        .collect()
+}
+
+fn compute_face_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[i8; 4]> {
+    indices
+        .into_iter()
+        .map(|face| {
+            let mut normal = [0., 0., 0.];
+            for i in 1..face.len() - 1 {
+                let i0 = face[0] as usize;
+                let i1 = face[i] as usize;
+                let i2 = face[i + 1] as usize;
+                let v0: cgmath::Vector3<f32> = vertices[i0].into();
+                let v1: cgmath::Vector3<f32> = vertices[i1].into();
+                let v2: cgmath::Vector3<f32> = vertices[i2].into();
+                let e1 = v1 - v0;
+                let e2 = v2 - v0;
+                let cross_p = e1.cross(e2);
+                let n = AsRef::<[f32; 3]>::as_ref(&cross_p);
+                for (a, b) in normal.iter_mut().zip(n) {
+                    *a += b
+                }
+            }
+            let norm =
+                (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+            if norm > 0. {
+                normal[0] /= norm;
+                normal[1] /= norm;
+                normal[2] /= norm;
+            }
+            [
+                (normal[0] * 127.).to_i8().unwrap(),
+                (normal[1] * 127.).to_i8().unwrap(),
+                (normal[2] * 127.).to_i8().unwrap(),
+                0,
+            ]
+        })
+        .collect()
 }
