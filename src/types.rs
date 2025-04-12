@@ -14,6 +14,16 @@ impl SurfaceIndices {
         }
     }
 
+    pub fn tot_triangles(&self) -> usize {
+        match self {
+            SurfaceIndices::Triangles(t) => t.len(),
+            SurfaceIndices::Quads(q) => 2 * q.len(),
+            SurfaceIndices::Polygons(_i, s) => {
+                s.into_iter().fold(0, |acc, size| acc + *size as usize - 2)
+            }
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.size()
     }
@@ -34,6 +44,13 @@ impl Into<SurfaceIndices> for Vec<[u32; 4]> {
 impl Into<SurfaceIndices> for (Vec<u32>, Vec<u32>) {
     fn into(self) -> SurfaceIndices {
         SurfaceIndices::Polygons(self.0, self.1)
+    }
+}
+
+impl Into<SurfaceIndices> for (Vec<u32>, Vec<u8>) {
+    fn into(self) -> SurfaceIndices {
+        let strides_32 = self.1.into_iter().map(|s| s as _).collect();
+        SurfaceIndices::Polygons(self.0, strides_32)
     }
 }
 
