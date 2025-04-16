@@ -1,3 +1,5 @@
+/// General types for genericity in functions parameters.
+
 #[derive(Clone)]
 pub enum SurfaceIndices {
     Triangles(Vec<[u32; 3]>),
@@ -54,10 +56,8 @@ impl Into<SurfaceIndices> for (Vec<u32>, Vec<u8>) {
     }
 }
 
-//impl Into<SurfaceIndices> for Vec<Vec<u32>> {
-//
-//}
-
+/// Helper iterator struct
+// Could be more efficient
 pub struct SurfaceIndicesIntoIterator<'a> {
     indices: &'a SurfaceIndices,
     index: usize,
@@ -107,6 +107,15 @@ impl Vertices for Vec<[f32; 3]> {
     }
 }
 
+impl Vertices for &[[f64; 3]] {
+    fn into(self) -> Vec<[f32; 3]> {
+        self.iter()
+            .map(|row| [row[0] as f32, row[1] as f32, row[2] as f32])
+            .collect()
+    }
+}
+
+#[cfg(feature = "ndarray")]
 impl Vertices for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 3]> {
         self.rows()
@@ -116,6 +125,7 @@ impl Vertices for ndarray::Array2<f32> {
     }
 }
 
+#[cfg(feature = "ndarray")]
 impl Vertices for ndarray::Array2<f64> {
     fn into(self) -> Vec<[f32; 3]> {
         self.rows()
@@ -125,6 +135,7 @@ impl Vertices for ndarray::Array2<f64> {
     }
 }
 
+#[cfg(feature = "nalgebra")]
 impl Vertices for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 3]> {
         self.row_iter()
@@ -143,6 +154,15 @@ impl Vertices2D for Vec<[f32; 2]> {
     }
 }
 
+impl Vertices2D for &[[f64; 2]] {
+    fn into(self) -> Vec<[f32; 2]> {
+        self.iter()
+            .map(|row| [row[0] as f32, row[1] as f32])
+            .collect()
+    }
+}
+
+#[cfg(feature = "ndarray")]
 impl Vertices2D for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 2]> {
         self.rows()
@@ -152,6 +172,7 @@ impl Vertices2D for ndarray::Array2<f32> {
     }
 }
 
+#[cfg(feature = "ndarray")]
 impl Vertices2D for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 2]> {
         self.row_iter().map(|row| [row[0], row[1]]).collect()
@@ -168,18 +189,27 @@ impl Scalar for Vec<f32> {
     }
 }
 
+impl Scalar for &[f64] {
+    fn into(self) -> Vec<f32> {
+        self.iter().map(|row| *row as f32).collect()
+    }
+}
+
+#[cfg(feature = "ndarray")]
 impl Scalar for ndarray::Array1<f32> {
     fn into(self) -> Vec<f32> {
         self.into_raw_vec()
     }
 }
 
+#[cfg(feature = "ndarray")]
 impl Scalar for ndarray::Array1<f64> {
     fn into(self) -> Vec<f32> {
         self.into_raw_vec().into_iter().map(|f| f as f32).collect()
     }
 }
 
+#[cfg(feature = "nalgebra")]
 impl Scalar for nalgebra::base::DVector<f32> {
     fn into(self) -> Vec<f32> {
         self.row_iter().map(|row| row[0]).collect()
@@ -190,12 +220,21 @@ pub trait Color {
     fn into(self) -> Vec<[f32; 3]>;
 }
 
+impl Color for Vec<[f64; 3]> {
+    fn into(self) -> Vec<[f32; 3]> {
+        self.iter()
+            .map(|row| [row[0] as f32, row[1] as f32, row[2] as f32])
+            .collect()
+    }
+}
+
 impl Color for Vec<[f32; 3]> {
     fn into(self) -> Vec<[f32; 3]> {
         self
     }
 }
 
+#[cfg(feature = "ndarray")]
 impl Color for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 3]> {
         self.rows()
@@ -205,6 +244,17 @@ impl Color for ndarray::Array2<f32> {
     }
 }
 
+#[cfg(feature = "ndarray")]
+impl Color for ndarray::Array2<f64> {
+    fn into(self) -> Vec<[f32; 3]> {
+        self.rows()
+            .into_iter()
+            .map(|row| [row[0] as f32, row[1] as f32, row[2] as f32])
+            .collect()
+    }
+}
+
+#[cfg(feature = "nalgebra")]
 impl Color for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 3]> {
         self.row_iter()

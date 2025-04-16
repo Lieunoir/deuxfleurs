@@ -2,6 +2,7 @@ use std::num::NonZeroU8;
 
 use wgpu::Color;
 
+/// Global rendering settings
 #[derive(Clone)]
 pub struct Settings {
     //vsync: bool,

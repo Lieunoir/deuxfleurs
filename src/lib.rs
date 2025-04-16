@@ -26,7 +26,7 @@ mod picker;
 pub mod point_cloud;
 pub mod resources;
 mod screenshot;
-pub mod settings;
+mod settings;
 mod shader;
 pub mod surface;
 mod texture;
