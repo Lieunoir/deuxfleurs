@@ -162,7 +162,7 @@ struct VertexUVData {
     uv: [f32; 2],
 }
 
-use super::Vertex;
+use crate::util::Vertex;
 
 impl Vertex for VertexColorData {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {

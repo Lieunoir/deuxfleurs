@@ -4,6 +4,7 @@ use crate::types::{Color, Scalar};
 use crate::ui::UiDataElement;
 use crate::updater::*;
 use crate::util;
+use crate::util::Vertex;
 use wgpu::util::DeviceExt;
 
 mod picker;
@@ -99,10 +100,6 @@ impl CloudData {
             }
         }
     }
-}
-
-pub trait Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
 }
 
 #[repr(C)]

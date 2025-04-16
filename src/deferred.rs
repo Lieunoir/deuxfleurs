@@ -1,5 +1,6 @@
 use crate::texture;
 use crate::util;
+use crate::util::Vertex;
 use wgpu::util::DeviceExt;
 
 pub struct TextureCopy {
@@ -19,10 +20,6 @@ pub struct TextureCopy {
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct SquareVertex {
     position: [f32; 3],
-}
-
-pub trait Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
 }
 
 impl Vertex for SquareVertex {

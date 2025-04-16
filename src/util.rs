@@ -1,3 +1,7 @@
+pub(crate) trait Vertex {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
+}
+
 pub struct BufferDimensions {
     pub width: usize,
     pub height: usize,

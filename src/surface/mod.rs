@@ -6,6 +6,7 @@ use crate::types::{SurfaceIndices, Vertices2D};
 use crate::ui::UiDataElement;
 use crate::updater::*;
 use crate::util;
+use crate::util::Vertex;
 use cgmath::num_traits::ToPrimitive;
 use wgpu::util::DeviceExt;
 
@@ -15,10 +16,6 @@ mod shader;
 use data::*;
 use picker::Picker;
 use shader::{get_shader, SHADOW_SHADER};
-
-pub trait Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
-}
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

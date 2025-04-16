@@ -1,6 +1,7 @@
 use crate::data::*;
 use crate::texture;
 use crate::util;
+use crate::util::Vertex;
 use wgpu::util::DeviceExt;
 
 pub struct VectorField {
@@ -83,10 +84,6 @@ impl NewVectorField {
             settings,
         }
     }
-}
-
-pub trait Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
 }
 
 #[repr(C)]

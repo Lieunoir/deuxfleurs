@@ -3,6 +3,7 @@ use crate::camera::Camera;
 use crate::data::TransformSettings;
 use crate::updater::{ElementPicker, Render};
 use crate::util::create_picker_pipeline;
+use crate::util::Vertex;
 use crate::{texture, SurfaceIndices};
 use cgmath::InnerSpace;
 use wgpu::util::DeviceExt;
@@ -90,10 +91,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //return unpack4x8unorm(in.face_index);
 }
 ";
-
-trait Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
-}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
