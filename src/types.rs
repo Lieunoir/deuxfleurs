@@ -115,6 +115,14 @@ impl Vertices for &[[f64; 3]] {
     }
 }
 
+impl Vertices for &Vec<[f64; 3]> {
+    fn into(self) -> Vec<[f32; 3]> {
+        self.iter()
+            .map(|row| [row[0] as f32, row[1] as f32, row[2] as f32])
+            .collect()
+    }
+}
+
 #[cfg(feature = "ndarray")]
 impl Vertices for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 3]> {
@@ -162,6 +170,14 @@ impl Vertices2D for &[[f64; 2]] {
     }
 }
 
+impl Vertices2D for &Vec<[f64; 2]> {
+    fn into(self) -> Vec<[f32; 2]> {
+        self.iter()
+            .map(|row| [row[0] as f32, row[1] as f32])
+            .collect()
+    }
+}
+
 #[cfg(feature = "ndarray")]
 impl Vertices2D for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 2]> {
@@ -195,6 +211,12 @@ impl Scalar for &[f64] {
     }
 }
 
+impl Scalar for &Vec<f64> {
+    fn into(self) -> Vec<f32> {
+        self.iter().map(|row| *row as f32).collect()
+    }
+}
+
 #[cfg(feature = "ndarray")]
 impl Scalar for ndarray::Array1<f32> {
     fn into(self) -> Vec<f32> {
@@ -220,7 +242,15 @@ pub trait Color {
     fn into(self) -> Vec<[f32; 3]>;
 }
 
-impl Color for Vec<[f64; 3]> {
+impl Color for &Vec<[f64; 3]> {
+    fn into(self) -> Vec<[f32; 3]> {
+        self.iter()
+            .map(|row| [row[0] as f32, row[1] as f32, row[2] as f32])
+            .collect()
+    }
+}
+
+impl Color for &[[f64; 3]] {
     fn into(self) -> Vec<[f32; 3]> {
         self.iter()
             .map(|row| [row[0] as f32, row[1] as f32, row[2] as f32])
