@@ -30,6 +30,7 @@ mod settings;
 mod shader;
 pub mod surface;
 mod texture;
+/// General types for genericity in functions parameters.
 pub mod types;
 mod ui;
 mod updater;
@@ -114,7 +115,7 @@ pub struct State {
     aabb: aabb::SBV,
 }
 
-pub struct StateWrapper<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> {
+pub struct StateBuilder<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> {
     state: Option<State>,
     ui: Option<ui::UI>,
     width: u32,
@@ -132,7 +133,7 @@ pub(crate) enum UserEvent {
 
 impl State {
     // Initialize the state
-    pub async fn new(window: Window, width: u32, height: u32, settings: Settings) -> Self {
+    async fn new(window: Window, width: u32, height: u32, settings: Settings) -> Self {
         let size = window.inner_size();
         let window = Arc::new(window);
         // The instance is a handle to our GPU
@@ -1037,6 +1038,7 @@ impl State {
         self.curves.get(name)
     }
 
+    /// Take a screenshot at the next frame
     pub fn screenshot(&mut self) {
         self.screenshot = true;
     }
@@ -1049,12 +1051,13 @@ impl State {
         &self.picker.picked_item
     }
 
+    /// Politely ask to render the next frame
     pub fn refresh(&mut self) {
         self.dirty = true;
     }
 }
 
-impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateWrapper<T, U> {
+impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T, U> {
     pub fn run(width: u32, height: u32, settings: Settings, init: Option<T>, callback: Option<U>) {
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -1088,7 +1091,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateWrapper<T,
 }
 
 impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHandler<UserEvent>
-    for StateWrapper<T, U>
+    for StateBuilder<T, U>
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = WindowAttributes::default()

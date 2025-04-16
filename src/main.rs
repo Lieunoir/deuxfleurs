@@ -1,6 +1,6 @@
 use deuxfleurs::resources;
 use deuxfleurs::types::SurfaceIndices;
-use deuxfleurs::{Color, State, StateWrapper};
+use deuxfleurs::{Color, State, StateBuilder};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -178,7 +178,7 @@ pub async fn run() {
             }
         }
     };
-    StateWrapper::run(
+    StateBuilder::run(
         1080,
         720,
         deuxfleurs::Settings {

@@ -1,5 +1,3 @@
-/// General types for genericity in functions parameters.
-
 #[derive(Clone)]
 pub enum SurfaceIndices {
     Triangles(Vec<[u32; 3]>),
