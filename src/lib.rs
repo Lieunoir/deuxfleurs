@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 use crate::updater::Render;
 use indexmap::IndexMap;
 use pollster::FutureExt;
@@ -47,10 +48,8 @@ pub use wgpu::Color;
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct LightUniform {
     position: [f32; 3],
-    // Due to uniforms requiring 16 byte (4 float) spacing, we need to use a padding field here
     _padding: u32,
     color: [f32; 3],
-    // Due to uniforms requiring 16 byte (4 float) spacing, we need to use a padding field here
     _padding2: u32,
 }
 
@@ -111,8 +110,7 @@ pub struct State {
     copy: deferred::TextureCopy,
     pbr_renderer: deferred::PBR,
     ground: deferred::Ground,
-    taa_counter: u32,
-    taa_frames: u32,
+    taa_counter: u8,
     aabb: aabb::SBV,
 }
 
@@ -127,7 +125,7 @@ pub struct StateWrapper<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut Stat
     callback: Option<U>,
 }
 
-pub enum UserEvent {
+pub(crate) enum UserEvent {
     LoadMesh(Vec<[f32; 3]>, SurfaceIndices),
     Pick,
 }
@@ -176,16 +174,12 @@ impl State {
                         }
                     },
                 },
-                // Some(&std::path::Path::new("trace")), // Trace path
                 None,
             )
             .await
             .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
-        // Shader code in this tutorial assumes an sRGB surface texture. Using a different
-        // one will result all the colors coming out darker. If you want to support non
-        // sRGB surfaces, you'll need to account for that when drawing to the frame.
         let surface_format = surface_caps
             .formats
             .iter()
@@ -379,7 +373,6 @@ impl State {
             pbr_renderer,
             ground,
             taa_counter: 0,
-            taa_frames: 16,
             aabb: aabb::SBV::default(),
         }
     }
@@ -426,7 +419,7 @@ impl State {
         self.ground.set_level(&mut self.queue, min_y);
     }
 
-    //change camera to adapt to objects size
+    /// Fit camera and ground to match the visible elements
     pub fn resize_scene(&mut self) {
         let mut size = None;
         let mut n = 0;
@@ -489,7 +482,7 @@ impl State {
     }
 
     // Keeps state in sync with window size when changed
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.size = new_size;
             self.config.width = new_size.width;
@@ -638,33 +631,37 @@ impl State {
                     .create_view(&wgpu::TextureViewDescriptor::default())
             });
 
-            let mut render = false;
+            let mut render = self.settings.rerender;
             let mut render_copy = false;
-
-            let jitter = if scene_changed {
-                request_redraw = true;
+            let jitter;
+            if scene_changed || !self.settings.taa.is_some() {
+                // We rerender the scene from scratch
+                request_redraw = self.settings.taa.is_some() && !self.settings.rerender;
                 render = true;
                 self.taa_counter = 0;
-                JitterUniform {
+                jitter = JitterUniform {
                     x: 0.,
                     y: 0.,
                     _padding: [0; 2],
-                }
+                };
             } else {
-                if self.taa_counter < self.taa_frames {
-                    render = true;
-                    render_copy = true;
-                    request_redraw = true;
+                if let Some(taa_frames) = self.settings.taa {
+                    if self.taa_counter < taa_frames.get() {
+                        // The scene hasn't changed but we need more copies for taa
+                        render = true;
+                        render_copy = true;
+                        request_redraw = true;
+                    }
                 }
 
                 let mut rng = rand::thread_rng();
                 //let ampli = 0.5 + 0.5 * self.taa_counter as f32 / self.taa_frames as f32;
                 let ampli = 1.;
-                JitterUniform {
+                jitter = JitterUniform {
                     x: ampli * 2. * (rng.gen::<f32>() - 0.5) / self.size.width as f32,
                     y: ampli * 2. * (rng.gen::<f32>() - 0.5) / self.size.height as f32,
                     _padding: [0; 2],
-                }
+                };
             };
             self.queue
                 .write_buffer(&self.jitter_buffer, 0, bytemuck::cast_slice(&[jitter]));
@@ -792,60 +789,64 @@ impl State {
                 pbr_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
                 self.pbr_renderer.render(&mut pbr_render_pass);
                 drop(pbr_render_pass);
-                let mut shadow_render_pass =
-                    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("Shadow Render Pass"),
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: self.ground.get_texture_view(),
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.,
-                                    g: 0.,
-                                    b: 0.,
-                                    a: 0.,
-                                }),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                        occlusion_query_set: None,
-                        timestamp_writes: None,
-                    });
-                shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                for surface in self.surfaces.values() {
-                    surface.render_shadow(&mut shadow_render_pass);
-                }
+                if self.settings.shadow {
+                    let mut shadow_render_pass =
+                        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("Shadow Render Pass"),
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: self.ground.get_texture_view(),
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: 0.,
+                                        g: 0.,
+                                        b: 0.,
+                                        a: 0.,
+                                    }),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })],
+                            depth_stencil_attachment: None,
+                            occlusion_query_set: None,
+                            timestamp_writes: None,
+                        });
+                    shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                    for surface in self.surfaces.values() {
+                        surface.render_shadow(&mut shadow_render_pass);
+                    }
 
-                drop(shadow_render_pass);
-                self.ground
-                    .blur(&mut encoder, &self.camera_light_bind_group);
-                let mut ground_render_pass =
-                    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("Shadow Render Pass"),
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: view_ref,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Load,
-                                store: wgpu::StoreOp::Store,
-                            },
-                        })],
-                        // Create a depth stencil buffer using the depth texture
-                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.depth_texture.view,
-                            depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Load,
-                                store: wgpu::StoreOp::Store,
-                            }),
-                            stencil_ops: None,
-                        }),
-                        occlusion_query_set: None,
-                        timestamp_writes: None,
-                    });
-                ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                self.ground.render(&mut ground_render_pass);
-                drop(ground_render_pass);
+                    drop(shadow_render_pass);
+                    self.ground
+                        .blur(&mut encoder, &self.camera_light_bind_group);
+                    let mut ground_render_pass =
+                        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("Shadow Render Pass"),
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: view_ref,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Load,
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })],
+                            // Create a depth stencil buffer using the depth texture
+                            depth_stencil_attachment: Some(
+                                wgpu::RenderPassDepthStencilAttachment {
+                                    view: &self.depth_texture.view,
+                                    depth_ops: Some(wgpu::Operations {
+                                        load: wgpu::LoadOp::Load,
+                                        store: wgpu::StoreOp::Store,
+                                    }),
+                                    stencil_ops: None,
+                                },
+                            ),
+                            occlusion_query_set: None,
+                            timestamp_writes: None,
+                        });
+                    ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                    self.ground.render(&mut ground_render_pass);
+                    drop(ground_render_pass);
+                }
 
                 // Draw the gui
                 if !self.screenshot && !render_copy {
@@ -929,7 +930,7 @@ impl State {
         }
 
         self.picker.post_render(event_loop_proxy);
-        if self.picker.pick_locked {
+        if self.picker.pick_locked || !self.settings.lazy_draw {
             request_redraw = true;
         }
         Ok(request_redraw)
@@ -961,7 +962,6 @@ impl State {
             );
             self.surfaces.insert(name.clone(), surface);
             self.resize_scene();
-            self.set_floor();
             self.picker.counters_dirty = true;
         }
         self.dirty = true;
@@ -994,7 +994,6 @@ impl State {
         self.picker.counters_dirty = true;
         self.dirty = true;
         self.resize_scene();
-        self.set_floor();
         self.clouds.get_mut(&name).unwrap()
     }
 
@@ -1026,7 +1025,6 @@ impl State {
         self.picker.counters_dirty = true;
         self.dirty = true;
         self.resize_scene();
-        self.set_floor();
         self.curves.get_mut(&name).unwrap()
     }
 
@@ -1043,6 +1041,10 @@ impl State {
         self.screenshot = true;
     }
 
+    /// Get current selected object: first the name, then index `i` of the selected element
+    ///
+    /// For a surface mesh, if `i` < `nv` then the selected element si the vertex of index `i`.
+    /// If `nv` <= i < `nv + nf`, it corresponds to the face of index `i - nv`.
     pub fn get_picked(&self) -> &Option<(String, usize)> {
         &self.picker.picked_item
     }
@@ -1053,15 +1055,19 @@ impl State {
 }
 
 impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateWrapper<T, U> {
-    pub fn new(
-        width: u32,
-        height: u32,
-        proxy: EventLoopProxy<UserEvent>,
-        settings: Settings,
-        init: Option<T>,
-        callback: Option<U>,
-    ) -> StateWrapper<T, U> {
-        Self {
+    pub fn run(width: u32, height: u32, settings: Settings, init: Option<T>, callback: Option<U>) {
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+                console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
+            } else {
+                env_logger::init();
+            }
+        }
+
+        let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
+        let proxy = event_loop.create_proxy();
+        let mut app = Self {
             state: None,
             ui: None,
             width,
@@ -1070,38 +1076,14 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateWrapper<T,
             settings,
             init,
             callback,
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        event_loop.run_app(&mut app).unwrap();
+        #[cfg(target_arch = "wasm32")]
+        {
+            use winit::platform::web::EventLoopExtWebSys;
+            event_loop.spawn_app(app);
         }
-    }
-}
-
-pub fn create_window<T, U>(
-    width: u32,
-    height: u32,
-    settings: Settings,
-    init: Option<T>,
-    callback: Option<U>,
-) where
-    T: FnOnce(&mut State),
-    U: FnMut(&mut egui::Ui, &mut State),
-{
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
-        } else {
-            env_logger::init();
-        }
-    }
-
-    let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
-    let proxy = event_loop.create_proxy();
-    let mut app = StateWrapper::new(width, height, proxy, settings, init, callback);
-    #[cfg(not(target_arch = "wasm32"))]
-    event_loop.run_app(&mut app).unwrap();
-    #[cfg(target_arch = "wasm32")]
-    {
-        use winit::platform::web::EventLoopExtWebSys;
-        event_loop.spawn_app(app);
     }
 }
 

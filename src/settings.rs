@@ -1,29 +1,36 @@
+use std::num::NonZeroU8;
+
 use wgpu::Color;
 
 #[derive(Clone)]
 pub struct Settings {
     //vsync: bool,
     //show_fps: bool,
-    pub continuous_refresh: bool,
+    /// Only redraw scene when window requires it
+    pub lazy_draw: bool,
+    /// Disable storing last redraw in buffer
     pub rerender: bool,
-    pub taa: bool,
-    pub taa_frames: u32,
+    /// Number of frame used in temporal anti aliasing, `None` disables taa
+    ///
+    /// TAA is crudely applied for a number of fixed frames when the scene stops changing
+    pub taa: Option<NonZeroU8>,
+    /// Ground shadow
     pub shadow: bool,
+    /// Background color
     pub color: Color,
 }
 
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            continuous_refresh: false,
+            lazy_draw: true,
             rerender: false,
-            taa: true,
-            taa_frames: 16,
+            taa: NonZeroU8::new(16),
             shadow: true,
             color: Color {
-                r: 0.1,
-                g: 0.2,
-                b: 0.3,
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
                 a: 0.0,
             },
         }
