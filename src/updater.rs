@@ -149,8 +149,10 @@ where
         ui: &mut egui::Ui,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
+        gizmo_hover: &mut bool,
     ) {
-        self.updater.draw_gizmo(ui, &self.name, view, proj);
+        self.updater
+            .draw_gizmo(ui, &self.name, view, proj, gizmo_hover);
     }
 
     pub(crate) fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -189,7 +191,7 @@ pub(crate) struct Updater<Settings: NamedSettings, Data: DataUniformBuilder + Ui
 impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSettings>
     Updater<Settings, Data>
 {
-    pub fn new(name: &str) -> Self {
+    fn new(name: &str) -> Self {
         Self {
             transform: TransformSettings::default(),
             settings: Settings::default().set_name(name),
@@ -374,9 +376,14 @@ impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSet
         name: &str,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
+        gizmo_hovered: &mut bool,
     ) {
-        self.transform_changed |= self.transform.draw_gizmo(ui, name, view, proj);
-        self.settings_changed |= self.settings.draw_gizmo(ui, name, view, proj);
+        self.transform_changed |= self
+            .transform
+            .draw_gizmo(ui, name, view, proj, gizmo_hovered);
+        self.settings_changed |= self
+            .settings
+            .draw_gizmo(ui, name, view, proj, gizmo_hovered);
     }
 }
 

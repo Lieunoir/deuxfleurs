@@ -247,7 +247,7 @@ impl CameraController {
         }
     }
 
-    pub fn process_events(&mut self, event: &WindowEvent) -> bool {
+    pub fn process_events(&mut self, event: &WindowEvent, ui_hovered: bool) -> bool {
         match event {
             WindowEvent::CursorMoved { position, .. } if self.prev_mouse.is_none() => {
                 self.prev_mouse = Some(*position);
@@ -264,10 +264,12 @@ impl CameraController {
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                if *button == MouseButton::Left {
-                    self.is_mouse_left_pressed = *state == ElementState::Pressed;
-                } else if *button == MouseButton::Right {
-                    self.is_mouse_right_pressed = *state == ElementState::Pressed;
+                if !ui_hovered || *state != ElementState::Pressed {
+                    if *button == MouseButton::Left {
+                        self.is_mouse_left_pressed = *state == ElementState::Pressed;
+                    } else if *button == MouseButton::Right {
+                        self.is_mouse_right_pressed = *state == ElementState::Pressed;
+                    }
                 }
                 false
             }

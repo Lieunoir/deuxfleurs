@@ -16,6 +16,7 @@ pub trait UiDataElement {
         _name: &str,
         _view: cgmath::Matrix4<f32>,
         _proj: cgmath::Matrix4<f32>,
+        _gizmo_hovered: &mut bool,
     ) -> bool {
         false
     }
@@ -28,6 +29,7 @@ pub struct UI {
     // used to pass the output at each frame without overloading the render loop
     // could be better
     platform_output: Option<egui::output::PlatformOutput>,
+    pub(crate) hovered: bool,
 }
 
 fn blue_visuals() -> egui::Visuals {
@@ -170,6 +172,7 @@ impl UI {
             ctx,
             state,
             platform_output: None,
+            hovered: false,
         }
     }
 
@@ -192,8 +195,9 @@ impl UI {
     ) {
         let input = self.state.take_egui_input(window);
         self.ctx.begin_pass(input);
+        self.hovered = false;
 
-        egui::Window::new("Models")
+        if let Some(response) = egui::Window::new("Models")
             .anchor(egui::Align2::LEFT_TOP, [5., 5.])
             .resizable(false)
             .vscroll(true)
@@ -238,22 +242,21 @@ impl UI {
                     });
                 }
                 ui.allocate_space(ui.available_size());
-            });
+            })
+        {
+            self.hovered |= response.response.contains_pointer();
+        }
         egui::Area::new("Viewport".into())
             .fixed_pos((0.0, 0.0))
             .show(&self.ctx, |ui| {
-                //Fix for not having a correct area
-                //ui.with_layer_id(egui::LayerId::background(), |ui| {
-                //ui.with_layer_id(egui::LayerId::background(), |ui| {
-                //});
                 for (_, surface) in surfaces.iter_mut() {
-                    surface.draw_gizmo(ui, view, proj);
+                    surface.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
                 for (_, curve) in curves.iter_mut() {
-                    curve.draw_gizmo(ui, view, proj);
+                    curve.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
                 for (_, cloud) in clouds.iter_mut() {
-                    cloud.draw_gizmo(ui, view, proj);
+                    cloud.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
             });
     }
@@ -264,7 +267,7 @@ impl UI {
         state: &mut crate::State,
         callback: &mut Option<T>,
     ) {
-        egui::Window::new("Interactions")
+        if let Some(response) = egui::Window::new("Interactions")
             .anchor(egui::Align2::RIGHT_TOP, [-5., 5.])
             .resizable(false)
             .show(&self.ctx, |ui| {
@@ -330,7 +333,10 @@ impl UI {
                 if let Some(callback) = callback {
                     callback(ui, state)
                 }
-            });
+            })
+        {
+            self.hovered |= response.response.contains_pointer()
+        }
     }
 
     // not sure about returning a tuple here

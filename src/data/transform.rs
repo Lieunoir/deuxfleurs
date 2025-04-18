@@ -1,5 +1,4 @@
 use crate::ui::UiDataElement;
-//use egui_gizmo::GizmoMode;
 use transform_gizmo_egui::math::{DMat4, DQuat, DVec3, Transform};
 use transform_gizmo_egui::prelude::*;
 
@@ -48,19 +47,6 @@ impl TransformSettings {
         let mut changed = false;
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
-            //egui::ComboBox::from_label("Guizmo Mode")
-            //    .selected_text(format!("{:?}", self.gizmo_mode))
-            //    .show_ui(ui, |ui| {
-            //        changed |= ui
-            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
-            //            .changed();
-            //        changed |= ui
-            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
-            //            .changed();
-            //        changed |= ui
-            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
-            //            .changed();
-            //    });
         });
         ui.horizontal(|ui| {
             if ui.add(egui::Button::new("Reset")).clicked() {
@@ -175,10 +161,6 @@ impl TransformRaw {
 }
 
 impl Default for TransformSettings {
-    //pub fn new() -> Self {
-    //
-    //}
-
     fn default() -> Self {
         TransformSettings {
             translation: DVec3::ZERO,
@@ -186,7 +168,6 @@ impl Default for TransformSettings {
             rotation: DQuat::IDENTITY,
             show_gizmo: false,
             gizmo: Gizmo::default(),
-            //gizmo_mode: GizmoMode::Translate,
         }
     }
 }
@@ -196,19 +177,6 @@ impl UiDataElement for TransformSettings {
         let mut changed = false;
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
-            //egui::ComboBox::from_label("Guizmo Mode")
-            //    .selected_text(format!("{:?}", self.gizmo_mode))
-            //    .show_ui(ui, |ui| {
-            //        changed |= ui
-            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Translate, "Translate")
-            //            .changed();
-            //        changed |= ui
-            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Rotate, "Rotate")
-            //            .changed();
-            //        changed |= ui
-            //            .selectable_value(&mut self.gizmo_mode, GizmoMode::Scale, "Scale")
-            //            .changed();
-            //    });
         });
         ui.horizontal(|ui| {
             if ui.add(egui::Button::new("Reset")).clicked() {
@@ -227,6 +195,7 @@ impl UiDataElement for TransformSettings {
         _name: &str,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
+        gizmo_hovered: &mut bool,
     ) -> bool {
         if self.show_gizmo {
             let viewport = ui.clip_rect();
@@ -301,27 +270,8 @@ impl UiDataElement for TransformSettings {
             } else {
                 false
             };
-            if self.gizmo.is_focused() {
-                let hover = ui.input(|i| i.pointer.hover_pos()).unwrap();
-                let rect = Rect::from_min_size(hover, egui::vec2(1., 1.));
-                ui.allocate_rect(rect, egui::Sense::click_and_drag());
-            } else {
-            }
+            *gizmo_hovered |= self.gizmo.is_focused();
             res
-            //let gizmo = egui_gizmo::Gizmo::new(format!("{} gizmo", name))
-            //    .view_matrix(view)
-            //    .projection_matrix(proj)
-            //    .model_matrix(self.transform)
-            //    .viewport(ui.clip_rect())
-            //    .mode(self.gizmo_mode);
-            //let last_gizmo_response = gizmo.interact(ui);
-
-            //if let Some(gizmo_response) = last_gizmo_response {
-            //    self.transform = gizmo_response.transform().to_cols_array_2d();
-            //    true
-            //} else {
-            //    false
-            //}
         } else {
             false
         }

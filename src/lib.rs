@@ -518,11 +518,11 @@ impl State {
     }
 
     // Handle input using WindowEvent
-    fn input(&mut self, event: &WindowEvent) -> bool {
+    fn input(&mut self, event: &WindowEvent, ui_hovered: bool) -> bool {
         // Send any input to camera controller
-        let changed = self.camera_controller.process_events(event);
+        let changed = self.camera_controller.process_events(event, ui_hovered);
         self.dirty |= changed;
-        self.picker.input(event) || changed
+        (!ui_hovered && self.picker.input(event)) || changed
     }
 
     fn update(&mut self) -> bool {
@@ -1124,22 +1124,19 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
         event: WindowEvent,
     ) {
         //TODO the `if let` stuff is hacky and messy
-        let processed = if let (Some(ui), Some(state)) = (self.ui.as_mut(), self.state.as_mut()) {
-            if window_id == state.window.id() {
-                ui.process_event(&*state.window, &event)
+        let (processed, ui_hovered) =
+            if let (Some(ui), Some(state)) = (self.ui.as_mut(), self.state.as_mut()) {
+                if window_id == state.window.id() {
+                    (ui.process_event(&*state.window, &event), ui.hovered)
+                } else {
+                    return;
+                }
             } else {
                 return;
-            }
-        } else {
-            return;
-        };
+            };
 
-        let input = if !processed.consumed {
-            if let Some(state) = self.state.as_mut() {
-                state.input(&event)
-            } else {
-                false
-            }
+        let input = if let Some(state) = self.state.as_mut() {
+            state.input(&event, ui_hovered)
         } else {
             false
         };

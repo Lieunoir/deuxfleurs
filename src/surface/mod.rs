@@ -52,17 +52,6 @@ impl UiDataElement for SurfaceSettings {
         //        self.transform.draw(ui, property_changed);
         changed
     }
-
-    fn draw_gizmo(
-        &mut self,
-        _ui: &mut egui::Ui,
-        _name: &str,
-        _view: cgmath::Matrix4<f32>,
-        _proj: cgmath::Matrix4<f32>,
-    ) -> bool {
-        //        self.transform.draw_gizmo(ui, name, view, proj)
-        false
-    }
 }
 
 impl NamedSettings for SurfaceSettings {
@@ -73,7 +62,7 @@ impl NamedSettings for SurfaceSettings {
 }
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct SurfaceVertex {
+struct SurfaceVertex {
     pub position: [f32; 3],
     pub normal: [i8; 4],
     //held in normal's 4th coordinate
