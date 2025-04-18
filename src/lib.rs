@@ -1080,13 +1080,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T,
             init,
             callback,
         };
-        #[cfg(not(target_arch = "wasm32"))]
         event_loop.run_app(&mut app).unwrap();
-        #[cfg(target_arch = "wasm32")]
-        {
-            use winit::platform::web::EventLoopExtWebSys;
-            event_loop.spawn_app(app);
-        }
     }
 }
 
@@ -1105,9 +1099,8 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
             web_sys::window()
                 .and_then(|win| win.document())
                 .and_then(|doc| {
-                    //let dst = doc.body()?;
-                    let dst = doc.get_element_by_id("wasm-load")?;
-                    let canvas = window.canvas().unwrap();
+                    let dst = doc.body()?;
+                    let canvas = window.canvas()?;
                     // disable right click
                     let empty_func = js_sys::Function::new_no_args("return false;");
                     canvas.set_oncontextmenu(Some(&empty_func));
