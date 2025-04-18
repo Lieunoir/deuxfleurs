@@ -169,12 +169,17 @@ impl Picker {
                     if *state == ElementState::Pressed {
                         self.dragging = false;
                         self.orig_pos = self.cur_pos;
+                        false
                     } else if !self.dragging {
                         self.item_to_pick =
                             Some((self.cur_pos.0 as usize, self.cur_pos.1 as usize));
+                        true
+                    } else {
+                        false
                     }
+                } else {
+                    false
                 }
-                true
             }
             _ => false,
         }

@@ -946,8 +946,9 @@ impl State {
     }
 
     pub fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
-        self.dirty = true;
-        self.surfaces.get_mut(name)
+        let res = self.surfaces.get_mut(name);
+        self.dirty |= res.is_some();
+        res
     }
 
     pub fn get_surface(&self, name: &str) -> Option<&Surface> {
@@ -975,8 +976,9 @@ impl State {
     }
 
     pub fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
-        self.dirty = true;
-        self.clouds.get_mut(name)
+        let res = self.clouds.get_mut(name);
+        self.dirty |= res.is_some();
+        res
     }
 
     pub fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
@@ -1006,8 +1008,9 @@ impl State {
     }
 
     pub fn get_curve_mut(&mut self, name: &str) -> Option<&mut Curve> {
-        self.dirty = true;
-        self.curves.get_mut(name)
+        let res = self.curves.get_mut(name);
+        self.dirty |= res.is_some();
+        res
     }
 
     pub fn get_curve(&self, name: &str) -> Option<&Curve> {
@@ -1142,6 +1145,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
         };
 
         if processed.repaint {
+            // Attempt to make egui finish animations
             if let Some(state) = self.state.as_mut() {
                 match event {
                     WindowEvent::RedrawRequested => {
@@ -1221,25 +1225,25 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
                         let scene_changed = state.update();
                         //actual rendering
                         match state.render(&self.proxy, ui, scene_changed) {
-                                            Ok(request_redraw) => {
-                                                if request_redraw {
-                                                    state.window.request_redraw();
-                                                }
-                                                ui.handle_platform_output(&*state.window)}
-                                            ,
-                                            // Reconfigure the surface if it's lost or outdated
-                                            Err(
-                                                wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
-                                            ) => {
-                                                state.resize(state.size)
-                                            },
-                                            // The system is out of memory, we should probably quit
-                                            Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
+                            Ok(request_redraw) => {
+                                if request_redraw {
+                                    state.window.request_redraw();
+                                }
+                                ui.handle_platform_output(&*state.window)}
+                            ,
+                            // Reconfigure the surface if it's lost or outdated
+                            Err(
+                                wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
+                            ) => {
+                                state.resize(state.size)
+                            },
+                            // The system is out of memory, we should probably quit
+                            Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
 
-                                            Err(wgpu::SurfaceError::Timeout) => {
-                                                log::warn!("Surface timeout")
-                                            }
-                                    }
+                            Err(wgpu::SurfaceError::Timeout) => {
+                                log::warn!("Surface timeout")
+                            }
+                        }
                     }
                     _ => {}
                 }
