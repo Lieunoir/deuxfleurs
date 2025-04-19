@@ -1,5 +1,7 @@
 use crate::util::BufferDimensions;
 
+const SCREENSHOT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -18,12 +20,7 @@ pub struct Screenshoter {
 }
 
 impl Screenshoter {
-    pub fn new(
-        device: &wgpu::Device,
-        width: u32,
-        height: u32,
-        color_format: wgpu::TextureFormat,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -35,7 +32,7 @@ impl Screenshoter {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: color_format,
+            format: SCREENSHOT_FORMAT,
             usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         };
@@ -66,13 +63,7 @@ impl Screenshoter {
         }
     }
 
-    pub fn resize(
-        &mut self,
-        device: &wgpu::Device,
-        width: u32,
-        height: u32,
-        color_format: wgpu::TextureFormat,
-    ) {
+    pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -84,7 +75,7 @@ impl Screenshoter {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: SCREENSHOT_FORMAT,
             usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         };
@@ -139,12 +130,7 @@ impl Screenshoter {
         );
     }
 
-    pub fn create_png(
-        &mut self,
-        device: &wgpu::Device,
-        submission_index: wgpu::SubmissionIndex,
-        format: wgpu::TextureFormat,
-    ) {
+    pub fn create_png(&mut self, device: &wgpu::Device, submission_index: wgpu::SubmissionIndex) {
         let png_output_path = format!("screenshot_{:03}.png", self.counter);
         // Note that we're not calling `.await` here.
         let buffer_slice = self.output_buffer.slice(..);

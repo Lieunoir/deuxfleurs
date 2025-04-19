@@ -312,12 +312,8 @@ impl State {
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
         // Create texture for screenshots
-        let screenshoter = screenshot::Screenshoter::new(
-            &device,
-            size.width.max(1),
-            size.height.max(1),
-            surface_format,
-        );
+        let screenshoter =
+            screenshot::Screenshoter::new(&device, size.width.max(1), size.height.max(1));
 
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
 
@@ -492,12 +488,8 @@ impl State {
             // Make sure to current window size to depth texture - required for calc
             self.depth_texture =
                 texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
-            self.screenshoter.resize(
-                &self.device,
-                new_size.width,
-                new_size.height,
-                self.config.format,
-            );
+            self.screenshoter
+                .resize(&self.device, new_size.width, new_size.height);
             self.camera.resize(new_size.width, new_size.height);
             self.picker
                 .resize(&self.device, new_size.width, new_size.height);
@@ -898,8 +890,7 @@ impl State {
         if self.screenshot {
             self.screenshoter.copy_texture_to_buffer(&mut encoder);
             let index = self.queue.submit(iter::once(encoder.finish()));
-            self.screenshoter
-                .create_png(&self.device, index, self.config.format);
+            self.screenshoter.create_png(&self.device, index);
             self.screenshot = false;
         } else {
             self.queue.submit(
