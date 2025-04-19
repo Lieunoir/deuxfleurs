@@ -1,4 +1,4 @@
-use crate::aabb::SBV;
+use crate::{aabb::SBV, Settings};
 use cgmath::prelude::*;
 use serde::{Deserialize, Serialize};
 use winit::event::*;
@@ -211,15 +211,6 @@ impl CameraUniform {
 
 // TODO : abstract this into a trait implemented by different controllers (arcball, fps...)
 pub struct CameraController {
-    /*
-    speed: f32,
-    is_up_pressed: bool,
-    is_down_pressed: bool,
-    is_forward_pressed: bool,
-    is_backward_pressed: bool,
-    is_left_pressed: bool,
-    is_right_pressed: bool,
-    */
     is_mouse_left_pressed: bool,
     is_mouse_right_pressed: bool,
     prev_mouse: Option<winit::dpi::PhysicalPosition<f64>>,
@@ -230,15 +221,6 @@ pub struct CameraController {
 impl CameraController {
     pub fn new() -> Self {
         Self {
-            /*
-            speed,
-            is_up_pressed: false,
-            is_down_pressed: false,
-            is_forward_pressed: false,
-            is_backward_pressed: false,
-            is_left_pressed: false,
-            is_right_pressed: false,
-            */
             is_mouse_left_pressed: false,
             is_mouse_right_pressed: false,
             prev_mouse: None,
@@ -276,7 +258,7 @@ impl CameraController {
             WindowEvent::MouseWheel { delta, .. } => {
                 self.wheel_delta = Some(match delta {
                     MouseScrollDelta::LineDelta(_, y) => *y,
-                    MouseScrollDelta::PixelDelta(p) => 0.002 * p.y as f32,
+                    MouseScrollDelta::PixelDelta(p) => 0.02 * p.y as f32,
                 });
                 true
             }
@@ -284,28 +266,15 @@ impl CameraController {
         }
     }
 
-    pub fn update_camera(&mut self, camera: &mut Camera) {
+    pub fn update_camera(&mut self, camera: &mut Camera, settings: &Settings) {
         let forward = camera.target - camera.eye;
         let forward_norm = forward.normalize();
-        /*
-        let forward_mag = forward.magnitude();
 
-        // Prevents glitching when camera gets too close to the
-        // center of the scene.
-        if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed;
-        }
-        */
         if let Some(delta) = self.wheel_delta {
-            camera.eye += forward_norm * delta * camera.zfar * 0.02;
-            camera.target += forward_norm * delta * camera.zfar * 0.02;
+            camera.eye += forward_norm * delta * camera.zfar * 0.2 * settings.zoom_sensitivity;
+            camera.target += forward_norm * delta * camera.zfar * 0.2 * settings.zoom_sensitivity;
             self.wheel_delta = None;
         }
-        /*
-        if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed;
-        }
-        */
 
         let right = forward_norm.cross(camera.up);
         if let Some((dx, dy)) = self.pan_delta {
@@ -320,7 +289,10 @@ impl CameraController {
                 let center_right = eye_norm.cross(camera.up);
                 let old_eye = camera.eye;
                 camera.eye = cgmath::point3::<f32>(0., 0., 0.)
-                    + (eye_norm + center_right * dx * 0.01 + camera.up * dy * 0.01).normalize()
+                    + (eye_norm
+                        + center_right * dx * 0.2 * settings.mouse_sensitivity
+                        + camera.up * dy * 0.2 * settings.mouse_sensitivity)
+                        .normalize()
                         * eye_mag;
                 let rotation =
                     cgmath::Quaternion::between_vectors(old_eye - origin, camera.eye - origin);
@@ -329,8 +301,14 @@ impl CameraController {
                     rotation.rotate_vector(old_eye + camera.up - origin) - (camera.eye - origin);
                 //camera.target = camera.eye + forward;
             } else if self.is_mouse_right_pressed {
-                camera.eye += camera.zfar * 0.0006 * (-dx * right + dy * camera.up);
-                camera.target += camera.zfar * 0.0006 * (-dx * right + dy * camera.up);
+                camera.eye += camera.zfar
+                    * 0.006
+                    * settings.mouse_sensitivity
+                    * (-dx * right + dy * camera.up);
+                camera.target += camera.zfar
+                    * 0.006
+                    * settings.mouse_sensitivity
+                    * (-dx * right + dy * camera.up);
             }
             self.pan_delta = None;
         }

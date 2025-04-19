@@ -519,7 +519,8 @@ impl State {
 
     fn update(&mut self) -> bool {
         // Sync local app state with camera
-        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_controller
+            .update_camera(&mut self.camera, &self.settings);
         self.camera_uniform
             .update_view_proj(&self.camera, &self.aabb, self.ground.level);
         self.queue.write_buffer(

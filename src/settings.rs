@@ -19,6 +19,8 @@ pub struct Settings {
     pub shadow: bool,
     /// Background color
     pub color: Color,
+    pub mouse_sensitivity: f32,
+    pub zoom_sensitivity: f32,
 }
 
 impl Default for Settings {
@@ -34,6 +36,8 @@ impl Default for Settings {
                 b: 1.0,
                 a: 0.0,
             },
+            mouse_sensitivity: 0.1,
+            zoom_sensitivity: 0.1,
         }
     }
 }
