@@ -859,9 +859,9 @@ impl State {
                     (
                         self.screenshoter.get_view(),
                         wgpu::Color {
-                            r: 1.,
-                            g: 1.,
-                            b: 1.,
+                            r: 0.,
+                            g: 0.,
+                            b: 0.,
                             a: 0.,
                         },
                     )
@@ -882,7 +882,11 @@ impl State {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                self.copy.copy(&mut render_pass);
+                if self.screenshot {
+                    self.copy.screenshot(&mut render_pass);
+                } else {
+                    self.copy.copy(&mut render_pass);
+                }
 
                 let render_pass = render_pass.forget_lifetime();
                 if !self.screenshot {

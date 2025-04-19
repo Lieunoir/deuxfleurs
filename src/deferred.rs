@@ -10,6 +10,7 @@ pub struct TextureCopy {
     blend_bind_group: wgpu::BindGroup,
     copy_pipeline: wgpu::RenderPipeline,
     blend_pipeline: wgpu::RenderPipeline,
+    screenshot_pipeline: wgpu::RenderPipeline,
     old_blend_texture: wgpu::Texture,
     old_blend_texture_view: wgpu::TextureView,
     new_blend_texture: wgpu::Texture,
@@ -185,6 +186,16 @@ impl TextureCopy {
             copy_shader.clone(),
             Some("copy render"),
         );
+        let screenshot_pipeline = util::create_copy_quad_pipeline(
+            device,
+            &copy_pipeline_layout,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            None,
+            &[SquareVertex::desc()],
+            Some(wgpu::BlendState::REPLACE),
+            copy_shader.clone(),
+            Some("copy render"),
+        );
         let blend_pipeline = util::create_copy_quad_pipeline(
             device,
             &blend_pipeline_layout,
@@ -214,6 +225,7 @@ impl TextureCopy {
             blend_bind_group,
             copy_pipeline,
             blend_pipeline,
+            screenshot_pipeline,
             old_blend_texture,
             old_blend_texture_view,
             new_blend_texture,
@@ -267,6 +279,16 @@ impl TextureCopy {
     {
         render_pass.set_bind_group(0, &self.copy_bind_group, &[]);
         render_pass.set_pipeline(&self.copy_pipeline);
+        render_pass.set_vertex_buffer(0, self.square.slice(..));
+        render_pass.draw(0..4, 0..1);
+    }
+
+    pub fn screenshot<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        render_pass.set_bind_group(0, &self.copy_bind_group, &[]);
+        render_pass.set_pipeline(&self.screenshot_pipeline);
         render_pass.set_vertex_buffer(0, self.square.slice(..));
         render_pass.draw(0..4, 0..1);
     }
@@ -1376,27 +1398,8 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    //let coords = in.clip_position.xy;
-    //let weight = textureLoad(t_a, 0, coords);
     let weight = textureSample(t_a, s, in.tex_coords).x;
-    //let buffer_size = vec2<f32>(textureDimensions(t_a));
-    //var weight = 0.;
-    //var tot_weight = 0.;
-    //let radius = 5;
-    ////let dpx = sqrt(dpdx(coords.x) * dpdx(coords.x) + dpdy(coords.x) * dpdy(coords.x)) * 200.;
-    ////let dpy = sqrt(dpdx(coords.y) * dpdx(coords.y) + dpdy(coords.y) * dpdy(coords.y)) * 200.;
-    //let dpx = buffer_size.x * camera.max_bb.x / 5.;
-    //let dpy = buffer_size.y * camera.max_bb.y / 5.;
-    //for (var r = 0; r < radius; r++) {
-    //    for (var c = 0; c < radius; c++) {
-    //        let w = exp((-f32(r*r)-f32(c*c))/(2.0*f32(radius*radius)));
-    //        //let w = 1.;
-    //        tot_weight += w;
-    //        weight += w*textureSample(t_a, s, in.tex_coords + vec2<f32>(f32(r- radius/2) / dpx , f32(c- radius/2) / dpy)).x;
-    //        //weight += textureSample(t_a, s, in.tex_coords + vec2<f32>(f32(r- radius/2) / dpx , f32(c- radius/2) / dpy)).x / f32(radius * radius);
-    //    }
-    //}
-    //weight = weight / tot_weight;
+    //These values are in linear color space and should NOT correspond to the screen output values
     return vec4<f32>(0., 0., 0., 0.4 * weight);
 }
 ";

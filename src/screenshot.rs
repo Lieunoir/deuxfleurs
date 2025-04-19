@@ -84,7 +84,7 @@ impl Screenshoter {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: color_format,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: &[],
         };
@@ -167,24 +167,19 @@ impl Screenshoter {
                 4 * self.buffer_dimensions.width * self.buffer_dimensions.height,
             );
             for chunk in data.chunks(self.buffer_dimensions.padded_bytes_per_row) {
+                //unpadded_data.extend(&chunk[..self.buffer_dimensions.unpadded_bytes_per_row]);
                 for cp_data in
                     chunk[..self.buffer_dimensions.unpadded_bytes_per_row].chunks_exact(4)
                 {
-                    let alpha: u16 = cp_data[3] as u16;
-                    match format {
-                        wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => {
-                            unpadded_data.push((cp_data[2] as u16 * alpha / 255) as u8);
-                            unpadded_data.push((cp_data[1] as u16 * alpha / 255) as u8);
-                            unpadded_data.push((cp_data[0] as u16 * alpha / 255) as u8);
-                            unpadded_data.push(cp_data[3]);
-                        }
-                        _ => {
-                            unpadded_data.push((cp_data[0] as u16 * alpha / 255) as u8);
-                            unpadded_data.push((cp_data[1] as u16 * alpha / 255) as u8);
-                            unpadded_data.push((cp_data[2] as u16 * alpha / 255) as u8);
-                            unpadded_data.push(cp_data[3]);
-                        }
-                    }
+                    // This is incorrect but necessary, see :
+                    // https://erikmcclure.com/blog/everyone-does-srgb-wrong-because/
+                    let alpha = 1. - (cp_data[3] as f32) / 255.;
+                    let alpha = 1.055 * (alpha.powf(1. / 2.4)) - 0.055;
+                    let alpha = ((1. - alpha) * 255.) as u8;
+                    unpadded_data.push(cp_data[0]);
+                    unpadded_data.push(cp_data[1]);
+                    unpadded_data.push(cp_data[2]);
+                    unpadded_data.push(alpha);
                 }
             }
 
