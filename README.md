@@ -10,8 +10,6 @@ Viewer for geometry processing / meshes / 3d related stuff heavily inspired by [
 
 Can be used in webpages thanks to wasm, so web-based slides can include demos, or simply for making code demo easily accessible on the web.
 
-Current repo can be used with [trunk](https://github.com/thedodd/trunk), just run `trunk serve`.
-
 # How to use
 
 Here's a quick example that loads a mesh and uses a button to show/hide it:
@@ -54,4 +52,4 @@ StateBuilder::run(
 );
 ```
 
-More examples are available in the correspondig folder.
+More examples are available in the corresponding folder.
