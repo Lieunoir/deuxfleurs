@@ -990,6 +990,11 @@ impl State {
         self.clouds.get(name)
     }
 
+    /// Register list of segments
+    ///
+    /// Arguments :
+    /// * `positions`: segments extremities
+    /// * `connections`: segments denoted by extremities indices
     pub fn register_segment<V: Vertices>(
         &mut self,
         name: String,
