@@ -8,24 +8,25 @@ mod transform;
 mod uv;
 
 pub use color::ColorSettings;
-pub use colormap::{ColorMap, ColorMapValues};
+pub(crate) use colormap::ColorMapValues;
+pub use colormap::{ColorMap, Colors};
 pub use isoline::IsolineSettings;
 pub use radius::Radius;
 pub use transform::TransformSettings;
 pub use uv::UVMapSettings;
 
-pub struct DataUniform {
+pub(crate) struct DataUniform {
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
     pub buffer: wgpu::Buffer,
 }
 
-pub trait DataUniformBuilder {
+pub(crate) trait DataUniformBuilder {
     fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform>;
     fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform);
 }
 
-pub trait DataSettings {
+pub(crate) trait DataSettings {
     fn apply_settings(&mut self, other: Self);
 }
 

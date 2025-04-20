@@ -114,13 +114,13 @@ pub async fn run() {
             let mut filtered = false;
             if let Some(surface) = state.get_surface("loaded mesh") {
                 //let mut vertices = surface.geometry.vertices.clone();
-                vertices = vec![[0., 0., 0.]; surface.geometry.vertices.len()];
+                vertices = vec![[0., 0., 0.]; surface.geometry().vertices.len()];
                 for (vertex, orig_vertex) in
-                    vertices.iter_mut().zip(surface.geometry.vertices.iter())
+                    vertices.iter_mut().zip(surface.geometry().vertices.iter())
                 {
                     *vertex = *orig_vertex;
                 }
-                indices = match &surface.geometry.indices {
+                indices = match &surface.geometry().indices {
                     SurfaceIndices::Triangles(t) => t.clone(),
                     _ => panic!(),
                 };
@@ -160,7 +160,7 @@ pub async fn run() {
                     //last_selected_geometry = surface_name.clone();
                     //selected[item] = 1.;
                     //surface.add_face_scalar("selected face".into(), selected);
-                    let n_v = surface.geometry.vertices.len();
+                    let n_v = surface.geometry().vertices.len();
                     if item < n_v {
                         let mut selected = vec![0.; n_v];
                         last_selected = item;
@@ -168,7 +168,7 @@ pub async fn run() {
                         selected[item] = 1.;
                         surface.add_vertex_scalar("selected vertex".into(), selected);
                     } else {
-                        let mut selected = vec![0.; surface.geometry.indices.size()];
+                        let mut selected = vec![0.; surface.geometry().indices.size()];
                         last_selected = item;
                         last_selected_geometry = surface_name.clone();
                         selected[item - n_v] = 1.;

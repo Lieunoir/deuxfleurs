@@ -1,4 +1,4 @@
-use super::CloudData;
+use super::PointCloudData;
 use crate::shader;
 
 macro_rules! SHADER { () => {"
@@ -135,15 +135,15 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
 }}
 "};}
 
-pub fn get_shader(data_format: Option<&CloudData>) -> String {
+pub fn get_shader(data_format: Option<&PointCloudData>) -> String {
     let data_struct = match data_format {
-        Some(CloudData::Scalar(..)) => {
+        Some(PointCloudData::Scalar(..)) => {
             "
 struct DataInput {
     @location(2) val: f32,
 }"
         }
-        Some(CloudData::Color(_)) => {
+        Some(PointCloudData::Color(_)) => {
             "
 struct DataInput {
     @location(2) val: vec3<f32>,
@@ -153,13 +153,13 @@ struct DataInput {
     };
 
     let uniform = match data_format {
-        Some(CloudData::Scalar(..)) => shader::COLORMAP_UNIFORM,
+        Some(PointCloudData::Scalar(..)) => shader::COLORMAP_UNIFORM,
         _ => "",
     };
 
     let output_val = match data_format {
-        Some(CloudData::Scalar(..)) => "@location(3) val: f32,",
-        Some(CloudData::Color(_)) => "@location(3) val: vec3<f32>",
+        Some(PointCloudData::Scalar(..)) => "@location(3) val: f32,",
+        Some(PointCloudData::Color(_)) => "@location(3) val: vec3<f32>",
         None => "",
     };
 
@@ -174,8 +174,8 @@ struct DataInput {
     };
 
     let color_output = match data_format {
-        Some(CloudData::Scalar(..)) => "let lambertian = colormap(in.val);",
-        Some(CloudData::Color(_)) => "let lambertian = in.val;",
+        Some(PointCloudData::Scalar(..)) => "let lambertian = colormap(in.val);",
+        Some(PointCloudData::Color(_)) => "let lambertian = in.val;",
         None => "let lambertian = settings.color;",
     };
 

@@ -208,12 +208,12 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} vertices, {} faces",
                         name,
-                        surface.geometry.vertices.len(),
-                        surface.geometry.indices.size(),
+                        surface.geometry().vertices.len(),
+                        surface.geometry().indices.size(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        surface.draw_ui(ui);
+                        surface.inner.draw_ui(ui);
                     });
                 }
 
@@ -221,11 +221,11 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points",
                         name,
-                        cloud.geometry.positions.len(),
+                        cloud.geometry().positions.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        cloud.draw_ui(ui);
+                        cloud.inner.draw_ui(ui);
                     });
                 }
 
@@ -233,12 +233,12 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points, {} edges",
                         name,
-                        curve.geometry.positions.len(),
-                        curve.geometry.connections.len(),
+                        curve.geometry().positions.len(),
+                        curve.geometry().connections.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        curve.draw_ui(ui);
+                        curve.inner.draw_ui(ui);
                     });
                 }
                 ui.allocate_space(ui.available_size());
@@ -250,13 +250,13 @@ impl UI {
             .fixed_pos((0.0, 0.0))
             .show(&self.ctx, |ui| {
                 for (_, surface) in surfaces.iter_mut() {
-                    surface.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    surface.inner.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
                 for (_, curve) in curves.iter_mut() {
-                    curve.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    curve.inner.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
                 for (_, cloud) in clouds.iter_mut() {
-                    cloud.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    cloud.inner.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
             });
     }

@@ -130,11 +130,6 @@ where
         )
     }
 
-    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        self.updater.data_to_show = Some(name);
-        self
-    }
-
     pub(crate) fn draw_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             if ui.checkbox(&mut self.show, "Show").changed() {
@@ -164,7 +159,7 @@ where
         }
     }
 
-    pub fn get_total_elements(&self) -> u32 {
+    pub(crate) fn get_total_elements(&self) -> u32 {
         self.picker.get_total_elements()
     }
 }

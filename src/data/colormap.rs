@@ -2,7 +2,6 @@ use crate::ui::UiDataElement;
 use egui::Shape::Path;
 use egui::{Pos2, Stroke};
 use epaint::PathShape;
-use wgpu::util::DeviceExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -33,7 +32,7 @@ pub enum Colors {
 
 #[derive(Copy, Clone, PartialEq)]
 pub struct ColorMap {
-    colors: Colors,
+    pub colors: Colors,
     min: f64,
     max: f64,
 }
@@ -49,7 +48,7 @@ impl Default for ColorMap {
 }
 
 impl ColorMap {
-    pub fn get_value(&self) -> ColorMapValues {
+    pub(crate) fn get_value(&self) -> ColorMapValues {
         ColorMapValues {
             colors: self.colors.get_value(),
             min: self.min as f32,
@@ -372,15 +371,5 @@ impl UiDataElement for ColorMap {
             ui.label("Range");
         });
         changed
-    }
-}
-
-impl ColorMapValues {
-    pub fn build_buffer(self, device: &wgpu::Device) -> wgpu::Buffer {
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Data buffer"),
-            contents: bytemuck::cast_slice(&[self]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        })
     }
 }

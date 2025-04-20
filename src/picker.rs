@@ -242,7 +242,7 @@ impl Picker {
                                 _padding_2: 0,
                                 _padding_3: 0,
                             };
-                            counter += surface.get_total_elements();
+                            counter += surface.inner.get_total_elements();
 
                             //TODO use one dynamic buffer instead
                             let counter_buffer =
@@ -271,7 +271,7 @@ impl Picker {
                             _padding_2: 0,
                             _padding_3: 0,
                         };
-                        counter += cloud.get_total_elements();
+                        counter += cloud.inner.get_total_elements();
 
                         let counter_buffer =
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -297,7 +297,7 @@ impl Picker {
                             _padding_2: 0,
                             _padding_3: 0,
                         };
-                        counter += curve.get_total_elements();
+                        counter += curve.inner.get_total_elements();
 
                         let counter_buffer =
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -324,19 +324,19 @@ impl Picker {
                     let counter_bind_group = &self.bind_groups[index];
                     index += 1;
                     render_pass.set_bind_group(1, counter_bind_group, &[]);
-                    surface.render_picker(&mut render_pass);
+                    surface.inner.render_picker(&mut render_pass);
                 }
                 for cloud in clouds.values() {
                     let counter_bind_group = &self.bind_groups[index];
                     index += 1;
                     render_pass.set_bind_group(1, counter_bind_group, &[]);
-                    cloud.render_picker(&mut render_pass);
+                    cloud.inner.render_picker(&mut render_pass);
                 }
                 for curve in curves.values() {
                     let counter_bind_group = &self.bind_groups[index];
                     index += 1;
                     render_pass.set_bind_group(1, counter_bind_group, &[]);
-                    curve.render_picker(&mut render_pass);
+                    curve.inner.render_picker(&mut render_pass);
                 }
             }
             {
@@ -418,18 +418,18 @@ impl Picker {
                 if let Some(name) = surfaces
                     .iter()
                     .find(|(_key, surface)| {
-                        let found = c <= value && value < c + surface.get_total_elements();
+                        let found = c <= value && value < c + surface.inner.get_total_elements();
                         if !found {
-                            c += surface.get_total_elements();
+                            c += surface.inner.get_total_elements();
                         }
                         found
                     })
                     .map(|(n, s)| {
-                        let transform = &s.updater.transform;
+                        let transform = &s.inner.updater.transform;
                         let pos_x = (i as f32 / self.width as f32) * 2. - 1.;
                         let pos_y = -((j as f32 / self.height as f32) * 2. - 1.);
-                        let new_value = s.picker.get_element(
-                            &s.geometry,
+                        let new_value = s.inner.picker.get_element(
+                            &s.inner.geometry,
                             transform,
                             camera,
                             value - c,
@@ -444,9 +444,10 @@ impl Picker {
                         clouds
                             .iter()
                             .find(|(_key, cloud)| {
-                                let found = c <= value && value < c + cloud.get_total_elements();
+                                let found =
+                                    c <= value && value < c + cloud.inner.get_total_elements();
                                 if !found {
-                                    c += cloud.get_total_elements();
+                                    c += cloud.inner.get_total_elements();
                                 }
                                 found
                             })
@@ -456,9 +457,10 @@ impl Picker {
                         curves
                             .iter()
                             .find(|(_key, curve)| {
-                                let found = c <= value && value < c + curve.get_total_elements();
+                                let found =
+                                    c <= value && value < c + curve.inner.get_total_elements();
                                 if !found {
-                                    c += curve.get_total_elements();
+                                    c += curve.inner.get_total_elements();
                                 }
                                 found
                             })

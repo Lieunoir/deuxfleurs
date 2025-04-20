@@ -12,40 +12,40 @@ mod shader;
 use picker::Picker;
 use shader::get_shader;
 
-pub enum CloudData {
+pub enum PointCloudData {
     Scalar(Vec<f32>, ColorMap),
     Color(Vec<[f32; 3]>),
 }
 
-impl DataSettings for CloudData {
+impl DataSettings for PointCloudData {
     fn apply_settings(&mut self, other: Self) {
         match (self, other) {
-            (CloudData::Scalar(_, set1), CloudData::Scalar(_, set2)) => *set1 = set2,
+            (PointCloudData::Scalar(_, set1), PointCloudData::Scalar(_, set2)) => *set1 = set2,
             _ => (),
         }
     }
 }
 
-impl UiDataElement for CloudData {
+impl UiDataElement for PointCloudData {
     fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
         match self {
-            CloudData::Scalar(_, settings) => settings.draw(ui, property_changed),
-            CloudData::Color(_) => false,
+            PointCloudData::Scalar(_, settings) => settings.draw(ui, property_changed),
+            PointCloudData::Color(_) => false,
         }
     }
 }
 
-impl DataUniformBuilder for CloudData {
+impl DataUniformBuilder for PointCloudData {
     fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
         match self {
-            CloudData::Scalar(_, colormap) => colormap.get_value().build_uniform(device),
+            PointCloudData::Scalar(_, colormap) => colormap.get_value().build_uniform(device),
             _ => None,
         }
     }
 
     fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
         match self {
-            CloudData::Scalar(_, colormap) => {
+            PointCloudData::Scalar(_, colormap) => {
                 colormap.get_value().refresh_buffer(queue, data_uniform)
             }
             _ => (),
@@ -53,17 +53,17 @@ impl DataUniformBuilder for CloudData {
     }
 }
 
-impl CloudData {
+impl PointCloudData {
     fn sphere_desc<'a>(&self) -> wgpu::VertexBufferLayout<'a> {
         match self {
-            CloudData::Color(_) => SphereColorData::desc(),
-            CloudData::Scalar(..) => SphereScalarData::desc(),
+            PointCloudData::Color(_) => SphereColorData::desc(),
+            PointCloudData::Scalar(..) => SphereScalarData::desc(),
         }
     }
 
     fn build_sphere_data_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
         match self {
-            CloudData::Scalar(scalars, _) => {
+            PointCloudData::Scalar(scalars, _) => {
                 let mut min_d = scalars[0];
                 let mut max_d = scalars[0];
                 for data in scalars {
@@ -87,7 +87,7 @@ impl CloudData {
                     usage: wgpu::BufferUsages::VERTEX,
                 })
             }
-            CloudData::Color(colors) => {
+            PointCloudData::Color(colors) => {
                 let gpu_vertices: Vec<_> = colors
                     .iter()
                     .map(|color| SphereColorData { color: *color })
@@ -104,7 +104,7 @@ impl CloudData {
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct PCSettings {
+pub(crate) struct PCSettings {
     pub radius: Radius,
     pub color: ColorSettings,
 }
@@ -207,35 +207,35 @@ impl Vertex for SphereScalarData {
     }
 }
 
-pub struct CloudGeometry {
+pub struct PointCloudGeometry {
     pub positions: Vec<[f32; 3]>,
     pub num_elements: u32,
 }
 
-impl Positions for CloudGeometry {
+impl Positions for PointCloudGeometry {
     fn get_positions(&self) -> &[[f32; 3]] {
         &self.positions
     }
 }
 
-pub struct CloudFixedRenderer {
+pub(crate) struct PointCloudFixedRenderer {
     positions_len: u32,
     vertex_buffer: wgpu::Buffer,
     center_buffer: wgpu::Buffer,
 }
 
-pub struct CloudDataBuffer {
+pub(crate) struct PointCloudDataBuffer {
     sphere_data_buffer: Option<wgpu::Buffer>,
 }
 
-pub struct CloudPipeline {
+pub(crate) struct PointCloudPipeline {
     sphere_render_pipeline: wgpu::RenderPipeline,
 }
 
-impl DataBuffer for CloudDataBuffer {
+impl DataBuffer for PointCloudDataBuffer {
     type Settings = PCSettings;
-    type Data = CloudData;
-    type Geometry = CloudGeometry;
+    type Data = PointCloudData;
+    type Geometry = PointCloudGeometry;
 
     fn new(device: &wgpu::Device, _geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self {
         let sphere_data_buffer = data.map(|d| d.build_sphere_data_buffer(device));
@@ -243,10 +243,10 @@ impl DataBuffer for CloudDataBuffer {
     }
 }
 
-impl FixedRenderer for CloudFixedRenderer {
+impl FixedRenderer for PointCloudFixedRenderer {
     type Settings = PCSettings;
-    type Data = CloudData;
-    type Geometry = CloudGeometry;
+    type Data = PointCloudData;
+    type Geometry = PointCloudGeometry;
 
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self {
         let s2 = 2_f32.sqrt();
@@ -280,11 +280,11 @@ impl FixedRenderer for CloudFixedRenderer {
     }
 }
 
-impl RenderPipeline for CloudPipeline {
+impl RenderPipeline for PointCloudPipeline {
     type Settings = PCSettings;
-    type Data = CloudData;
-    type Geometry = CloudGeometry;
-    type Fixed = CloudFixedRenderer;
+    type Data = PointCloudData;
+    type Geometry = PointCloudGeometry;
+    type Fixed = PointCloudFixedRenderer;
 
     fn new(
         device: &wgpu::Device,
@@ -339,22 +339,22 @@ impl RenderPipeline for CloudPipeline {
             shader,
             Some("cloud sphere render"),
         );
-        CloudPipeline {
+        PointCloudPipeline {
             sphere_render_pipeline,
         }
     }
 }
 
-type CloudRenderer = Renderer<
+type PointCloudRenderer = Renderer<
     PCSettings,
-    CloudData,
-    CloudGeometry,
-    CloudFixedRenderer,
-    CloudDataBuffer,
-    CloudPipeline,
+    PointCloudData,
+    PointCloudGeometry,
+    PointCloudFixedRenderer,
+    PointCloudDataBuffer,
+    PointCloudPipeline,
 >;
 
-impl Render for CloudRenderer {
+impl Render for PointCloudRenderer {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
@@ -375,18 +375,22 @@ impl Render for CloudRenderer {
     }
 }
 
-pub type PointCloud = MainDisplayGeometry<
+type PointCloudInner = MainDisplayGeometry<
     PCSettings,
-    CloudData,
-    CloudGeometry,
-    CloudFixedRenderer,
-    CloudDataBuffer,
-    CloudPipeline,
+    PointCloudData,
+    PointCloudGeometry,
+    PointCloudFixedRenderer,
+    PointCloudDataBuffer,
+    PointCloudPipeline,
     Picker,
 >;
 
+pub struct PointCloud {
+    pub(crate) inner: PointCloudInner,
+}
+
 impl PointCloud {
-    pub fn new(
+    pub(crate) fn new(
         name: String,
         positions: Vec<[f32; 3]>,
         device: &wgpu::Device,
@@ -394,47 +398,74 @@ impl PointCloud {
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
-        let geometry = CloudGeometry {
+        let geometry = PointCloudGeometry {
             num_elements: positions.len() as u32,
             positions,
         };
-        PointCloud::init(
-            device,
-            name,
-            geometry,
-            camera_light_bind_group_layout,
-            counter_bind_group_layout,
-            color_format,
-        )
+        PointCloud {
+            inner: PointCloudInner::init(
+                device,
+                name,
+                geometry,
+                camera_light_bind_group_layout,
+                counter_bind_group_layout,
+                color_format,
+            ),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    pub fn geometry(&self) -> &PointCloudGeometry {
+        &self.inner.geometry
+    }
+
+    pub fn shown(&self) -> bool {
+        self.inner.show
+    }
+
+    pub fn show(&mut self, show: bool) -> &mut Self {
+        self.inner.show = show;
+        self
+    }
+
+    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
+        self.inner.updater.data_to_show = Some(name);
+        self
     }
 
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.updater.settings.radius.radius = radius;
-        self.updater.settings_changed = true;
+        self.inner.updater.settings.radius.radius = radius;
+        self.inner.updater.settings_changed = true;
         self
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.updater.settings.color.color = color;
-        self.updater.settings_changed = true;
+        self.inner.updater.settings.color.color = color;
+        self.inner.updater.settings_changed = true;
         self
     }
 
-    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut CloudData {
+    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut PointCloudData {
         let datas = datas.into();
-        assert!(datas.len() == self.geometry.positions.len());
-        self.updater
-            .add_data(name, CloudData::Scalar(datas, ColorMap::default()))
+        assert!(datas.len() == self.geometry().positions.len());
+        self.inner
+            .updater
+            .add_data(name, PointCloudData::Scalar(datas, ColorMap::default()))
     }
 
-    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut CloudData {
+    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut PointCloudData {
         let datas = datas.into();
-        assert!(datas.len() == self.geometry.positions.len());
-        self.updater.add_data(name, CloudData::Color(datas))
+        assert!(datas.len() == self.geometry().positions.len());
+        self.inner
+            .updater
+            .add_data(name, PointCloudData::Color(datas))
     }
 
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
-        if element < self.geometry.positions.len() {
+        if element < self.geometry().positions.len() {
             ui.label(format!("Picked point number {}", element));
         }
     }

@@ -6,7 +6,7 @@ use egui::Widget;
 pub struct UVMapSettings {
     pub color_1: [f32; 4],
     pub color_2: [f32; 4],
-    pub period: f32,
+    pub frequency: f32,
     _padding: [f32; 3],
 }
 
@@ -15,7 +15,7 @@ impl Default for UVMapSettings {
         Self {
             color_1: [0.9, 0.9, 0.9, 1.],
             color_2: [0.6, 0.2, 0.4, 1.],
-            period: 20.,
+            frequency: 20.,
             _padding: [0.; 3],
         }
     }
@@ -24,9 +24,9 @@ impl Default for UVMapSettings {
 impl UiDataElement for UVMapSettings {
     fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
         let mut changed = false;
-        //ui.add(egui::Slider::new(&mut self.period, 0.0..=100.0).text("Period"));
-        changed |= egui::Slider::new(&mut self.period, 0.0..=100.0)
-            .text("Period")
+        //ui.add(egui::Slider::new(&mut self.frequency, 0.0..=100.0).text("Period"));
+        changed |= egui::Slider::new(&mut self.frequency, 0.0..=100.0)
+            .text("Frequency")
             .clamping(egui::SliderClamping::Never)
             .ui(ui)
             .changed();

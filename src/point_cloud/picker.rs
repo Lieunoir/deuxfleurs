@@ -1,4 +1,4 @@
-use super::{CloudGeometry, PCSettings};
+use super::{PCSettings, PointCloudGeometry};
 use super::{SphereVertex, Vertex};
 use crate::data::{DataUniform, DataUniformBuilder, TransformSettings};
 use crate::texture;
@@ -46,7 +46,7 @@ impl Vertex for VertexData {
 }
 
 impl ElementPicker for Picker {
-    type Geometry = CloudGeometry;
+    type Geometry = PointCloudGeometry;
     type Settings = PCSettings;
     fn new(
         geometry: &Self::Geometry,

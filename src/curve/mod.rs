@@ -164,7 +164,7 @@ impl CurveData {
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct PCSettings {
+pub(crate) struct PCSettings {
     pub radius: Radius,
     pub color: ColorSettings,
 }
@@ -366,7 +366,7 @@ impl Positions for CurveGeometry {
     }
 }
 
-pub struct CurveFixedRenderer {
+pub(crate) struct CurveFixedRenderer {
     positions_len: u32,
     connections_len: u32,
     vertex_buffer: wgpu::Buffer,
@@ -374,12 +374,12 @@ pub struct CurveFixedRenderer {
     cylinder_buffer: wgpu::Buffer,
 }
 
-pub struct CurveDataBuffer {
+pub(crate) struct CurveDataBuffer {
     sphere_data_buffer: Option<wgpu::Buffer>,
     cylinder_data_buffer: Option<wgpu::Buffer>,
 }
 
-pub struct CurvePipeline {
+pub(crate) struct CurvePipeline {
     sphere_render_pipeline: wgpu::RenderPipeline,
     cylinder_render_pipeline: wgpu::RenderPipeline,
 }
@@ -577,7 +577,7 @@ impl Render for CurveRenderer {
     }
 }
 
-pub type Curve = MainDisplayGeometry<
+type CurveInner = MainDisplayGeometry<
     PCSettings,
     CurveData,
     CurveGeometry,
@@ -587,8 +587,12 @@ pub type Curve = MainDisplayGeometry<
     Picker,
 >;
 
+pub struct Curve {
+    pub(crate) inner: CurveInner,
+}
+
 impl Curve {
-    pub fn new(
+    pub(crate) fn new(
         name: String,
         positions: Vec<[f32; 3]>,
         connections: Vec<[u32; 2]>,
@@ -602,48 +606,73 @@ impl Curve {
             positions,
             connections,
         };
-        Curve::init(
-            device,
-            name,
-            geometry,
-            camera_light_bind_group_layout,
-            counter_bind_group_layout,
-            color_format,
-        )
+        Curve {
+            inner: CurveInner::init(
+                device,
+                name,
+                geometry,
+                camera_light_bind_group_layout,
+                counter_bind_group_layout,
+                color_format,
+            ),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    pub fn geometry(&self) -> &CurveGeometry {
+        &self.inner.geometry
+    }
+
+    pub fn shown(&self) -> bool {
+        self.inner.show
+    }
+
+    pub fn show(&mut self, show: bool) -> &mut Self {
+        self.inner.show = show;
+        self
+    }
+
+    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
+        self.inner.updater.data_to_show = Some(name);
+        self
     }
 
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.updater.settings.radius.radius = radius;
-        self.updater.settings_changed = true;
+        self.inner.updater.settings.radius.radius = radius;
+        self.inner.updater.settings_changed = true;
         self
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.updater.settings.color.color = color;
-        self.updater.settings_changed = true;
+        self.inner.updater.settings.color.color = color;
+        self.inner.updater.settings_changed = true;
         self
     }
 
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut CurveData {
         let datas = datas.into();
-        assert!(datas.len() == self.geometry.positions.len());
-        self.updater
+        assert!(datas.len() == self.geometry().positions.len());
+        self.inner
+            .updater
             .add_data(name, CurveData::Scalar(datas, ColorMap::default()))
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut CurveData {
         let datas = datas.into();
-        assert!(datas.len() == self.geometry.positions.len());
-        self.updater.add_data(name, CurveData::Color(datas))
+        assert!(datas.len() == self.geometry().positions.len());
+        self.inner.updater.add_data(name, CurveData::Color(datas))
     }
 
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
-        if element < self.geometry.positions.len() {
+        if element < self.geometry().positions.len() {
             ui.label(format!("Picked point number {}", element));
-        } else if element - self.geometry.positions.len() < self.geometry.connections.len() {
+        } else if element - self.geometry().positions.len() < self.geometry().connections.len() {
             ui.label(format!(
                 "Picked edge number {}",
-                element - self.geometry.positions.len()
+                element - self.geometry().positions.len()
             ));
         }
     }

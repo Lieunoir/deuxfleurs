@@ -16,10 +16,10 @@ use winit::{dpi::PhysicalSize, event::*, event_loop::EventLoop, window::Window};
 use wasm_bindgen::prelude::*;
 
 mod aabb;
-mod attachment;
+pub mod attachment;
 mod camera;
 pub mod curve;
-mod data;
+pub mod data;
 mod deferred;
 mod obj_load;
 mod picker;
@@ -37,12 +37,11 @@ mod updater;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
 use curve::Curve;
+pub use egui;
 use point_cloud::PointCloud;
+pub use settings::Settings;
 use surface::Surface;
 use types::*;
-
-pub use egui;
-pub use settings::Settings;
 pub use wgpu::Color;
 
 #[repr(C)]
@@ -378,9 +377,9 @@ impl State {
         use crate::updater::Positions;
         let mut min_y = 0.;
         for surface in self.surfaces.values() {
-            if surface.show {
-                for p in surface.geometry.get_positions() {
-                    let p = cgmath::Matrix4::from(surface.updater.transform.get_transform())
+            if surface.shown() {
+                for p in surface.geometry().get_positions() {
+                    let p = cgmath::Matrix4::from(surface.inner.updater.transform.get_transform())
                         * cgmath::Point3::from(*p).to_homogeneous();
                     let p = p / p[3];
                     if p[1] < min_y {
@@ -390,9 +389,9 @@ impl State {
             }
         }
         for cloud in self.clouds.values() {
-            if cloud.show {
-                for p in cloud.geometry.get_positions() {
-                    let p = cgmath::Matrix4::from(cloud.updater.transform.get_transform())
+            if cloud.shown() {
+                for p in cloud.geometry().get_positions() {
+                    let p = cgmath::Matrix4::from(cloud.inner.updater.transform.get_transform())
                         * cgmath::Point3::from(*p).to_homogeneous();
                     let p = p / p[3];
                     if p[1] < min_y {
@@ -402,9 +401,9 @@ impl State {
             }
         }
         for curve in self.curves.values() {
-            if curve.show {
-                for p in curve.geometry.get_positions() {
-                    let p = cgmath::Matrix4::from(curve.updater.transform.get_transform())
+            if curve.shown() {
+                for p in curve.geometry().get_positions() {
+                    let p = cgmath::Matrix4::from(curve.inner.updater.transform.get_transform())
                         * cgmath::Point3::from(*p).to_homogeneous();
                     let p = p / p[3];
                     if p[1] < min_y {
@@ -422,10 +421,11 @@ impl State {
         let mut n = 0;
         let mut center = cgmath::Point3::<f32>::new(0., 0., 0.);
         for surface in self.surfaces.values() {
-            if surface.show {
+            if surface.shown() {
                 let sbv = surface
+                    .inner
                     .sbv
-                    .transform(&surface.updater.transform.get_transform());
+                    .transform(&surface.inner.updater.transform.get_transform());
                 center += sbv.center.into();
                 n += 1;
                 if let Some(size) = &mut size {
@@ -438,10 +438,11 @@ impl State {
             }
         }
         for cloud in self.clouds.values() {
-            if cloud.show {
+            if cloud.shown() {
                 let sbv = cloud
+                    .inner
                     .sbv
-                    .transform(&cloud.updater.transform.get_transform());
+                    .transform(&cloud.inner.updater.transform.get_transform());
                 center += sbv.center.into();
                 n += 1;
                 if let Some(size) = &mut size {
@@ -454,10 +455,11 @@ impl State {
             }
         }
         for curve in self.curves.values() {
-            if curve.show {
+            if curve.shown() {
                 let sbv = curve
+                    .inner
                     .sbv
-                    .transform(&curve.updater.transform.get_transform());
+                    .transform(&curve.inner.updater.transform.get_transform());
                 center += sbv.center.into();
                 n += 1;
                 if let Some(size) = &mut size {
@@ -543,7 +545,7 @@ impl State {
         let mut sbv = None;
 
         for surface in self.surfaces.values_mut() {
-            changed |= surface.refresh(
+            changed |= surface.inner.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -553,7 +555,7 @@ impl State {
         }
 
         for cloud in self.clouds.values_mut() {
-            changed |= cloud.refresh(
+            changed |= cloud.inner.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -563,7 +565,7 @@ impl State {
         }
 
         for curve in self.curves.values_mut() {
-            changed |= curve.refresh(
+            changed |= curve.inner.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -720,13 +722,13 @@ impl State {
                 //curve only change deph sometimes, could use conservative depth
                 //surface fully uses depth buffer(except attachments)
                 for cloud in self.clouds.values() {
-                    cloud.render(&mut material_render_pass);
+                    cloud.inner.render(&mut material_render_pass);
                 }
                 for curve in self.curves.values() {
-                    curve.render(&mut material_render_pass);
+                    curve.inner.render(&mut material_render_pass);
                 }
                 for surface in self.surfaces.values() {
-                    surface.render(&mut material_render_pass);
+                    surface.inner.render(&mut material_render_pass);
                 }
                 drop(material_render_pass);
 
@@ -782,7 +784,7 @@ impl State {
                         });
                     shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
                     for surface in self.surfaces.values() {
-                        surface.render_shadow(&mut shadow_render_pass);
+                        surface.inner.render_shadow(&mut shadow_render_pass);
                     }
 
                     drop(shadow_render_pass);
@@ -918,7 +920,14 @@ impl State {
     ) -> &mut Surface {
         let vertices: Vec<[f32; 3]> = vertices.into();
         if self.get_surface(&name).is_some()
-            && self.get_surface(&name).unwrap().geometry.vertices.len() == vertices.len()
+            && self
+                .get_surface(&name)
+                .unwrap()
+                .inner
+                .geometry
+                .vertices
+                .len()
+                == vertices.len()
         {
             let mut surface = self.surfaces.shift_remove(&name).unwrap();
             surface.change_vertices(vertices, indices.into(), &self.device);
