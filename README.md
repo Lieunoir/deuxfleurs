@@ -14,9 +14,10 @@ Current repo can be used with [trunk](https://github.com/thedodd/trunk), just ru
 
 # How to use
 
-Here's a quick example that loads a mesh and uses a button to show/hide it.
+Here's a quick example that loads a mesh and uses a button to show/hide it:
 ```rust
-use deuxfleurs::{load_mesh, State, StateBuilder, Ui};
+use deuxfleurs::egui;
+use deuxfleurs::{load_mesh, Color, State, StateBuilder};
 // Load the mesh and register it in state:
 let (v, f) = load_mesh("bunny.obj").await.unwrap();
 let init = move |state: &mut State| {
@@ -24,7 +25,7 @@ let init = move |state: &mut State| {
 };
 
 // Toggle between shown or not on button pressed
-let callback = |state: &mut State, ui: &mut Ui| {
+let callback = |ui: &mut egui::Ui, state: &mut State| {
         if ui
             .add(egui::Button::new("Toggle shown"))
             .clicked()
@@ -52,3 +53,5 @@ StateBuilder::run(
     callback,
 );
 ```
+
+More examples are available in the correspondig folder.

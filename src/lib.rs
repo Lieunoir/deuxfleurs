@@ -1063,7 +1063,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T,
     /// * `settings`: global app [`Settings`]
     /// * `init`: called once at startup with a [`State`] argument, can be used to add some initial
     /// data
-    /// * `callback`: called every frame with a [`State`] and a [`egui::Ui`] arguments, used to
+    /// * `callback`: called every frame with a [`egui::Ui`] and a [`State`] arguments, used to
     /// add UI elements and modify state accordingly.
     ///
     pub fn run(

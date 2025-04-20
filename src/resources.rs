@@ -25,7 +25,9 @@ async fn load_string(file_name: &str) -> anyhow::Result<String> {
             Ok(txt)
 
         } else {
-            Ok(file_name.into())
+            let path = std::path::Path::new(file_name);
+            let text = std::fs::read_to_string(path)?;
+            Ok(text)
         }
     }
 }

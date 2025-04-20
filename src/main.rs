@@ -10,20 +10,7 @@ fn main() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
-    /*
-    let (banana_v, banana_f) = resources::load_mesh("banana.obj").await.unwrap();
-    let mut banana_data = vec![0.; banana_v.len()];
-    for (data, vertex) in banana_data.iter_mut().zip(&banana_v) {
-        *data = vertex[1];
-    }
-    state
-        .register_mesh("banana", &banana_v, &banana_f)
-        .mesh
-        .add_vertex_data("test data".into(), banana_data)
-        .set_data("test data".into());
-        */
-    //let (spot_v, spot_f) = resources::load_mesh("spot.obj").await.unwrap();
-    let (spot_v, spot_f) = load_mesh("assets/spot.obj".into()).await.unwrap();
+    let (spot_v, spot_f) = load_mesh("assets/spot.obj").await.unwrap();
     let init = move |state: &mut State| {
         let spot_f = match spot_f {
             SurfaceIndices::Triangles(t) => t,
