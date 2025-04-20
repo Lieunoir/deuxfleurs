@@ -189,7 +189,7 @@ impl UI {
         window: &Window,
         surfaces: &mut IndexMap<String, crate::surface::Surface>,
         clouds: &mut IndexMap<String, crate::point_cloud::PointCloud>,
-        curves: &mut IndexMap<String, crate::curve::Curve>,
+        curves: &mut IndexMap<String, crate::segment::Segment>,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
     ) {
@@ -325,7 +325,7 @@ impl UI {
                         surface.draw_element_info(picked_number, ui);
                     } else if let Some(cloud) = state.get_point_cloud(&picked_name) {
                         cloud.draw_element_info(picked_number, ui);
-                    } else if let Some(curve) = state.get_curve(&picked_name) {
+                    } else if let Some(curve) = state.get_segment(&picked_name) {
                         curve.draw_element_info(picked_number, ui);
                     }
                 }

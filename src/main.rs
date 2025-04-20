@@ -89,7 +89,7 @@ pub async fn run() {
         }
         //curves.push([(spot_v.len() - i) as u32, 100]);
         //curves.push([i as u32, 100]);
-        let curve = state.register_curve("spot_c".into(), spot_v.clone(), curves);
+        let curve = state.register_segment("spot_c".into(), spot_v.clone(), curves);
         //.register_point_cloud("spot_pc".into(), spot_v.clone())
         curve.add_scalar("x coord".into(), spot_data_1.clone());
         curve.set_data(Some("x coord".into()));

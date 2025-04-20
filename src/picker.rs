@@ -1,6 +1,6 @@
 use crate::camera::Camera;
-use crate::curve::Curve;
 use crate::point_cloud::PointCloud;
+use crate::segment::Segment;
 use crate::surface::Surface;
 use crate::texture;
 use crate::updater::ElementPicker;
@@ -193,7 +193,7 @@ impl Picker {
         camera_light_bind_group: &wgpu::BindGroup,
         surfaces: &IndexMap<String, Surface>,
         clouds: &IndexMap<String, PointCloud>,
-        curves: &IndexMap<String, Curve>,
+        curves: &IndexMap<String, Segment>,
     ) -> bool {
         if !self.pick_locked && self.item_to_pick.is_some() {
             {
@@ -402,7 +402,7 @@ impl Picker {
         &mut self,
         surfaces: &IndexMap<String, Surface>,
         clouds: &IndexMap<String, PointCloud>,
-        curves: &IndexMap<String, Curve>,
+        curves: &IndexMap<String, Segment>,
         camera: &Camera,
     ) {
         {

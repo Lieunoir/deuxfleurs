@@ -18,7 +18,6 @@ use wasm_bindgen::prelude::*;
 mod aabb;
 pub mod attachment;
 mod camera;
-pub mod curve;
 pub mod data;
 mod deferred;
 mod obj_load;
@@ -26,6 +25,7 @@ mod picker;
 pub mod point_cloud;
 pub mod resources;
 mod screenshot;
+pub mod segment;
 mod settings;
 mod shader;
 pub mod surface;
@@ -36,9 +36,9 @@ mod ui;
 mod updater;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
-use curve::Curve;
 pub use egui;
 use point_cloud::PointCloud;
+use segment::Segment;
 pub use settings::Settings;
 use surface::Surface;
 use types::*;
@@ -89,8 +89,8 @@ pub struct State {
     surfaces: IndexMap<String, Surface>,
     //Points
     clouds: IndexMap<String, PointCloud>,
-    //Curves
-    curves: IndexMap<String, Curve>,
+    //Segments
+    segments: IndexMap<String, Segment>,
     //Volume meshes
     // Lighting
     light_uniform: LightUniform,
@@ -304,7 +304,7 @@ impl State {
         });
 
         let clouds = IndexMap::new();
-        let curves = IndexMap::new();
+        let segments = IndexMap::new();
         let surfaces = IndexMap::new();
         // Create depth texture
         let depth_texture =
@@ -355,7 +355,7 @@ impl State {
             camera_uniform,
             surfaces,
             clouds,
-            curves,
+            segments,
             light_uniform,
             light_buffer,
             jitter_buffer,
@@ -400,10 +400,10 @@ impl State {
                 }
             }
         }
-        for curve in self.curves.values() {
-            if curve.shown() {
-                for p in curve.geometry().get_positions() {
-                    let p = cgmath::Matrix4::from(curve.inner.updater.transform.get_transform())
+        for segment in self.segments.values() {
+            if segment.shown() {
+                for p in segment.geometry().get_positions() {
+                    let p = cgmath::Matrix4::from(segment.inner.updater.transform.get_transform())
                         * cgmath::Point3::from(*p).to_homogeneous();
                     let p = p / p[3];
                     if p[1] < min_y {
@@ -454,12 +454,12 @@ impl State {
                 }
             }
         }
-        for curve in self.curves.values() {
-            if curve.shown() {
-                let sbv = curve
+        for segment in self.segments.values() {
+            if segment.shown() {
+                let sbv = segment
                     .inner
                     .sbv
-                    .transform(&curve.inner.updater.transform.get_transform());
+                    .transform(&segment.inner.updater.transform.get_transform());
                 center += sbv.center.into();
                 n += 1;
                 if let Some(size) = &mut size {
@@ -564,8 +564,8 @@ impl State {
             );
         }
 
-        for curve in self.curves.values_mut() {
-            changed |= curve.inner.refresh(
+        for segment in self.segments.values_mut() {
+            changed |= segment.inner.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -612,7 +612,7 @@ impl State {
             &self.camera_light_bind_group,
             &self.surfaces,
             &self.clouds,
-            &self.curves,
+            &self.segments,
         );
 
         let output = if !self.screenshot {
@@ -719,13 +719,13 @@ impl State {
 
                 //order matters!
                 //cloud discard so no depth test
-                //curve only change deph sometimes, could use conservative depth
+                //segment only change deph sometimes, could use conservative depth
                 //surface fully uses depth buffer(except attachments)
                 for cloud in self.clouds.values() {
                     cloud.inner.render(&mut material_render_pass);
                 }
-                for curve in self.curves.values() {
-                    curve.inner.render(&mut material_render_pass);
+                for segment in self.segments.values() {
+                    segment.inner.render(&mut material_render_pass);
                 }
                 for surface in self.surfaces.values() {
                     surface.inner.render(&mut material_render_pass);
@@ -990,13 +990,13 @@ impl State {
         self.clouds.get(name)
     }
 
-    pub fn register_curve<V: Vertices>(
+    pub fn register_segment<V: Vertices>(
         &mut self,
         name: String,
         positions: V,
         connections: Vec<[u32; 2]>,
-    ) -> &mut Curve {
-        let model = Curve::new(
+    ) -> &mut Segment {
+        let model = Segment::new(
             name.clone(),
             positions.into(),
             connections,
@@ -1005,21 +1005,21 @@ impl State {
             &self.picker.bind_group_layout,
             self.config.format,
         );
-        self.curves.insert(name.clone(), model);
+        self.segments.insert(name.clone(), model);
         self.picker.counters_dirty = true;
         self.dirty = true;
         self.resize_scene();
-        self.curves.get_mut(&name).unwrap()
+        self.segments.get_mut(&name).unwrap()
     }
 
-    pub fn get_curve_mut(&mut self, name: &str) -> Option<&mut Curve> {
-        let res = self.curves.get_mut(name);
+    pub fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment> {
+        let res = self.segments.get_mut(name);
         self.dirty |= res.is_some();
         res
     }
 
-    pub fn get_curve(&self, name: &str) -> Option<&Curve> {
-        self.curves.get(name)
+    pub fn get_segment(&self, name: &str) -> Option<&Segment> {
+        self.segments.get(name)
     }
 
     /// Take a screenshot at the next frame
@@ -1114,9 +1114,12 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
                     state.register_surface("loaded mesh".into(), mesh_v, mesh_f);
                 }
                 UserEvent::Pick => {
-                    state
-                        .picker
-                        .pick(&state.surfaces, &state.clouds, &state.curves, &state.camera);
+                    state.picker.pick(
+                        &state.surfaces,
+                        &state.clouds,
+                        &state.segments,
+                        &state.camera,
+                    );
                 }
             }
         }
@@ -1219,7 +1222,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
                             &*state.window,
                             &mut state.surfaces,
                             &mut state.clouds,
-                            &mut state.curves,
+                            &mut state.segments,
                             state.camera.build_view(),
                             state.camera.build_proj(),
                         );
