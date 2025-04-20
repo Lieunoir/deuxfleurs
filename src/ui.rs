@@ -265,7 +265,7 @@ impl UI {
         &mut self,
         event_loop_proxy: &winit::event_loop::EventLoopProxy<crate::UserEvent>,
         state: &mut crate::State,
-        callback: &mut Option<T>,
+        callback: &mut T,
     ) {
         if let Some(response) = egui::Window::new("Interactions")
             .anchor(egui::Align2::RIGHT_TOP, [-5., 5.])
@@ -330,9 +330,7 @@ impl UI {
                     }
                 }
 
-                if let Some(callback) = callback {
-                    callback(ui, state)
-                }
+                callback(ui, state)
             })
         {
             self.hovered |= response.response.contains_pointer()

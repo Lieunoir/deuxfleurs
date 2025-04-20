@@ -190,7 +190,7 @@ pub async fn run() {
             },
             ..Default::default()
         },
-        Some(init),
-        Some(callback),
+        init,
+        callback,
     );
 }

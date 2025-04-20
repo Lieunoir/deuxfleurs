@@ -62,6 +62,7 @@ struct JitterUniform {
     _padding: [u32; 2],
 }
 
+/// Holds the application state. Starting point to add visualization datas.
 pub struct State {
     settings: Settings,
 
@@ -115,6 +116,7 @@ pub struct State {
     aabb: aabb::SBV,
 }
 
+/// Starting point to build the app.
 pub struct StateBuilder<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> {
     state: Option<State>,
     ui: Option<ui::UI>,
@@ -124,7 +126,7 @@ pub struct StateBuilder<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut Stat
     proxy: EventLoopProxy<UserEvent>,
     settings: Settings,
     init: Option<T>,
-    callback: Option<U>,
+    callback: U,
 }
 
 pub(crate) enum UserEvent {
@@ -1049,19 +1051,28 @@ impl State {
 }
 
 impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T, U> {
+    /// Show the window and start the app.
     ///
     /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
     /// (allowing for dimensions in `%` and `vh`/`vw`).
     ///
-    /// `id` serves as window title, or id element to attach to. If `None` used `"deuxfleurs"`.
+    /// Arguments:
+    /// * `width`: requested width of the app (no effect in wasm)
+    /// * `height`: requested height of the app (no effect in wasm)
+    /// * `id`: serves as window title, or id element to attach to. If `None` used `"deuxfleurs"`.
+    /// * `settings`: global app [`Settings`]
+    /// * `init`: called once at startup with a [`State`] argument, can be used to add some initial
+    /// data
+    /// * `callback`: called every frame with a [`State`] and a [`egui::Ui`] arguments, used to
+    /// add UI elements and modify state accordingly.
     ///
     pub fn run(
         width: u32,
         height: u32,
         id: Option<String>,
         settings: Settings,
-        init: Option<T>,
-        callback: Option<U>,
+        init: T,
+        callback: U,
     ) {
         let id = id.unwrap_or("deuxfleurs".into());
         cfg_if::cfg_if! {
@@ -1083,7 +1094,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T,
             height,
             proxy,
             settings,
-            init,
+            init: Some(init),
             callback,
         };
         event_loop.run_app(&mut app).unwrap();
