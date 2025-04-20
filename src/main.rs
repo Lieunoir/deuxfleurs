@@ -181,6 +181,7 @@ pub async fn run() {
     StateBuilder::run(
         1080,
         720,
+        Some("deuxfleurs".into()),
         deuxfleurs::Settings {
             color: Color {
                 r: 1.0,

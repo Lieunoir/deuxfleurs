@@ -117,6 +117,7 @@ pub struct State {
 pub struct StateBuilder<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> {
     state: Option<State>,
     ui: Option<ui::UI>,
+    id: String,
     width: u32,
     height: u32,
     proxy: EventLoopProxy<UserEvent>,
@@ -132,7 +133,7 @@ pub(crate) enum UserEvent {
 
 impl State {
     // Initialize the state
-    async fn new(window: Window, width: u32, height: u32, settings: Settings) -> Self {
+    async fn new(window: Window, settings: Settings) -> Self {
         let size = window.inner_size();
         let window = Arc::new(window);
         // The instance is a handle to our GPU
@@ -201,7 +202,7 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        window.request_inner_size(PhysicalSize::new(width, height));
+        //window.request_inner_size(PhysicalSize::new(width, height));
 
         // Bind the camera to the shaders
         let camera = Camera::new(config.width as f32 / config.height as f32);
@@ -1047,7 +1048,21 @@ impl State {
 }
 
 impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T, U> {
-    pub fn run(width: u32, height: u32, settings: Settings, init: Option<T>, callback: Option<U>) {
+    ///
+    /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
+    /// (allowing for dimensions in `%` and `vh`/`vw`).
+    ///
+    /// `id` serves as window title, or id element to attach to. If `None` used `"deuxfleurs"`.
+    ///
+    pub fn run(
+        width: u32,
+        height: u32,
+        id: Option<String>,
+        settings: Settings,
+        init: Option<T>,
+        callback: Option<U>,
+    ) {
+        let id = id.unwrap_or("deuxfleurs".into());
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
                 std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -1062,6 +1077,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T,
         let mut app = Self {
             state: None,
             ui: None,
+            id,
             width,
             height,
             proxy,
@@ -1078,7 +1094,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = WindowAttributes::default()
-            .with_title("Deuxfleurs")
+            .with_title(&self.id)
             .with_inner_size(PhysicalSize::new(self.width, self.height));
         let window = event_loop.create_window(window_attributes).unwrap();
 
@@ -1088,7 +1104,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
             web_sys::window()
                 .and_then(|win| win.document())
                 .and_then(|doc| {
-                    let dst = doc.body()?;
+                    let dst = doc.get_element_by_id(&self.id)?;
                     let canvas = window.canvas()?;
                     // disable right click
                     let empty_func = js_sys::Function::new_no_args("return false;");
@@ -1099,8 +1115,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
                 .expect("Couldn't append canvas to document body.");
         }
 
-        self.state =
-            Some(State::new(window, self.width, self.height, self.settings.clone()).block_on());
+        self.state = Some(State::new(window, self.settings.clone()).block_on());
         self.ui = Some(ui::UI::new(
             &self.state.as_ref().unwrap().device,
             event_loop,
