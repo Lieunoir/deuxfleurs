@@ -24,7 +24,7 @@ jobs:
           override: true
 
       - name: Install system packages
-        run: sudo apt-get install libglib2.0-dev libcairo2-dev libgdk-pixbuf-2.0-dev libatk1.0-0 libpango1.0-dev
+        run: sudo apt-get install libglib2.0-dev libcairo2-dev libgdk-pixbuf-2.0-dev libatk1.0-0 libpango1.0-dev libatk-bridge2.0-dev
 
       - name: Build documentation
         run: cargo doc
