@@ -256,11 +256,15 @@ impl CameraController {
                 false
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                self.wheel_delta = Some(match delta {
-                    MouseScrollDelta::LineDelta(_, y) => *y,
-                    MouseScrollDelta::PixelDelta(p) => 0.02 * p.y as f32,
-                });
-                true
+                if !ui_hovered {
+                    self.wheel_delta = Some(match delta {
+                        MouseScrollDelta::LineDelta(_, y) => *y,
+                        MouseScrollDelta::PixelDelta(p) => 0.02 * p.y as f32,
+                    });
+                    true
+                } else {
+                    false
+                }
             }
             _ => false,
         }
