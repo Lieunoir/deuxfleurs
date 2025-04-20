@@ -265,7 +265,7 @@
 <a href=#265 id=265 data-nosnippet>265</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#266 id=266 data-nosnippet>266</a>        event_loop_proxy: <span class="kw-2">&amp;</span>winit::event_loop::EventLoopProxy&lt;<span class="kw">crate</span>::UserEvent&gt;,
 <a href=#267 id=267 data-nosnippet>267</a>        state: <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::State,
-<a href=#268 id=268 data-nosnippet>268</a>        callback: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;T&gt;,
+<a href=#268 id=268 data-nosnippet>268</a>        callback: <span class="kw-2">&amp;mut </span>T,
 <a href=#269 id=269 data-nosnippet>269</a>    ) {
 <a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(response) = egui::Window::new(<span class="string">"Interactions"</span>)
 <a href=#271 id=271 data-nosnippet>271</a>            .anchor(egui::Align2::RIGHT_TOP, [-<span class="number">5.</span>, <span class="number">5.</span>])
@@ -307,7 +307,7 @@
 <a href=#307 id=307 data-nosnippet>307</a>                            <span class="kw">if let </span><span class="prelude-val">Some</span>(file_handle) = file {
 <a href=#308 id=308 data-nosnippet>308</a>                                <span class="kw">let </span>data = file_handle.read().<span class="kw">await</span>;
 <a href=#309 id=309 data-nosnippet>309</a>                                <span class="kw">if let </span><span class="prelude-val">Ok</span>((mesh_v, mesh_f)) =
-<a href=#310 id=310 data-nosnippet>310</a>                                    <span class="kw">crate</span>::resources::load_preloaded_mesh(data).<span class="kw">await
+<a href=#310 id=310 data-nosnippet>310</a>                                    <span class="kw">crate</span>::resources::parse_preloaded_mesh(data).<span class="kw">await
 <a href=#311 id=311 data-nosnippet>311</a>                                </span>{
 <a href=#312 id=312 data-nosnippet>312</a>                                    event_loop_proxy
 <a href=#313 id=313 data-nosnippet>313</a>                                        .send_event(<span class="kw">crate</span>::UserEvent::LoadMesh(mesh_v, mesh_f))
@@ -330,68 +330,66 @@
 <a href=#330 id=330 data-nosnippet>330</a>                    }
 <a href=#331 id=331 data-nosnippet>331</a>                }
 <a href=#332 id=332 data-nosnippet>332</a>
-<a href=#333 id=333 data-nosnippet>333</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(callback) = callback {
-<a href=#334 id=334 data-nosnippet>334</a>                    callback(ui, state)
-<a href=#335 id=335 data-nosnippet>335</a>                }
-<a href=#336 id=336 data-nosnippet>336</a>            })
-<a href=#337 id=337 data-nosnippet>337</a>        {
-<a href=#338 id=338 data-nosnippet>338</a>            <span class="self">self</span>.hovered |= response.response.contains_pointer()
-<a href=#339 id=339 data-nosnippet>339</a>        }
-<a href=#340 id=340 data-nosnippet>340</a>    }
-<a href=#341 id=341 data-nosnippet>341</a>
-<a href=#342 id=342 data-nosnippet>342</a>    <span class="comment">// not sure about returning a tuple here
-<a href=#343 id=343 data-nosnippet>343</a>    </span><span class="kw">pub fn </span>render_deltas(
-<a href=#344 id=344 data-nosnippet>344</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#345 id=345 data-nosnippet>345</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
-<a href=#346 id=346 data-nosnippet>346</a>        queue: <span class="kw-2">&amp;</span>wgpu::Queue,
-<a href=#347 id=347 data-nosnippet>347</a>        encoder: <span class="kw-2">&amp;mut </span>wgpu::CommandEncoder,
-<a href=#348 id=348 data-nosnippet>348</a>        width: u32,
-<a href=#349 id=349 data-nosnippet>349</a>        height: u32,
-<a href=#350 id=350 data-nosnippet>350</a>    ) -&gt; (
-<a href=#351 id=351 data-nosnippet>351</a>        Vec&lt;wgpu::CommandBuffer&gt;,
-<a href=#352 id=352 data-nosnippet>352</a>        Vec&lt;egui::ClippedPrimitive&gt;,
-<a href=#353 id=353 data-nosnippet>353</a>        ScreenDescriptor,
-<a href=#354 id=354 data-nosnippet>354</a>    ) {
-<a href=#355 id=355 data-nosnippet>355</a>        <span class="kw">let </span>full_output = <span class="self">self</span>.ctx.end_pass();
-<a href=#356 id=356 data-nosnippet>356</a>        <span class="kw">let </span>textures_delta = full_output.textures_delta;
-<a href=#357 id=357 data-nosnippet>357</a>        <span class="kw">let </span>clipped_primitives = <span class="self">self
-<a href=#358 id=358 data-nosnippet>358</a>            </span>.ctx
-<a href=#359 id=359 data-nosnippet>359</a>            .tessellate(full_output.shapes, <span class="self">self</span>.ctx.pixels_per_point());
-<a href=#360 id=360 data-nosnippet>360</a>
-<a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">let </span>screen_descriptor = ScreenDescriptor {
-<a href=#362 id=362 data-nosnippet>362</a>            size_in_pixels: [width, height],
-<a href=#363 id=363 data-nosnippet>363</a>            pixels_per_point: <span class="self">self</span>.ctx.pixels_per_point(),
-<a href=#364 id=364 data-nosnippet>364</a>        };
-<a href=#365 id=365 data-nosnippet>365</a>
-<a href=#366 id=366 data-nosnippet>366</a>        <span class="kw">let </span>user_cmd_bufs = {
-<a href=#367 id=367 data-nosnippet>367</a>            <span class="kw">for </span>(id, image_delta) <span class="kw">in </span><span class="kw-2">&amp;</span>textures_delta.set {
-<a href=#368 id=368 data-nosnippet>368</a>                <span class="self">self</span>.rpass.update_texture(device, queue, <span class="kw-2">*</span>id, image_delta);
-<a href=#369 id=369 data-nosnippet>369</a>            }
-<a href=#370 id=370 data-nosnippet>370</a>            <span class="self">self</span>.rpass.update_buffers(
-<a href=#371 id=371 data-nosnippet>371</a>                device,
-<a href=#372 id=372 data-nosnippet>372</a>                queue,
-<a href=#373 id=373 data-nosnippet>373</a>                encoder,
-<a href=#374 id=374 data-nosnippet>374</a>                <span class="kw-2">&amp;</span>clipped_primitives,
-<a href=#375 id=375 data-nosnippet>375</a>                <span class="kw-2">&amp;</span>screen_descriptor,
-<a href=#376 id=376 data-nosnippet>376</a>            )
-<a href=#377 id=377 data-nosnippet>377</a>        };
-<a href=#378 id=378 data-nosnippet>378</a>        <span class="self">self</span>.platform_output = <span class="prelude-val">Some</span>(full_output.platform_output);
-<a href=#379 id=379 data-nosnippet>379</a>        (user_cmd_bufs, clipped_primitives, screen_descriptor)
-<a href=#380 id=380 data-nosnippet>380</a>    }
-<a href=#381 id=381 data-nosnippet>381</a>
-<a href=#382 id=382 data-nosnippet>382</a>    <span class="kw">pub fn </span>render(
-<a href=#383 id=383 data-nosnippet>383</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#384 id=384 data-nosnippet>384</a>        <span class="kw-2">mut </span>render_pass: wgpu::RenderPass&lt;<span class="lifetime">'static</span>&gt;,
-<a href=#385 id=385 data-nosnippet>385</a>        clipped_primitives: <span class="kw-2">&amp;</span>[egui::ClippedPrimitive],
-<a href=#386 id=386 data-nosnippet>386</a>        screen_descriptor: <span class="kw-2">&amp;</span>ScreenDescriptor,
-<a href=#387 id=387 data-nosnippet>387</a>    ) {
-<a href=#388 id=388 data-nosnippet>388</a>        <span class="self">self</span>.rpass
-<a href=#389 id=389 data-nosnippet>389</a>            .render(<span class="kw-2">&amp;mut </span>render_pass, clipped_primitives, screen_descriptor);
-<a href=#390 id=390 data-nosnippet>390</a>    }
-<a href=#391 id=391 data-nosnippet>391</a>
-<a href=#392 id=392 data-nosnippet>392</a>    <span class="kw">pub fn </span>handle_platform_output(<span class="kw-2">&amp;mut </span><span class="self">self</span>, window: <span class="kw-2">&amp;</span>Window) {
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(platform_output) = <span class="self">self</span>.platform_output.take() {
-<a href=#394 id=394 data-nosnippet>394</a>            <span class="self">self</span>.state.handle_platform_output(window, platform_output);
-<a href=#395 id=395 data-nosnippet>395</a>        }
-<a href=#396 id=396 data-nosnippet>396</a>    }
-<a href=#397 id=397 data-nosnippet>397</a>}</code></pre></div></section></main></body></html>
+<a href=#333 id=333 data-nosnippet>333</a>                callback(ui, state)
+<a href=#334 id=334 data-nosnippet>334</a>            })
+<a href=#335 id=335 data-nosnippet>335</a>        {
+<a href=#336 id=336 data-nosnippet>336</a>            <span class="self">self</span>.hovered |= response.response.contains_pointer()
+<a href=#337 id=337 data-nosnippet>337</a>        }
+<a href=#338 id=338 data-nosnippet>338</a>    }
+<a href=#339 id=339 data-nosnippet>339</a>
+<a href=#340 id=340 data-nosnippet>340</a>    <span class="comment">// not sure about returning a tuple here
+<a href=#341 id=341 data-nosnippet>341</a>    </span><span class="kw">pub fn </span>render_deltas(
+<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#343 id=343 data-nosnippet>343</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
+<a href=#344 id=344 data-nosnippet>344</a>        queue: <span class="kw-2">&amp;</span>wgpu::Queue,
+<a href=#345 id=345 data-nosnippet>345</a>        encoder: <span class="kw-2">&amp;mut </span>wgpu::CommandEncoder,
+<a href=#346 id=346 data-nosnippet>346</a>        width: u32,
+<a href=#347 id=347 data-nosnippet>347</a>        height: u32,
+<a href=#348 id=348 data-nosnippet>348</a>    ) -&gt; (
+<a href=#349 id=349 data-nosnippet>349</a>        Vec&lt;wgpu::CommandBuffer&gt;,
+<a href=#350 id=350 data-nosnippet>350</a>        Vec&lt;egui::ClippedPrimitive&gt;,
+<a href=#351 id=351 data-nosnippet>351</a>        ScreenDescriptor,
+<a href=#352 id=352 data-nosnippet>352</a>    ) {
+<a href=#353 id=353 data-nosnippet>353</a>        <span class="kw">let </span>full_output = <span class="self">self</span>.ctx.end_pass();
+<a href=#354 id=354 data-nosnippet>354</a>        <span class="kw">let </span>textures_delta = full_output.textures_delta;
+<a href=#355 id=355 data-nosnippet>355</a>        <span class="kw">let </span>clipped_primitives = <span class="self">self
+<a href=#356 id=356 data-nosnippet>356</a>            </span>.ctx
+<a href=#357 id=357 data-nosnippet>357</a>            .tessellate(full_output.shapes, <span class="self">self</span>.ctx.pixels_per_point());
+<a href=#358 id=358 data-nosnippet>358</a>
+<a href=#359 id=359 data-nosnippet>359</a>        <span class="kw">let </span>screen_descriptor = ScreenDescriptor {
+<a href=#360 id=360 data-nosnippet>360</a>            size_in_pixels: [width, height],
+<a href=#361 id=361 data-nosnippet>361</a>            pixels_per_point: <span class="self">self</span>.ctx.pixels_per_point(),
+<a href=#362 id=362 data-nosnippet>362</a>        };
+<a href=#363 id=363 data-nosnippet>363</a>
+<a href=#364 id=364 data-nosnippet>364</a>        <span class="kw">let </span>user_cmd_bufs = {
+<a href=#365 id=365 data-nosnippet>365</a>            <span class="kw">for </span>(id, image_delta) <span class="kw">in </span><span class="kw-2">&amp;</span>textures_delta.set {
+<a href=#366 id=366 data-nosnippet>366</a>                <span class="self">self</span>.rpass.update_texture(device, queue, <span class="kw-2">*</span>id, image_delta);
+<a href=#367 id=367 data-nosnippet>367</a>            }
+<a href=#368 id=368 data-nosnippet>368</a>            <span class="self">self</span>.rpass.update_buffers(
+<a href=#369 id=369 data-nosnippet>369</a>                device,
+<a href=#370 id=370 data-nosnippet>370</a>                queue,
+<a href=#371 id=371 data-nosnippet>371</a>                encoder,
+<a href=#372 id=372 data-nosnippet>372</a>                <span class="kw-2">&amp;</span>clipped_primitives,
+<a href=#373 id=373 data-nosnippet>373</a>                <span class="kw-2">&amp;</span>screen_descriptor,
+<a href=#374 id=374 data-nosnippet>374</a>            )
+<a href=#375 id=375 data-nosnippet>375</a>        };
+<a href=#376 id=376 data-nosnippet>376</a>        <span class="self">self</span>.platform_output = <span class="prelude-val">Some</span>(full_output.platform_output);
+<a href=#377 id=377 data-nosnippet>377</a>        (user_cmd_bufs, clipped_primitives, screen_descriptor)
+<a href=#378 id=378 data-nosnippet>378</a>    }
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a>    <span class="kw">pub fn </span>render(
+<a href=#381 id=381 data-nosnippet>381</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#382 id=382 data-nosnippet>382</a>        <span class="kw-2">mut </span>render_pass: wgpu::RenderPass&lt;<span class="lifetime">'static</span>&gt;,
+<a href=#383 id=383 data-nosnippet>383</a>        clipped_primitives: <span class="kw-2">&amp;</span>[egui::ClippedPrimitive],
+<a href=#384 id=384 data-nosnippet>384</a>        screen_descriptor: <span class="kw-2">&amp;</span>ScreenDescriptor,
+<a href=#385 id=385 data-nosnippet>385</a>    ) {
+<a href=#386 id=386 data-nosnippet>386</a>        <span class="self">self</span>.rpass
+<a href=#387 id=387 data-nosnippet>387</a>            .render(<span class="kw-2">&amp;mut </span>render_pass, clipped_primitives, screen_descriptor);
+<a href=#388 id=388 data-nosnippet>388</a>    }
+<a href=#389 id=389 data-nosnippet>389</a>
+<a href=#390 id=390 data-nosnippet>390</a>    <span class="kw">pub fn </span>handle_platform_output(<span class="kw-2">&amp;mut </span><span class="self">self</span>, window: <span class="kw-2">&amp;</span>Window) {
+<a href=#391 id=391 data-nosnippet>391</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(platform_output) = <span class="self">self</span>.platform_output.take() {
+<a href=#392 id=392 data-nosnippet>392</a>            <span class="self">self</span>.state.handle_platform_output(window, platform_output);
+<a href=#393 id=393 data-nosnippet>393</a>        }
+<a href=#394 id=394 data-nosnippet>394</a>    }
+<a href=#395 id=395 data-nosnippet>395</a>}</code></pre></div></section></main></body></html>
