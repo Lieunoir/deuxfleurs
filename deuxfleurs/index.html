@@ -5,9 +5,10 @@
 <p>Can be used in webpages thanks to wasm, so web-based slides can include demos, or simply for making code demo easily accessible on the web.</p>
 <p>Current repo can be used with <a href="https://github.com/thedodd/trunk">trunk</a>, just run <code>trunk serve</code>.</p>
 <h2 id="how-to-use"><a class="doc-anchor" href="#how-to-use">§</a>How to use</h2>
-<p>Here’s a quick example that loads a mesh and uses a button to show/hide it.</p>
+<p>Here’s a quick example that loads a mesh and uses a button to show/hide it:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>deuxfleurs::{load_mesh, State, StateBuilder, Ui};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>deuxfleurs::egui;
+<span class="kw">use </span>deuxfleurs::{load_mesh, Color, State, StateBuilder};
 <span class="comment">// Load the mesh and register it in state:
 </span><span class="kw">let </span>(v, f) = load_mesh(<span class="string">"bunny.obj"</span>).<span class="kw">await</span>.unwrap();
 <span class="kw">let </span>init = <span class="kw">move </span>|state: <span class="kw-2">&amp;mut </span>State| {
@@ -15,7 +16,7 @@
 };
 
 <span class="comment">// Toggle between shown or not on button pressed
-</span><span class="kw">let </span>callback = |state: <span class="kw-2">&amp;mut </span>State, ui: <span class="kw-2">&amp;mut </span>Ui| {
+</span><span class="kw">let </span>callback = |ui: <span class="kw-2">&amp;mut </span>egui::Ui, state: <span class="kw-2">&amp;mut </span>State| {
         <span class="kw">if </span>ui
             .add(egui::Button::new(<span class="string">"Toggle shown"</span>))
             .clicked()
@@ -42,4 +43,5 @@
     init,
     callback,
 );</code></pre></div>
+<p>More examples are available in the correspondig folder.</p>
 </div></details><h2 id="reexports" class="section-header">Re-exports<a href="#reexports" class="anchor">§</a></h2><dl class="item-table reexports"><dt id="reexport.egui"><code>pub use <a class="mod" href="../egui/index.html" title="mod egui">egui</a>;</code></dt></dl><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="attachment/index.html" title="mod deuxfleurs::attachment">attachment</a></dt><dt><a class="mod" href="data/index.html" title="mod deuxfleurs::data">data</a></dt><dt><a class="mod" href="point_cloud/index.html" title="mod deuxfleurs::point_cloud">point_<wbr>cloud</a></dt><dt><a class="mod" href="segment/index.html" title="mod deuxfleurs::segment">segment</a></dt><dt><a class="mod" href="surface/index.html" title="mod deuxfleurs::surface">surface</a></dt><dt><a class="mod" href="types/index.html" title="mod deuxfleurs::types">types</a></dt><dd>General types for genericity in functions parameters.</dd></dl><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Color.html" title="struct deuxfleurs::Color">Color</a></dt><dd>RGBA double precision color.</dd><dt><a class="struct" href="struct.Settings.html" title="struct deuxfleurs::Settings">Settings</a></dt><dd>Global rendering settings</dd><dt><a class="struct" href="struct.State.html" title="struct deuxfleurs::State">State</a></dt><dd>Holds the application state. Starting point to add visualization datas.</dd><dt><a class="struct" href="struct.StateBuilder.html" title="struct deuxfleurs::StateBuilder">State<wbr>Builder</a></dt><dd>Starting point to build the app.</dd></dl><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><dl class="item-table"><dt><a class="fn" href="fn.load_mesh.html" title="fn deuxfleurs::load_mesh">load_<wbr>mesh</a></dt><dt><a class="fn" href="fn.load_mesh_blocking.html" title="fn deuxfleurs::load_mesh_blocking">load_<wbr>mesh_<wbr>blocking</a></dt></dl></section></div></main></body></html>
