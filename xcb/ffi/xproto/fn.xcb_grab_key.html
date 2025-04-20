@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Grab keyboard key(s)"><title>xcb_grab_key in xcb::ffi::xproto - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="xcb" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../xcb/index.html">xcb</a><span class="version">0.8.2</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In xcb::<wbr>ffi::<wbr>xproto</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">xcb</a>::<wbr><a href="../index.html">ffi</a>::<wbr><a href="index.html">xproto</a></div><h1>Function <span class="fn">xcb_grab_key</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/xcb/ffi/xproto.rs.html#6652-6659">Source</a> </span></div><pre class="rust item-decl"><code>pub unsafe extern &quot;C&quot; fn xcb_grab_key(
+    c: <a class="primitive" href="https://doc.rust-lang.org/1.86.0/std/primitive.pointer.html">*mut </a><a class="enum" href="../base/enum.xcb_connection_t.html" title="enum xcb::ffi::base::xcb_connection_t">xcb_connection_t</a>,
+    owner_events: <a class="primitive" href="https://doc.rust-lang.org/1.86.0/std/primitive.u8.html">u8</a>,
+    grab_window: <a class="type" href="type.xcb_window_t.html" title="type xcb::ffi::xproto::xcb_window_t">xcb_window_t</a>,
+    modifiers: <a class="primitive" href="https://doc.rust-lang.org/1.86.0/std/primitive.u16.html">u16</a>,
+    key: <a class="type" href="type.xcb_keycode_t.html" title="type xcb::ffi::xproto::xcb_keycode_t">xcb_keycode_t</a>,
+    pointer_mode: <a class="primitive" href="https://doc.rust-lang.org/1.86.0/std/primitive.u8.html">u8</a>,
+    keyboard_mode: <a class="primitive" href="https://doc.rust-lang.org/1.86.0/std/primitive.u8.html">u8</a>,
+) -&gt; <a class="struct" href="../base/struct.xcb_void_cookie_t.html" title="struct xcb::ffi::base::xcb_void_cookie_t">xcb_void_cookie_t</a></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Grab keyboard key(s)</p>
+<p>Establishes a passive grab on the keyboard. In the future, the keyboard is
+actively grabbed (as for <code>GrabKeyboard</code>), the last-keyboard-grab time is set to
+the time at which the key was pressed (as transmitted in the KeyPress event),
+and the KeyPress event is reported if all of the following conditions are true:</p>
+<p>The keyboard is not grabbed and the specified key (which can itself be a
+modifier key) is logically pressed when the specified modifier keys are
+logically down, and no other modifier keys are logically down.</p>
+<p>Either the grab_window is an ancestor of (or is) the focus window, or the
+grab_window is a descendant of the focus window and contains the pointer.</p>
+<p>A passive grab on the same key combination does not exist on any ancestor of
+grab_window.</p>
+<p>The interpretation of the remaining arguments is as for XGrabKeyboard.  The active grab is terminated
+automatically when the logical state of the keyboard has the specified key released (independent of the
+logical state of the modifier keys), at which point a KeyRelease event is reported to the grabbing window.</p>
+<p>Note that the logical state of a device (as seen by client applications) may lag the physical state if
+device event processing is frozen.</p>
+<p>A modifiers argument of AnyModifier is equivalent to issuing the request for all possible modifier combinations (including the combination of no modifiers).  It is not required that all modifiers specified
+have currently assigned KeyCodes.  A keycode argument of AnyKey is equivalent to issuing the request for
+all possible KeyCodes.  Otherwise, the specified keycode must be in the range specified by min_keycode
+and max_keycode in the connection setup, or a BadValue error results.</p>
+<p>If some other client has issued a XGrabKey with the same key combination on the same window, a BadAccess
+error results.  When using AnyModifier or AnyKey, the request fails completely, and a BadAccess error
+results (no grabs are established) if there is a conflicting grab for any combination.</p>
+</div></details></section></div></main></body></html>

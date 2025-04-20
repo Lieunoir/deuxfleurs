@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["base","big_requests","render","shape","xc_misc","xfixes","xproto"]};

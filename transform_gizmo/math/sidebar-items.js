@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["DMat3","DMat4","DQuat","DVec2","DVec3","DVec4","Mat4","Pos2","Quat","Rect","Transform","Vec2","Vec3"],"trait":["Vec4Swizzles"]};

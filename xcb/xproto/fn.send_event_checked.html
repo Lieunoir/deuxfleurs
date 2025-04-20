@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="send an event"><title>send_event_checked in xcb::xproto - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="xcb" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../xcb/index.html">xcb</a><span class="version">0.8.2</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In xcb::<wbr>xproto</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">xcb</a>::<wbr><a href="index.html">xproto</a></div><h1>Function <span class="fn">send_event_checked</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/xcb/xproto.rs.html#5730-5749">Source</a> </span></div><pre class="rust item-decl"><code>pub fn send_event_checked&lt;'a, T&gt;(
+    c: &amp;'a <a class="struct" href="../base/struct.Connection.html" title="struct xcb::base::Connection">Connection</a>,
+    propagate: <a class="primitive" href="https://doc.rust-lang.org/1.86.0/std/primitive.bool.html">bool</a>,
+    destination: <a class="type" href="type.Window.html" title="type xcb::xproto::Window">Window</a>,
+    event_mask: <a class="primitive" href="https://doc.rust-lang.org/1.86.0/std/primitive.u32.html">u32</a>,
+    event: &amp;<a class="struct" href="../base/struct.Event.html" title="struct xcb::base::Event">Event</a>&lt;T&gt;,
+) -&gt; <a class="type" href="../base/type.VoidCookie.html" title="type xcb::base::VoidCookie">VoidCookie</a>&lt;'a&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>send an event</p>
+<p>Identifies the <code>destination</code> window, determines which clients should receive
+the specified event and ignores any active grabs.</p>
+<p>The <code>event</code> must be one of the core events or an event defined by an extension,
+so that the X server can correctly byte-swap the contents as necessary. The
+contents of <code>event</code> are otherwise unaltered and unchecked except for the
+<code>send_event</code> field which is forced to ‘true’.</p>
+<p>parameters:</p>
+<ul>
+<li>
+<p><strong>c</strong>:
+The connection object to the server</p>
+</li>
+<li>
+<p><strong>propagate</strong>:
+If <code>propagate</code> is true and no clients have selected any event on <code>destination</code>,
+the destination is replaced with the closest ancestor of <code>destination</code> for
+which some client has selected a type in <code>event_mask</code> and for which no
+intervening window has that type in its do-not-propagate-mask. If no such
+window exists or if the window is an ancestor of the focus window and
+<code>InputFocus</code> was originally specified as the destination, the event is not sent
+to any clients. Otherwise, the event is reported to every client selecting on
+the final destination any of the types specified in <code>event_mask</code>.</p>
+</li>
+<li>
+<p><strong>destination</strong>:
+The window to send this event to. Every client which selects any event within
+<code>event_mask</code> on <code>destination</code> will get the event.</p>
+<p>The special value <code>XCB_SEND_EVENT_DEST_POINTER_WINDOW</code> refers to the window
+that contains the mouse pointer.</p>
+<p>The special value <code>XCB_SEND_EVENT_DEST_ITEM_FOCUS</code> refers to the window which
+has the keyboard focus.</p>
+</li>
+<li>
+<p><strong>event_mask</strong>:
+Event_mask for determining which clients should receive the specified event.
+See <code>destination</code> and <code>propagate</code>.</p>
+</li>
+<li>
+<p><strong>event</strong>:
+The event to send to the specified <code>destination</code>.</p>
+</li>
+</ul>
+</div></details></section></div></main></body></html>

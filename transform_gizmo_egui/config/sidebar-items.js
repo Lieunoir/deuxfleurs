@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_SNAP_ANGLE","DEFAULT_SNAP_DISTANCE","DEFAULT_SNAP_SCALE"],"enum":["GizmoDirection","GizmoMode","GizmoModeKind","GizmoOrientation","TransformPivotPoint"],"struct":["Color32","GizmoConfig","GizmoVisuals"]};

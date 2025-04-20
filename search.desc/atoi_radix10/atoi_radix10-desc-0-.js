@@ -1,0 +1,1 @@
+searchState.loadedDescShard("atoi_radix10", 0, "A public version of <code>std::num::ParseIntError</code>\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nParses a UTF8 &amp;u8 slice as a number.\nParses a UTF8 &amp;str as a number.")

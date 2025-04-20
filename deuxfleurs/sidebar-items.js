@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["attachment","data","point_cloud","resources","segment","surface","types"],"struct":["Color","Settings","State","StateBuilder"]};

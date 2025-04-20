@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SurfaceIndices"],"struct":["SurfaceIndicesIntoIterator"],"trait":["Color","Scalar","Vertices","Vertices2D"]};

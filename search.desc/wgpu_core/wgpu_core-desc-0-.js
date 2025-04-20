@@ -1,0 +1,1 @@
+searchState.loadedDescShard("wgpu_core", 0, "This library safely implements WebGPU on native platforms. …")

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GizmoResult"],"struct":["Gizmo","GizmoDrawData","GizmoInteraction"]};

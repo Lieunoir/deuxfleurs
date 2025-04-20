@@ -1,0 +1,1 @@
+searchState.loadedDescShard("pollster", 0, "Pollster\nAn extension trait that allows blocking on a future in …\nBlock the thread until the future is ready.\nBlock the thread until the future is ready.")
