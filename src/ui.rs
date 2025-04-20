@@ -307,7 +307,7 @@ impl UI {
                             if let Some(file_handle) = file {
                                 let data = file_handle.read().await;
                                 if let Ok((mesh_v, mesh_f)) =
-                                    crate::resources::load_preloaded_mesh(data).await
+                                    crate::resources::parse_preloaded_mesh(data).await
                                 {
                                     event_loop_proxy
                                         .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f))

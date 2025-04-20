@@ -1,6 +1,5 @@
-use deuxfleurs::resources;
 use deuxfleurs::types::SurfaceIndices;
-use deuxfleurs::{Color, State, StateBuilder};
+use deuxfleurs::{load_mesh, Color, State, StateBuilder};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -24,7 +23,7 @@ pub async fn run() {
         .set_data("test data".into());
         */
     //let (spot_v, spot_f) = resources::load_mesh("spot.obj").await.unwrap();
-    let (spot_v, spot_f) = resources::load_mesh("spot.obj".into()).await.unwrap();
+    let (spot_v, spot_f) = load_mesh("assets/spot.obj".into()).await.unwrap();
     let init = move |state: &mut State| {
         let spot_f = match spot_f {
             SurfaceIndices::Triangles(t) => t,

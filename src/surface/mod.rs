@@ -505,12 +505,12 @@ impl Surface {
         }
     }
 
-    pub fn add_vertex_color<C: Color>(&mut self, name: String, colors: C) -> &mut SurfaceData {
+    pub fn add_vertex_color<C: Color>(&mut self, name: String, colors: C) {
         let colors = colors.into();
         assert!(colors.len() == self.inner.geometry.vertices.len());
         self.inner
             .updater
-            .add_data(name, SurfaceData::Color(colors))
+            .add_data(name, SurfaceData::Color(colors));
     }
 
     pub fn add_vertex_vector_field<V: Vertices>(

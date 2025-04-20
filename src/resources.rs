@@ -10,36 +10,24 @@ use cfg_if::cfg_if;
 fn format_url(file_name: &str) -> reqwest::Url {
     let window = web_sys::window().unwrap();
     let location = window.location();
-    let base = reqwest::Url::parse(&format!(
-        "{}/{}/",
-        location.origin().unwrap(),
-        option_env!("RES_PATH").unwrap_or("assets"),
-    ))
-    .unwrap();
+    let base = reqwest::Url::parse(&location.origin().unwrap()).unwrap();
     base.join(file_name).unwrap()
 }
 
-pub async fn load_string(file_name: &str) -> anyhow::Result<String> {
+async fn load_string(file_name: &str) -> anyhow::Result<String> {
     cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
-            log::warn!("Load model on web");
-
             let url = format_url(file_name);
             let txt = reqwest::get(url)
                 .await?
                 .text()
                 .await?;
-
-            log::warn!("{}", txt);
+            Ok(txt)
 
         } else {
-            let path = std::path::Path::new("assets")
-                .join(file_name);
-            let txt = std::fs::read_to_string(path)?;
+            Ok(file_name.into())
         }
     }
-
-    Ok(txt)
 }
 
 pub async fn load_mesh(file_name: &str) -> anyhow::Result<(Vec<[f32; 3]>, SurfaceIndices)> {
@@ -73,7 +61,10 @@ pub fn load_mesh_blocking(file_name: PathBuf) -> anyhow::Result<(Vec<[f32; 3]>, 
     Ok((v, indices))
 }
 
-pub async fn load_preloaded_mesh(data: Vec<u8>) -> anyhow::Result<(Vec<[f32; 3]>, SurfaceIndices)> {
+#[cfg(target_arch = "wasm32")]
+pub(crate) async fn parse_preloaded_mesh(
+    data: Vec<u8>,
+) -> anyhow::Result<(Vec<[f32; 3]>, SurfaceIndices)> {
     let obj_cursor = Cursor::new(data);
     let mut obj_reader = BufReader::new(obj_cursor);
 
