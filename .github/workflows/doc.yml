@@ -23,6 +23,9 @@ jobs:
           toolchain: nightly
           override: true
 
+      - name: Install system packages
+        run: sudo apt-get install libglib2.0-dev
+
       - name: Build documentation
         run: cargo doc
 
