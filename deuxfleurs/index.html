@@ -7,7 +7,7 @@
 <p>Here’s a quick example that loads a mesh and uses a button to show/hide it:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>deuxfleurs::egui;
-<span class="kw">use </span>deuxfleurs::{load_mesh, Color, State, StateBuilder};
+<span class="kw">use </span>deuxfleurs::{load_mesh, State, StateBuilder, Settings};
 <span class="comment">// Load the mesh and register it in state:
 </span><span class="kw">let </span>(v, f) = load_mesh(<span class="string">"bunny.obj"</span>).<span class="kw">await</span>.unwrap();
 <span class="kw">let </span>init = <span class="kw">move </span>|state: <span class="kw-2">&amp;mut </span>State| {
@@ -30,15 +30,7 @@
     <span class="number">1080</span>,
     <span class="number">720</span>,
     <span class="prelude-val">Some</span>(<span class="string">"deuxfleurs-demo"</span>.into()),
-    deuxfleurs::Settings {
-        color: Color {
-            r: <span class="number">1.0</span>,
-            g: <span class="number">1.0</span>,
-            b: <span class="number">1.0</span>,
-            a: <span class="number">1.0</span>,
-        },
-        ..Default::default()
-    },
+    deuxfleurs::Settings::default(),
     init,
     callback,
 );</code></pre></div>
