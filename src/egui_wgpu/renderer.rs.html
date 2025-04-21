@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/egui-wgpu-0.29.1/src/renderer.rs`."><title>renderer.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="egui_wgpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">egui_wgpu/</div>renderer.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(unsafe_code)]
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/egui-wgpu-0.31.1/src/renderer.rs`."><title>renderer.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="egui_wgpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">egui_wgpu/</div>renderer.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(unsafe_code)]
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>std::{borrow::Cow, num::NonZeroU64, ops::Range};
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -125,7 +125,7 @@
 <a href=#125 id=125 data-nosnippet>125</a>    <span class="doccomment">/// Size of the window in physical pixels.
 <a href=#126 id=126 data-nosnippet>126</a>    </span><span class="kw">pub </span>size_in_pixels: [u32; <span class="number">2</span>],
 <a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>    <span class="doccomment">/// HiDPI scale factor (pixels per point).
+<a href=#128 id=128 data-nosnippet>128</a>    <span class="doccomment">/// High-DPI scale factor (pixels per point).
 <a href=#129 id=129 data-nosnippet>129</a>    </span><span class="kw">pub </span>pixels_per_point: f32,
 <a href=#130 id=130 data-nosnippet>130</a>}
 <a href=#131 id=131 data-nosnippet>131</a>
@@ -214,14 +214,14 @@
 <a href=#214 id=214 data-nosnippet>214</a>        msaa_samples: u32,
 <a href=#215 id=215 data-nosnippet>215</a>        dithering: bool,
 <a href=#216 id=216 data-nosnippet>216</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#217 id=217 data-nosnippet>217</a>        <span class="macro">crate::profile_function!</span>();
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="macro">profiling::function_scope!</span>();
 <a href=#218 id=218 data-nosnippet>218</a>
 <a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>shader = wgpu::ShaderModuleDescriptor {
 <a href=#220 id=220 data-nosnippet>220</a>            label: <span class="prelude-val">Some</span>(<span class="string">"egui"</span>),
 <a href=#221 id=221 data-nosnippet>221</a>            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(<span class="macro">include_str!</span>(<span class="string">"egui.wgsl"</span>))),
 <a href=#222 id=222 data-nosnippet>222</a>        };
 <a href=#223 id=223 data-nosnippet>223</a>        <span class="kw">let </span>module = {
-<a href=#224 id=224 data-nosnippet>224</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"create_shader_module"</span>);
+<a href=#224 id=224 data-nosnippet>224</a>            <span class="macro">profiling::scope!</span>(<span class="string">"create_shader_module"</span>);
 <a href=#225 id=225 data-nosnippet>225</a>            device.create_shader_module(shader)
 <a href=#226 id=226 data-nosnippet>226</a>        };
 <a href=#227 id=227 data-nosnippet>227</a>
@@ -236,7 +236,7 @@
 <a href=#236 id=236 data-nosnippet>236</a>        });
 <a href=#237 id=237 data-nosnippet>237</a>
 <a href=#238 id=238 data-nosnippet>238</a>        <span class="kw">let </span>uniform_bind_group_layout = {
-<a href=#239 id=239 data-nosnippet>239</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"create_bind_group_layout"</span>);
+<a href=#239 id=239 data-nosnippet>239</a>            <span class="macro">profiling::scope!</span>(<span class="string">"create_bind_group_layout"</span>);
 <a href=#240 id=240 data-nosnippet>240</a>            device.create_bind_group_layout(<span class="kw-2">&amp;</span>wgpu::BindGroupLayoutDescriptor {
 <a href=#241 id=241 data-nosnippet>241</a>                label: <span class="prelude-val">Some</span>(<span class="string">"egui_uniform_bind_group_layout"</span>),
 <a href=#242 id=242 data-nosnippet>242</a>                entries: <span class="kw-2">&amp;</span>[wgpu::BindGroupLayoutEntry {
@@ -253,7 +253,7 @@
 <a href=#253 id=253 data-nosnippet>253</a>        };
 <a href=#254 id=254 data-nosnippet>254</a>
 <a href=#255 id=255 data-nosnippet>255</a>        <span class="kw">let </span>uniform_bind_group = {
-<a href=#256 id=256 data-nosnippet>256</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"create_bind_group"</span>);
+<a href=#256 id=256 data-nosnippet>256</a>            <span class="macro">profiling::scope!</span>(<span class="string">"create_bind_group"</span>);
 <a href=#257 id=257 data-nosnippet>257</a>            device.create_bind_group(<span class="kw-2">&amp;</span>wgpu::BindGroupDescriptor {
 <a href=#258 id=258 data-nosnippet>258</a>                label: <span class="prelude-val">Some</span>(<span class="string">"egui_uniform_bind_group"</span>),
 <a href=#259 id=259 data-nosnippet>259</a>                layout: <span class="kw-2">&amp;</span>uniform_bind_group_layout,
@@ -269,7 +269,7 @@
 <a href=#269 id=269 data-nosnippet>269</a>        };
 <a href=#270 id=270 data-nosnippet>270</a>
 <a href=#271 id=271 data-nosnippet>271</a>        <span class="kw">let </span>texture_bind_group_layout = {
-<a href=#272 id=272 data-nosnippet>272</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"create_bind_group_layout"</span>);
+<a href=#272 id=272 data-nosnippet>272</a>            <span class="macro">profiling::scope!</span>(<span class="string">"create_bind_group_layout"</span>);
 <a href=#273 id=273 data-nosnippet>273</a>            device.create_bind_group_layout(<span class="kw-2">&amp;</span>wgpu::BindGroupLayoutDescriptor {
 <a href=#274 id=274 data-nosnippet>274</a>                label: <span class="prelude-val">Some</span>(<span class="string">"egui_texture_bind_group_layout"</span>),
 <a href=#275 id=275 data-nosnippet>275</a>                entries: <span class="kw-2">&amp;</span>[
@@ -308,12 +308,12 @@
 <a href=#308 id=308 data-nosnippet>308</a>        });
 <a href=#309 id=309 data-nosnippet>309</a>
 <a href=#310 id=310 data-nosnippet>310</a>        <span class="kw">let </span>pipeline = {
-<a href=#311 id=311 data-nosnippet>311</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"create_render_pipeline"</span>);
+<a href=#311 id=311 data-nosnippet>311</a>            <span class="macro">profiling::scope!</span>(<span class="string">"create_render_pipeline"</span>);
 <a href=#312 id=312 data-nosnippet>312</a>            device.create_render_pipeline(<span class="kw-2">&amp;</span>wgpu::RenderPipelineDescriptor {
 <a href=#313 id=313 data-nosnippet>313</a>                label: <span class="prelude-val">Some</span>(<span class="string">"egui_pipeline"</span>),
 <a href=#314 id=314 data-nosnippet>314</a>                layout: <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pipeline_layout),
 <a href=#315 id=315 data-nosnippet>315</a>                vertex: wgpu::VertexState {
-<a href=#316 id=316 data-nosnippet>316</a>                    entry_point: <span class="string">"vs_main"</span>,
+<a href=#316 id=316 data-nosnippet>316</a>                    entry_point: <span class="prelude-val">Some</span>(<span class="string">"vs_main"</span>),
 <a href=#317 id=317 data-nosnippet>317</a>                    module: <span class="kw-2">&amp;</span>module,
 <a href=#318 id=318 data-nosnippet>318</a>                    buffers: <span class="kw-2">&amp;</span>[wgpu::VertexBufferLayout {
 <a href=#319 id=319 data-nosnippet>319</a>                        array_stride: <span class="number">5 </span>* <span class="number">4</span>,
@@ -343,12 +343,12 @@
 <a href=#343 id=343 data-nosnippet>343</a>
 <a href=#344 id=344 data-nosnippet>344</a>                fragment: <span class="prelude-val">Some</span>(wgpu::FragmentState {
 <a href=#345 id=345 data-nosnippet>345</a>                    module: <span class="kw-2">&amp;</span>module,
-<a href=#346 id=346 data-nosnippet>346</a>                    entry_point: <span class="kw">if </span>output_color_format.is_srgb() {
+<a href=#346 id=346 data-nosnippet>346</a>                    entry_point: <span class="prelude-val">Some</span>(<span class="kw">if </span>output_color_format.is_srgb() {
 <a href=#347 id=347 data-nosnippet>347</a>                        <span class="macro">log::warn!</span>(<span class="string">"Detected a linear (sRGBA aware) framebuffer {:?}. egui prefers Rgba8Unorm or Bgra8Unorm"</span>, output_color_format);
 <a href=#348 id=348 data-nosnippet>348</a>                        <span class="string">"fs_main_linear_framebuffer"
 <a href=#349 id=349 data-nosnippet>349</a>                    </span>} <span class="kw">else </span>{
 <a href=#350 id=350 data-nosnippet>350</a>                        <span class="string">"fs_main_gamma_framebuffer" </span><span class="comment">// this is what we prefer
-<a href=#351 id=351 data-nosnippet>351</a>                    </span>},
+<a href=#351 id=351 data-nosnippet>351</a>                    </span>}),
 <a href=#352 id=352 data-nosnippet>352</a>                    targets: <span class="kw-2">&amp;</span>[<span class="prelude-val">Some</span>(wgpu::ColorTargetState {
 <a href=#353 id=353 data-nosnippet>353</a>                        format: output_color_format,
 <a href=#354 id=354 data-nosnippet>354</a>                        blend: <span class="prelude-val">Some</span>(wgpu::BlendState {
@@ -420,7 +420,7 @@
 <a href=#420 id=420 data-nosnippet>420</a>        paint_jobs: <span class="kw-2">&amp;</span>[epaint::ClippedPrimitive],
 <a href=#421 id=421 data-nosnippet>421</a>        screen_descriptor: <span class="kw-2">&amp;</span>ScreenDescriptor,
 <a href=#422 id=422 data-nosnippet>422</a>    ) {
-<a href=#423 id=423 data-nosnippet>423</a>        <span class="macro">crate::profile_function!</span>();
+<a href=#423 id=423 data-nosnippet>423</a>        <span class="macro">profiling::function_scope!</span>();
 <a href=#424 id=424 data-nosnippet>424</a>
 <a href=#425 id=425 data-nosnippet>425</a>        <span class="kw">let </span>pixels_per_point = screen_descriptor.pixels_per_point;
 <a href=#426 id=426 data-nosnippet>426</a>        <span class="kw">let </span>size_in_pixels = screen_descriptor.size_in_pixels;
@@ -506,7 +506,7 @@
 <a href=#506 id=506 data-nosnippet>506</a>
 <a href=#507 id=507 data-nosnippet>507</a>                    <span class="kw">let </span>viewport_px = info.viewport_in_pixels();
 <a href=#508 id=508 data-nosnippet>508</a>                    <span class="kw">if </span>viewport_px.width_px &gt; <span class="number">0 </span>&amp;&amp; viewport_px.height_px &gt; <span class="number">0 </span>{
-<a href=#509 id=509 data-nosnippet>509</a>                        <span class="macro">crate::profile_scope!</span>(<span class="string">"callback"</span>);
+<a href=#509 id=509 data-nosnippet>509</a>                        <span class="macro">profiling::scope!</span>(<span class="string">"callback"</span>);
 <a href=#510 id=510 data-nosnippet>510</a>
 <a href=#511 id=511 data-nosnippet>511</a>                        needs_reset = <span class="bool-val">true</span>;
 <a href=#512 id=512 data-nosnippet>512</a>
@@ -544,7 +544,7 @@
 <a href=#544 id=544 data-nosnippet>544</a>        id: epaint::TextureId,
 <a href=#545 id=545 data-nosnippet>545</a>        image_delta: <span class="kw-2">&amp;</span>epaint::ImageDelta,
 <a href=#546 id=546 data-nosnippet>546</a>    ) {
-<a href=#547 id=547 data-nosnippet>547</a>        <span class="macro">crate::profile_function!</span>();
+<a href=#547 id=547 data-nosnippet>547</a>        <span class="macro">profiling::function_scope!</span>();
 <a href=#548 id=548 data-nosnippet>548</a>
 <a href=#549 id=549 data-nosnippet>549</a>        <span class="kw">let </span>width = image_delta.image.width() <span class="kw">as </span>u32;
 <a href=#550 id=550 data-nosnippet>550</a>        <span class="kw">let </span>height = image_delta.image.height() <span class="kw">as </span>u32;
@@ -570,23 +570,23 @@
 <a href=#570 id=570 data-nosnippet>570</a>                    image.pixels.len(),
 <a href=#571 id=571 data-nosnippet>571</a>                    <span class="string">"Mismatch between texture size and texel count"
 <a href=#572 id=572 data-nosnippet>572</a>                </span>);
-<a href=#573 id=573 data-nosnippet>573</a>                <span class="macro">crate::profile_scope!</span>(<span class="string">"font -&gt; sRGBA"</span>);
+<a href=#573 id=573 data-nosnippet>573</a>                <span class="macro">profiling::scope!</span>(<span class="string">"font -&gt; sRGBA"</span>);
 <a href=#574 id=574 data-nosnippet>574</a>                Cow::Owned(image.srgba_pixels(<span class="prelude-val">None</span>).collect::&lt;Vec&lt;epaint::Color32&gt;&gt;())
 <a href=#575 id=575 data-nosnippet>575</a>            }
 <a href=#576 id=576 data-nosnippet>576</a>        };
 <a href=#577 id=577 data-nosnippet>577</a>        <span class="kw">let </span>data_bytes: <span class="kw-2">&amp;</span>[u8] = bytemuck::cast_slice(data_color32.as_slice());
 <a href=#578 id=578 data-nosnippet>578</a>
 <a href=#579 id=579 data-nosnippet>579</a>        <span class="kw">let </span>queue_write_data_to_texture = |texture, origin| {
-<a href=#580 id=580 data-nosnippet>580</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"write_texture"</span>);
+<a href=#580 id=580 data-nosnippet>580</a>            <span class="macro">profiling::scope!</span>(<span class="string">"write_texture"</span>);
 <a href=#581 id=581 data-nosnippet>581</a>            queue.write_texture(
-<a href=#582 id=582 data-nosnippet>582</a>                wgpu::ImageCopyTexture {
+<a href=#582 id=582 data-nosnippet>582</a>                wgpu::TexelCopyTextureInfo {
 <a href=#583 id=583 data-nosnippet>583</a>                    texture,
 <a href=#584 id=584 data-nosnippet>584</a>                    mip_level: <span class="number">0</span>,
 <a href=#585 id=585 data-nosnippet>585</a>                    origin,
 <a href=#586 id=586 data-nosnippet>586</a>                    aspect: wgpu::TextureAspect::All,
 <a href=#587 id=587 data-nosnippet>587</a>                },
 <a href=#588 id=588 data-nosnippet>588</a>                data_bytes,
-<a href=#589 id=589 data-nosnippet>589</a>                wgpu::ImageDataLayout {
+<a href=#589 id=589 data-nosnippet>589</a>                wgpu::TexelCopyBufferLayout {
 <a href=#590 id=590 data-nosnippet>590</a>                    offset: <span class="number">0</span>,
 <a href=#591 id=591 data-nosnippet>591</a>                    bytes_per_row: <span class="prelude-val">Some</span>(<span class="number">4 </span>* width),
 <a href=#592 id=592 data-nosnippet>592</a>                    rows_per_image: <span class="prelude-val">Some</span>(height),
@@ -631,7 +631,7 @@
 <a href=#631 id=631 data-nosnippet>631</a>        } <span class="kw">else </span>{
 <a href=#632 id=632 data-nosnippet>632</a>            <span class="comment">// allocate a new texture
 <a href=#633 id=633 data-nosnippet>633</a>            </span><span class="kw">let </span>texture = {
-<a href=#634 id=634 data-nosnippet>634</a>                <span class="macro">crate::profile_scope!</span>(<span class="string">"create_texture"</span>);
+<a href=#634 id=634 data-nosnippet>634</a>                <span class="macro">profiling::scope!</span>(<span class="string">"create_texture"</span>);
 <a href=#635 id=635 data-nosnippet>635</a>                device.create_texture(<span class="kw-2">&amp;</span>wgpu::TextureDescriptor {
 <a href=#636 id=636 data-nosnippet>636</a>                    label,
 <a href=#637 id=637 data-nosnippet>637</a>                    size,
@@ -756,7 +756,7 @@
 <a href=#756 id=756 data-nosnippet>756</a>        texture: <span class="kw-2">&amp;</span>wgpu::TextureView,
 <a href=#757 id=757 data-nosnippet>757</a>        sampler_descriptor: wgpu::SamplerDescriptor&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#758 id=758 data-nosnippet>758</a>    ) -&gt; epaint::TextureId {
-<a href=#759 id=759 data-nosnippet>759</a>        <span class="macro">crate::profile_function!</span>();
+<a href=#759 id=759 data-nosnippet>759</a>        <span class="macro">profiling::function_scope!</span>();
 <a href=#760 id=760 data-nosnippet>760</a>
 <a href=#761 id=761 data-nosnippet>761</a>        <span class="kw">let </span>sampler = device.create_sampler(<span class="kw-2">&amp;</span>wgpu::SamplerDescriptor {
 <a href=#762 id=762 data-nosnippet>762</a>            compare: <span class="prelude-val">None</span>,
@@ -804,7 +804,7 @@
 <a href=#804 id=804 data-nosnippet>804</a>        sampler_descriptor: wgpu::SamplerDescriptor&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#805 id=805 data-nosnippet>805</a>        id: epaint::TextureId,
 <a href=#806 id=806 data-nosnippet>806</a>    ) {
-<a href=#807 id=807 data-nosnippet>807</a>        <span class="macro">crate::profile_function!</span>();
+<a href=#807 id=807 data-nosnippet>807</a>        <span class="macro">profiling::function_scope!</span>();
 <a href=#808 id=808 data-nosnippet>808</a>
 <a href=#809 id=809 data-nosnippet>809</a>        <span class="kw">let </span>Texture {
 <a href=#810 id=810 data-nosnippet>810</a>            bind_group: user_texture_binding,
@@ -849,7 +849,7 @@
 <a href=#849 id=849 data-nosnippet>849</a>        paint_jobs: <span class="kw-2">&amp;</span>[epaint::ClippedPrimitive],
 <a href=#850 id=850 data-nosnippet>850</a>        screen_descriptor: <span class="kw-2">&amp;</span>ScreenDescriptor,
 <a href=#851 id=851 data-nosnippet>851</a>    ) -&gt; Vec&lt;wgpu::CommandBuffer&gt; {
-<a href=#852 id=852 data-nosnippet>852</a>        <span class="macro">crate::profile_function!</span>();
+<a href=#852 id=852 data-nosnippet>852</a>        <span class="macro">profiling::function_scope!</span>();
 <a href=#853 id=853 data-nosnippet>853</a>
 <a href=#854 id=854 data-nosnippet>854</a>        <span class="kw">let </span>screen_size_in_points = screen_descriptor.screen_size_in_points();
 <a href=#855 id=855 data-nosnippet>855</a>
@@ -859,7 +859,7 @@
 <a href=#859 id=859 data-nosnippet>859</a>            _padding: Default::default(),
 <a href=#860 id=860 data-nosnippet>860</a>        };
 <a href=#861 id=861 data-nosnippet>861</a>        <span class="kw">if </span>uniform_buffer_content != <span class="self">self</span>.previous_uniform_buffer_content {
-<a href=#862 id=862 data-nosnippet>862</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"update uniforms"</span>);
+<a href=#862 id=862 data-nosnippet>862</a>            <span class="macro">profiling::scope!</span>(<span class="string">"update uniforms"</span>);
 <a href=#863 id=863 data-nosnippet>863</a>            queue.write_buffer(
 <a href=#864 id=864 data-nosnippet>864</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.uniform_buffer,
 <a href=#865 id=865 data-nosnippet>865</a>                <span class="number">0</span>,
@@ -871,7 +871,7 @@
 <a href=#871 id=871 data-nosnippet>871</a>        <span class="comment">// Determine how many vertices &amp; indices need to be rendered, and gather prepare callbacks
 <a href=#872 id=872 data-nosnippet>872</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>callbacks = Vec::new();
 <a href=#873 id=873 data-nosnippet>873</a>        <span class="kw">let </span>(vertex_count, index_count) = {
-<a href=#874 id=874 data-nosnippet>874</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"count_vertices_indices"</span>);
+<a href=#874 id=874 data-nosnippet>874</a>            <span class="macro">profiling::scope!</span>(<span class="string">"count_vertices_indices"</span>);
 <a href=#875 id=875 data-nosnippet>875</a>            paint_jobs.iter().fold((<span class="number">0</span>, <span class="number">0</span>), |acc, clipped_primitive| {
 <a href=#876 id=876 data-nosnippet>876</a>                <span class="kw">match </span><span class="kw-2">&amp;</span>clipped_primitive.primitive {
 <a href=#877 id=877 data-nosnippet>877</a>                    Primitive::Mesh(mesh) =&gt; {
@@ -890,7 +890,7 @@
 <a href=#890 id=890 data-nosnippet>890</a>        };
 <a href=#891 id=891 data-nosnippet>891</a>
 <a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">if </span>index_count &gt; <span class="number">0 </span>{
-<a href=#893 id=893 data-nosnippet>893</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"indices"</span>, index_count.to_string());
+<a href=#893 id=893 data-nosnippet>893</a>            <span class="macro">profiling::scope!</span>(<span class="string">"indices"</span>, index_count.to_string().as_str());
 <a href=#894 id=894 data-nosnippet>894</a>
 <a href=#895 id=895 data-nosnippet>895</a>            <span class="self">self</span>.index_buffer.slices.clear();
 <a href=#896 id=896 data-nosnippet>896</a>
@@ -928,7 +928,7 @@
 <a href=#928 id=928 data-nosnippet>928</a>            }
 <a href=#929 id=929 data-nosnippet>929</a>        }
 <a href=#930 id=930 data-nosnippet>930</a>        <span class="kw">if </span>vertex_count &gt; <span class="number">0 </span>{
-<a href=#931 id=931 data-nosnippet>931</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"vertices"</span>, vertex_count.to_string());
+<a href=#931 id=931 data-nosnippet>931</a>            <span class="macro">profiling::scope!</span>(<span class="string">"vertices"</span>, vertex_count.to_string().as_str());
 <a href=#932 id=932 data-nosnippet>932</a>
 <a href=#933 id=933 data-nosnippet>933</a>            <span class="self">self</span>.vertex_buffer.slices.clear();
 <a href=#934 id=934 data-nosnippet>934</a>
@@ -969,7 +969,7 @@
 <a href=#969 id=969 data-nosnippet>969</a>
 <a href=#970 id=970 data-nosnippet>970</a>        <span class="kw">let </span><span class="kw-2">mut </span>user_cmd_bufs = Vec::new();
 <a href=#971 id=971 data-nosnippet>971</a>        {
-<a href=#972 id=972 data-nosnippet>972</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"prepare callbacks"</span>);
+<a href=#972 id=972 data-nosnippet>972</a>            <span class="macro">profiling::scope!</span>(<span class="string">"prepare callbacks"</span>);
 <a href=#973 id=973 data-nosnippet>973</a>            <span class="kw">for </span>callback <span class="kw">in </span><span class="kw-2">&amp;</span>callbacks {
 <a href=#974 id=974 data-nosnippet>974</a>                user_cmd_bufs.extend(callback.prepare(
 <a href=#975 id=975 data-nosnippet>975</a>                    device,
@@ -981,7 +981,7 @@
 <a href=#981 id=981 data-nosnippet>981</a>            }
 <a href=#982 id=982 data-nosnippet>982</a>        }
 <a href=#983 id=983 data-nosnippet>983</a>        {
-<a href=#984 id=984 data-nosnippet>984</a>            <span class="macro">crate::profile_scope!</span>(<span class="string">"finish prepare callbacks"</span>);
+<a href=#984 id=984 data-nosnippet>984</a>            <span class="macro">profiling::scope!</span>(<span class="string">"finish prepare callbacks"</span>);
 <a href=#985 id=985 data-nosnippet>985</a>            <span class="kw">for </span>callback <span class="kw">in </span><span class="kw-2">&amp;</span>callbacks {
 <a href=#986 id=986 data-nosnippet>986</a>                user_cmd_bufs.extend(callback.finish_prepare(
 <a href=#987 id=987 data-nosnippet>987</a>                    device,
@@ -1026,7 +1026,7 @@
 <a href=#1026 id=1026 data-nosnippet>1026</a>}
 <a href=#1027 id=1027 data-nosnippet>1027</a>
 <a href=#1028 id=1028 data-nosnippet>1028</a><span class="kw">fn </span>create_vertex_buffer(device: <span class="kw-2">&amp;</span>wgpu::Device, size: u64) -&gt; wgpu::Buffer {
-<a href=#1029 id=1029 data-nosnippet>1029</a>    <span class="macro">crate::profile_function!</span>();
+<a href=#1029 id=1029 data-nosnippet>1029</a>    <span class="macro">profiling::function_scope!</span>();
 <a href=#1030 id=1030 data-nosnippet>1030</a>    device.create_buffer(<span class="kw-2">&amp;</span>wgpu::BufferDescriptor {
 <a href=#1031 id=1031 data-nosnippet>1031</a>        label: <span class="prelude-val">Some</span>(<span class="string">"egui_vertex_buffer"</span>),
 <a href=#1032 id=1032 data-nosnippet>1032</a>        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -1036,7 +1036,7 @@
 <a href=#1036 id=1036 data-nosnippet>1036</a>}
 <a href=#1037 id=1037 data-nosnippet>1037</a>
 <a href=#1038 id=1038 data-nosnippet>1038</a><span class="kw">fn </span>create_index_buffer(device: <span class="kw-2">&amp;</span>wgpu::Device, size: u64) -&gt; wgpu::Buffer {
-<a href=#1039 id=1039 data-nosnippet>1039</a>    <span class="macro">crate::profile_function!</span>();
+<a href=#1039 id=1039 data-nosnippet>1039</a>    <span class="macro">profiling::function_scope!</span>();
 <a href=#1040 id=1040 data-nosnippet>1040</a>    device.create_buffer(<span class="kw-2">&amp;</span>wgpu::BufferDescriptor {
 <a href=#1041 id=1041 data-nosnippet>1041</a>        label: <span class="prelude-val">Some</span>(<span class="string">"egui_index_buffer"</span>),
 <a href=#1042 id=1042 data-nosnippet>1042</a>        usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,

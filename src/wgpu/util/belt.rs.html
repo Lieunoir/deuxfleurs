@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wgpu-22.1.0/src/util/belt.rs`."><title>belt.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="wgpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">wgpu/util/</div>belt.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wgpu-24.0.3/src/util/belt.rs`."><title>belt.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="wgpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">wgpu/util/</div>belt.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
 <a href=#2 id=2 data-nosnippet>2</a>    util::align_to, Buffer, BufferAddress, BufferDescriptor, BufferSize, BufferUsages,
 <a href=#3 id=3 data-nosnippet>3</a>    BufferViewMut, CommandEncoder, Device, MapMode,
 <a href=#4 id=4 data-nosnippet>4</a>};
@@ -117,84 +117,83 @@
 <a href=#117 id=117 data-nosnippet>117</a>            } <span class="kw">else </span>{
 <a href=#118 id=118 data-nosnippet>118</a>                <span class="kw">let </span>size = <span class="self">self</span>.chunk_size.max(size.get());
 <a href=#119 id=119 data-nosnippet>119</a>                Chunk {
-<a href=#120 id=120 data-nosnippet>120</a>                    <span class="attr">#[allow(clippy::arc_with_non_send_sync)] </span><span class="comment">// False positive on emscripten
-<a href=#121 id=121 data-nosnippet>121</a>                    </span>buffer: Arc::new(device.create_buffer(<span class="kw-2">&amp;</span>BufferDescriptor {
-<a href=#122 id=122 data-nosnippet>122</a>                        label: <span class="prelude-val">Some</span>(<span class="string">"(wgpu internal) StagingBelt staging buffer"</span>),
-<a href=#123 id=123 data-nosnippet>123</a>                        size,
-<a href=#124 id=124 data-nosnippet>124</a>                        usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
-<a href=#125 id=125 data-nosnippet>125</a>                        mapped_at_creation: <span class="bool-val">true</span>,
-<a href=#126 id=126 data-nosnippet>126</a>                    })),
-<a href=#127 id=127 data-nosnippet>127</a>                    size,
-<a href=#128 id=128 data-nosnippet>128</a>                    offset: <span class="number">0</span>,
-<a href=#129 id=129 data-nosnippet>129</a>                }
-<a href=#130 id=130 data-nosnippet>130</a>            }
-<a href=#131 id=131 data-nosnippet>131</a>        };
-<a href=#132 id=132 data-nosnippet>132</a>
-<a href=#133 id=133 data-nosnippet>133</a>        encoder.copy_buffer_to_buffer(<span class="kw-2">&amp;</span>chunk.buffer, chunk.offset, target, offset, size.get());
-<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>old_offset = chunk.offset;
-<a href=#135 id=135 data-nosnippet>135</a>        chunk.offset = align_to(chunk.offset + size.get(), <span class="kw">crate</span>::MAP_ALIGNMENT);
-<a href=#136 id=136 data-nosnippet>136</a>
-<a href=#137 id=137 data-nosnippet>137</a>        <span class="self">self</span>.active_chunks.push(chunk);
-<a href=#138 id=138 data-nosnippet>138</a>        <span class="self">self</span>.active_chunks
-<a href=#139 id=139 data-nosnippet>139</a>            .last()
-<a href=#140 id=140 data-nosnippet>140</a>            .unwrap()
-<a href=#141 id=141 data-nosnippet>141</a>            .buffer
-<a href=#142 id=142 data-nosnippet>142</a>            .slice(old_offset..old_offset + size.get())
-<a href=#143 id=143 data-nosnippet>143</a>            .get_mapped_range_mut()
-<a href=#144 id=144 data-nosnippet>144</a>    }
-<a href=#145 id=145 data-nosnippet>145</a>
-<a href=#146 id=146 data-nosnippet>146</a>    <span class="doccomment">/// Prepare currently mapped buffers for use in a submission.
-<a href=#147 id=147 data-nosnippet>147</a>    ///
-<a href=#148 id=148 data-nosnippet>148</a>    /// This must be called before the command encoder(s) provided to
-<a href=#149 id=149 data-nosnippet>149</a>    /// [`StagingBelt::write_buffer()`] are submitted.
-<a href=#150 id=150 data-nosnippet>150</a>    ///
-<a href=#151 id=151 data-nosnippet>151</a>    /// At this point, all the partially used staging buffers are closed (cannot be used for
-<a href=#152 id=152 data-nosnippet>152</a>    /// further writes) until after [`StagingBelt::recall()`] is called *and* the GPU is done
-<a href=#153 id=153 data-nosnippet>153</a>    /// copying the data from them.
-<a href=#154 id=154 data-nosnippet>154</a>    </span><span class="kw">pub fn </span>finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.active_chunks.drain(..) {
-<a href=#156 id=156 data-nosnippet>156</a>            chunk.buffer.unmap();
-<a href=#157 id=157 data-nosnippet>157</a>            <span class="self">self</span>.closed_chunks.push(chunk);
-<a href=#158 id=158 data-nosnippet>158</a>        }
-<a href=#159 id=159 data-nosnippet>159</a>    }
-<a href=#160 id=160 data-nosnippet>160</a>
-<a href=#161 id=161 data-nosnippet>161</a>    <span class="doccomment">/// Recall all of the closed buffers back to be reused.
-<a href=#162 id=162 data-nosnippet>162</a>    ///
-<a href=#163 id=163 data-nosnippet>163</a>    /// This must only be called after the command encoder(s) provided to
-<a href=#164 id=164 data-nosnippet>164</a>    /// [`StagingBelt::write_buffer()`] are submitted. Additional calls are harmless.
-<a href=#165 id=165 data-nosnippet>165</a>    /// Not calling this as soon as possible may result in increased buffer memory usage.
-<a href=#166 id=166 data-nosnippet>166</a>    </span><span class="kw">pub fn </span>recall(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#167 id=167 data-nosnippet>167</a>        <span class="self">self</span>.receive_chunks();
-<a href=#168 id=168 data-nosnippet>168</a>
-<a href=#169 id=169 data-nosnippet>169</a>        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.closed_chunks.drain(..) {
-<a href=#170 id=170 data-nosnippet>170</a>            <span class="kw">let </span>sender = <span class="self">self</span>.sender.get_mut().clone();
-<a href=#171 id=171 data-nosnippet>171</a>            chunk
-<a href=#172 id=172 data-nosnippet>172</a>                .buffer
-<a href=#173 id=173 data-nosnippet>173</a>                .clone()
-<a href=#174 id=174 data-nosnippet>174</a>                .slice(..)
-<a href=#175 id=175 data-nosnippet>175</a>                .map_async(MapMode::Write, <span class="kw">move </span>|<span class="kw">_</span>| {
-<a href=#176 id=176 data-nosnippet>176</a>                    <span class="kw">let _ </span>= sender.send(chunk);
-<a href=#177 id=177 data-nosnippet>177</a>                });
-<a href=#178 id=178 data-nosnippet>178</a>        }
-<a href=#179 id=179 data-nosnippet>179</a>    }
-<a href=#180 id=180 data-nosnippet>180</a>
-<a href=#181 id=181 data-nosnippet>181</a>    <span class="doccomment">/// Move all chunks that the GPU is done with (and are now mapped again)
-<a href=#182 id=182 data-nosnippet>182</a>    /// from `self.receiver` to `self.free_chunks`.
-<a href=#183 id=183 data-nosnippet>183</a>    </span><span class="kw">fn </span>receive_chunks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">while let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>chunk) = <span class="self">self</span>.receiver.get_mut().try_recv() {
-<a href=#185 id=185 data-nosnippet>185</a>            chunk.offset = <span class="number">0</span>;
-<a href=#186 id=186 data-nosnippet>186</a>            <span class="self">self</span>.free_chunks.push(chunk);
-<a href=#187 id=187 data-nosnippet>187</a>        }
-<a href=#188 id=188 data-nosnippet>188</a>    }
-<a href=#189 id=189 data-nosnippet>189</a>}
-<a href=#190 id=190 data-nosnippet>190</a>
-<a href=#191 id=191 data-nosnippet>191</a><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>StagingBelt {
-<a href=#192 id=192 data-nosnippet>192</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
-<a href=#193 id=193 data-nosnippet>193</a>        f.debug_struct(<span class="string">"StagingBelt"</span>)
-<a href=#194 id=194 data-nosnippet>194</a>            .field(<span class="string">"chunk_size"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.chunk_size)
-<a href=#195 id=195 data-nosnippet>195</a>            .field(<span class="string">"active_chunks"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.active_chunks.len())
-<a href=#196 id=196 data-nosnippet>196</a>            .field(<span class="string">"closed_chunks"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.closed_chunks.len())
-<a href=#197 id=197 data-nosnippet>197</a>            .field(<span class="string">"free_chunks"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.free_chunks.len())
-<a href=#198 id=198 data-nosnippet>198</a>            .finish_non_exhaustive()
-<a href=#199 id=199 data-nosnippet>199</a>    }
-<a href=#200 id=200 data-nosnippet>200</a>}</code></pre></div></section></main></body></html>
+<a href=#120 id=120 data-nosnippet>120</a>                    buffer: Arc::new(device.create_buffer(<span class="kw-2">&amp;</span>BufferDescriptor {
+<a href=#121 id=121 data-nosnippet>121</a>                        label: <span class="prelude-val">Some</span>(<span class="string">"(wgpu internal) StagingBelt staging buffer"</span>),
+<a href=#122 id=122 data-nosnippet>122</a>                        size,
+<a href=#123 id=123 data-nosnippet>123</a>                        usage: BufferUsages::MAP_WRITE | BufferUsages::COPY_SRC,
+<a href=#124 id=124 data-nosnippet>124</a>                        mapped_at_creation: <span class="bool-val">true</span>,
+<a href=#125 id=125 data-nosnippet>125</a>                    })),
+<a href=#126 id=126 data-nosnippet>126</a>                    size,
+<a href=#127 id=127 data-nosnippet>127</a>                    offset: <span class="number">0</span>,
+<a href=#128 id=128 data-nosnippet>128</a>                }
+<a href=#129 id=129 data-nosnippet>129</a>            }
+<a href=#130 id=130 data-nosnippet>130</a>        };
+<a href=#131 id=131 data-nosnippet>131</a>
+<a href=#132 id=132 data-nosnippet>132</a>        encoder.copy_buffer_to_buffer(<span class="kw-2">&amp;</span>chunk.buffer, chunk.offset, target, offset, size.get());
+<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span>old_offset = chunk.offset;
+<a href=#134 id=134 data-nosnippet>134</a>        chunk.offset = align_to(chunk.offset + size.get(), <span class="kw">crate</span>::MAP_ALIGNMENT);
+<a href=#135 id=135 data-nosnippet>135</a>
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="self">self</span>.active_chunks.push(chunk);
+<a href=#137 id=137 data-nosnippet>137</a>        <span class="self">self</span>.active_chunks
+<a href=#138 id=138 data-nosnippet>138</a>            .last()
+<a href=#139 id=139 data-nosnippet>139</a>            .unwrap()
+<a href=#140 id=140 data-nosnippet>140</a>            .buffer
+<a href=#141 id=141 data-nosnippet>141</a>            .slice(old_offset..old_offset + size.get())
+<a href=#142 id=142 data-nosnippet>142</a>            .get_mapped_range_mut()
+<a href=#143 id=143 data-nosnippet>143</a>    }
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>    <span class="doccomment">/// Prepare currently mapped buffers for use in a submission.
+<a href=#146 id=146 data-nosnippet>146</a>    ///
+<a href=#147 id=147 data-nosnippet>147</a>    /// This must be called before the command encoder(s) provided to
+<a href=#148 id=148 data-nosnippet>148</a>    /// [`StagingBelt::write_buffer()`] are submitted.
+<a href=#149 id=149 data-nosnippet>149</a>    ///
+<a href=#150 id=150 data-nosnippet>150</a>    /// At this point, all the partially used staging buffers are closed (cannot be used for
+<a href=#151 id=151 data-nosnippet>151</a>    /// further writes) until after [`StagingBelt::recall()`] is called *and* the GPU is done
+<a href=#152 id=152 data-nosnippet>152</a>    /// copying the data from them.
+<a href=#153 id=153 data-nosnippet>153</a>    </span><span class="kw">pub fn </span>finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.active_chunks.drain(..) {
+<a href=#155 id=155 data-nosnippet>155</a>            chunk.buffer.unmap();
+<a href=#156 id=156 data-nosnippet>156</a>            <span class="self">self</span>.closed_chunks.push(chunk);
+<a href=#157 id=157 data-nosnippet>157</a>        }
+<a href=#158 id=158 data-nosnippet>158</a>    }
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a>    <span class="doccomment">/// Recall all of the closed buffers back to be reused.
+<a href=#161 id=161 data-nosnippet>161</a>    ///
+<a href=#162 id=162 data-nosnippet>162</a>    /// This must only be called after the command encoder(s) provided to
+<a href=#163 id=163 data-nosnippet>163</a>    /// [`StagingBelt::write_buffer()`] are submitted. Additional calls are harmless.
+<a href=#164 id=164 data-nosnippet>164</a>    /// Not calling this as soon as possible may result in increased buffer memory usage.
+<a href=#165 id=165 data-nosnippet>165</a>    </span><span class="kw">pub fn </span>recall(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="self">self</span>.receive_chunks();
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.closed_chunks.drain(..) {
+<a href=#169 id=169 data-nosnippet>169</a>            <span class="kw">let </span>sender = <span class="self">self</span>.sender.get_mut().clone();
+<a href=#170 id=170 data-nosnippet>170</a>            chunk
+<a href=#171 id=171 data-nosnippet>171</a>                .buffer
+<a href=#172 id=172 data-nosnippet>172</a>                .clone()
+<a href=#173 id=173 data-nosnippet>173</a>                .slice(..)
+<a href=#174 id=174 data-nosnippet>174</a>                .map_async(MapMode::Write, <span class="kw">move </span>|<span class="kw">_</span>| {
+<a href=#175 id=175 data-nosnippet>175</a>                    <span class="kw">let _ </span>= sender.send(chunk);
+<a href=#176 id=176 data-nosnippet>176</a>                });
+<a href=#177 id=177 data-nosnippet>177</a>        }
+<a href=#178 id=178 data-nosnippet>178</a>    }
+<a href=#179 id=179 data-nosnippet>179</a>
+<a href=#180 id=180 data-nosnippet>180</a>    <span class="doccomment">/// Move all chunks that the GPU is done with (and are now mapped again)
+<a href=#181 id=181 data-nosnippet>181</a>    /// from `self.receiver` to `self.free_chunks`.
+<a href=#182 id=182 data-nosnippet>182</a>    </span><span class="kw">fn </span>receive_chunks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#183 id=183 data-nosnippet>183</a>        <span class="kw">while let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>chunk) = <span class="self">self</span>.receiver.get_mut().try_recv() {
+<a href=#184 id=184 data-nosnippet>184</a>            chunk.offset = <span class="number">0</span>;
+<a href=#185 id=185 data-nosnippet>185</a>            <span class="self">self</span>.free_chunks.push(chunk);
+<a href=#186 id=186 data-nosnippet>186</a>        }
+<a href=#187 id=187 data-nosnippet>187</a>    }
+<a href=#188 id=188 data-nosnippet>188</a>}
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>StagingBelt {
+<a href=#191 id=191 data-nosnippet>191</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
+<a href=#192 id=192 data-nosnippet>192</a>        f.debug_struct(<span class="string">"StagingBelt"</span>)
+<a href=#193 id=193 data-nosnippet>193</a>            .field(<span class="string">"chunk_size"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.chunk_size)
+<a href=#194 id=194 data-nosnippet>194</a>            .field(<span class="string">"active_chunks"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.active_chunks.len())
+<a href=#195 id=195 data-nosnippet>195</a>            .field(<span class="string">"closed_chunks"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.closed_chunks.len())
+<a href=#196 id=196 data-nosnippet>196</a>            .field(<span class="string">"free_chunks"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.free_chunks.len())
+<a href=#197 id=197 data-nosnippet>197</a>            .finish_non_exhaustive()
+<a href=#198 id=198 data-nosnippet>198</a>    }
+<a href=#199 id=199 data-nosnippet>199</a>}</code></pre></div></section></main></body></html>

@@ -341,15 +341,15 @@
 <a href=#341 id=341 data-nosnippet>341</a>            }
 <a href=#342 id=342 data-nosnippet>342</a>            {
 <a href=#343 id=343 data-nosnippet>343</a>                encoder.copy_texture_to_buffer(
-<a href=#344 id=344 data-nosnippet>344</a>                    wgpu::ImageCopyTexture {
+<a href=#344 id=344 data-nosnippet>344</a>                    wgpu::TexelCopyTextureInfo {
 <a href=#345 id=345 data-nosnippet>345</a>                        aspect: wgpu::TextureAspect::All,
 <a href=#346 id=346 data-nosnippet>346</a>                        texture: <span class="kw-2">&amp;</span><span class="self">self</span>.texture,
 <a href=#347 id=347 data-nosnippet>347</a>                        mip_level: <span class="number">0</span>,
 <a href=#348 id=348 data-nosnippet>348</a>                        origin: wgpu::Origin3d::ZERO,
 <a href=#349 id=349 data-nosnippet>349</a>                    },
-<a href=#350 id=350 data-nosnippet>350</a>                    wgpu::ImageCopyBuffer {
+<a href=#350 id=350 data-nosnippet>350</a>                    wgpu::TexelCopyBufferInfo {
 <a href=#351 id=351 data-nosnippet>351</a>                        buffer: <span class="kw-2">&amp;</span><span class="self">self</span>.buffer,
-<a href=#352 id=352 data-nosnippet>352</a>                        layout: wgpu::ImageDataLayout {
+<a href=#352 id=352 data-nosnippet>352</a>                        layout: wgpu::TexelCopyBufferLayout {
 <a href=#353 id=353 data-nosnippet>353</a>                            offset: <span class="number">0</span>,
 <a href=#354 id=354 data-nosnippet>354</a>                            bytes_per_row: <span class="prelude-val">Some</span>(<span class="self">self</span>.buffer_dimensions.padded_bytes_per_row <span class="kw">as </span>u32),
 <a href=#355 id=355 data-nosnippet>355</a>                            <span class="comment">//rows_per_image: std::num::NonZeroU32::new(self.size.height),

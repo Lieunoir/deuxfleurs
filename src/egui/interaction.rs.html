@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/egui-0.29.1/src/interaction.rs`."><title>interaction.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="egui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">egui/</div>interaction.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! How mouse and touch interzcts with widgets.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/egui-0.31.1/src/interaction.rs`."><title>interaction.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="egui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">egui/</div>interaction.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! How mouse and touch interzcts with widgets.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use crate</span>::{hit_test, id, input_state, memory, Id, InputState, Key, WidgetRects};
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -113,7 +113,7 @@
 <a href=#113 id=113 data-nosnippet>113</a>    input: <span class="kw-2">&amp;</span>InputState,
 <a href=#114 id=114 data-nosnippet>114</a>    interaction: <span class="kw-2">&amp;mut </span>InteractionState,
 <a href=#115 id=115 data-nosnippet>115</a>) -&gt; InteractionSnapshot {
-<a href=#116 id=116 data-nosnippet>116</a>    <span class="macro">crate::profile_function!</span>();
+<a href=#116 id=116 data-nosnippet>116</a>    <span class="macro">profiling::function_scope!</span>();
 <a href=#117 id=117 data-nosnippet>117</a>
 <a href=#118 id=118 data-nosnippet>118</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = interaction.potential_click_id {
 <a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">if </span>!widgets.contains(id) {
@@ -192,14 +192,14 @@
 <a href=#192 id=192 data-nosnippet>192</a>        <span class="comment">// Check if we started dragging something new:
 <a href=#193 id=193 data-nosnippet>193</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(widget) = interaction.potential_drag_id.and_then(|id| widgets.get(id)) {
 <a href=#194 id=194 data-nosnippet>194</a>            <span class="kw">if </span>widget.enabled {
-<a href=#195 id=195 data-nosnippet>195</a>                <span class="kw">let </span>is_dragged = <span class="kw">if </span>widget.sense.click &amp;&amp; widget.sense.drag {
+<a href=#195 id=195 data-nosnippet>195</a>                <span class="kw">let </span>is_dragged = <span class="kw">if </span>widget.sense.senses_click() &amp;&amp; widget.sense.senses_drag() {
 <a href=#196 id=196 data-nosnippet>196</a>                    <span class="comment">// This widget is sensitive to both clicks and drags.
 <a href=#197 id=197 data-nosnippet>197</a>                    // When the mouse first is pressed, it could be either,
 <a href=#198 id=198 data-nosnippet>198</a>                    // so we postpone the decision until we know.
 <a href=#199 id=199 data-nosnippet>199</a>                    </span>input.pointer.is_decidedly_dragging()
 <a href=#200 id=200 data-nosnippet>200</a>                } <span class="kw">else </span>{
 <a href=#201 id=201 data-nosnippet>201</a>                    <span class="comment">// This widget is just sensitive to drags, so we can mark it as dragged right away:
-<a href=#202 id=202 data-nosnippet>202</a>                    </span>widget.sense.drag
+<a href=#202 id=202 data-nosnippet>202</a>                    </span>widget.sense.senses_drag()
 <a href=#203 id=203 data-nosnippet>203</a>                };
 <a href=#204 id=204 data-nosnippet>204</a>
 <a href=#205 id=205 data-nosnippet>205</a>                <span class="kw">if </span>is_dragged {
@@ -249,47 +249,51 @@
 <a href=#249 id=249 data-nosnippet>249</a>            .copied()
 <a href=#250 id=250 data-nosnippet>250</a>            .collect()
 <a href=#251 id=251 data-nosnippet>251</a>    } <span class="kw">else </span>{
-<a href=#252 id=252 data-nosnippet>252</a>        <span class="comment">// We may be hovering a an interactive widget or two.
+<a href=#252 id=252 data-nosnippet>252</a>        <span class="comment">// We may be hovering an interactive widget or two.
 <a href=#253 id=253 data-nosnippet>253</a>        // We must also consider the case where non-interactive widgets
 <a href=#254 id=254 data-nosnippet>254</a>        // are _on top_ of an interactive widget.
 <a href=#255 id=255 data-nosnippet>255</a>        // For instance: a label in a draggable window.
 <a href=#256 id=256 data-nosnippet>256</a>        // In that case we want to hover _both_ widgets,
 <a href=#257 id=257 data-nosnippet>257</a>        // otherwise we won't see tooltips for the label.
 <a href=#258 id=258 data-nosnippet>258</a>        //
-<a href=#259 id=259 data-nosnippet>259</a>        // Because of how `Ui` work, we will often allocate the `Ui` rect
-<a href=#260 id=260 data-nosnippet>260</a>        // _after_ adding the children in it (once we know the size it will occopy)
-<a href=#261 id=261 data-nosnippet>261</a>        // so we will also have a lot of such `Ui` widgets rects covering almost any widget.
-<a href=#262 id=262 data-nosnippet>262</a>        //
-<a href=#263 id=263 data-nosnippet>263</a>        // So: we want to hover _all_ widgets above the interactive widget (if any),
-<a href=#264 id=264 data-nosnippet>264</a>        // but none below it (an interactive widget stops the hover search).
-<a href=#265 id=265 data-nosnippet>265</a>        //
-<a href=#266 id=266 data-nosnippet>266</a>        // To know when to stop we need to first know the order of the widgets,
-<a href=#267 id=267 data-nosnippet>267</a>        // which luckily we have in the `WidgetRects`.
-<a href=#268 id=268 data-nosnippet>268</a>
-<a href=#269 id=269 data-nosnippet>269</a>        </span><span class="kw">let </span>order = |id| widgets.order(id).map(|(_layer, order)| order); <span class="comment">// we ignore the layer, since all widgets at this point is in the same layer
+<a href=#259 id=259 data-nosnippet>259</a>        // So: we want to hover _all_ widgets above the interactive widget (if any),
+<a href=#260 id=260 data-nosnippet>260</a>        // but none below it (an interactive widget stops the hover search).
+<a href=#261 id=261 data-nosnippet>261</a>        //
+<a href=#262 id=262 data-nosnippet>262</a>        // To know when to stop we need to first know the order of the widgets,
+<a href=#263 id=263 data-nosnippet>263</a>        // which luckily we already have in `hits.close`.
+<a href=#264 id=264 data-nosnippet>264</a>
+<a href=#265 id=265 data-nosnippet>265</a>        </span><span class="kw">let </span>order = |id| hits.close.iter().position(|w| w.id == id);
+<a href=#266 id=266 data-nosnippet>266</a>
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="kw">let </span>click_order = hits.click.and_then(|w| order(w.id)).unwrap_or(<span class="number">0</span>);
+<a href=#268 id=268 data-nosnippet>268</a>        <span class="kw">let </span>drag_order = hits.drag.and_then(|w| order(w.id)).unwrap_or(<span class="number">0</span>);
+<a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">let </span>top_interactive_order = click_order.max(drag_order);
 <a href=#270 id=270 data-nosnippet>270</a>
-<a href=#271 id=271 data-nosnippet>271</a>        </span><span class="kw">let </span>click_order = hits.click.and_then(|w| order(w.id)).unwrap_or(<span class="number">0</span>);
-<a href=#272 id=272 data-nosnippet>272</a>        <span class="kw">let </span>drag_order = hits.drag.and_then(|w| order(w.id)).unwrap_or(<span class="number">0</span>);
-<a href=#273 id=273 data-nosnippet>273</a>        <span class="kw">let </span>top_interactive_order = click_order.max(drag_order);
-<a href=#274 id=274 data-nosnippet>274</a>
-<a href=#275 id=275 data-nosnippet>275</a>        <span class="kw">let </span><span class="kw-2">mut </span>hovered: IdSet = hits.click.iter().chain(<span class="kw-2">&amp;</span>hits.drag).map(|w| w.id).collect();
-<a href=#276 id=276 data-nosnippet>276</a>
-<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;</span>hits.contains_pointer {
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="kw">if </span>top_interactive_order &lt;= order(w.id).unwrap_or(<span class="number">0</span>) {
-<a href=#279 id=279 data-nosnippet>279</a>                hovered.insert(w.id);
-<a href=#280 id=280 data-nosnippet>280</a>            }
-<a href=#281 id=281 data-nosnippet>281</a>        }
-<a href=#282 id=282 data-nosnippet>282</a>
-<a href=#283 id=283 data-nosnippet>283</a>        hovered
-<a href=#284 id=284 data-nosnippet>284</a>    };
-<a href=#285 id=285 data-nosnippet>285</a>
-<a href=#286 id=286 data-nosnippet>286</a>    InteractionSnapshot {
-<a href=#287 id=287 data-nosnippet>287</a>        clicked,
-<a href=#288 id=288 data-nosnippet>288</a>        long_touched,
-<a href=#289 id=289 data-nosnippet>289</a>        drag_started,
-<a href=#290 id=290 data-nosnippet>290</a>        dragged,
-<a href=#291 id=291 data-nosnippet>291</a>        drag_stopped,
-<a href=#292 id=292 data-nosnippet>292</a>        contains_pointer,
-<a href=#293 id=293 data-nosnippet>293</a>        hovered,
-<a href=#294 id=294 data-nosnippet>294</a>    }
-<a href=#295 id=295 data-nosnippet>295</a>}</code></pre></div></section></main></body></html>
+<a href=#271 id=271 data-nosnippet>271</a>        <span class="kw">let </span><span class="kw-2">mut </span>hovered: IdSet = hits.click.iter().chain(<span class="kw-2">&amp;</span>hits.drag).map(|w| w.id).collect();
+<a href=#272 id=272 data-nosnippet>272</a>
+<a href=#273 id=273 data-nosnippet>273</a>        <span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;</span>hits.contains_pointer {
+<a href=#274 id=274 data-nosnippet>274</a>            <span class="kw">let </span>is_interactive = w.sense.senses_click() || w.sense.senses_drag();
+<a href=#275 id=275 data-nosnippet>275</a>            <span class="kw">if </span>is_interactive {
+<a href=#276 id=276 data-nosnippet>276</a>                <span class="comment">// The only interactive widgets we mark as hovered are the ones
+<a href=#277 id=277 data-nosnippet>277</a>                // in `hits.click` and `hits.drag`!
+<a href=#278 id=278 data-nosnippet>278</a>            </span>} <span class="kw">else </span>{
+<a href=#279 id=279 data-nosnippet>279</a>                <span class="kw">let </span>is_on_top_of_the_interactive_widget =
+<a href=#280 id=280 data-nosnippet>280</a>                    top_interactive_order &lt;= order(w.id).unwrap_or(<span class="number">0</span>);
+<a href=#281 id=281 data-nosnippet>281</a>                <span class="kw">if </span>is_on_top_of_the_interactive_widget {
+<a href=#282 id=282 data-nosnippet>282</a>                    hovered.insert(w.id);
+<a href=#283 id=283 data-nosnippet>283</a>                }
+<a href=#284 id=284 data-nosnippet>284</a>            }
+<a href=#285 id=285 data-nosnippet>285</a>        }
+<a href=#286 id=286 data-nosnippet>286</a>
+<a href=#287 id=287 data-nosnippet>287</a>        hovered
+<a href=#288 id=288 data-nosnippet>288</a>    };
+<a href=#289 id=289 data-nosnippet>289</a>
+<a href=#290 id=290 data-nosnippet>290</a>    InteractionSnapshot {
+<a href=#291 id=291 data-nosnippet>291</a>        clicked,
+<a href=#292 id=292 data-nosnippet>292</a>        long_touched,
+<a href=#293 id=293 data-nosnippet>293</a>        drag_started,
+<a href=#294 id=294 data-nosnippet>294</a>        dragged,
+<a href=#295 id=295 data-nosnippet>295</a>        drag_stopped,
+<a href=#296 id=296 data-nosnippet>296</a>        contains_pointer,
+<a href=#297 id=297 data-nosnippet>297</a>        hovered,
+<a href=#298 id=298 data-nosnippet>298</a>    }
+<a href=#299 id=299 data-nosnippet>299</a>}</code></pre></div></section></main></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/egui-0.29.1/src/widgets/text_edit/state.rs`."><title>state.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="egui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">egui/widgets/text_edit/</div>state.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::sync::Arc;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/egui-0.31.1/src/widgets/text_edit/state.rs`."><title>state.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="egui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">egui/widgets/text_edit/</div>state.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::sync::Arc;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::mutex::Mutex;
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -53,10 +53,10 @@
 <a href=#53 id=53 data-nosnippet>53</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"serde"</span>, serde(skip))]
 <a href=#54 id=54 data-nosnippet>54</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) singleline_offset: f32,
 <a href=#55 id=55 data-nosnippet>55</a>
-<a href=#56 id=56 data-nosnippet>56</a>    <span class="doccomment">/// When did the user last press a key?
+<a href=#56 id=56 data-nosnippet>56</a>    <span class="doccomment">/// When did the user last press a key or click on the `TextEdit`.
 <a href=#57 id=57 data-nosnippet>57</a>    /// Used to pause the cursor animation when typing.
 <a href=#58 id=58 data-nosnippet>58</a>    </span><span class="attr">#[cfg_attr(feature = <span class="string">"serde"</span>, serde(skip))]
-<a href=#59 id=59 data-nosnippet>59</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) last_edit_time: f64,
+<a href=#59 id=59 data-nosnippet>59</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) last_interaction_time: f64,
 <a href=#60 id=60 data-nosnippet>60</a>}
 <a href=#61 id=61 data-nosnippet>61</a>
 <a href=#62 id=62 data-nosnippet>62</a><span class="kw">impl </span>TextEditState {
@@ -89,16 +89,17 @@
 <a href=#89 id=89 data-nosnippet>89</a>        <span class="self">self</span>.undoer.lock().clone()
 <a href=#90 id=90 data-nosnippet>90</a>    }
 <a href=#91 id=91 data-nosnippet>91</a>
-<a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">pub fn </span>set_undoer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, undoer: TextEditUndoer) {
-<a href=#93 id=93 data-nosnippet>93</a>        <span class="kw-2">*</span><span class="self">self</span>.undoer.lock() = undoer;
-<a href=#94 id=94 data-nosnippet>94</a>    }
-<a href=#95 id=95 data-nosnippet>95</a>
-<a href=#96 id=96 data-nosnippet>96</a>    <span class="kw">pub fn </span>clear_undoer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#97 id=97 data-nosnippet>97</a>        <span class="self">self</span>.set_undoer(TextEditUndoer::default());
-<a href=#98 id=98 data-nosnippet>98</a>    }
-<a href=#99 id=99 data-nosnippet>99</a>
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="attr">#[deprecated = <span class="string">"Use `self.cursor.range` instead"</span>]
-<a href=#101 id=101 data-nosnippet>101</a>    </span><span class="kw">pub fn </span>cursor_range(<span class="kw-2">&amp;</span><span class="self">self</span>, galley: <span class="kw-2">&amp;</span>Galley) -&gt; <span class="prelude-ty">Option</span>&lt;CursorRange&gt; {
-<a href=#102 id=102 data-nosnippet>102</a>        <span class="self">self</span>.cursor.range(galley)
-<a href=#103 id=103 data-nosnippet>103</a>    }
-<a href=#104 id=104 data-nosnippet>104</a>}</code></pre></div></section></main></body></html>
+<a href=#92 id=92 data-nosnippet>92</a>    <span class="attr">#[allow(clippy::needless_pass_by_ref_mut)] </span><span class="comment">// Intentionally hide interiority of mutability
+<a href=#93 id=93 data-nosnippet>93</a>    </span><span class="kw">pub fn </span>set_undoer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, undoer: TextEditUndoer) {
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw-2">*</span><span class="self">self</span>.undoer.lock() = undoer;
+<a href=#95 id=95 data-nosnippet>95</a>    }
+<a href=#96 id=96 data-nosnippet>96</a>
+<a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">pub fn </span>clear_undoer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="self">self</span>.set_undoer(TextEditUndoer::default());
+<a href=#99 id=99 data-nosnippet>99</a>    }
+<a href=#100 id=100 data-nosnippet>100</a>
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="attr">#[deprecated = <span class="string">"Use `self.cursor.range` instead"</span>]
+<a href=#102 id=102 data-nosnippet>102</a>    </span><span class="kw">pub fn </span>cursor_range(<span class="kw-2">&amp;</span><span class="self">self</span>, galley: <span class="kw-2">&amp;</span>Galley) -&gt; <span class="prelude-ty">Option</span>&lt;CursorRange&gt; {
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="self">self</span>.cursor.range(galley)
+<a href=#104 id=104 data-nosnippet>104</a>    }
+<a href=#105 id=105 data-nosnippet>105</a>}</code></pre></div></section></main></body></html>

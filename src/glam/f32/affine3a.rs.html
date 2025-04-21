@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glam-0.29.3/src/f32/affine3a.rs`."><title>affine3a.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="glam" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">glam/f32/</div>affine3a.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="comment">// Generated from affine.rs.tera template. Edit the template, not the generated file.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glam-0.30.2/src/f32/affine3a.rs`."><title>affine3a.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="glam" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">glam/f32/</div>affine3a.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="comment">// Generated from affine.rs.tera template. Edit the template, not the generated file.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use crate</span>::{Mat3, Mat3A, Mat4, Quat, Vec3, Vec3A};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>core::ops::{Deref, DerefMut, Mul, MulAssign};
@@ -457,125 +457,132 @@
 <a href=#457 id=457 data-nosnippet>457</a>            translation,
 <a href=#458 id=458 data-nosnippet>458</a>        }
 <a href=#459 id=459 data-nosnippet>459</a>    }
-<a href=#460 id=460 data-nosnippet>460</a>}
-<a href=#461 id=461 data-nosnippet>461</a>
-<a href=#462 id=462 data-nosnippet>462</a><span class="kw">impl </span>Default <span class="kw">for </span>Affine3A {
-<a href=#463 id=463 data-nosnippet>463</a>    <span class="attr">#[inline(always)]
-<a href=#464 id=464 data-nosnippet>464</a>    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-<a href=#465 id=465 data-nosnippet>465</a>        <span class="self">Self</span>::IDENTITY
+<a href=#460 id=460 data-nosnippet>460</a>
+<a href=#461 id=461 data-nosnippet>461</a>    <span class="doccomment">/// Casts all elements of `self` to `f64`.
+<a href=#462 id=462 data-nosnippet>462</a>    </span><span class="attr">#[inline]
+<a href=#463 id=463 data-nosnippet>463</a>    #[must_use]
+<a href=#464 id=464 data-nosnippet>464</a>    </span><span class="kw">pub fn </span>as_daffine3(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::DAffine3 {
+<a href=#465 id=465 data-nosnippet>465</a>        <span class="kw">crate</span>::DAffine3::from_mat3_translation(<span class="self">self</span>.matrix3.as_dmat3(), <span class="self">self</span>.translation.as_dvec3())
 <a href=#466 id=466 data-nosnippet>466</a>    }
 <a href=#467 id=467 data-nosnippet>467</a>}
 <a href=#468 id=468 data-nosnippet>468</a>
-<a href=#469 id=469 data-nosnippet>469</a><span class="kw">impl </span>Deref <span class="kw">for </span>Affine3A {
-<a href=#470 id=470 data-nosnippet>470</a>    <span class="kw">type </span>Target = <span class="kw">crate</span>::deref::Cols4&lt;Vec3A&gt;;
-<a href=#471 id=471 data-nosnippet>471</a>    <span class="attr">#[inline(always)]
-<a href=#472 id=472 data-nosnippet>472</a>    </span><span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
-<a href=#473 id=473 data-nosnippet>473</a>        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span>(<span class="self">self </span><span class="kw">as </span><span class="kw-2">*const </span><span class="self">Self </span><span class="kw">as </span><span class="kw-2">*const </span><span class="self">Self</span>::Target) }
-<a href=#474 id=474 data-nosnippet>474</a>    }
-<a href=#475 id=475 data-nosnippet>475</a>}
-<a href=#476 id=476 data-nosnippet>476</a>
-<a href=#477 id=477 data-nosnippet>477</a><span class="kw">impl </span>DerefMut <span class="kw">for </span>Affine3A {
+<a href=#469 id=469 data-nosnippet>469</a><span class="kw">impl </span>Default <span class="kw">for </span>Affine3A {
+<a href=#470 id=470 data-nosnippet>470</a>    <span class="attr">#[inline(always)]
+<a href=#471 id=471 data-nosnippet>471</a>    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#472 id=472 data-nosnippet>472</a>        <span class="self">Self</span>::IDENTITY
+<a href=#473 id=473 data-nosnippet>473</a>    }
+<a href=#474 id=474 data-nosnippet>474</a>}
+<a href=#475 id=475 data-nosnippet>475</a>
+<a href=#476 id=476 data-nosnippet>476</a><span class="kw">impl </span>Deref <span class="kw">for </span>Affine3A {
+<a href=#477 id=477 data-nosnippet>477</a>    <span class="kw">type </span>Target = <span class="kw">crate</span>::deref::Cols4&lt;Vec3A&gt;;
 <a href=#478 id=478 data-nosnippet>478</a>    <span class="attr">#[inline(always)]
-<a href=#479 id=479 data-nosnippet>479</a>    </span><span class="kw">fn </span>deref_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Target {
-<a href=#480 id=480 data-nosnippet>480</a>        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut *</span>(<span class="self">self </span><span class="kw">as </span><span class="kw-2">*mut </span><span class="self">Self </span><span class="kw">as </span><span class="kw-2">*mut </span><span class="self">Self</span>::Target) }
+<a href=#479 id=479 data-nosnippet>479</a>    </span><span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
+<a href=#480 id=480 data-nosnippet>480</a>        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span>(<span class="self">self </span><span class="kw">as </span><span class="kw-2">*const </span><span class="self">Self </span><span class="kw">as </span><span class="kw-2">*const </span><span class="self">Self</span>::Target) }
 <a href=#481 id=481 data-nosnippet>481</a>    }
 <a href=#482 id=482 data-nosnippet>482</a>}
 <a href=#483 id=483 data-nosnippet>483</a>
-<a href=#484 id=484 data-nosnippet>484</a><span class="kw">impl </span>PartialEq <span class="kw">for </span>Affine3A {
-<a href=#485 id=485 data-nosnippet>485</a>    <span class="attr">#[inline]
-<a href=#486 id=486 data-nosnippet>486</a>    </span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, rhs: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
-<a href=#487 id=487 data-nosnippet>487</a>        <span class="self">self</span>.matrix3.eq(<span class="kw-2">&amp;</span>rhs.matrix3) &amp;&amp; <span class="self">self</span>.translation.eq(<span class="kw-2">&amp;</span>rhs.translation)
+<a href=#484 id=484 data-nosnippet>484</a><span class="kw">impl </span>DerefMut <span class="kw">for </span>Affine3A {
+<a href=#485 id=485 data-nosnippet>485</a>    <span class="attr">#[inline(always)]
+<a href=#486 id=486 data-nosnippet>486</a>    </span><span class="kw">fn </span>deref_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Target {
+<a href=#487 id=487 data-nosnippet>487</a>        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut *</span>(<span class="self">self </span><span class="kw">as </span><span class="kw-2">*mut </span><span class="self">Self </span><span class="kw">as </span><span class="kw-2">*mut </span><span class="self">Self</span>::Target) }
 <a href=#488 id=488 data-nosnippet>488</a>    }
 <a href=#489 id=489 data-nosnippet>489</a>}
 <a href=#490 id=490 data-nosnippet>490</a>
-<a href=#491 id=491 data-nosnippet>491</a><span class="kw">impl </span>core::fmt::Debug <span class="kw">for </span>Affine3A {
-<a href=#492 id=492 data-nosnippet>492</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>core::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; core::fmt::Result {
-<a href=#493 id=493 data-nosnippet>493</a>        fmt.debug_struct(<span class="macro">stringify!</span>(Affine3A))
-<a href=#494 id=494 data-nosnippet>494</a>            .field(<span class="string">"matrix3"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.matrix3)
-<a href=#495 id=495 data-nosnippet>495</a>            .field(<span class="string">"translation"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.translation)
-<a href=#496 id=496 data-nosnippet>496</a>            .finish()
-<a href=#497 id=497 data-nosnippet>497</a>    }
-<a href=#498 id=498 data-nosnippet>498</a>}
-<a href=#499 id=499 data-nosnippet>499</a>
-<a href=#500 id=500 data-nosnippet>500</a><span class="kw">impl </span>core::fmt::Display <span class="kw">for </span>Affine3A {
-<a href=#501 id=501 data-nosnippet>501</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>core::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; core::fmt::Result {
-<a href=#502 id=502 data-nosnippet>502</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(p) = f.precision() {
-<a href=#503 id=503 data-nosnippet>503</a>            <span class="macro">write!</span>(
-<a href=#504 id=504 data-nosnippet>504</a>                f,
-<a href=#505 id=505 data-nosnippet>505</a>                <span class="string">"[{:.*}, {:.*}, {:.*}, {:.*}]"</span>,
-<a href=#506 id=506 data-nosnippet>506</a>                p,
-<a href=#507 id=507 data-nosnippet>507</a>                <span class="self">self</span>.matrix3.x_axis,
-<a href=#508 id=508 data-nosnippet>508</a>                p,
-<a href=#509 id=509 data-nosnippet>509</a>                <span class="self">self</span>.matrix3.y_axis,
-<a href=#510 id=510 data-nosnippet>510</a>                p,
-<a href=#511 id=511 data-nosnippet>511</a>                <span class="self">self</span>.matrix3.z_axis,
-<a href=#512 id=512 data-nosnippet>512</a>                p,
-<a href=#513 id=513 data-nosnippet>513</a>                <span class="self">self</span>.translation
-<a href=#514 id=514 data-nosnippet>514</a>            )
-<a href=#515 id=515 data-nosnippet>515</a>        } <span class="kw">else </span>{
-<a href=#516 id=516 data-nosnippet>516</a>            <span class="macro">write!</span>(
-<a href=#517 id=517 data-nosnippet>517</a>                f,
-<a href=#518 id=518 data-nosnippet>518</a>                <span class="string">"[{}, {}, {}, {}]"</span>,
-<a href=#519 id=519 data-nosnippet>519</a>                <span class="self">self</span>.matrix3.x_axis, <span class="self">self</span>.matrix3.y_axis, <span class="self">self</span>.matrix3.z_axis, <span class="self">self</span>.translation
-<a href=#520 id=520 data-nosnippet>520</a>            )
-<a href=#521 id=521 data-nosnippet>521</a>        }
-<a href=#522 id=522 data-nosnippet>522</a>    }
-<a href=#523 id=523 data-nosnippet>523</a>}
-<a href=#524 id=524 data-nosnippet>524</a>
-<a href=#525 id=525 data-nosnippet>525</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; core::iter::Product&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">Self</span>&gt; <span class="kw">for </span>Affine3A {
-<a href=#526 id=526 data-nosnippet>526</a>    <span class="kw">fn </span>product&lt;I&gt;(iter: I) -&gt; <span class="self">Self
-<a href=#527 id=527 data-nosnippet>527</a>    </span><span class="kw">where
-<a href=#528 id=528 data-nosnippet>528</a>        </span>I: Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">Self</span>&gt;,
-<a href=#529 id=529 data-nosnippet>529</a>    {
-<a href=#530 id=530 data-nosnippet>530</a>        iter.fold(<span class="self">Self</span>::IDENTITY, |a, <span class="kw-2">&amp;</span>b| a * b)
-<a href=#531 id=531 data-nosnippet>531</a>    }
-<a href=#532 id=532 data-nosnippet>532</a>}
-<a href=#533 id=533 data-nosnippet>533</a>
-<a href=#534 id=534 data-nosnippet>534</a><span class="kw">impl </span>Mul <span class="kw">for </span>Affine3A {
-<a href=#535 id=535 data-nosnippet>535</a>    <span class="kw">type </span>Output = Affine3A;
-<a href=#536 id=536 data-nosnippet>536</a>
-<a href=#537 id=537 data-nosnippet>537</a>    <span class="attr">#[inline]
-<a href=#538 id=538 data-nosnippet>538</a>    </span><span class="kw">fn </span>mul(<span class="self">self</span>, rhs: Affine3A) -&gt; <span class="self">Self</span>::Output {
-<a href=#539 id=539 data-nosnippet>539</a>        <span class="self">Self </span>{
-<a href=#540 id=540 data-nosnippet>540</a>            matrix3: <span class="self">self</span>.matrix3 * rhs.matrix3,
-<a href=#541 id=541 data-nosnippet>541</a>            translation: <span class="self">self</span>.matrix3 * rhs.translation + <span class="self">self</span>.translation,
-<a href=#542 id=542 data-nosnippet>542</a>        }
-<a href=#543 id=543 data-nosnippet>543</a>    }
-<a href=#544 id=544 data-nosnippet>544</a>}
-<a href=#545 id=545 data-nosnippet>545</a>
-<a href=#546 id=546 data-nosnippet>546</a><span class="kw">impl </span>MulAssign <span class="kw">for </span>Affine3A {
-<a href=#547 id=547 data-nosnippet>547</a>    <span class="attr">#[inline]
-<a href=#548 id=548 data-nosnippet>548</a>    </span><span class="kw">fn </span>mul_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: Affine3A) {
-<a href=#549 id=549 data-nosnippet>549</a>        <span class="kw-2">*</span><span class="self">self </span>= <span class="self">self</span>.mul(rhs);
+<a href=#491 id=491 data-nosnippet>491</a><span class="kw">impl </span>PartialEq <span class="kw">for </span>Affine3A {
+<a href=#492 id=492 data-nosnippet>492</a>    <span class="attr">#[inline]
+<a href=#493 id=493 data-nosnippet>493</a>    </span><span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, rhs: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+<a href=#494 id=494 data-nosnippet>494</a>        <span class="self">self</span>.matrix3.eq(<span class="kw-2">&amp;</span>rhs.matrix3) &amp;&amp; <span class="self">self</span>.translation.eq(<span class="kw-2">&amp;</span>rhs.translation)
+<a href=#495 id=495 data-nosnippet>495</a>    }
+<a href=#496 id=496 data-nosnippet>496</a>}
+<a href=#497 id=497 data-nosnippet>497</a>
+<a href=#498 id=498 data-nosnippet>498</a><span class="kw">impl </span>core::fmt::Debug <span class="kw">for </span>Affine3A {
+<a href=#499 id=499 data-nosnippet>499</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>core::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; core::fmt::Result {
+<a href=#500 id=500 data-nosnippet>500</a>        fmt.debug_struct(<span class="macro">stringify!</span>(Affine3A))
+<a href=#501 id=501 data-nosnippet>501</a>            .field(<span class="string">"matrix3"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.matrix3)
+<a href=#502 id=502 data-nosnippet>502</a>            .field(<span class="string">"translation"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.translation)
+<a href=#503 id=503 data-nosnippet>503</a>            .finish()
+<a href=#504 id=504 data-nosnippet>504</a>    }
+<a href=#505 id=505 data-nosnippet>505</a>}
+<a href=#506 id=506 data-nosnippet>506</a>
+<a href=#507 id=507 data-nosnippet>507</a><span class="kw">impl </span>core::fmt::Display <span class="kw">for </span>Affine3A {
+<a href=#508 id=508 data-nosnippet>508</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>core::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; core::fmt::Result {
+<a href=#509 id=509 data-nosnippet>509</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(p) = f.precision() {
+<a href=#510 id=510 data-nosnippet>510</a>            <span class="macro">write!</span>(
+<a href=#511 id=511 data-nosnippet>511</a>                f,
+<a href=#512 id=512 data-nosnippet>512</a>                <span class="string">"[{:.*}, {:.*}, {:.*}, {:.*}]"</span>,
+<a href=#513 id=513 data-nosnippet>513</a>                p,
+<a href=#514 id=514 data-nosnippet>514</a>                <span class="self">self</span>.matrix3.x_axis,
+<a href=#515 id=515 data-nosnippet>515</a>                p,
+<a href=#516 id=516 data-nosnippet>516</a>                <span class="self">self</span>.matrix3.y_axis,
+<a href=#517 id=517 data-nosnippet>517</a>                p,
+<a href=#518 id=518 data-nosnippet>518</a>                <span class="self">self</span>.matrix3.z_axis,
+<a href=#519 id=519 data-nosnippet>519</a>                p,
+<a href=#520 id=520 data-nosnippet>520</a>                <span class="self">self</span>.translation
+<a href=#521 id=521 data-nosnippet>521</a>            )
+<a href=#522 id=522 data-nosnippet>522</a>        } <span class="kw">else </span>{
+<a href=#523 id=523 data-nosnippet>523</a>            <span class="macro">write!</span>(
+<a href=#524 id=524 data-nosnippet>524</a>                f,
+<a href=#525 id=525 data-nosnippet>525</a>                <span class="string">"[{}, {}, {}, {}]"</span>,
+<a href=#526 id=526 data-nosnippet>526</a>                <span class="self">self</span>.matrix3.x_axis, <span class="self">self</span>.matrix3.y_axis, <span class="self">self</span>.matrix3.z_axis, <span class="self">self</span>.translation
+<a href=#527 id=527 data-nosnippet>527</a>            )
+<a href=#528 id=528 data-nosnippet>528</a>        }
+<a href=#529 id=529 data-nosnippet>529</a>    }
+<a href=#530 id=530 data-nosnippet>530</a>}
+<a href=#531 id=531 data-nosnippet>531</a>
+<a href=#532 id=532 data-nosnippet>532</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; core::iter::Product&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">Self</span>&gt; <span class="kw">for </span>Affine3A {
+<a href=#533 id=533 data-nosnippet>533</a>    <span class="kw">fn </span>product&lt;I&gt;(iter: I) -&gt; <span class="self">Self
+<a href=#534 id=534 data-nosnippet>534</a>    </span><span class="kw">where
+<a href=#535 id=535 data-nosnippet>535</a>        </span>I: Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">Self</span>&gt;,
+<a href=#536 id=536 data-nosnippet>536</a>    {
+<a href=#537 id=537 data-nosnippet>537</a>        iter.fold(<span class="self">Self</span>::IDENTITY, |a, <span class="kw-2">&amp;</span>b| a * b)
+<a href=#538 id=538 data-nosnippet>538</a>    }
+<a href=#539 id=539 data-nosnippet>539</a>}
+<a href=#540 id=540 data-nosnippet>540</a>
+<a href=#541 id=541 data-nosnippet>541</a><span class="kw">impl </span>Mul <span class="kw">for </span>Affine3A {
+<a href=#542 id=542 data-nosnippet>542</a>    <span class="kw">type </span>Output = Affine3A;
+<a href=#543 id=543 data-nosnippet>543</a>
+<a href=#544 id=544 data-nosnippet>544</a>    <span class="attr">#[inline]
+<a href=#545 id=545 data-nosnippet>545</a>    </span><span class="kw">fn </span>mul(<span class="self">self</span>, rhs: Affine3A) -&gt; <span class="self">Self</span>::Output {
+<a href=#546 id=546 data-nosnippet>546</a>        <span class="self">Self </span>{
+<a href=#547 id=547 data-nosnippet>547</a>            matrix3: <span class="self">self</span>.matrix3 * rhs.matrix3,
+<a href=#548 id=548 data-nosnippet>548</a>            translation: <span class="self">self</span>.matrix3 * rhs.translation + <span class="self">self</span>.translation,
+<a href=#549 id=549 data-nosnippet>549</a>        }
 <a href=#550 id=550 data-nosnippet>550</a>    }
 <a href=#551 id=551 data-nosnippet>551</a>}
 <a href=#552 id=552 data-nosnippet>552</a>
-<a href=#553 id=553 data-nosnippet>553</a><span class="kw">impl </span>From&lt;Affine3A&gt; <span class="kw">for </span>Mat4 {
+<a href=#553 id=553 data-nosnippet>553</a><span class="kw">impl </span>MulAssign <span class="kw">for </span>Affine3A {
 <a href=#554 id=554 data-nosnippet>554</a>    <span class="attr">#[inline]
-<a href=#555 id=555 data-nosnippet>555</a>    </span><span class="kw">fn </span>from(m: Affine3A) -&gt; Mat4 {
-<a href=#556 id=556 data-nosnippet>556</a>        Mat4::from_cols(
-<a href=#557 id=557 data-nosnippet>557</a>            m.matrix3.x_axis.extend(<span class="number">0.0</span>),
-<a href=#558 id=558 data-nosnippet>558</a>            m.matrix3.y_axis.extend(<span class="number">0.0</span>),
-<a href=#559 id=559 data-nosnippet>559</a>            m.matrix3.z_axis.extend(<span class="number">0.0</span>),
-<a href=#560 id=560 data-nosnippet>560</a>            m.translation.extend(<span class="number">1.0</span>),
-<a href=#561 id=561 data-nosnippet>561</a>        )
-<a href=#562 id=562 data-nosnippet>562</a>    }
-<a href=#563 id=563 data-nosnippet>563</a>}
-<a href=#564 id=564 data-nosnippet>564</a>
-<a href=#565 id=565 data-nosnippet>565</a><span class="kw">impl </span>Mul&lt;Mat4&gt; <span class="kw">for </span>Affine3A {
-<a href=#566 id=566 data-nosnippet>566</a>    <span class="kw">type </span>Output = Mat4;
-<a href=#567 id=567 data-nosnippet>567</a>
-<a href=#568 id=568 data-nosnippet>568</a>    <span class="attr">#[inline]
-<a href=#569 id=569 data-nosnippet>569</a>    </span><span class="kw">fn </span>mul(<span class="self">self</span>, rhs: Mat4) -&gt; <span class="self">Self</span>::Output {
-<a href=#570 id=570 data-nosnippet>570</a>        Mat4::from(<span class="self">self</span>) * rhs
-<a href=#571 id=571 data-nosnippet>571</a>    }
-<a href=#572 id=572 data-nosnippet>572</a>}
-<a href=#573 id=573 data-nosnippet>573</a>
-<a href=#574 id=574 data-nosnippet>574</a><span class="kw">impl </span>Mul&lt;Affine3A&gt; <span class="kw">for </span>Mat4 {
-<a href=#575 id=575 data-nosnippet>575</a>    <span class="kw">type </span>Output = Mat4;
-<a href=#576 id=576 data-nosnippet>576</a>
-<a href=#577 id=577 data-nosnippet>577</a>    <span class="attr">#[inline]
-<a href=#578 id=578 data-nosnippet>578</a>    </span><span class="kw">fn </span>mul(<span class="self">self</span>, rhs: Affine3A) -&gt; <span class="self">Self</span>::Output {
-<a href=#579 id=579 data-nosnippet>579</a>        <span class="self">self </span>* Mat4::from(rhs)
-<a href=#580 id=580 data-nosnippet>580</a>    }
-<a href=#581 id=581 data-nosnippet>581</a>}</code></pre></div></section></main></body></html>
+<a href=#555 id=555 data-nosnippet>555</a>    </span><span class="kw">fn </span>mul_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: Affine3A) {
+<a href=#556 id=556 data-nosnippet>556</a>        <span class="kw-2">*</span><span class="self">self </span>= <span class="self">self</span>.mul(rhs);
+<a href=#557 id=557 data-nosnippet>557</a>    }
+<a href=#558 id=558 data-nosnippet>558</a>}
+<a href=#559 id=559 data-nosnippet>559</a>
+<a href=#560 id=560 data-nosnippet>560</a><span class="kw">impl </span>From&lt;Affine3A&gt; <span class="kw">for </span>Mat4 {
+<a href=#561 id=561 data-nosnippet>561</a>    <span class="attr">#[inline]
+<a href=#562 id=562 data-nosnippet>562</a>    </span><span class="kw">fn </span>from(m: Affine3A) -&gt; Mat4 {
+<a href=#563 id=563 data-nosnippet>563</a>        Mat4::from_cols(
+<a href=#564 id=564 data-nosnippet>564</a>            m.matrix3.x_axis.extend(<span class="number">0.0</span>),
+<a href=#565 id=565 data-nosnippet>565</a>            m.matrix3.y_axis.extend(<span class="number">0.0</span>),
+<a href=#566 id=566 data-nosnippet>566</a>            m.matrix3.z_axis.extend(<span class="number">0.0</span>),
+<a href=#567 id=567 data-nosnippet>567</a>            m.translation.extend(<span class="number">1.0</span>),
+<a href=#568 id=568 data-nosnippet>568</a>        )
+<a href=#569 id=569 data-nosnippet>569</a>    }
+<a href=#570 id=570 data-nosnippet>570</a>}
+<a href=#571 id=571 data-nosnippet>571</a>
+<a href=#572 id=572 data-nosnippet>572</a><span class="kw">impl </span>Mul&lt;Mat4&gt; <span class="kw">for </span>Affine3A {
+<a href=#573 id=573 data-nosnippet>573</a>    <span class="kw">type </span>Output = Mat4;
+<a href=#574 id=574 data-nosnippet>574</a>
+<a href=#575 id=575 data-nosnippet>575</a>    <span class="attr">#[inline]
+<a href=#576 id=576 data-nosnippet>576</a>    </span><span class="kw">fn </span>mul(<span class="self">self</span>, rhs: Mat4) -&gt; <span class="self">Self</span>::Output {
+<a href=#577 id=577 data-nosnippet>577</a>        Mat4::from(<span class="self">self</span>) * rhs
+<a href=#578 id=578 data-nosnippet>578</a>    }
+<a href=#579 id=579 data-nosnippet>579</a>}
+<a href=#580 id=580 data-nosnippet>580</a>
+<a href=#581 id=581 data-nosnippet>581</a><span class="kw">impl </span>Mul&lt;Affine3A&gt; <span class="kw">for </span>Mat4 {
+<a href=#582 id=582 data-nosnippet>582</a>    <span class="kw">type </span>Output = Mat4;
+<a href=#583 id=583 data-nosnippet>583</a>
+<a href=#584 id=584 data-nosnippet>584</a>    <span class="attr">#[inline]
+<a href=#585 id=585 data-nosnippet>585</a>    </span><span class="kw">fn </span>mul(<span class="self">self</span>, rhs: Affine3A) -&gt; <span class="self">Self</span>::Output {
+<a href=#586 id=586 data-nosnippet>586</a>        <span class="self">self </span>* Mat4::from(rhs)
+<a href=#587 id=587 data-nosnippet>587</a>    }
+<a href=#588 id=588 data-nosnippet>588</a>}</code></pre></div></section></main></body></html>

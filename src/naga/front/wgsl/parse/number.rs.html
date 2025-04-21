@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/naga-22.1.0/src/front/wgsl/parse/number.rs`."><title>number.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="naga" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">naga/front/wgsl/parse/</div>number.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::front::wgsl::error::NumberError;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/naga-24.0.0/src/front/wgsl/parse/number.rs`."><title>number.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="naga" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">naga/front/wgsl/parse/</div>number.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::front::wgsl::error::NumberError;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">crate</span>::front::wgsl::parse::lexer::Token;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="doccomment">/// When using this type assume no Abstract Int/Float for now
@@ -216,221 +216,226 @@
 <a href=#216 id=216 data-nosnippet>216</a>                    <span class="macro">rest_to_str!</span>(bytes),
 <a href=#217 id=217 data-nosnippet>217</a>                )
 <a href=#218 id=218 data-nosnippet>218</a>            } <span class="kw">else </span>{
-<a href=#219 id=219 data-nosnippet>219</a>                <span class="kw">let </span>kind = <span class="macro">consume_map!</span>(bytes, [<span class="string">b'i' </span>=&gt; IntKind::I32, <span class="string">b'u' </span>=&gt; IntKind::U32]);
-<a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a>                (parse_hex_int(digits, kind), <span class="macro">rest_to_str!</span>(bytes))
-<a href=#222 id=222 data-nosnippet>222</a>            }
-<a href=#223 id=223 data-nosnippet>223</a>        }
-<a href=#224 id=224 data-nosnippet>224</a>    } <span class="kw">else </span>{
-<a href=#225 id=225 data-nosnippet>225</a>        <span class="kw">let </span>is_first_zero = bytes.first() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="string">b'0'</span>);
-<a href=#226 id=226 data-nosnippet>226</a>
-<a href=#227 id=227 data-nosnippet>227</a>        <span class="kw">let </span>consumed = <span class="macro">consume_dec_digits!</span>(bytes);
-<a href=#228 id=228 data-nosnippet>228</a>
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">if </span><span class="macro">consume!</span>(bytes, <span class="string">b'.'</span>) {
-<a href=#230 id=230 data-nosnippet>230</a>            <span class="kw">let </span>consumed_after_period = <span class="macro">consume_dec_digits!</span>(bytes);
+<a href=#219 id=219 data-nosnippet>219</a>                <span class="kw">let </span>kind = <span class="macro">consume_map!</span>(bytes, [
+<a href=#220 id=220 data-nosnippet>220</a>                    <span class="string">b'i' </span>=&gt; IntKind::I32,
+<a href=#221 id=221 data-nosnippet>221</a>                    <span class="string">b'u' </span>=&gt; IntKind::U32,
+<a href=#222 id=222 data-nosnippet>222</a>                    <span class="string">b'l'</span>, <span class="string">b'i' </span>=&gt; IntKind::I64,
+<a href=#223 id=223 data-nosnippet>223</a>                    <span class="string">b'l'</span>, <span class="string">b'u' </span>=&gt; IntKind::U64,
+<a href=#224 id=224 data-nosnippet>224</a>                ]);
+<a href=#225 id=225 data-nosnippet>225</a>
+<a href=#226 id=226 data-nosnippet>226</a>                (parse_hex_int(digits, kind), <span class="macro">rest_to_str!</span>(bytes))
+<a href=#227 id=227 data-nosnippet>227</a>            }
+<a href=#228 id=228 data-nosnippet>228</a>        }
+<a href=#229 id=229 data-nosnippet>229</a>    } <span class="kw">else </span>{
+<a href=#230 id=230 data-nosnippet>230</a>        <span class="kw">let </span>is_first_zero = bytes.first() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="string">b'0'</span>);
 <a href=#231 id=231 data-nosnippet>231</a>
-<a href=#232 id=232 data-nosnippet>232</a>            <span class="kw">if </span>consumed + consumed_after_period == <span class="number">0 </span>{
-<a href=#233 id=233 data-nosnippet>233</a>                <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
-<a href=#234 id=234 data-nosnippet>234</a>            }
-<a href=#235 id=235 data-nosnippet>235</a>
-<a href=#236 id=236 data-nosnippet>236</a>            <span class="kw">if </span><span class="macro">consume!</span>(bytes, <span class="string">b'e' </span>| <span class="string">b'E'</span>) {
-<a href=#237 id=237 data-nosnippet>237</a>                <span class="macro">consume!</span>(bytes, <span class="string">b'+' </span>| <span class="string">b'-'</span>);
-<a href=#238 id=238 data-nosnippet>238</a>                <span class="kw">let </span>consumed = <span class="macro">consume_dec_digits!</span>(bytes);
-<a href=#239 id=239 data-nosnippet>239</a>
-<a href=#240 id=240 data-nosnippet>240</a>                <span class="kw">if </span>consumed == <span class="number">0 </span>{
-<a href=#241 id=241 data-nosnippet>241</a>                    <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
-<a href=#242 id=242 data-nosnippet>242</a>                }
-<a href=#243 id=243 data-nosnippet>243</a>            }
+<a href=#232 id=232 data-nosnippet>232</a>        <span class="kw">let </span>consumed = <span class="macro">consume_dec_digits!</span>(bytes);
+<a href=#233 id=233 data-nosnippet>233</a>
+<a href=#234 id=234 data-nosnippet>234</a>        <span class="kw">if </span><span class="macro">consume!</span>(bytes, <span class="string">b'.'</span>) {
+<a href=#235 id=235 data-nosnippet>235</a>            <span class="kw">let </span>consumed_after_period = <span class="macro">consume_dec_digits!</span>(bytes);
+<a href=#236 id=236 data-nosnippet>236</a>
+<a href=#237 id=237 data-nosnippet>237</a>            <span class="kw">if </span>consumed + consumed_after_period == <span class="number">0 </span>{
+<a href=#238 id=238 data-nosnippet>238</a>                <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
+<a href=#239 id=239 data-nosnippet>239</a>            }
+<a href=#240 id=240 data-nosnippet>240</a>
+<a href=#241 id=241 data-nosnippet>241</a>            <span class="kw">if </span><span class="macro">consume!</span>(bytes, <span class="string">b'e' </span>| <span class="string">b'E'</span>) {
+<a href=#242 id=242 data-nosnippet>242</a>                <span class="macro">consume!</span>(bytes, <span class="string">b'+' </span>| <span class="string">b'-'</span>);
+<a href=#243 id=243 data-nosnippet>243</a>                <span class="kw">let </span>consumed = <span class="macro">consume_dec_digits!</span>(bytes);
 <a href=#244 id=244 data-nosnippet>244</a>
-<a href=#245 id=245 data-nosnippet>245</a>            <span class="kw">let </span>number = general_extract.end(bytes);
-<a href=#246 id=246 data-nosnippet>246</a>
-<a href=#247 id=247 data-nosnippet>247</a>            <span class="kw">let </span>kind = <span class="macro">consume_float_suffix!</span>(bytes);
-<a href=#248 id=248 data-nosnippet>248</a>
-<a href=#249 id=249 data-nosnippet>249</a>            (parse_dec_float(number, kind), <span class="macro">rest_to_str!</span>(bytes))
-<a href=#250 id=250 data-nosnippet>250</a>        } <span class="kw">else </span>{
-<a href=#251 id=251 data-nosnippet>251</a>            <span class="kw">if </span>consumed == <span class="number">0 </span>{
-<a href=#252 id=252 data-nosnippet>252</a>                <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
-<a href=#253 id=253 data-nosnippet>253</a>            }
-<a href=#254 id=254 data-nosnippet>254</a>
-<a href=#255 id=255 data-nosnippet>255</a>            <span class="kw">if </span><span class="macro">consume!</span>(bytes, <span class="string">b'e' </span>| <span class="string">b'E'</span>) {
-<a href=#256 id=256 data-nosnippet>256</a>                <span class="macro">consume!</span>(bytes, <span class="string">b'+' </span>| <span class="string">b'-'</span>);
-<a href=#257 id=257 data-nosnippet>257</a>                <span class="kw">let </span>consumed = <span class="macro">consume_dec_digits!</span>(bytes);
-<a href=#258 id=258 data-nosnippet>258</a>
-<a href=#259 id=259 data-nosnippet>259</a>                <span class="kw">if </span>consumed == <span class="number">0 </span>{
-<a href=#260 id=260 data-nosnippet>260</a>                    <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
-<a href=#261 id=261 data-nosnippet>261</a>                }
-<a href=#262 id=262 data-nosnippet>262</a>
-<a href=#263 id=263 data-nosnippet>263</a>                <span class="kw">let </span>number = general_extract.end(bytes);
-<a href=#264 id=264 data-nosnippet>264</a>
-<a href=#265 id=265 data-nosnippet>265</a>                <span class="kw">let </span>kind = <span class="macro">consume_float_suffix!</span>(bytes);
-<a href=#266 id=266 data-nosnippet>266</a>
-<a href=#267 id=267 data-nosnippet>267</a>                (parse_dec_float(number, kind), <span class="macro">rest_to_str!</span>(bytes))
-<a href=#268 id=268 data-nosnippet>268</a>            } <span class="kw">else </span>{
-<a href=#269 id=269 data-nosnippet>269</a>                <span class="comment">// make sure the multi-digit numbers don't start with zero
-<a href=#270 id=270 data-nosnippet>270</a>                </span><span class="kw">if </span>consumed &gt; <span class="number">1 </span>&amp;&amp; is_first_zero {
-<a href=#271 id=271 data-nosnippet>271</a>                    <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
-<a href=#272 id=272 data-nosnippet>272</a>                }
-<a href=#273 id=273 data-nosnippet>273</a>
-<a href=#274 id=274 data-nosnippet>274</a>                <span class="kw">let </span>digits = general_extract.end(bytes);
-<a href=#275 id=275 data-nosnippet>275</a>
-<a href=#276 id=276 data-nosnippet>276</a>                <span class="kw">let </span>kind = <span class="macro">consume_map!</span>(bytes, [
-<a href=#277 id=277 data-nosnippet>277</a>                    <span class="string">b'i' </span>=&gt; Kind::Int(IntKind::I32),
-<a href=#278 id=278 data-nosnippet>278</a>                    <span class="string">b'u' </span>=&gt; Kind::Int(IntKind::U32),
-<a href=#279 id=279 data-nosnippet>279</a>                    <span class="string">b'l'</span>, <span class="string">b'i' </span>=&gt; Kind::Int(IntKind::I64),
-<a href=#280 id=280 data-nosnippet>280</a>                    <span class="string">b'l'</span>, <span class="string">b'u' </span>=&gt; Kind::Int(IntKind::U64),
-<a href=#281 id=281 data-nosnippet>281</a>                    <span class="string">b'h' </span>=&gt; Kind::Float(FloatKind::F16),
-<a href=#282 id=282 data-nosnippet>282</a>                    <span class="string">b'f' </span>=&gt; Kind::Float(FloatKind::F32),
-<a href=#283 id=283 data-nosnippet>283</a>                    <span class="string">b'l'</span>, <span class="string">b'f' </span>=&gt; Kind::Float(FloatKind::F64),
-<a href=#284 id=284 data-nosnippet>284</a>                ]);
-<a href=#285 id=285 data-nosnippet>285</a>
-<a href=#286 id=286 data-nosnippet>286</a>                (parse_dec(digits, kind), <span class="macro">rest_to_str!</span>(bytes))
-<a href=#287 id=287 data-nosnippet>287</a>            }
-<a href=#288 id=288 data-nosnippet>288</a>        }
-<a href=#289 id=289 data-nosnippet>289</a>    }
-<a href=#290 id=290 data-nosnippet>290</a>}
-<a href=#291 id=291 data-nosnippet>291</a>
-<a href=#292 id=292 data-nosnippet>292</a><span class="kw">fn </span>parse_hex_float_missing_exponent(
-<a href=#293 id=293 data-nosnippet>293</a>    <span class="comment">// format: 0[xX] ( [0-9a-fA-F]+\.[0-9a-fA-F]* | [0-9a-fA-F]*\.[0-9a-fA-F]+ )
-<a href=#294 id=294 data-nosnippet>294</a>    </span>significand: <span class="kw-2">&amp;</span>str,
-<a href=#295 id=295 data-nosnippet>295</a>    kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;,
-<a href=#296 id=296 data-nosnippet>296</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
-<a href=#297 id=297 data-nosnippet>297</a>    <span class="kw">let </span>hexf_input = <span class="macro">format!</span>(<span class="string">"{}{}"</span>, significand, <span class="string">"p0"</span>);
-<a href=#298 id=298 data-nosnippet>298</a>    parse_hex_float(<span class="kw-2">&amp;</span>hexf_input, kind)
-<a href=#299 id=299 data-nosnippet>299</a>}
-<a href=#300 id=300 data-nosnippet>300</a>
-<a href=#301 id=301 data-nosnippet>301</a><span class="kw">fn </span>parse_hex_float_missing_period(
-<a href=#302 id=302 data-nosnippet>302</a>    <span class="comment">// format: 0[xX] [0-9a-fA-F]+
-<a href=#303 id=303 data-nosnippet>303</a>    </span>significand: <span class="kw-2">&amp;</span>str,
-<a href=#304 id=304 data-nosnippet>304</a>    <span class="comment">// format: [pP][+-]?[0-9]+
-<a href=#305 id=305 data-nosnippet>305</a>    </span>exponent: <span class="kw-2">&amp;</span>str,
-<a href=#306 id=306 data-nosnippet>306</a>    kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;,
-<a href=#307 id=307 data-nosnippet>307</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
-<a href=#308 id=308 data-nosnippet>308</a>    <span class="kw">let </span>hexf_input = <span class="macro">format!</span>(<span class="string">"{significand}.{exponent}"</span>);
-<a href=#309 id=309 data-nosnippet>309</a>    parse_hex_float(<span class="kw-2">&amp;</span>hexf_input, kind)
-<a href=#310 id=310 data-nosnippet>310</a>}
-<a href=#311 id=311 data-nosnippet>311</a>
-<a href=#312 id=312 data-nosnippet>312</a><span class="kw">fn </span>parse_hex_int(
-<a href=#313 id=313 data-nosnippet>313</a>    <span class="comment">// format: [0-9a-fA-F]+
-<a href=#314 id=314 data-nosnippet>314</a>    </span>digits: <span class="kw-2">&amp;</span>str,
-<a href=#315 id=315 data-nosnippet>315</a>    kind: <span class="prelude-ty">Option</span>&lt;IntKind&gt;,
-<a href=#316 id=316 data-nosnippet>316</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
-<a href=#317 id=317 data-nosnippet>317</a>    parse_int(digits, kind, <span class="number">16</span>)
-<a href=#318 id=318 data-nosnippet>318</a>}
-<a href=#319 id=319 data-nosnippet>319</a>
-<a href=#320 id=320 data-nosnippet>320</a><span class="kw">fn </span>parse_dec(
-<a href=#321 id=321 data-nosnippet>321</a>    <span class="comment">// format: ( [0-9] | [1-9][0-9]+ )
-<a href=#322 id=322 data-nosnippet>322</a>    </span>digits: <span class="kw-2">&amp;</span>str,
-<a href=#323 id=323 data-nosnippet>323</a>    kind: <span class="prelude-ty">Option</span>&lt;Kind&gt;,
-<a href=#324 id=324 data-nosnippet>324</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
-<a href=#325 id=325 data-nosnippet>325</a>    <span class="kw">match </span>kind {
-<a href=#326 id=326 data-nosnippet>326</a>        <span class="prelude-val">None </span>=&gt; parse_int(digits, <span class="prelude-val">None</span>, <span class="number">10</span>),
-<a href=#327 id=327 data-nosnippet>327</a>        <span class="prelude-val">Some</span>(Kind::Int(kind)) =&gt; parse_int(digits, <span class="prelude-val">Some</span>(kind), <span class="number">10</span>),
-<a href=#328 id=328 data-nosnippet>328</a>        <span class="prelude-val">Some</span>(Kind::Float(kind)) =&gt; parse_dec_float(digits, <span class="prelude-val">Some</span>(kind)),
-<a href=#329 id=329 data-nosnippet>329</a>    }
-<a href=#330 id=330 data-nosnippet>330</a>}
-<a href=#331 id=331 data-nosnippet>331</a>
-<a href=#332 id=332 data-nosnippet>332</a><span class="comment">// Float parsing notes
-<a href=#333 id=333 data-nosnippet>333</a>
-<a href=#334 id=334 data-nosnippet>334</a>// The following chapters of IEEE 754-2019 are relevant:
-<a href=#335 id=335 data-nosnippet>335</a>//
-<a href=#336 id=336 data-nosnippet>336</a>// 7.4 Overflow (largest finite number is exceeded by what would have been
-<a href=#337 id=337 data-nosnippet>337</a>//     the rounded floating-point result were the exponent range unbounded)
-<a href=#338 id=338 data-nosnippet>338</a>//
-<a href=#339 id=339 data-nosnippet>339</a>// 7.5 Underflow (tiny non-zero result is detected;
-<a href=#340 id=340 data-nosnippet>340</a>//     for decimal formats tininess is detected before rounding when a non-zero result
-<a href=#341 id=341 data-nosnippet>341</a>//     computed as though both the exponent range and the precision were unbounded
-<a href=#342 id=342 data-nosnippet>342</a>//     would lie strictly between 2^−126)
+<a href=#245 id=245 data-nosnippet>245</a>                <span class="kw">if </span>consumed == <span class="number">0 </span>{
+<a href=#246 id=246 data-nosnippet>246</a>                    <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
+<a href=#247 id=247 data-nosnippet>247</a>                }
+<a href=#248 id=248 data-nosnippet>248</a>            }
+<a href=#249 id=249 data-nosnippet>249</a>
+<a href=#250 id=250 data-nosnippet>250</a>            <span class="kw">let </span>number = general_extract.end(bytes);
+<a href=#251 id=251 data-nosnippet>251</a>
+<a href=#252 id=252 data-nosnippet>252</a>            <span class="kw">let </span>kind = <span class="macro">consume_float_suffix!</span>(bytes);
+<a href=#253 id=253 data-nosnippet>253</a>
+<a href=#254 id=254 data-nosnippet>254</a>            (parse_dec_float(number, kind), <span class="macro">rest_to_str!</span>(bytes))
+<a href=#255 id=255 data-nosnippet>255</a>        } <span class="kw">else </span>{
+<a href=#256 id=256 data-nosnippet>256</a>            <span class="kw">if </span>consumed == <span class="number">0 </span>{
+<a href=#257 id=257 data-nosnippet>257</a>                <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
+<a href=#258 id=258 data-nosnippet>258</a>            }
+<a href=#259 id=259 data-nosnippet>259</a>
+<a href=#260 id=260 data-nosnippet>260</a>            <span class="kw">if </span><span class="macro">consume!</span>(bytes, <span class="string">b'e' </span>| <span class="string">b'E'</span>) {
+<a href=#261 id=261 data-nosnippet>261</a>                <span class="macro">consume!</span>(bytes, <span class="string">b'+' </span>| <span class="string">b'-'</span>);
+<a href=#262 id=262 data-nosnippet>262</a>                <span class="kw">let </span>consumed = <span class="macro">consume_dec_digits!</span>(bytes);
+<a href=#263 id=263 data-nosnippet>263</a>
+<a href=#264 id=264 data-nosnippet>264</a>                <span class="kw">if </span>consumed == <span class="number">0 </span>{
+<a href=#265 id=265 data-nosnippet>265</a>                    <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
+<a href=#266 id=266 data-nosnippet>266</a>                }
+<a href=#267 id=267 data-nosnippet>267</a>
+<a href=#268 id=268 data-nosnippet>268</a>                <span class="kw">let </span>number = general_extract.end(bytes);
+<a href=#269 id=269 data-nosnippet>269</a>
+<a href=#270 id=270 data-nosnippet>270</a>                <span class="kw">let </span>kind = <span class="macro">consume_float_suffix!</span>(bytes);
+<a href=#271 id=271 data-nosnippet>271</a>
+<a href=#272 id=272 data-nosnippet>272</a>                (parse_dec_float(number, kind), <span class="macro">rest_to_str!</span>(bytes))
+<a href=#273 id=273 data-nosnippet>273</a>            } <span class="kw">else </span>{
+<a href=#274 id=274 data-nosnippet>274</a>                <span class="comment">// make sure the multi-digit numbers don't start with zero
+<a href=#275 id=275 data-nosnippet>275</a>                </span><span class="kw">if </span>consumed &gt; <span class="number">1 </span>&amp;&amp; is_first_zero {
+<a href=#276 id=276 data-nosnippet>276</a>                    <span class="kw">return </span>(<span class="prelude-val">Err</span>(NumberError::Invalid), <span class="macro">rest_to_str!</span>(bytes));
+<a href=#277 id=277 data-nosnippet>277</a>                }
+<a href=#278 id=278 data-nosnippet>278</a>
+<a href=#279 id=279 data-nosnippet>279</a>                <span class="kw">let </span>digits = general_extract.end(bytes);
+<a href=#280 id=280 data-nosnippet>280</a>
+<a href=#281 id=281 data-nosnippet>281</a>                <span class="kw">let </span>kind = <span class="macro">consume_map!</span>(bytes, [
+<a href=#282 id=282 data-nosnippet>282</a>                    <span class="string">b'i' </span>=&gt; Kind::Int(IntKind::I32),
+<a href=#283 id=283 data-nosnippet>283</a>                    <span class="string">b'u' </span>=&gt; Kind::Int(IntKind::U32),
+<a href=#284 id=284 data-nosnippet>284</a>                    <span class="string">b'l'</span>, <span class="string">b'i' </span>=&gt; Kind::Int(IntKind::I64),
+<a href=#285 id=285 data-nosnippet>285</a>                    <span class="string">b'l'</span>, <span class="string">b'u' </span>=&gt; Kind::Int(IntKind::U64),
+<a href=#286 id=286 data-nosnippet>286</a>                    <span class="string">b'h' </span>=&gt; Kind::Float(FloatKind::F16),
+<a href=#287 id=287 data-nosnippet>287</a>                    <span class="string">b'f' </span>=&gt; Kind::Float(FloatKind::F32),
+<a href=#288 id=288 data-nosnippet>288</a>                    <span class="string">b'l'</span>, <span class="string">b'f' </span>=&gt; Kind::Float(FloatKind::F64),
+<a href=#289 id=289 data-nosnippet>289</a>                ]);
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a>                (parse_dec(digits, kind), <span class="macro">rest_to_str!</span>(bytes))
+<a href=#292 id=292 data-nosnippet>292</a>            }
+<a href=#293 id=293 data-nosnippet>293</a>        }
+<a href=#294 id=294 data-nosnippet>294</a>    }
+<a href=#295 id=295 data-nosnippet>295</a>}
+<a href=#296 id=296 data-nosnippet>296</a>
+<a href=#297 id=297 data-nosnippet>297</a><span class="kw">fn </span>parse_hex_float_missing_exponent(
+<a href=#298 id=298 data-nosnippet>298</a>    <span class="comment">// format: 0[xX] ( [0-9a-fA-F]+\.[0-9a-fA-F]* | [0-9a-fA-F]*\.[0-9a-fA-F]+ )
+<a href=#299 id=299 data-nosnippet>299</a>    </span>significand: <span class="kw-2">&amp;</span>str,
+<a href=#300 id=300 data-nosnippet>300</a>    kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;,
+<a href=#301 id=301 data-nosnippet>301</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
+<a href=#302 id=302 data-nosnippet>302</a>    <span class="kw">let </span>hexf_input = <span class="macro">format!</span>(<span class="string">"{}{}"</span>, significand, <span class="string">"p0"</span>);
+<a href=#303 id=303 data-nosnippet>303</a>    parse_hex_float(<span class="kw-2">&amp;</span>hexf_input, kind)
+<a href=#304 id=304 data-nosnippet>304</a>}
+<a href=#305 id=305 data-nosnippet>305</a>
+<a href=#306 id=306 data-nosnippet>306</a><span class="kw">fn </span>parse_hex_float_missing_period(
+<a href=#307 id=307 data-nosnippet>307</a>    <span class="comment">// format: 0[xX] [0-9a-fA-F]+
+<a href=#308 id=308 data-nosnippet>308</a>    </span>significand: <span class="kw-2">&amp;</span>str,
+<a href=#309 id=309 data-nosnippet>309</a>    <span class="comment">// format: [pP][+-]?[0-9]+
+<a href=#310 id=310 data-nosnippet>310</a>    </span>exponent: <span class="kw-2">&amp;</span>str,
+<a href=#311 id=311 data-nosnippet>311</a>    kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;,
+<a href=#312 id=312 data-nosnippet>312</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
+<a href=#313 id=313 data-nosnippet>313</a>    <span class="kw">let </span>hexf_input = <span class="macro">format!</span>(<span class="string">"{significand}.{exponent}"</span>);
+<a href=#314 id=314 data-nosnippet>314</a>    parse_hex_float(<span class="kw-2">&amp;</span>hexf_input, kind)
+<a href=#315 id=315 data-nosnippet>315</a>}
+<a href=#316 id=316 data-nosnippet>316</a>
+<a href=#317 id=317 data-nosnippet>317</a><span class="kw">fn </span>parse_hex_int(
+<a href=#318 id=318 data-nosnippet>318</a>    <span class="comment">// format: [0-9a-fA-F]+
+<a href=#319 id=319 data-nosnippet>319</a>    </span>digits: <span class="kw-2">&amp;</span>str,
+<a href=#320 id=320 data-nosnippet>320</a>    kind: <span class="prelude-ty">Option</span>&lt;IntKind&gt;,
+<a href=#321 id=321 data-nosnippet>321</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
+<a href=#322 id=322 data-nosnippet>322</a>    parse_int(digits, kind, <span class="number">16</span>)
+<a href=#323 id=323 data-nosnippet>323</a>}
+<a href=#324 id=324 data-nosnippet>324</a>
+<a href=#325 id=325 data-nosnippet>325</a><span class="kw">fn </span>parse_dec(
+<a href=#326 id=326 data-nosnippet>326</a>    <span class="comment">// format: ( [0-9] | [1-9][0-9]+ )
+<a href=#327 id=327 data-nosnippet>327</a>    </span>digits: <span class="kw-2">&amp;</span>str,
+<a href=#328 id=328 data-nosnippet>328</a>    kind: <span class="prelude-ty">Option</span>&lt;Kind&gt;,
+<a href=#329 id=329 data-nosnippet>329</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
+<a href=#330 id=330 data-nosnippet>330</a>    <span class="kw">match </span>kind {
+<a href=#331 id=331 data-nosnippet>331</a>        <span class="prelude-val">None </span>=&gt; parse_int(digits, <span class="prelude-val">None</span>, <span class="number">10</span>),
+<a href=#332 id=332 data-nosnippet>332</a>        <span class="prelude-val">Some</span>(Kind::Int(kind)) =&gt; parse_int(digits, <span class="prelude-val">Some</span>(kind), <span class="number">10</span>),
+<a href=#333 id=333 data-nosnippet>333</a>        <span class="prelude-val">Some</span>(Kind::Float(kind)) =&gt; parse_dec_float(digits, <span class="prelude-val">Some</span>(kind)),
+<a href=#334 id=334 data-nosnippet>334</a>    }
+<a href=#335 id=335 data-nosnippet>335</a>}
+<a href=#336 id=336 data-nosnippet>336</a>
+<a href=#337 id=337 data-nosnippet>337</a><span class="comment">// Float parsing notes
+<a href=#338 id=338 data-nosnippet>338</a>
+<a href=#339 id=339 data-nosnippet>339</a>// The following chapters of IEEE 754-2019 are relevant:
+<a href=#340 id=340 data-nosnippet>340</a>//
+<a href=#341 id=341 data-nosnippet>341</a>// 7.4 Overflow (largest finite number is exceeded by what would have been
+<a href=#342 id=342 data-nosnippet>342</a>//     the rounded floating-point result were the exponent range unbounded)
 <a href=#343 id=343 data-nosnippet>343</a>//
-<a href=#344 id=344 data-nosnippet>344</a>// 7.6 Inexact (rounded result differs from what would have been computed
-<a href=#345 id=345 data-nosnippet>345</a>//     were both exponent range and precision unbounded)
-<a href=#346 id=346 data-nosnippet>346</a>
-<a href=#347 id=347 data-nosnippet>347</a>// The WGSL spec requires us to error:
-<a href=#348 id=348 data-nosnippet>348</a>//   on overflow for decimal floating point literals
-<a href=#349 id=349 data-nosnippet>349</a>//   on overflow and inexact for hexadecimal floating point literals
-<a href=#350 id=350 data-nosnippet>350</a>// (underflow is not mentioned)
+<a href=#344 id=344 data-nosnippet>344</a>// 7.5 Underflow (tiny non-zero result is detected;
+<a href=#345 id=345 data-nosnippet>345</a>//     for decimal formats tininess is detected before rounding when a non-zero result
+<a href=#346 id=346 data-nosnippet>346</a>//     computed as though both the exponent range and the precision were unbounded
+<a href=#347 id=347 data-nosnippet>347</a>//     would lie strictly between 2^−126)
+<a href=#348 id=348 data-nosnippet>348</a>//
+<a href=#349 id=349 data-nosnippet>349</a>// 7.6 Inexact (rounded result differs from what would have been computed
+<a href=#350 id=350 data-nosnippet>350</a>//     were both exponent range and precision unbounded)
 <a href=#351 id=351 data-nosnippet>351</a>
-<a href=#352 id=352 data-nosnippet>352</a>// hexf_parse errors on overflow, underflow, inexact
-<a href=#353 id=353 data-nosnippet>353</a>// rust std lib float from str handles overflow, underflow, inexact transparently (rounds and will not error)
-<a href=#354 id=354 data-nosnippet>354</a>
-<a href=#355 id=355 data-nosnippet>355</a>// Therefore we only check for overflow manually for decimal floating point literals
+<a href=#352 id=352 data-nosnippet>352</a>// The WGSL spec requires us to error:
+<a href=#353 id=353 data-nosnippet>353</a>//   on overflow for decimal floating point literals
+<a href=#354 id=354 data-nosnippet>354</a>//   on overflow and inexact for hexadecimal floating point literals
+<a href=#355 id=355 data-nosnippet>355</a>// (underflow is not mentioned)
 <a href=#356 id=356 data-nosnippet>356</a>
-<a href=#357 id=357 data-nosnippet>357</a>// input format: 0[xX] ( [0-9a-fA-F]+\.[0-9a-fA-F]* | [0-9a-fA-F]*\.[0-9a-fA-F]+ ) [pP][+-]?[0-9]+
-<a href=#358 id=358 data-nosnippet>358</a></span><span class="kw">fn </span>parse_hex_float(input: <span class="kw-2">&amp;</span>str, kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
-<a href=#359 id=359 data-nosnippet>359</a>    <span class="kw">match </span>kind {
-<a href=#360 id=360 data-nosnippet>360</a>        <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>hexf_parse::parse_hexf64(input, <span class="bool-val">false</span>) {
-<a href=#361 id=361 data-nosnippet>361</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::AbstractFloat(num)),
-<a href=#362 id=362 data-nosnippet>362</a>            <span class="comment">// can only be ParseHexfErrorKind::Inexact but we can't check since it's private
-<a href=#363 id=363 data-nosnippet>363</a>            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(NumberError::NotRepresentable),
-<a href=#364 id=364 data-nosnippet>364</a>        },
-<a href=#365 id=365 data-nosnippet>365</a>        <span class="prelude-val">Some</span>(FloatKind::F16) =&gt; <span class="prelude-val">Err</span>(NumberError::UnimplementedF16),
-<a href=#366 id=366 data-nosnippet>366</a>        <span class="prelude-val">Some</span>(FloatKind::F32) =&gt; <span class="kw">match </span>hexf_parse::parse_hexf32(input, <span class="bool-val">false</span>) {
-<a href=#367 id=367 data-nosnippet>367</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::F32(num)),
-<a href=#368 id=368 data-nosnippet>368</a>            <span class="comment">// can only be ParseHexfErrorKind::Inexact but we can't check since it's private
-<a href=#369 id=369 data-nosnippet>369</a>            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(NumberError::NotRepresentable),
-<a href=#370 id=370 data-nosnippet>370</a>        },
-<a href=#371 id=371 data-nosnippet>371</a>        <span class="prelude-val">Some</span>(FloatKind::F64) =&gt; <span class="kw">match </span>hexf_parse::parse_hexf64(input, <span class="bool-val">false</span>) {
-<a href=#372 id=372 data-nosnippet>372</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::F64(num)),
+<a href=#357 id=357 data-nosnippet>357</a>// hexf_parse errors on overflow, underflow, inexact
+<a href=#358 id=358 data-nosnippet>358</a>// rust std lib float from str handles overflow, underflow, inexact transparently (rounds and will not error)
+<a href=#359 id=359 data-nosnippet>359</a>
+<a href=#360 id=360 data-nosnippet>360</a>// Therefore we only check for overflow manually for decimal floating point literals
+<a href=#361 id=361 data-nosnippet>361</a>
+<a href=#362 id=362 data-nosnippet>362</a>// input format: 0[xX] ( [0-9a-fA-F]+\.[0-9a-fA-F]* | [0-9a-fA-F]*\.[0-9a-fA-F]+ ) [pP][+-]?[0-9]+
+<a href=#363 id=363 data-nosnippet>363</a></span><span class="kw">fn </span>parse_hex_float(input: <span class="kw-2">&amp;</span>str, kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
+<a href=#364 id=364 data-nosnippet>364</a>    <span class="kw">match </span>kind {
+<a href=#365 id=365 data-nosnippet>365</a>        <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>hexf_parse::parse_hexf64(input, <span class="bool-val">false</span>) {
+<a href=#366 id=366 data-nosnippet>366</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::AbstractFloat(num)),
+<a href=#367 id=367 data-nosnippet>367</a>            <span class="comment">// can only be ParseHexfErrorKind::Inexact but we can't check since it's private
+<a href=#368 id=368 data-nosnippet>368</a>            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(NumberError::NotRepresentable),
+<a href=#369 id=369 data-nosnippet>369</a>        },
+<a href=#370 id=370 data-nosnippet>370</a>        <span class="prelude-val">Some</span>(FloatKind::F16) =&gt; <span class="prelude-val">Err</span>(NumberError::UnimplementedF16),
+<a href=#371 id=371 data-nosnippet>371</a>        <span class="prelude-val">Some</span>(FloatKind::F32) =&gt; <span class="kw">match </span>hexf_parse::parse_hexf32(input, <span class="bool-val">false</span>) {
+<a href=#372 id=372 data-nosnippet>372</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::F32(num)),
 <a href=#373 id=373 data-nosnippet>373</a>            <span class="comment">// can only be ParseHexfErrorKind::Inexact but we can't check since it's private
 <a href=#374 id=374 data-nosnippet>374</a>            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(NumberError::NotRepresentable),
 <a href=#375 id=375 data-nosnippet>375</a>        },
-<a href=#376 id=376 data-nosnippet>376</a>    }
-<a href=#377 id=377 data-nosnippet>377</a>}
-<a href=#378 id=378 data-nosnippet>378</a>
-<a href=#379 id=379 data-nosnippet>379</a><span class="comment">// input format: ( [0-9]+\.[0-9]* | [0-9]*\.[0-9]+ ) ([eE][+-]?[0-9]+)?
-<a href=#380 id=380 data-nosnippet>380</a>//             | [0-9]+ [eE][+-]?[0-9]+
-<a href=#381 id=381 data-nosnippet>381</a></span><span class="kw">fn </span>parse_dec_float(input: <span class="kw-2">&amp;</span>str, kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
-<a href=#382 id=382 data-nosnippet>382</a>    <span class="kw">match </span>kind {
-<a href=#383 id=383 data-nosnippet>383</a>        <span class="prelude-val">None </span>=&gt; {
-<a href=#384 id=384 data-nosnippet>384</a>            <span class="kw">let </span>num = input.parse::&lt;f64&gt;().unwrap(); <span class="comment">// will never fail
-<a href=#385 id=385 data-nosnippet>385</a>            </span>num.is_finite()
-<a href=#386 id=386 data-nosnippet>386</a>                .then_some(Number::AbstractFloat(num))
-<a href=#387 id=387 data-nosnippet>387</a>                .ok_or(NumberError::NotRepresentable)
-<a href=#388 id=388 data-nosnippet>388</a>        }
-<a href=#389 id=389 data-nosnippet>389</a>        <span class="prelude-val">Some</span>(FloatKind::F32) =&gt; {
-<a href=#390 id=390 data-nosnippet>390</a>            <span class="kw">let </span>num = input.parse::&lt;f32&gt;().unwrap(); <span class="comment">// will never fail
-<a href=#391 id=391 data-nosnippet>391</a>            </span>num.is_finite()
-<a href=#392 id=392 data-nosnippet>392</a>                .then_some(Number::F32(num))
-<a href=#393 id=393 data-nosnippet>393</a>                .ok_or(NumberError::NotRepresentable)
-<a href=#394 id=394 data-nosnippet>394</a>        }
-<a href=#395 id=395 data-nosnippet>395</a>        <span class="prelude-val">Some</span>(FloatKind::F64) =&gt; {
-<a href=#396 id=396 data-nosnippet>396</a>            <span class="kw">let </span>num = input.parse::&lt;f64&gt;().unwrap(); <span class="comment">// will never fail
-<a href=#397 id=397 data-nosnippet>397</a>            </span>num.is_finite()
-<a href=#398 id=398 data-nosnippet>398</a>                .then_some(Number::F64(num))
-<a href=#399 id=399 data-nosnippet>399</a>                .ok_or(NumberError::NotRepresentable)
-<a href=#400 id=400 data-nosnippet>400</a>        }
-<a href=#401 id=401 data-nosnippet>401</a>        <span class="prelude-val">Some</span>(FloatKind::F16) =&gt; <span class="prelude-val">Err</span>(NumberError::UnimplementedF16),
-<a href=#402 id=402 data-nosnippet>402</a>    }
-<a href=#403 id=403 data-nosnippet>403</a>}
-<a href=#404 id=404 data-nosnippet>404</a>
-<a href=#405 id=405 data-nosnippet>405</a><span class="kw">fn </span>parse_int(input: <span class="kw-2">&amp;</span>str, kind: <span class="prelude-ty">Option</span>&lt;IntKind&gt;, radix: u32) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
-<a href=#406 id=406 data-nosnippet>406</a>    <span class="kw">fn </span>map_err(e: core::num::ParseIntError) -&gt; NumberError {
-<a href=#407 id=407 data-nosnippet>407</a>        <span class="kw">match </span><span class="kw-2">*</span>e.kind() {
-<a href=#408 id=408 data-nosnippet>408</a>            core::num::IntErrorKind::PosOverflow | core::num::IntErrorKind::NegOverflow =&gt; {
-<a href=#409 id=409 data-nosnippet>409</a>                NumberError::NotRepresentable
-<a href=#410 id=410 data-nosnippet>410</a>            }
-<a href=#411 id=411 data-nosnippet>411</a>            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
-<a href=#412 id=412 data-nosnippet>412</a>        }
-<a href=#413 id=413 data-nosnippet>413</a>    }
-<a href=#414 id=414 data-nosnippet>414</a>    <span class="kw">match </span>kind {
-<a href=#415 id=415 data-nosnippet>415</a>        <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>i64::from_str_radix(input, radix) {
-<a href=#416 id=416 data-nosnippet>416</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::AbstractInt(num)),
-<a href=#417 id=417 data-nosnippet>417</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
-<a href=#418 id=418 data-nosnippet>418</a>        },
-<a href=#419 id=419 data-nosnippet>419</a>        <span class="prelude-val">Some</span>(IntKind::I32) =&gt; <span class="kw">match </span>i32::from_str_radix(input, radix) {
-<a href=#420 id=420 data-nosnippet>420</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::I32(num)),
-<a href=#421 id=421 data-nosnippet>421</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
-<a href=#422 id=422 data-nosnippet>422</a>        },
-<a href=#423 id=423 data-nosnippet>423</a>        <span class="prelude-val">Some</span>(IntKind::U32) =&gt; <span class="kw">match </span>u32::from_str_radix(input, radix) {
-<a href=#424 id=424 data-nosnippet>424</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::U32(num)),
-<a href=#425 id=425 data-nosnippet>425</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
-<a href=#426 id=426 data-nosnippet>426</a>        },
-<a href=#427 id=427 data-nosnippet>427</a>        <span class="prelude-val">Some</span>(IntKind::I64) =&gt; <span class="kw">match </span>i64::from_str_radix(input, radix) {
-<a href=#428 id=428 data-nosnippet>428</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::I64(num)),
-<a href=#429 id=429 data-nosnippet>429</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
-<a href=#430 id=430 data-nosnippet>430</a>        },
-<a href=#431 id=431 data-nosnippet>431</a>        <span class="prelude-val">Some</span>(IntKind::U64) =&gt; <span class="kw">match </span>u64::from_str_radix(input, radix) {
-<a href=#432 id=432 data-nosnippet>432</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::U64(num)),
-<a href=#433 id=433 data-nosnippet>433</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
-<a href=#434 id=434 data-nosnippet>434</a>        },
-<a href=#435 id=435 data-nosnippet>435</a>    }
-<a href=#436 id=436 data-nosnippet>436</a>}</code></pre></div></section></main></body></html>
+<a href=#376 id=376 data-nosnippet>376</a>        <span class="prelude-val">Some</span>(FloatKind::F64) =&gt; <span class="kw">match </span>hexf_parse::parse_hexf64(input, <span class="bool-val">false</span>) {
+<a href=#377 id=377 data-nosnippet>377</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::F64(num)),
+<a href=#378 id=378 data-nosnippet>378</a>            <span class="comment">// can only be ParseHexfErrorKind::Inexact but we can't check since it's private
+<a href=#379 id=379 data-nosnippet>379</a>            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(NumberError::NotRepresentable),
+<a href=#380 id=380 data-nosnippet>380</a>        },
+<a href=#381 id=381 data-nosnippet>381</a>    }
+<a href=#382 id=382 data-nosnippet>382</a>}
+<a href=#383 id=383 data-nosnippet>383</a>
+<a href=#384 id=384 data-nosnippet>384</a><span class="comment">// input format: ( [0-9]+\.[0-9]* | [0-9]*\.[0-9]+ ) ([eE][+-]?[0-9]+)?
+<a href=#385 id=385 data-nosnippet>385</a>//             | [0-9]+ [eE][+-]?[0-9]+
+<a href=#386 id=386 data-nosnippet>386</a></span><span class="kw">fn </span>parse_dec_float(input: <span class="kw-2">&amp;</span>str, kind: <span class="prelude-ty">Option</span>&lt;FloatKind&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
+<a href=#387 id=387 data-nosnippet>387</a>    <span class="kw">match </span>kind {
+<a href=#388 id=388 data-nosnippet>388</a>        <span class="prelude-val">None </span>=&gt; {
+<a href=#389 id=389 data-nosnippet>389</a>            <span class="kw">let </span>num = input.parse::&lt;f64&gt;().unwrap(); <span class="comment">// will never fail
+<a href=#390 id=390 data-nosnippet>390</a>            </span>num.is_finite()
+<a href=#391 id=391 data-nosnippet>391</a>                .then_some(Number::AbstractFloat(num))
+<a href=#392 id=392 data-nosnippet>392</a>                .ok_or(NumberError::NotRepresentable)
+<a href=#393 id=393 data-nosnippet>393</a>        }
+<a href=#394 id=394 data-nosnippet>394</a>        <span class="prelude-val">Some</span>(FloatKind::F32) =&gt; {
+<a href=#395 id=395 data-nosnippet>395</a>            <span class="kw">let </span>num = input.parse::&lt;f32&gt;().unwrap(); <span class="comment">// will never fail
+<a href=#396 id=396 data-nosnippet>396</a>            </span>num.is_finite()
+<a href=#397 id=397 data-nosnippet>397</a>                .then_some(Number::F32(num))
+<a href=#398 id=398 data-nosnippet>398</a>                .ok_or(NumberError::NotRepresentable)
+<a href=#399 id=399 data-nosnippet>399</a>        }
+<a href=#400 id=400 data-nosnippet>400</a>        <span class="prelude-val">Some</span>(FloatKind::F64) =&gt; {
+<a href=#401 id=401 data-nosnippet>401</a>            <span class="kw">let </span>num = input.parse::&lt;f64&gt;().unwrap(); <span class="comment">// will never fail
+<a href=#402 id=402 data-nosnippet>402</a>            </span>num.is_finite()
+<a href=#403 id=403 data-nosnippet>403</a>                .then_some(Number::F64(num))
+<a href=#404 id=404 data-nosnippet>404</a>                .ok_or(NumberError::NotRepresentable)
+<a href=#405 id=405 data-nosnippet>405</a>        }
+<a href=#406 id=406 data-nosnippet>406</a>        <span class="prelude-val">Some</span>(FloatKind::F16) =&gt; <span class="prelude-val">Err</span>(NumberError::UnimplementedF16),
+<a href=#407 id=407 data-nosnippet>407</a>    }
+<a href=#408 id=408 data-nosnippet>408</a>}
+<a href=#409 id=409 data-nosnippet>409</a>
+<a href=#410 id=410 data-nosnippet>410</a><span class="kw">fn </span>parse_int(input: <span class="kw-2">&amp;</span>str, kind: <span class="prelude-ty">Option</span>&lt;IntKind&gt;, radix: u32) -&gt; <span class="prelude-ty">Result</span>&lt;Number, NumberError&gt; {
+<a href=#411 id=411 data-nosnippet>411</a>    <span class="kw">fn </span>map_err(e: core::num::ParseIntError) -&gt; NumberError {
+<a href=#412 id=412 data-nosnippet>412</a>        <span class="kw">match </span><span class="kw-2">*</span>e.kind() {
+<a href=#413 id=413 data-nosnippet>413</a>            core::num::IntErrorKind::PosOverflow | core::num::IntErrorKind::NegOverflow =&gt; {
+<a href=#414 id=414 data-nosnippet>414</a>                NumberError::NotRepresentable
+<a href=#415 id=415 data-nosnippet>415</a>            }
+<a href=#416 id=416 data-nosnippet>416</a>            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#417 id=417 data-nosnippet>417</a>        }
+<a href=#418 id=418 data-nosnippet>418</a>    }
+<a href=#419 id=419 data-nosnippet>419</a>    <span class="kw">match </span>kind {
+<a href=#420 id=420 data-nosnippet>420</a>        <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>i64::from_str_radix(input, radix) {
+<a href=#421 id=421 data-nosnippet>421</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::AbstractInt(num)),
+<a href=#422 id=422 data-nosnippet>422</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
+<a href=#423 id=423 data-nosnippet>423</a>        },
+<a href=#424 id=424 data-nosnippet>424</a>        <span class="prelude-val">Some</span>(IntKind::I32) =&gt; <span class="kw">match </span>i32::from_str_radix(input, radix) {
+<a href=#425 id=425 data-nosnippet>425</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::I32(num)),
+<a href=#426 id=426 data-nosnippet>426</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
+<a href=#427 id=427 data-nosnippet>427</a>        },
+<a href=#428 id=428 data-nosnippet>428</a>        <span class="prelude-val">Some</span>(IntKind::U32) =&gt; <span class="kw">match </span>u32::from_str_radix(input, radix) {
+<a href=#429 id=429 data-nosnippet>429</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::U32(num)),
+<a href=#430 id=430 data-nosnippet>430</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
+<a href=#431 id=431 data-nosnippet>431</a>        },
+<a href=#432 id=432 data-nosnippet>432</a>        <span class="prelude-val">Some</span>(IntKind::I64) =&gt; <span class="kw">match </span>i64::from_str_radix(input, radix) {
+<a href=#433 id=433 data-nosnippet>433</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::I64(num)),
+<a href=#434 id=434 data-nosnippet>434</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
+<a href=#435 id=435 data-nosnippet>435</a>        },
+<a href=#436 id=436 data-nosnippet>436</a>        <span class="prelude-val">Some</span>(IntKind::U64) =&gt; <span class="kw">match </span>u64::from_str_radix(input, radix) {
+<a href=#437 id=437 data-nosnippet>437</a>            <span class="prelude-val">Ok</span>(num) =&gt; <span class="prelude-val">Ok</span>(Number::U64(num)),
+<a href=#438 id=438 data-nosnippet>438</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(map_err(e)),
+<a href=#439 id=439 data-nosnippet>439</a>        },
+<a href=#440 id=440 data-nosnippet>440</a>    }
+<a href=#441 id=441 data-nosnippet>441</a>}</code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CursorIcon","OutputEvent","UserAttentionType"],"struct":["FullOutput","IMEOutput","OpenUrl","PlatformOutput","WidgetInfo"]};
+window.SIDEBAR_ITEMS = {"enum":["CursorIcon","OutputCommand","OutputEvent","UserAttentionType"],"struct":["FullOutput","IMEOutput","OpenUrl","PlatformOutput","WidgetInfo"]};

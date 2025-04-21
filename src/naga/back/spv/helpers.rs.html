@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/naga-22.1.0/src/back/spv/helpers.rs`."><title>helpers.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="naga" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">naga/back/spv/</div>helpers.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{Handle, UniqueArena};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/naga-24.0.0/src/back/spv/helpers.rs`."><title>helpers.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="naga" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">naga/back/spv/</div>helpers.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{Handle, UniqueArena};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>spirv::Word;
 <a href=#3 id=3 data-nosnippet>3</a>
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>bytes_to_words(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;Word&gt; {
@@ -85,76 +85,65 @@
 <a href=#85 id=85 data-nosnippet>85</a>
 <a href=#86 id=86 data-nosnippet>86</a><span class="doccomment">/// Return true if the global requires a type decorated with `Block`.
 <a href=#87 id=87 data-nosnippet>87</a>///
-<a href=#88 id=88 data-nosnippet>88</a>/// Vulkan spec v1.3 §15.6.2, "Descriptor Set Interface", says:
+<a href=#88 id=88 data-nosnippet>88</a>/// See [`back::spv::GlobalVariable`] for details.
 <a href=#89 id=89 data-nosnippet>89</a>///
-<a href=#90 id=90 data-nosnippet>90</a>/// &gt; Variables identified with the `Uniform` storage class are used to
-<a href=#91 id=91 data-nosnippet>91</a>/// &gt; access transparent buffer backed resources. Such variables must
-<a href=#92 id=92 data-nosnippet>92</a>/// &gt; be:
-<a href=#93 id=93 data-nosnippet>93</a>/// &gt;
-<a href=#94 id=94 data-nosnippet>94</a>/// &gt; -   typed as `OpTypeStruct`, or an array of this type,
-<a href=#95 id=95 data-nosnippet>95</a>/// &gt;
-<a href=#96 id=96 data-nosnippet>96</a>/// &gt; -   identified with a `Block` or `BufferBlock` decoration, and
-<a href=#97 id=97 data-nosnippet>97</a>/// &gt;
-<a href=#98 id=98 data-nosnippet>98</a>/// &gt; -   laid out explicitly using the `Offset`, `ArrayStride`, and
-<a href=#99 id=99 data-nosnippet>99</a>/// &gt;     `MatrixStride` decorations as specified in §15.6.4, "Offset
-<a href=#100 id=100 data-nosnippet>100</a>/// &gt;     and Stride Assignment."
-<a href=#101 id=101 data-nosnippet>101</a></span><span class="comment">// See `back::spv::GlobalVariable::access_id` for details.
-<a href=#102 id=102 data-nosnippet>102</a></span><span class="kw">pub fn </span>global_needs_wrapper(ir_module: <span class="kw-2">&amp;</span><span class="kw">crate</span>::Module, var: <span class="kw-2">&amp;</span><span class="kw">crate</span>::GlobalVariable) -&gt; bool {
-<a href=#103 id=103 data-nosnippet>103</a>    <span class="kw">match </span>var.space {
-<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">crate</span>::AddressSpace::Uniform
-<a href=#105 id=105 data-nosnippet>105</a>        | <span class="kw">crate</span>::AddressSpace::Storage { .. }
-<a href=#106 id=106 data-nosnippet>106</a>        | <span class="kw">crate</span>::AddressSpace::PushConstant =&gt; {}
-<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
-<a href=#108 id=108 data-nosnippet>108</a>    };
-<a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">match </span>ir_module.types[var.ty].inner {
-<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">crate</span>::TypeInner::Struct {
-<a href=#111 id=111 data-nosnippet>111</a>            <span class="kw-2">ref </span>members,
-<a href=#112 id=112 data-nosnippet>112</a>            span: <span class="kw">_</span>,
-<a href=#113 id=113 data-nosnippet>113</a>        } =&gt; <span class="kw">match </span>members.last() {
-<a href=#114 id=114 data-nosnippet>114</a>            <span class="prelude-val">Some</span>(member) =&gt; <span class="kw">match </span>ir_module.types[member.ty].inner {
-<a href=#115 id=115 data-nosnippet>115</a>                <span class="comment">// Structs with dynamically sized arrays can't be copied and can't be wrapped.
-<a href=#116 id=116 data-nosnippet>116</a>                </span><span class="kw">crate</span>::TypeInner::Array {
-<a href=#117 id=117 data-nosnippet>117</a>                    size: <span class="kw">crate</span>::ArraySize::Dynamic,
-<a href=#118 id=118 data-nosnippet>118</a>                    ..
-<a href=#119 id=119 data-nosnippet>119</a>                } =&gt; <span class="bool-val">false</span>,
-<a href=#120 id=120 data-nosnippet>120</a>                <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
-<a href=#121 id=121 data-nosnippet>121</a>            },
-<a href=#122 id=122 data-nosnippet>122</a>            <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
-<a href=#123 id=123 data-nosnippet>123</a>        },
-<a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">crate</span>::TypeInner::BindingArray { .. } =&gt; <span class="bool-val">false</span>,
-<a href=#125 id=125 data-nosnippet>125</a>        <span class="comment">// if it's not a structure or a binding array, let's wrap it to be able to put "Block"
-<a href=#126 id=126 data-nosnippet>126</a>        </span><span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
-<a href=#127 id=127 data-nosnippet>127</a>    }
-<a href=#128 id=128 data-nosnippet>128</a>}
-<a href=#129 id=129 data-nosnippet>129</a>
-<a href=#130 id=130 data-nosnippet>130</a><span class="doccomment">///HACK: this is taken from std unstable, remove it when std's floor_char_boundary is stable
-<a href=#131 id=131 data-nosnippet>131</a></span><span class="kw">trait </span>U8Internal {
-<a href=#132 id=132 data-nosnippet>132</a>    <span class="kw">fn </span>is_utf8_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
+<a href=#90 id=90 data-nosnippet>90</a>/// [`back::spv::GlobalVariable`]: super::GlobalVariable
+<a href=#91 id=91 data-nosnippet>91</a></span><span class="kw">pub fn </span>global_needs_wrapper(ir_module: <span class="kw-2">&amp;</span><span class="kw">crate</span>::Module, var: <span class="kw-2">&amp;</span><span class="kw">crate</span>::GlobalVariable) -&gt; bool {
+<a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">match </span>var.space {
+<a href=#93 id=93 data-nosnippet>93</a>        <span class="kw">crate</span>::AddressSpace::Uniform
+<a href=#94 id=94 data-nosnippet>94</a>        | <span class="kw">crate</span>::AddressSpace::Storage { .. }
+<a href=#95 id=95 data-nosnippet>95</a>        | <span class="kw">crate</span>::AddressSpace::PushConstant =&gt; {}
+<a href=#96 id=96 data-nosnippet>96</a>        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+<a href=#97 id=97 data-nosnippet>97</a>    };
+<a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">match </span>ir_module.types[var.ty].inner {
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">crate</span>::TypeInner::Struct {
+<a href=#100 id=100 data-nosnippet>100</a>            <span class="kw-2">ref </span>members,
+<a href=#101 id=101 data-nosnippet>101</a>            span: <span class="kw">_</span>,
+<a href=#102 id=102 data-nosnippet>102</a>        } =&gt; <span class="kw">match </span>members.last() {
+<a href=#103 id=103 data-nosnippet>103</a>            <span class="prelude-val">Some</span>(member) =&gt; <span class="kw">match </span>ir_module.types[member.ty].inner {
+<a href=#104 id=104 data-nosnippet>104</a>                <span class="comment">// Structs with dynamically sized arrays can't be copied and can't be wrapped.
+<a href=#105 id=105 data-nosnippet>105</a>                </span><span class="kw">crate</span>::TypeInner::Array {
+<a href=#106 id=106 data-nosnippet>106</a>                    size: <span class="kw">crate</span>::ArraySize::Dynamic,
+<a href=#107 id=107 data-nosnippet>107</a>                    ..
+<a href=#108 id=108 data-nosnippet>108</a>                } =&gt; <span class="bool-val">false</span>,
+<a href=#109 id=109 data-nosnippet>109</a>                <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
+<a href=#110 id=110 data-nosnippet>110</a>            },
+<a href=#111 id=111 data-nosnippet>111</a>            <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
+<a href=#112 id=112 data-nosnippet>112</a>        },
+<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">crate</span>::TypeInner::BindingArray { .. } =&gt; <span class="bool-val">false</span>,
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="comment">// if it's not a structure or a binding array, let's wrap it to be able to put "Block"
+<a href=#115 id=115 data-nosnippet>115</a>        </span><span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
+<a href=#116 id=116 data-nosnippet>116</a>    }
+<a href=#117 id=117 data-nosnippet>117</a>}
+<a href=#118 id=118 data-nosnippet>118</a>
+<a href=#119 id=119 data-nosnippet>119</a><span class="doccomment">///HACK: this is taken from std unstable, remove it when std's floor_char_boundary is stable
+<a href=#120 id=120 data-nosnippet>120</a></span><span class="kw">trait </span>U8Internal {
+<a href=#121 id=121 data-nosnippet>121</a>    <span class="kw">fn </span>is_utf8_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
+<a href=#122 id=122 data-nosnippet>122</a>}
+<a href=#123 id=123 data-nosnippet>123</a>
+<a href=#124 id=124 data-nosnippet>124</a><span class="kw">impl </span>U8Internal <span class="kw">for </span>u8 {
+<a href=#125 id=125 data-nosnippet>125</a>    <span class="kw">fn </span>is_utf8_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#126 id=126 data-nosnippet>126</a>        <span class="comment">// This is bit magic equivalent to: b &lt; 128 || b &gt;= 192
+<a href=#127 id=127 data-nosnippet>127</a>        </span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>i8) &gt;= -<span class="number">0x40
+<a href=#128 id=128 data-nosnippet>128</a>    </span>}
+<a href=#129 id=129 data-nosnippet>129</a>}
+<a href=#130 id=130 data-nosnippet>130</a>
+<a href=#131 id=131 data-nosnippet>131</a><span class="kw">trait </span>StrUnstable {
+<a href=#132 id=132 data-nosnippet>132</a>    <span class="kw">fn </span>floor_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; usize;
 <a href=#133 id=133 data-nosnippet>133</a>}
 <a href=#134 id=134 data-nosnippet>134</a>
-<a href=#135 id=135 data-nosnippet>135</a><span class="kw">impl </span>U8Internal <span class="kw">for </span>u8 {
-<a href=#136 id=136 data-nosnippet>136</a>    <span class="kw">fn </span>is_utf8_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-<a href=#137 id=137 data-nosnippet>137</a>        <span class="comment">// This is bit magic equivalent to: b &lt; 128 || b &gt;= 192
-<a href=#138 id=138 data-nosnippet>138</a>        </span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>i8) &gt;= -<span class="number">0x40
-<a href=#139 id=139 data-nosnippet>139</a>    </span>}
-<a href=#140 id=140 data-nosnippet>140</a>}
-<a href=#141 id=141 data-nosnippet>141</a>
-<a href=#142 id=142 data-nosnippet>142</a><span class="kw">trait </span>StrUnstable {
-<a href=#143 id=143 data-nosnippet>143</a>    <span class="kw">fn </span>floor_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; usize;
-<a href=#144 id=144 data-nosnippet>144</a>}
-<a href=#145 id=145 data-nosnippet>145</a>
-<a href=#146 id=146 data-nosnippet>146</a><span class="kw">impl </span>StrUnstable <span class="kw">for </span>str {
-<a href=#147 id=147 data-nosnippet>147</a>    <span class="kw">fn </span>floor_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; usize {
-<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">if </span>index &gt;= <span class="self">self</span>.len() {
-<a href=#149 id=149 data-nosnippet>149</a>            <span class="self">self</span>.len()
-<a href=#150 id=150 data-nosnippet>150</a>        } <span class="kw">else </span>{
-<a href=#151 id=151 data-nosnippet>151</a>            <span class="kw">let </span>lower_bound = index.saturating_sub(<span class="number">3</span>);
-<a href=#152 id=152 data-nosnippet>152</a>            <span class="kw">let </span>new_index = <span class="self">self</span>.as_bytes()[lower_bound..=index]
-<a href=#153 id=153 data-nosnippet>153</a>                .iter()
-<a href=#154 id=154 data-nosnippet>154</a>                .rposition(|b| b.is_utf8_char_boundary());
-<a href=#155 id=155 data-nosnippet>155</a>
-<a href=#156 id=156 data-nosnippet>156</a>            <span class="comment">// SAFETY: we know that the character boundary will be within four bytes
-<a href=#157 id=157 data-nosnippet>157</a>            </span><span class="kw">unsafe </span>{ lower_bound + new_index.unwrap_unchecked() }
-<a href=#158 id=158 data-nosnippet>158</a>        }
-<a href=#159 id=159 data-nosnippet>159</a>    }
-<a href=#160 id=160 data-nosnippet>160</a>}</code></pre></div></section></main></body></html>
+<a href=#135 id=135 data-nosnippet>135</a><span class="kw">impl </span>StrUnstable <span class="kw">for </span>str {
+<a href=#136 id=136 data-nosnippet>136</a>    <span class="kw">fn </span>floor_char_boundary(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; usize {
+<a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">if </span>index &gt;= <span class="self">self</span>.len() {
+<a href=#138 id=138 data-nosnippet>138</a>            <span class="self">self</span>.len()
+<a href=#139 id=139 data-nosnippet>139</a>        } <span class="kw">else </span>{
+<a href=#140 id=140 data-nosnippet>140</a>            <span class="kw">let </span>lower_bound = index.saturating_sub(<span class="number">3</span>);
+<a href=#141 id=141 data-nosnippet>141</a>            <span class="kw">let </span>new_index = <span class="self">self</span>.as_bytes()[lower_bound..=index]
+<a href=#142 id=142 data-nosnippet>142</a>                .iter()
+<a href=#143 id=143 data-nosnippet>143</a>                .rposition(|b| b.is_utf8_char_boundary());
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>            <span class="comment">// SAFETY: we know that the character boundary will be within four bytes
+<a href=#146 id=146 data-nosnippet>146</a>            </span><span class="kw">unsafe </span>{ lower_bound + new_index.unwrap_unchecked() }
+<a href=#147 id=147 data-nosnippet>147</a>        }
+<a href=#148 id=148 data-nosnippet>148</a>    }
+<a href=#149 id=149 data-nosnippet>149</a>}</code></pre></div></section></main></body></html>

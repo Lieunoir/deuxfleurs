@@ -143,7 +143,7 @@
 <a href=#143 id=143 data-nosnippet>143</a>        <span class="kw">let </span>window = Arc::new(window);
 <a href=#144 id=144 data-nosnippet>144</a>        <span class="comment">// The instance is a handle to our GPU
 <a href=#145 id=145 data-nosnippet>145</a>        // BackendBit::PRIMARY =&gt; Vulkan + Metal + DX12 + Browser WebGPU
-<a href=#146 id=146 data-nosnippet>146</a>        </span><span class="kw">let </span>instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+<a href=#146 id=146 data-nosnippet>146</a>        </span><span class="kw">let </span>instance = wgpu::Instance::new(<span class="kw-2">&amp;</span>wgpu::InstanceDescriptor {
 <a href=#147 id=147 data-nosnippet>147</a>            <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
 <a href=#148 id=148 data-nosnippet>148</a>            </span>backends: wgpu::Backends::PRIMARY,
 <a href=#149 id=149 data-nosnippet>149</a>            <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
@@ -1315,7 +1315,7 @@
 <a href=#1315 id=1315 data-nosnippet>1315</a>                                state.resize(state.size)
 <a href=#1316 id=1316 data-nosnippet>1316</a>                            },
 <a href=#1317 id=1317 data-nosnippet>1317</a>                            <span class="comment">// The system is out of memory, we should probably quit
-<a href=#1318 id=1318 data-nosnippet>1318</a>                            </span><span class="prelude-val">Err</span>(wgpu::SurfaceError::OutOfMemory) =&gt; event_loop.exit(),
+<a href=#1318 id=1318 data-nosnippet>1318</a>                            </span><span class="prelude-val">Err</span>(wgpu::SurfaceError::OutOfMemory) | <span class="prelude-val">Err</span>(wgpu::SurfaceError::Other) =&gt; event_loop.exit(),
 <a href=#1319 id=1319 data-nosnippet>1319</a>
 <a href=#1320 id=1320 data-nosnippet>1320</a>                            <span class="prelude-val">Err</span>(wgpu::SurfaceError::Timeout) =&gt; {
 <a href=#1321 id=1321 data-nosnippet>1321</a>                                <span class="macro">log::warn!</span>(<span class="string">"Surface timeout"</span>)
