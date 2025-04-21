@@ -34,7 +34,7 @@ impl Default for Settings {
                 r: 1.0,
                 g: 1.0,
                 b: 1.0,
-                a: 0.0,
+                a: 1.0,
             },
             mouse_sensitivity: 0.1,
             zoom_sensitivity: 0.1,

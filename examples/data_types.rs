@@ -1,5 +1,5 @@
 use deuxfleurs::types::SurfaceIndices;
-use deuxfleurs::{load_mesh, Color, State, StateBuilder};
+use deuxfleurs::{load_mesh, Settings, State, StateBuilder};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -92,15 +92,7 @@ pub async fn run() {
         1080,
         720,
         Some("deuxfleurs".into()),
-        deuxfleurs::Settings {
-            color: Color {
-                r: 1.0,
-                g: 1.0,
-                b: 1.0,
-                a: 1.0,
-            },
-            ..Default::default()
-        },
+        Settings::default(),
         init,
         callback,
     );
