@@ -1,8 +1,9 @@
 use egui::style::{WidgetVisuals, Widgets};
-use egui::{Color32, Rounding, Stroke};
+use egui::{Color32, Stroke};
 use egui::{Response, Shadow, Widget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
+use epaint::CornerRadiusF32;
 use indexmap::IndexMap;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
@@ -66,7 +67,7 @@ fn blue_visuals() -> egui::Visuals {
         window_stroke: egui::Stroke::NONE,
         extreme_bg_color: egui::Color32::from_rgba_premultiplied(10, 0, 50, 240),
         faint_bg_color: egui::Color32::from_rgba_premultiplied(10, 0, 50, 200),
-        window_rounding: egui::Rounding::same(1.0),
+        window_corner_radius: CornerRadiusF32::same(1.0).into(),
         window_highlight_topmost: false,
         window_shadow: Shadow::NONE,
         widgets: Widgets {
@@ -75,7 +76,7 @@ fn blue_visuals() -> egui::Visuals {
                 bg_fill: Color32::from_gray(27),
                 bg_stroke: Stroke::new(1.0, egui::Color32::from_black_alpha(200)), // separators, indentation lines
                 fg_stroke: Stroke::new(1.0, Color32::from_gray(240)), // normal text color
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 0.0,
             },
             inactive: WidgetVisuals {
@@ -83,7 +84,7 @@ fn blue_visuals() -> egui::Visuals {
                 bg_fill: egui::Color32::from_black_alpha(160),      // checkbox background
                 bg_stroke: Default::default(),
                 fg_stroke: Stroke::new(1.0, Color32::from_gray(240)), // button text
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 0.0,
             },
             hovered: WidgetVisuals {
@@ -91,7 +92,7 @@ fn blue_visuals() -> egui::Visuals {
                 bg_fill: egui::Color32::from_black_alpha(180),      // checkbox background
                 bg_stroke: Stroke::new(1.0, Color32::from_gray(250)), // e.g. hover over window edge or button
                 fg_stroke: Stroke::new(1.5, Color32::from_gray(250)),
-                rounding: Rounding::same(3.0),
+                corner_radius: CornerRadiusF32::same(3.0).into(),
                 expansion: 1.0,
             },
             active: WidgetVisuals {
@@ -99,7 +100,7 @@ fn blue_visuals() -> egui::Visuals {
                 bg_fill: egui::Color32::from_black_alpha(150),
                 bg_stroke: Stroke::new(1.0, Color32::WHITE),
                 fg_stroke: Stroke::new(2.0, Color32::WHITE),
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 1.0,
             },
             open: WidgetVisuals {
@@ -107,7 +108,7 @@ fn blue_visuals() -> egui::Visuals {
                 bg_fill: Color32::from_gray(27),
                 bg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
                 fg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 0.0,
             },
         },
@@ -121,7 +122,8 @@ fn transparent_visuals() -> egui::Visuals {
         window_stroke: egui::Stroke::NONE,
         extreme_bg_color: egui::Color32::from_black_alpha(220),
         faint_bg_color: egui::Color32::from_black_alpha(100),
-        window_rounding: egui::Rounding::same(1.0),
+        window_corner_radius: CornerRadiusF32::same(1.0).into(),
+
         window_highlight_topmost: false,
         window_shadow: Shadow::NONE,
         widgets: Widgets {
@@ -130,7 +132,7 @@ fn transparent_visuals() -> egui::Visuals {
                 bg_fill: Color32::from_gray(27),
                 bg_stroke: Stroke::new(1.0, egui::Color32::from_black_alpha(80)), // separators, indentation lines
                 fg_stroke: Stroke::new(1.0, Color32::from_gray(180)), // normal text color
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 0.0,
             },
             inactive: WidgetVisuals {
@@ -138,7 +140,7 @@ fn transparent_visuals() -> egui::Visuals {
                 bg_fill: egui::Color32::from_black_alpha(100),      // checkbox background
                 bg_stroke: Default::default(),
                 fg_stroke: Stroke::new(1.0, Color32::from_gray(200)), // button text
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 0.0,
             },
             hovered: WidgetVisuals {
@@ -146,7 +148,7 @@ fn transparent_visuals() -> egui::Visuals {
                 bg_fill: egui::Color32::from_black_alpha(110),      // checkbox background
                 bg_stroke: Stroke::new(1.0, Color32::from_gray(200)), // e.g. hover over window edge or button
                 fg_stroke: Stroke::new(1.5, Color32::from_gray(220)),
-                rounding: Rounding::same(3.0),
+                corner_radius: CornerRadiusF32::same(3.0).into(),
                 expansion: 1.0,
             },
             active: WidgetVisuals {
@@ -154,7 +156,7 @@ fn transparent_visuals() -> egui::Visuals {
                 bg_fill: egui::Color32::from_black_alpha(95),
                 bg_stroke: Stroke::new(1.0, Color32::WHITE),
                 fg_stroke: Stroke::new(2.0, Color32::WHITE),
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 1.0,
             },
             open: WidgetVisuals {
@@ -162,7 +164,7 @@ fn transparent_visuals() -> egui::Visuals {
                 bg_fill: Color32::from_gray(27),
                 bg_stroke: Stroke::new(1.0, Color32::from_gray(60)),
                 fg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
-                rounding: Rounding::same(2.0),
+                corner_radius: CornerRadiusF32::same(2.0).into(),
                 expansion: 0.0,
             },
         },

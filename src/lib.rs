@@ -143,7 +143,7 @@ impl State {
         let window = Arc::new(window);
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             #[cfg(not(target_arch = "wasm32"))]
             backends: wgpu::Backends::PRIMARY,
             #[cfg(target_arch = "wasm32")]
@@ -1315,7 +1315,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
                                 state.resize(state.size)
                             },
                             // The system is out of memory, we should probably quit
-                            Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
+                            Err(wgpu::SurfaceError::OutOfMemory) | Err(wgpu::SurfaceError::Other) => event_loop.exit(),
 
                             Err(wgpu::SurfaceError::Timeout) => {
                                 log::warn!("Surface timeout")

@@ -341,15 +341,15 @@ impl Picker {
             }
             {
                 encoder.copy_texture_to_buffer(
-                    wgpu::ImageCopyTexture {
+                    wgpu::TexelCopyTextureInfo {
                         aspect: wgpu::TextureAspect::All,
                         texture: &self.texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
                     },
-                    wgpu::ImageCopyBuffer {
+                    wgpu::TexelCopyBufferInfo {
                         buffer: &self.buffer,
-                        layout: wgpu::ImageDataLayout {
+                        layout: wgpu::TexelCopyBufferLayout {
                             offset: 0,
                             bytes_per_row: Some(self.buffer_dimensions.padded_bytes_per_row as u32),
                             //rows_per_image: std::num::NonZeroU32::new(self.size.height),
