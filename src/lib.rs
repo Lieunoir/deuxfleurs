@@ -32,7 +32,8 @@ pub mod surface;
 mod texture;
 /// General types for genericity in functions parameters.
 pub mod types;
-mod ui;
+///  Custom Ui components for mesh loading
+pub mod ui;
 mod updater;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
@@ -67,6 +68,7 @@ pub struct State {
     settings: Settings,
 
     window: Arc<Window>,
+    proxy: EventLoopProxy<UserEvent>,
     // Graphic context
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -130,13 +132,13 @@ pub struct StateBuilder<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut Stat
 }
 
 pub(crate) enum UserEvent {
-    LoadMesh(Vec<[f32; 3]>, SurfaceIndices),
+    LoadMesh(Vec<[f32; 3]>, SurfaceIndices, String),
     Pick,
 }
 
 impl State {
     // Initialize the state
-    async fn new(window: Window, settings: Settings) -> Self {
+    async fn new(window: Window, proxy: EventLoopProxy<UserEvent>, settings: Settings) -> Self {
         let size = window.inner_size();
         let window = Arc::new(window);
         // The instance is a handle to our GPU
@@ -344,6 +346,7 @@ impl State {
         Self {
             settings,
             window,
+            proxy,
             surface,
             device,
             queue,
@@ -1048,6 +1051,43 @@ impl State {
     pub fn refresh(&mut self) {
         self.dirty = true;
     }
+
+    pub(crate) fn send_mesh(&mut self, name: String) {
+        let event_loop_proxy = self.proxy.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let file = rfd::FileDialog::new()
+                .add_filter("obj", &["obj"])
+                .pick_file();
+            if let Some(file_handle) = file {
+                let data = file_handle;
+                if let Ok((mesh_v, mesh_f)) = crate::resources::load_mesh_blocking(data.into()) {
+                    event_loop_proxy
+                        .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f, name))
+                        .ok();
+                }
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let file = rfd::AsyncFileDialog::new()
+                .add_filter("obj", &["obj"])
+                .pick_file();
+            let f = async move {
+                let file = file.await;
+                if let Some(file_handle) = file {
+                    let data = file_handle.read().await;
+                    if let Ok((mesh_v, mesh_f)) = crate::resources::parse_preloaded_mesh(data).await
+                    {
+                        event_loop_proxy
+                            .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f, name))
+                            .ok();
+                    }
+                }
+            };
+            wasm_bindgen_futures::spawn_local(f);
+        }
+    }
 }
 
 impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T, U> {
@@ -1127,7 +1167,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
                 .expect("Couldn't append canvas to document body.");
         }
 
-        self.state = Some(State::new(window, self.settings.clone()).block_on());
+        self.state = Some(State::new(window, self.proxy.clone(), self.settings.clone()).block_on());
         self.ui = Some(ui::UI::new(
             &self.state.as_ref().unwrap().device,
             event_loop,
@@ -1142,8 +1182,8 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
         if let Some(state) = self.state.as_mut() {
             match event {
-                UserEvent::LoadMesh(mesh_v, mesh_f) => {
-                    state.register_surface("loaded mesh".into(), mesh_v, mesh_f);
+                UserEvent::LoadMesh(mesh_v, mesh_f, name) => {
+                    state.register_surface(name, mesh_v, mesh_f);
                 }
                 UserEvent::Pick => {
                     state.picker.pick(
@@ -1258,7 +1298,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHand
                             state.camera.build_view(),
                             state.camera.build_proj(),
                         );
-                        ui.draw_callback(&self.proxy, state, &mut self.callback);
+                        ui.draw_callback(state, &mut self.callback);
                         let scene_changed = state.update();
                         //actual rendering
                         match state.render(&self.proxy, ui, scene_changed) {

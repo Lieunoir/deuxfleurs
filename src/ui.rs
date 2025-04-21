@@ -1,13 +1,41 @@
 use egui::style::{WidgetVisuals, Widgets};
-use egui::Shadow;
 use egui::{Color32, Rounding, Stroke};
+use egui::{Response, Shadow, Widget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
 use indexmap::IndexMap;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
-pub trait UiDataElement {
+/// When clicked, pops an interative window to load a mesh
+pub struct LoadObjButton<'a, 'b, 'c> {
+    name: &'a str,
+    mesh_name: &'b str,
+    state: &'c mut crate::State,
+}
+
+impl<'a, 'b, 'c> LoadObjButton<'a, 'b, 'c> {
+    pub fn new(name: &'a str, mesh_name: &'b str, state: &'c mut crate::State) -> Self {
+        Self {
+            name,
+            mesh_name,
+            state,
+        }
+    }
+}
+
+impl<'a, 'b, 'c> Widget for LoadObjButton<'a, 'b, 'c> {
+    fn ui(self, ui: &mut egui::Ui) -> Response {
+        let button = egui::Button::new(self.name);
+        let response = button.ui(ui);
+        if response.clicked() {
+            self.state.send_mesh(self.mesh_name.into());
+        }
+        response
+    }
+}
+
+pub(crate) trait UiDataElement {
     fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool;
 
     fn draw_gizmo(
@@ -22,7 +50,7 @@ pub trait UiDataElement {
     }
 }
 
-pub struct UI {
+pub(crate) struct UI {
     rpass: Renderer,
     ctx: egui::Context,
     state: State,
@@ -143,7 +171,7 @@ fn transparent_visuals() -> egui::Visuals {
 }
 
 impl UI {
-    pub fn new(
+    pub(crate) fn new(
         device: &wgpu::Device,
         event_loop: &ActiveEventLoop,
         target_format: wgpu::TextureFormat,
@@ -176,7 +204,7 @@ impl UI {
         }
     }
 
-    pub fn process_event(
+    pub(crate) fn process_event(
         &mut self,
         window: &Window,
         event: &winit::event::WindowEvent,
@@ -184,7 +212,7 @@ impl UI {
         self.state.on_window_event(window, event)
     }
 
-    pub fn draw_models(
+    pub(crate) fn draw_models(
         &mut self,
         window: &Window,
         surfaces: &mut IndexMap<String, crate::surface::Surface>,
@@ -261,9 +289,8 @@ impl UI {
             });
     }
 
-    pub fn draw_callback<T: FnMut(&mut egui::Ui, &mut crate::State)>(
+    pub(crate) fn draw_callback<T: FnMut(&mut egui::Ui, &mut crate::State)>(
         &mut self,
-        event_loop_proxy: &winit::event_loop::EventLoopProxy<crate::UserEvent>,
         state: &mut crate::State,
         callback: &mut T,
     ) {
@@ -276,47 +303,6 @@ impl UI {
                 }
                 if ui.add(egui::Button::new("Screenshot")).clicked() {
                     state.screenshot();
-                }
-                if ui.add(egui::Button::new("Load obj")).clicked() {
-                    let event_loop_proxy = event_loop_proxy.clone();
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        let file = rfd::FileDialog::new()
-                            .add_filter("obj", &["obj"])
-                            //.set_directory("/")
-                            .pick_file();
-                        if let Some(file_handle) = file {
-                            let data = file_handle;
-                            if let Ok((mesh_v, mesh_f)) =
-                                crate::resources::load_mesh_blocking(data.into())
-                            {
-                                event_loop_proxy
-                                    .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f))
-                                    .ok();
-                            }
-                        }
-                    }
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        let file = rfd::AsyncFileDialog::new()
-                            .add_filter("obj", &["obj"])
-                            //.set_directory("/")
-                            .pick_file();
-                        let f = async move {
-                            let file = file.await;
-                            if let Some(file_handle) = file {
-                                let data = file_handle.read().await;
-                                if let Ok((mesh_v, mesh_f)) =
-                                    crate::resources::parse_preloaded_mesh(data).await
-                                {
-                                    event_loop_proxy
-                                        .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f))
-                                        .ok();
-                                }
-                            }
-                        };
-                        wasm_bindgen_futures::spawn_local(f);
-                    }
                 }
                 if let Some((picked_name, picked_number)) = state.get_picked() {
                     let picked_number = *picked_number;
@@ -338,7 +324,7 @@ impl UI {
     }
 
     // not sure about returning a tuple here
-    pub fn render_deltas(
+    pub(crate) fn render_deltas(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -377,7 +363,7 @@ impl UI {
         (user_cmd_bufs, clipped_primitives, screen_descriptor)
     }
 
-    pub fn render(
+    pub(crate) fn render(
         &self,
         mut render_pass: wgpu::RenderPass<'static>,
         clipped_primitives: &[egui::ClippedPrimitive],
@@ -387,7 +373,7 @@ impl UI {
             .render(&mut render_pass, clipped_primitives, screen_descriptor);
     }
 
-    pub fn handle_platform_output(&mut self, window: &Window) {
+    pub(crate) fn handle_platform_output(&mut self, window: &Window) {
         if let Some(platform_output) = self.platform_output.take() {
             self.state.handle_platform_output(window, platform_output);
         }
