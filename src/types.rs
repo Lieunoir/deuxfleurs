@@ -186,7 +186,7 @@ impl Vertices2D for ndarray::Array2<f32> {
     }
 }
 
-#[cfg(feature = "ndarray")]
+#[cfg(feature = "nalgebra")]
 impl Vertices2D for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 2]> {
         self.row_iter().map(|row| [row[0], row[1]]).collect()
