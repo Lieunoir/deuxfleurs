@@ -239,6 +239,7 @@ pub struct RunningState {
     //time: std::time::Instant,
     dirty: bool,
     egui_dirty: bool,
+    should_resize: bool,
 
     // Item picker
     picker: picker::Picker,
@@ -556,6 +557,7 @@ impl RunningState {
             //time: std::time::Instant::now(),
             dirty: true,
             egui_dirty: true,
+            should_resize: true,
             copy,
             pbr_renderer,
             ground,
@@ -767,6 +769,11 @@ impl RunningState {
             );
         }
         self.aabb = sbv.unwrap_or_else(aabb::SBV::default);
+        if self.should_resize {
+            self.resize_scene();
+            self.should_resize = false;
+            changed = true;
+        }
 
         self.dirty = false;
         changed
@@ -1185,7 +1192,7 @@ impl StateHandle for RunningState {
                 self.config.format,
             );
             self.surfaces.insert(name.clone(), surface);
-            self.resize_scene();
+            self.should_resize = true;
             self.picker.counters_dirty = true;
         }
         self.dirty = true;
@@ -1214,7 +1221,7 @@ impl StateHandle for RunningState {
         self.clouds.insert(name.clone(), model);
         self.picker.counters_dirty = true;
         self.dirty = true;
-        self.resize_scene();
+        self.should_resize = true;
         &mut self.clouds.get_mut(&name).unwrap().element
     }
 
@@ -1246,7 +1253,7 @@ impl StateHandle for RunningState {
         self.segments.insert(name.clone(), model);
         self.picker.counters_dirty = true;
         self.dirty = true;
-        self.resize_scene();
+        self.should_resize = true;
         &mut self.segments.get_mut(&name).unwrap().element
     }
 
