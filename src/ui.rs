@@ -1,3 +1,4 @@
+use crate::{RunningState, StateHandle};
 use egui::style::{WidgetVisuals, Widgets};
 use egui::{Color32, Stroke};
 use egui::{Response, Shadow, Widget};
@@ -12,11 +13,11 @@ use winit::window::Window;
 pub struct LoadObjButton<'a, 'b, 'c> {
     name: &'a str,
     mesh_name: &'b str,
-    state: &'c mut crate::State,
+    state: &'c mut RunningState,
 }
 
 impl<'a, 'b, 'c> LoadObjButton<'a, 'b, 'c> {
-    pub fn new(name: &'a str, mesh_name: &'b str, state: &'c mut crate::State) -> Self {
+    pub fn new(name: &'a str, mesh_name: &'b str, state: &'c mut RunningState) -> Self {
         Self {
             name,
             mesh_name,
@@ -290,9 +291,9 @@ impl UI {
             });
     }
 
-    pub(crate) fn draw_callback<T: FnMut(&mut egui::Ui, &mut crate::State)>(
+    pub(crate) fn draw_callback<T: FnMut(&mut egui::Ui, &mut RunningState)>(
         &mut self,
-        state: &mut crate::State,
+        state: &mut RunningState,
         callback: &mut T,
     ) {
         if let Some(response) = egui::Window::new("Interactions")

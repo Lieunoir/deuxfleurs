@@ -15,31 +15,30 @@ Can be used in webpages thanks to wasm, so web-based slides can include demos, o
 Here's a quick example that loads a mesh and uses a button to show/hide it:
 ```rust
 use deuxfleurs::egui;
-use deuxfleurs::{load_mesh, State, StateBuilder, Settings};
-// Load the mesh and register it in state:
+use deuxfleurs::{load_mesh, RunningState, StateHandle, Settings};
+// Init the app
+let mut handle = deuxfleurs::init();
+// Load the mesh and register it:
 let (v, f) = load_mesh("bunny.obj").await.unwrap();
-let init = move |state: &mut State| {
-    state.register_surface("bunny".into(), v, f);
-};
+handle.register_surface("bunny".into(), v, f);
 
 // Toggle between shown or not on button pressed
-let callback = |ui: &mut egui::Ui, state: &mut State| {
-        if ui
-            .add(egui::Button::new("Toggle shown"))
-            .clicked()
-        {
-            let mut surface = state.get_surface_mut("bunny").unwrap();
-            let shown = surface.shown();
-            surface.show(!shown);
-        }
+let callback = |ui: &mut egui::Ui, state: &mut RunningState| {
+    if ui
+        .add(egui::Button::new("Toggle shown"))
+        .clicked()
+    {
+        let mut surface = state.get_surface_mut("bunny").unwrap();
+        let shown = surface.shown();
+        surface.show(!shown);
+    }
 };
 // Run the app
-StateBuilder::run(
+handle.run(
     1080,
     720,
     Some("deuxfleurs-demo".into()),
-    deuxfleurs::Settings::default(),
-    init,
+    Settings::default(),
     callback,
 );
 ```

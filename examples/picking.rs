@@ -1,4 +1,4 @@
-use deuxfleurs::{load_mesh, Settings, State, StateBuilder};
+use deuxfleurs::{load_mesh, RunningState, Settings, StateHandle};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -9,14 +9,13 @@ fn main() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
+    let mut handle = deuxfleurs::init();
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-    let init = move |state: &mut State| {
-        state.register_surface("spot".into(), spot_v, spot_f);
-    };
+    handle.register_surface("spot".into(), spot_v, spot_f);
 
     let mut last_selected = 0;
     let mut last_selected_geometry = "".into();
-    let callback = move |ui: &mut egui::Ui, state: &mut State| {
+    let callback = move |ui: &mut egui::Ui, state: &mut RunningState| {
         ui.label("Click on spot!");
         if let Some((surface_name, item)) = state.get_picked().clone() {
             if last_selected != item || last_selected_geometry != *surface_name {
@@ -39,12 +38,11 @@ pub async fn run() {
             }
         }
     };
-    StateBuilder::run(
+    handle.run(
         1080,
         720,
         Some("deuxfleurs".into()),
         Settings::default(),
-        init,
         callback,
     );
 }

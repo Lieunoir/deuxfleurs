@@ -64,8 +64,139 @@ struct JitterUniform {
     _padding: [u32; 2],
 }
 
+/// Element to add surfaces, point clouds... to
+pub trait StateHandle {
+    fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
+        &mut self,
+        name: String,
+        vertices: V,
+        indices: I,
+    ) -> &mut Surface;
+
+    fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface>;
+
+    fn get_surface(&self, name: &str) -> Option<&Surface>;
+
+    fn register_point_cloud<V: Vertices>(&mut self, name: String, positions: V) -> &mut PointCloud;
+
+    fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud>;
+
+    fn get_point_cloud(&self, name: &str) -> Option<&PointCloud>;
+
+    /// Register list of segments
+    ///
+    /// Arguments :
+    /// * `positions`: segments extremities
+    /// * `connections`: segments denoted by extremities indices
+    fn register_segment<V: Vertices>(
+        &mut self,
+        name: String,
+        positions: V,
+        connections: Vec<[u32; 2]>,
+    ) -> &mut Segment;
+
+    fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment>;
+
+    fn get_segment(&self, name: &str) -> Option<&Segment>;
+}
+
+/// Creates a handle to add elements to. Needs to be run after.
+#[must_use]
+pub fn init() -> InitialState {
+    InitialState {
+        surfaces: IndexMap::new(),
+        clouds: IndexMap::new(),
+        segments: IndexMap::new(),
+    }
+}
+
+pub struct InitialState {
+    surfaces: IndexMap<String, Surface>,
+    clouds: IndexMap<String, PointCloud>,
+    segments: IndexMap<String, Segment>,
+}
+
+impl InitialState {
+    /// Show the window and start the app.
+    ///
+    /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
+    /// (allowing for dimensions in `%` and `vh`/`vw`).
+    ///
+    /// Arguments:
+    /// * `width`: requested width of the app (no effect in wasm)
+    /// * `height`: requested height of the app (no effect in wasm)
+    /// * `id`: serves as window title, or id element to attach to. If `None` used `"State"`.
+    /// * `settings`: global app [`Settings`]
+    /// * `callback`: called every frame with a [`egui::Ui`] and a [`State`] arguments, used to
+    /// add UI elements and modify state accordingly.
+    pub fn run<T: FnMut(&mut egui::Ui, &mut RunningState)>(
+        self,
+        width: u32,
+        height: u32,
+        id: Option<String>,
+        settings: Settings,
+        callback: T,
+    ) {
+        StateWrapper::run(self, width, height, id, settings, callback);
+    }
+}
+
+impl StateHandle for InitialState {
+    fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
+        &mut self,
+        name: String,
+        vertices: V,
+        indices: I,
+    ) -> &mut Surface {
+        let surface = Surface::new(name.clone(), vertices.into(), indices.into());
+        self.surfaces.insert(name.clone(), surface);
+        self.surfaces.get_mut(&name).unwrap()
+    }
+
+    fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
+        self.surfaces.get_mut(name)
+    }
+
+    fn get_surface(&self, name: &str) -> Option<&Surface> {
+        self.surfaces.get(name)
+    }
+
+    fn register_point_cloud<V: Vertices>(&mut self, name: String, positions: V) -> &mut PointCloud {
+        let cloud = PointCloud::new(name.clone(), positions.into());
+        self.clouds.insert(name.clone(), cloud);
+        self.clouds.get_mut(&name).unwrap()
+    }
+
+    fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
+        self.clouds.get_mut(name)
+    }
+
+    fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
+        self.clouds.get(name)
+    }
+
+    fn register_segment<V: Vertices>(
+        &mut self,
+        name: String,
+        positions: V,
+        connections: Vec<[u32; 2]>,
+    ) -> &mut Segment {
+        let cloud = Segment::new(name.clone(), positions.into(), connections.into());
+        self.segments.insert(name.clone(), cloud);
+        self.segments.get_mut(&name).unwrap()
+    }
+
+    fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment> {
+        self.segments.get_mut(name)
+    }
+
+    fn get_segment(&self, name: &str) -> Option<&Segment> {
+        self.segments.get(name)
+    }
+}
+
 /// Holds the application state. Starting point to add visualization datas.
-pub struct State {
+pub struct RunningState {
     settings: Settings,
 
     window: Arc<Window>,
@@ -120,16 +251,16 @@ pub struct State {
 }
 
 /// Starting point to build the app.
-pub struct StateBuilder<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> {
-    state: Option<State>,
+struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
+    init_state: Option<InitialState>,
+    state: Option<RunningState>,
     ui: Option<ui::UI>,
     id: String,
     width: u32,
     height: u32,
     proxy: EventLoopProxy<UserEvent>,
     settings: Settings,
-    init: Option<T>,
-    callback: U,
+    callback: T,
 }
 
 pub(crate) enum UserEvent {
@@ -137,9 +268,18 @@ pub(crate) enum UserEvent {
     Pick,
 }
 
-impl State {
+impl RunningState {
     // Initialize the state
-    async fn new(window: Window, proxy: EventLoopProxy<UserEvent>, settings: Settings) -> Self {
+    async fn new(
+        InitialState {
+            mut surfaces,
+            mut clouds,
+            mut segments,
+        }: InitialState,
+        window: Window,
+        proxy: EventLoopProxy<UserEvent>,
+        settings: Settings,
+    ) -> Self {
         let size = window.inner_size();
         let window = Arc::new(window);
         // The instance is a handle to our GPU
@@ -309,10 +449,6 @@ impl State {
             ],
             label: Some("camera_light_bind_group"),
         });
-
-        let clouds = IndexMap::new();
-        let segments = IndexMap::new();
-        let surfaces = IndexMap::new();
         // Create depth texture
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
@@ -322,6 +458,53 @@ impl State {
             screenshot::Screenshoter::new(&device, size.width.max(1), size.height.max(1));
 
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
+
+        let surfaces = surfaces
+            .drain(..)
+            .map(|(k, v)| {
+                (
+                    k,
+                    DisplaySurface::init(
+                        v,
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
+                )
+            })
+            .collect();
+
+        let clouds = clouds
+            .drain(..)
+            .map(|(k, v)| {
+                (
+                    k,
+                    DisplayPointCloud::init(
+                        v,
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
+                )
+            })
+            .collect();
+        let segments = segments
+            .drain(..)
+            .map(|(k, v)| {
+                (
+                    k,
+                    DisplaySegment::init(
+                        v,
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
+                )
+            })
+            .collect();
 
         let copy = deferred::TextureCopy::new(
             &device,
@@ -921,115 +1104,6 @@ impl State {
         Ok(request_redraw)
     }
 
-    pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
-        &mut self,
-        name: String,
-        //vertices: &Vec<[f32; 3]>,
-        vertices: V,
-        indices: I,
-    ) -> &mut Surface {
-        let vertices: Vec<[f32; 3]> = vertices.into();
-        if self.get_surface(&name).is_some()
-            && self.get_surface(&name).unwrap().geometry.vertices.len() == vertices.len()
-        {
-            let mut surface = self.surfaces.shift_remove(&name).unwrap();
-            surface.change_vertices(vertices, indices.into(), &self.device);
-            self.surfaces.insert(name.clone(), surface);
-        } else {
-            let surface = DisplaySurface::new(
-                name.clone(),
-                vertices,
-                indices.into(),
-                &self.device,
-                &self.camera_light_bind_group_layout,
-                &self.picker.bind_group_layout,
-                self.config.format,
-            );
-            self.surfaces.insert(name.clone(), surface);
-            self.resize_scene();
-            self.picker.counters_dirty = true;
-        }
-        self.dirty = true;
-        &mut self.surfaces.get_mut(&name).unwrap().element
-    }
-
-    pub fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
-        let res = self.surfaces.get_mut(name);
-        self.dirty |= res.is_some();
-        res.map(|s| &mut s.element)
-    }
-
-    pub fn get_surface(&self, name: &str) -> Option<&Surface> {
-        self.surfaces.get(name).map(|s| &s.element)
-    }
-
-    pub fn register_point_cloud<V: Vertices>(
-        &mut self,
-        name: String,
-        positions: V,
-    ) -> &mut PointCloud {
-        let model = DisplayPointCloud::new(
-            name.clone(),
-            positions.into(),
-            &self.device,
-            &self.camera_light_bind_group_layout,
-            &self.picker.bind_group_layout,
-            self.config.format,
-        );
-        self.clouds.insert(name.clone(), model);
-        self.picker.counters_dirty = true;
-        self.dirty = true;
-        self.resize_scene();
-        &mut self.clouds.get_mut(&name).unwrap().element
-    }
-
-    pub fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
-        let res = self.clouds.get_mut(name);
-        self.dirty |= res.is_some();
-        res.map(|pc| &mut pc.element)
-    }
-
-    pub fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
-        self.clouds.get(name).map(|pc| &pc.element)
-    }
-
-    /// Register list of segments
-    ///
-    /// Arguments :
-    /// * `positions`: segments extremities
-    /// * `connections`: segments denoted by extremities indices
-    pub fn register_segment<V: Vertices>(
-        &mut self,
-        name: String,
-        positions: V,
-        connections: Vec<[u32; 2]>,
-    ) -> &mut Segment {
-        let model = DisplaySegment::new(
-            name.clone(),
-            positions.into(),
-            connections,
-            &self.device,
-            &self.camera_light_bind_group_layout,
-            &self.picker.bind_group_layout,
-            self.config.format,
-        );
-        self.segments.insert(name.clone(), model);
-        self.picker.counters_dirty = true;
-        self.dirty = true;
-        self.resize_scene();
-        &mut self.segments.get_mut(&name).unwrap().element
-    }
-
-    pub fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment> {
-        let res = self.segments.get_mut(name);
-        self.dirty |= res.is_some();
-        res.map(|s| &mut s.element)
-    }
-
-    pub fn get_segment(&self, name: &str) -> Option<&Segment> {
-        self.segments.get(name).map(|s| &s.element)
-    }
-
     /// Take a screenshot at the next frame
     pub fn screenshot(&mut self) {
         self.screenshot = true;
@@ -1086,31 +1160,117 @@ impl State {
     }
 }
 
-impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T, U> {
-    /// Show the window and start the app.
-    ///
-    /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
-    /// (allowing for dimensions in `%` and `vh`/`vw`).
-    ///
-    /// Arguments:
-    /// * `width`: requested width of the app (no effect in wasm)
-    /// * `height`: requested height of the app (no effect in wasm)
-    /// * `id`: serves as window title, or id element to attach to. If `None` used `"deuxfleurs"`.
-    /// * `settings`: global app [`Settings`]
-    /// * `init`: called once at startup with a [`State`] argument, can be used to add some initial
-    /// data
-    /// * `callback`: called every frame with a [`egui::Ui`] and a [`State`] arguments, used to
-    /// add UI elements and modify state accordingly.
-    ///
-    pub fn run(
+impl StateHandle for RunningState {
+    fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
+        &mut self,
+        name: String,
+        vertices: V,
+        indices: I,
+    ) -> &mut Surface {
+        let vertices: Vec<[f32; 3]> = vertices.into();
+        if self.get_surface(&name).is_some()
+            && self.get_surface(&name).unwrap().geometry.vertices.len() == vertices.len()
+        {
+            let mut surface = self.surfaces.shift_remove(&name).unwrap();
+            surface.change_vertices(vertices, indices.into(), &self.device);
+            self.surfaces.insert(name.clone(), surface);
+        } else {
+            let surface = DisplaySurface::new(
+                name.clone(),
+                vertices,
+                indices.into(),
+                &self.device,
+                &self.camera_light_bind_group_layout,
+                &self.picker.bind_group_layout,
+                self.config.format,
+            );
+            self.surfaces.insert(name.clone(), surface);
+            self.resize_scene();
+            self.picker.counters_dirty = true;
+        }
+        self.dirty = true;
+        &mut self.surfaces.get_mut(&name).unwrap().element
+    }
+
+    fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
+        let res = self.surfaces.get_mut(name);
+        self.dirty |= res.is_some();
+        res.map(|s| &mut s.element)
+    }
+
+    fn get_surface(&self, name: &str) -> Option<&Surface> {
+        self.surfaces.get(name).map(|s| &s.element)
+    }
+
+    fn register_point_cloud<V: Vertices>(&mut self, name: String, positions: V) -> &mut PointCloud {
+        let model = DisplayPointCloud::new(
+            name.clone(),
+            positions.into(),
+            &self.device,
+            &self.camera_light_bind_group_layout,
+            &self.picker.bind_group_layout,
+            self.config.format,
+        );
+        self.clouds.insert(name.clone(), model);
+        self.picker.counters_dirty = true;
+        self.dirty = true;
+        self.resize_scene();
+        &mut self.clouds.get_mut(&name).unwrap().element
+    }
+
+    fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
+        let res = self.clouds.get_mut(name);
+        self.dirty |= res.is_some();
+        res.map(|pc| &mut pc.element)
+    }
+
+    fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
+        self.clouds.get(name).map(|pc| &pc.element)
+    }
+
+    fn register_segment<V: Vertices>(
+        &mut self,
+        name: String,
+        positions: V,
+        connections: Vec<[u32; 2]>,
+    ) -> &mut Segment {
+        let model = DisplaySegment::new(
+            name.clone(),
+            positions.into(),
+            connections,
+            &self.device,
+            &self.camera_light_bind_group_layout,
+            &self.picker.bind_group_layout,
+            self.config.format,
+        );
+        self.segments.insert(name.clone(), model);
+        self.picker.counters_dirty = true;
+        self.dirty = true;
+        self.resize_scene();
+        &mut self.segments.get_mut(&name).unwrap().element
+    }
+
+    fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment> {
+        let res = self.segments.get_mut(name);
+        self.dirty |= res.is_some();
+        res.map(|s| &mut s.element)
+    }
+
+    fn get_segment(&self, name: &str) -> Option<&Segment> {
+        self.segments.get(name).map(|s| &s.element)
+    }
+}
+
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
+    fn run(
+        init_state: InitialState,
         width: u32,
         height: u32,
         id: Option<String>,
         settings: Settings,
-        init: T,
-        callback: U,
+        callback: T,
     ) {
-        let id = id.unwrap_or("deuxfleurs".into());
+        let id = id.unwrap_or("State".into());
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
                 std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -1123,6 +1283,7 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T,
         let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
         let proxy = event_loop.create_proxy();
         let mut app = Self {
+            init_state: Some(init_state),
             state: None,
             ui: None,
             id,
@@ -1130,49 +1291,49 @@ impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> StateBuilder<T,
             height,
             proxy,
             settings,
-            init: Some(init),
             callback,
         };
         event_loop.run_app(&mut app).unwrap();
     }
 }
 
-impl<T: FnOnce(&mut State), U: FnMut(&mut egui::Ui, &mut State)> ApplicationHandler<UserEvent>
-    for StateBuilder<T, U>
-{
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> for StateWrapper<T> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = WindowAttributes::default()
-            .with_title(&self.id)
-            .with_inner_size(PhysicalSize::new(self.width, self.height));
-        let window = event_loop.create_window(window_attributes).unwrap();
+        if self.state.is_none() {
+            let window_attributes = WindowAttributes::default()
+                .with_title(&self.id)
+                .with_inner_size(PhysicalSize::new(self.width, self.height));
+            let window = event_loop.create_window(window_attributes).unwrap();
 
-        #[cfg(target_arch = "wasm32")]
-        {
-            use winit::platform::web::WindowExtWebSys;
-            web_sys::window()
-                .and_then(|win| win.document())
-                .and_then(|doc| {
-                    let dst = doc.get_element_by_id(&self.id)?;
-                    let canvas = window.canvas()?;
-                    // disable right click
-                    let empty_func = js_sys::Function::new_no_args("return false;");
-                    canvas.set_oncontextmenu(Some(&empty_func));
-                    dst.append_child(&canvas).ok()?;
-                    Some(())
-                })
-                .expect("Couldn't append canvas to document body.");
+            #[cfg(target_arch = "wasm32")]
+            {
+                use winit::platform::web::WindowExtWebSys;
+                web_sys::window()
+                    .and_then(|win| win.document())
+                    .and_then(|doc| {
+                        let dst = doc.get_element_by_id(&self.id)?;
+                        let canvas = window.canvas()?;
+                        // disable right click
+                        let empty_func = js_sys::Function::new_no_args("return false;");
+                        canvas.set_oncontextmenu(Some(&empty_func));
+                        dst.append_child(&canvas).ok()?;
+                        Some(())
+                    })
+                    .expect("Couldn't append canvas to document body.");
+            }
+
+            let init = self.init_state.take().unwrap();
+            self.state = Some(
+                RunningState::new(init, window, self.proxy.clone(), self.settings.clone())
+                    .block_on(),
+            );
+            self.ui = Some(ui::UI::new(
+                &self.state.as_ref().unwrap().device,
+                event_loop,
+                self.state.as_ref().unwrap().config.format,
+                self.state.as_ref().unwrap().window.scale_factor(),
+            ));
         }
-
-        self.state = Some(State::new(window, self.proxy.clone(), self.settings.clone()).block_on());
-        self.ui = Some(ui::UI::new(
-            &self.state.as_ref().unwrap().device,
-            event_loop,
-            self.state.as_ref().unwrap().config.format,
-            self.state.as_ref().unwrap().window.scale_factor(),
-        ));
-        self.init
-            .take()
-            .map(|f| f(&mut self.state.as_mut().unwrap()));
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
