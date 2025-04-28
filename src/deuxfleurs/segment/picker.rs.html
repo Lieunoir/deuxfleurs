@@ -324,8 +324,8 @@
 <a href=#324 id=324 data-nosnippet>324</a>    //// We define the output we want to send over to frag shader
 <a href=#325 id=325 data-nosnippet>325</a>    var out: VertexOutput;
 <a href=#326 id=326 data-nosnippet>326</a>
-<a href=#327 id=327 data-nosnippet>327</a>    let camera_right = normalize(vec3&lt;f32&gt;(camera.view_proj.x.x, camera.view_proj.y.x, camera.view_proj.z.x));
-<a href=#328 id=328 data-nosnippet>328</a>    let camera_up = normalize(vec3&lt;f32&gt;(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
+<a href=#327 id=327 data-nosnippet>327</a>    let camera_right = normalize(vec3&lt;f32&gt;(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
+<a href=#328 id=328 data-nosnippet>328</a>    let camera_up = normalize(vec3&lt;f32&gt;(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
 <a href=#329 id=329 data-nosnippet>329</a>    //let world_position = (model_matrix * vec4&lt;f32&gt;(data.position, 1.)).xyz + normalize((model_matrix * vec4&lt;f32&gt;(model.position.x * camera_right + model.position.y * camera_up, 1.)).xyz) * settings.radius * sqrt(2.);
 <a href=#330 id=330 data-nosnippet>330</a>    let center = (model_matrix * vec4&lt;f32&gt;(data.position, 1.)).xyz;
 <a href=#331 id=331 data-nosnippet>331</a>    //let world_position = center + (model_matrix * vec4&lt;f32&gt;((model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;

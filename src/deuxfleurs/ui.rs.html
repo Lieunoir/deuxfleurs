@@ -1,48 +1,48 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ui.rs`."><title>ui.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/</div>ui.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>egui::style::{WidgetVisuals, Widgets};
-<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>egui::{Color32, Stroke};
-<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>egui::{Response, Shadow, Widget};
-<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>egui_wgpu::{Renderer, ScreenDescriptor};
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>egui_winit::State;
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>epaint::CornerRadiusF32;
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>indexmap::IndexMap;
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>winit::event_loop::ActiveEventLoop;
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>winit::window::Window;
-<a href=#10 id=10 data-nosnippet>10</a>
-<a href=#11 id=11 data-nosnippet>11</a><span class="doccomment">/// When clicked, pops an interative window to load a mesh
-<a href=#12 id=12 data-nosnippet>12</a></span><span class="kw">pub struct </span>LoadObjButton&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; {
-<a href=#13 id=13 data-nosnippet>13</a>    name: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
-<a href=#14 id=14 data-nosnippet>14</a>    mesh_name: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>str,
-<a href=#15 id=15 data-nosnippet>15</a>    state: <span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="kw-2">mut </span><span class="kw">crate</span>::State,
-<a href=#16 id=16 data-nosnippet>16</a>}
-<a href=#17 id=17 data-nosnippet>17</a>
-<a href=#18 id=18 data-nosnippet>18</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; LoadObjButton&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; {
-<a href=#19 id=19 data-nosnippet>19</a>    <span class="kw">pub fn </span>new(name: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, mesh_name: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>str, state: <span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="kw-2">mut </span><span class="kw">crate</span>::State) -&gt; <span class="self">Self </span>{
-<a href=#20 id=20 data-nosnippet>20</a>        <span class="self">Self </span>{
-<a href=#21 id=21 data-nosnippet>21</a>            name,
-<a href=#22 id=22 data-nosnippet>22</a>            mesh_name,
-<a href=#23 id=23 data-nosnippet>23</a>            state,
-<a href=#24 id=24 data-nosnippet>24</a>        }
-<a href=#25 id=25 data-nosnippet>25</a>    }
-<a href=#26 id=26 data-nosnippet>26</a>}
-<a href=#27 id=27 data-nosnippet>27</a>
-<a href=#28 id=28 data-nosnippet>28</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; Widget <span class="kw">for </span>LoadObjButton&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; {
-<a href=#29 id=29 data-nosnippet>29</a>    <span class="kw">fn </span>ui(<span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>egui::Ui) -&gt; Response {
-<a href=#30 id=30 data-nosnippet>30</a>        <span class="kw">let </span>button = egui::Button::new(<span class="self">self</span>.name);
-<a href=#31 id=31 data-nosnippet>31</a>        <span class="kw">let </span>response = button.ui(ui);
-<a href=#32 id=32 data-nosnippet>32</a>        <span class="kw">if </span>response.clicked() {
-<a href=#33 id=33 data-nosnippet>33</a>            <span class="self">self</span>.state.send_mesh(<span class="self">self</span>.mesh_name.into());
-<a href=#34 id=34 data-nosnippet>34</a>        }
-<a href=#35 id=35 data-nosnippet>35</a>        response
-<a href=#36 id=36 data-nosnippet>36</a>    }
-<a href=#37 id=37 data-nosnippet>37</a>}
-<a href=#38 id=38 data-nosnippet>38</a>
-<a href=#39 id=39 data-nosnippet>39</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>UiDataElement {
-<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">fn </span>draw(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>egui::Ui, property_changed: <span class="kw-2">&amp;mut </span>bool) -&gt; bool;
-<a href=#41 id=41 data-nosnippet>41</a>
-<a href=#42 id=42 data-nosnippet>42</a>    <span class="kw">fn </span>draw_gizmo(
-<a href=#43 id=43 data-nosnippet>43</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#44 id=44 data-nosnippet>44</a>        _ui: <span class="kw-2">&amp;mut </span>egui::Ui,
-<a href=#45 id=45 data-nosnippet>45</a>        _name: <span class="kw-2">&amp;</span>str,
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ui.rs`."><title>ui.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/</div>ui.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{RunningState, StateHandle};
+<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>egui::style::{WidgetVisuals, Widgets};
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>egui::{Color32, Stroke};
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>egui::{Response, Shadow, Widget};
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>egui_wgpu::{Renderer, ScreenDescriptor};
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>egui_winit::State;
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>epaint::CornerRadiusF32;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>indexmap::IndexMap;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>winit::event_loop::ActiveEventLoop;
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>winit::window::Window;
+<a href=#11 id=11 data-nosnippet>11</a>
+<a href=#12 id=12 data-nosnippet>12</a><span class="doccomment">/// When clicked, pops an interative window to load a mesh
+<a href=#13 id=13 data-nosnippet>13</a></span><span class="kw">pub struct </span>LoadObjButton&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; {
+<a href=#14 id=14 data-nosnippet>14</a>    name: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
+<a href=#15 id=15 data-nosnippet>15</a>    mesh_name: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>str,
+<a href=#16 id=16 data-nosnippet>16</a>    state: <span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="kw-2">mut </span>RunningState,
+<a href=#17 id=17 data-nosnippet>17</a>}
+<a href=#18 id=18 data-nosnippet>18</a>
+<a href=#19 id=19 data-nosnippet>19</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; LoadObjButton&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; {
+<a href=#20 id=20 data-nosnippet>20</a>    <span class="kw">pub fn </span>new(name: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, mesh_name: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>str, state: <span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="kw-2">mut </span>RunningState) -&gt; <span class="self">Self </span>{
+<a href=#21 id=21 data-nosnippet>21</a>        <span class="self">Self </span>{
+<a href=#22 id=22 data-nosnippet>22</a>            name,
+<a href=#23 id=23 data-nosnippet>23</a>            mesh_name,
+<a href=#24 id=24 data-nosnippet>24</a>            state,
+<a href=#25 id=25 data-nosnippet>25</a>        }
+<a href=#26 id=26 data-nosnippet>26</a>    }
+<a href=#27 id=27 data-nosnippet>27</a>}
+<a href=#28 id=28 data-nosnippet>28</a>
+<a href=#29 id=29 data-nosnippet>29</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; Widget <span class="kw">for </span>LoadObjButton&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, <span class="lifetime">'c</span>&gt; {
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="kw">fn </span>ui(<span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>egui::Ui) -&gt; Response {
+<a href=#31 id=31 data-nosnippet>31</a>        <span class="kw">let </span>button = egui::Button::new(<span class="self">self</span>.name);
+<a href=#32 id=32 data-nosnippet>32</a>        <span class="kw">let </span>response = button.ui(ui);
+<a href=#33 id=33 data-nosnippet>33</a>        <span class="kw">if </span>response.clicked() {
+<a href=#34 id=34 data-nosnippet>34</a>            <span class="self">self</span>.state.send_mesh(<span class="self">self</span>.mesh_name.into());
+<a href=#35 id=35 data-nosnippet>35</a>        }
+<a href=#36 id=36 data-nosnippet>36</a>        response
+<a href=#37 id=37 data-nosnippet>37</a>    }
+<a href=#38 id=38 data-nosnippet>38</a>}
+<a href=#39 id=39 data-nosnippet>39</a>
+<a href=#40 id=40 data-nosnippet>40</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>UiDataElement {
+<a href=#41 id=41 data-nosnippet>41</a>    <span class="kw">fn </span>draw(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>egui::Ui, property_changed: <span class="kw-2">&amp;mut </span>bool) -&gt; bool;
+<a href=#42 id=42 data-nosnippet>42</a>
+<a href=#43 id=43 data-nosnippet>43</a>    <span class="kw">fn </span>draw_gizmo(
+<a href=#44 id=44 data-nosnippet>44</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#45 id=45 data-nosnippet>45</a>        _ui: <span class="kw-2">&amp;mut </span>egui::Ui,
 <a href=#46 id=46 data-nosnippet>46</a>        _view: cgmath::Matrix4&lt;f32&gt;,
 <a href=#47 id=47 data-nosnippet>47</a>        _proj: cgmath::Matrix4&lt;f32&gt;,
 <a href=#48 id=48 data-nosnippet>48</a>        _gizmo_hovered: <span class="kw-2">&amp;mut </span>bool,
@@ -217,9 +217,9 @@
 <a href=#217 id=217 data-nosnippet>217</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>draw_models(
 <a href=#218 id=218 data-nosnippet>218</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#219 id=219 data-nosnippet>219</a>        window: <span class="kw-2">&amp;</span>Window,
-<a href=#220 id=220 data-nosnippet>220</a>        surfaces: <span class="kw-2">&amp;mut </span>IndexMap&lt;String, <span class="kw">crate</span>::surface::Surface&gt;,
-<a href=#221 id=221 data-nosnippet>221</a>        clouds: <span class="kw-2">&amp;mut </span>IndexMap&lt;String, <span class="kw">crate</span>::point_cloud::PointCloud&gt;,
-<a href=#222 id=222 data-nosnippet>222</a>        curves: <span class="kw-2">&amp;mut </span>IndexMap&lt;String, <span class="kw">crate</span>::segment::Segment&gt;,
+<a href=#220 id=220 data-nosnippet>220</a>        surfaces: <span class="kw-2">&amp;mut </span>IndexMap&lt;String, <span class="kw">crate</span>::surface::DisplaySurface&gt;,
+<a href=#221 id=221 data-nosnippet>221</a>        clouds: <span class="kw-2">&amp;mut </span>IndexMap&lt;String, <span class="kw">crate</span>::point_cloud::DisplayPointCloud&gt;,
+<a href=#222 id=222 data-nosnippet>222</a>        curves: <span class="kw-2">&amp;mut </span>IndexMap&lt;String, <span class="kw">crate</span>::segment::DisplaySegment&gt;,
 <a href=#223 id=223 data-nosnippet>223</a>        view: cgmath::Matrix4&lt;f32&gt;,
 <a href=#224 id=224 data-nosnippet>224</a>        proj: cgmath::Matrix4&lt;f32&gt;,
 <a href=#225 id=225 data-nosnippet>225</a>    ) {
@@ -238,12 +238,12 @@
 <a href=#238 id=238 data-nosnippet>238</a>                    egui::CollapsingHeader::new(<span class="macro">format!</span>(
 <a href=#239 id=239 data-nosnippet>239</a>                        <span class="string">"{} : {} vertices, {} faces"</span>,
 <a href=#240 id=240 data-nosnippet>240</a>                        name,
-<a href=#241 id=241 data-nosnippet>241</a>                        surface.geometry().vertices.len(),
-<a href=#242 id=242 data-nosnippet>242</a>                        surface.geometry().indices.size(),
+<a href=#241 id=241 data-nosnippet>241</a>                        surface.element.geometry().vertices.len(),
+<a href=#242 id=242 data-nosnippet>242</a>                        surface.element.geometry().indices.size(),
 <a href=#243 id=243 data-nosnippet>243</a>                    ))
 <a href=#244 id=244 data-nosnippet>244</a>                    .default_open(<span class="bool-val">true</span>)
 <a href=#245 id=245 data-nosnippet>245</a>                    .show(ui, |ui| {
-<a href=#246 id=246 data-nosnippet>246</a>                        surface.inner.draw_ui(ui);
+<a href=#246 id=246 data-nosnippet>246</a>                        surface.draw_ui(ui);
 <a href=#247 id=247 data-nosnippet>247</a>                    });
 <a href=#248 id=248 data-nosnippet>248</a>                }
 <a href=#249 id=249 data-nosnippet>249</a>
@@ -251,11 +251,11 @@
 <a href=#251 id=251 data-nosnippet>251</a>                    egui::CollapsingHeader::new(<span class="macro">format!</span>(
 <a href=#252 id=252 data-nosnippet>252</a>                        <span class="string">"{} : {} points"</span>,
 <a href=#253 id=253 data-nosnippet>253</a>                        name,
-<a href=#254 id=254 data-nosnippet>254</a>                        cloud.geometry().positions.len(),
+<a href=#254 id=254 data-nosnippet>254</a>                        cloud.element.geometry().positions.len(),
 <a href=#255 id=255 data-nosnippet>255</a>                    ))
 <a href=#256 id=256 data-nosnippet>256</a>                    .default_open(<span class="bool-val">true</span>)
 <a href=#257 id=257 data-nosnippet>257</a>                    .show(ui, |ui| {
-<a href=#258 id=258 data-nosnippet>258</a>                        cloud.inner.draw_ui(ui);
+<a href=#258 id=258 data-nosnippet>258</a>                        cloud.draw_ui(ui);
 <a href=#259 id=259 data-nosnippet>259</a>                    });
 <a href=#260 id=260 data-nosnippet>260</a>                }
 <a href=#261 id=261 data-nosnippet>261</a>
@@ -263,12 +263,12 @@
 <a href=#263 id=263 data-nosnippet>263</a>                    egui::CollapsingHeader::new(<span class="macro">format!</span>(
 <a href=#264 id=264 data-nosnippet>264</a>                        <span class="string">"{} : {} points, {} edges"</span>,
 <a href=#265 id=265 data-nosnippet>265</a>                        name,
-<a href=#266 id=266 data-nosnippet>266</a>                        curve.geometry().positions.len(),
-<a href=#267 id=267 data-nosnippet>267</a>                        curve.geometry().connections.len(),
+<a href=#266 id=266 data-nosnippet>266</a>                        curve.element.geometry().positions.len(),
+<a href=#267 id=267 data-nosnippet>267</a>                        curve.element.geometry().connections.len(),
 <a href=#268 id=268 data-nosnippet>268</a>                    ))
 <a href=#269 id=269 data-nosnippet>269</a>                    .default_open(<span class="bool-val">true</span>)
 <a href=#270 id=270 data-nosnippet>270</a>                    .show(ui, |ui| {
-<a href=#271 id=271 data-nosnippet>271</a>                        curve.inner.draw_ui(ui);
+<a href=#271 id=271 data-nosnippet>271</a>                        curve.draw_ui(ui);
 <a href=#272 id=272 data-nosnippet>272</a>                    });
 <a href=#273 id=273 data-nosnippet>273</a>                }
 <a href=#274 id=274 data-nosnippet>274</a>                ui.allocate_space(ui.available_size());
@@ -280,20 +280,20 @@
 <a href=#280 id=280 data-nosnippet>280</a>            .fixed_pos((<span class="number">0.0</span>, <span class="number">0.0</span>))
 <a href=#281 id=281 data-nosnippet>281</a>            .show(<span class="kw-2">&amp;</span><span class="self">self</span>.ctx, |ui| {
 <a href=#282 id=282 data-nosnippet>282</a>                <span class="kw">for </span>(<span class="kw">_</span>, surface) <span class="kw">in </span>surfaces.iter_mut() {
-<a href=#283 id=283 data-nosnippet>283</a>                    surface.inner.draw_gizmo(ui, view, proj, <span class="kw-2">&amp;mut </span><span class="self">self</span>.hovered);
+<a href=#283 id=283 data-nosnippet>283</a>                    surface.draw_gizmo(ui, view, proj, <span class="kw-2">&amp;mut </span><span class="self">self</span>.hovered);
 <a href=#284 id=284 data-nosnippet>284</a>                }
 <a href=#285 id=285 data-nosnippet>285</a>                <span class="kw">for </span>(<span class="kw">_</span>, curve) <span class="kw">in </span>curves.iter_mut() {
-<a href=#286 id=286 data-nosnippet>286</a>                    curve.inner.draw_gizmo(ui, view, proj, <span class="kw-2">&amp;mut </span><span class="self">self</span>.hovered);
+<a href=#286 id=286 data-nosnippet>286</a>                    curve.draw_gizmo(ui, view, proj, <span class="kw-2">&amp;mut </span><span class="self">self</span>.hovered);
 <a href=#287 id=287 data-nosnippet>287</a>                }
 <a href=#288 id=288 data-nosnippet>288</a>                <span class="kw">for </span>(<span class="kw">_</span>, cloud) <span class="kw">in </span>clouds.iter_mut() {
-<a href=#289 id=289 data-nosnippet>289</a>                    cloud.inner.draw_gizmo(ui, view, proj, <span class="kw-2">&amp;mut </span><span class="self">self</span>.hovered);
+<a href=#289 id=289 data-nosnippet>289</a>                    cloud.draw_gizmo(ui, view, proj, <span class="kw-2">&amp;mut </span><span class="self">self</span>.hovered);
 <a href=#290 id=290 data-nosnippet>290</a>                }
 <a href=#291 id=291 data-nosnippet>291</a>            });
 <a href=#292 id=292 data-nosnippet>292</a>    }
 <a href=#293 id=293 data-nosnippet>293</a>
-<a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>draw_callback&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::State)&gt;(
+<a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>draw_callback&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt;(
 <a href=#295 id=295 data-nosnippet>295</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#296 id=296 data-nosnippet>296</a>        state: <span class="kw-2">&amp;mut </span><span class="kw">crate</span>::State,
+<a href=#296 id=296 data-nosnippet>296</a>        state: <span class="kw-2">&amp;mut </span>RunningState,
 <a href=#297 id=297 data-nosnippet>297</a>        callback: <span class="kw-2">&amp;mut </span>T,
 <a href=#298 id=298 data-nosnippet>298</a>    ) {
 <a href=#299 id=299 data-nosnippet>299</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(response) = egui::Window::new(<span class="string">"Interactions"</span>)

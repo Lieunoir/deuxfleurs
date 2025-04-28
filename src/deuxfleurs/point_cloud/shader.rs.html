@@ -76,8 +76,8 @@
 <a href=#76 id=76 data-nosnippet>76</a>    //// We define the output we want to send over to frag shader
 <a href=#77 id=77 data-nosnippet>77</a>    var out: VertexOutput;
 <a href=#78 id=78 data-nosnippet>78</a>
-<a href=#79 id=79 data-nosnippet>79</a>    let camera_right = normalize(vec3&lt;f32&gt;(camera.view_proj.x.x, camera.view_proj.y.x, camera.view_proj.z.x));
-<a href=#80 id=80 data-nosnippet>80</a>    let camera_up = normalize(vec3&lt;f32&gt;(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
+<a href=#79 id=79 data-nosnippet>79</a>    let camera_right = normalize(vec3&lt;f32&gt;(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
+<a href=#80 id=80 data-nosnippet>80</a>    let camera_up = normalize(vec3&lt;f32&gt;(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
 <a href=#81 id=81 data-nosnippet>81</a>    let world_position = (model_matrix * vec4&lt;f32&gt;(pos.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;
 <a href=#82 id=82 data-nosnippet>82</a>    let clip_pos = camera.view_proj * vec4&lt;f32&gt;(world_position, 1.0);
 <a href=#83 id=83 data-nosnippet>83</a>    out.clip_position = clip_pos + jitter.jitter * clip_pos.w;

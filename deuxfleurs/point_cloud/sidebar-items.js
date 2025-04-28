@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["PointCloudData"],"struct":["PointCloud","PointCloudGeometry"]};
+window.SIDEBAR_ITEMS = {"enum":["PointCloudData"],"struct":["PCSettings","PointCloudGeometry"],"type":["PointCloud"]};

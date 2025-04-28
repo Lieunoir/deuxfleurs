@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["SegmentData"],"struct":["Segment","SegmentGeometry"]};
+window.SIDEBAR_ITEMS = {"enum":["SegmentData"],"struct":["PCSettings","SegmentGeometry"],"type":["Segment"]};
