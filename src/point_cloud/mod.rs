@@ -104,9 +104,9 @@ impl PointCloudData {
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct PCSettings {
-    pub radius: Radius,
-    pub color: ColorSettings,
+pub struct PCSettings {
+    radius: Radius,
+    color: ColorSettings,
 }
 
 impl UiDataElement for PCSettings {
@@ -345,14 +345,8 @@ impl RenderPipeline for PointCloudPipeline {
     }
 }
 
-type PointCloudRenderer = Renderer<
-    PCSettings,
-    PointCloudData,
-    PointCloudGeometry,
-    PointCloudFixedRenderer,
-    PointCloudDataBuffer,
-    PointCloudPipeline,
->;
+type PointCloudRenderer =
+    Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>;
 
 impl Render for PointCloudRenderer {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -375,7 +369,9 @@ impl Render for PointCloudRenderer {
     }
 }
 
-type PointCloudInner = MainDisplayGeometry<
+pub type PointCloud = BareElement<PCSettings, PointCloudData, PointCloudGeometry>;
+
+pub(crate) type DisplayPointCloud = DisplayElement<
     PCSettings,
     PointCloudData,
     PointCloudGeometry,
@@ -385,11 +381,7 @@ type PointCloudInner = MainDisplayGeometry<
     Picker,
 >;
 
-pub struct PointCloud {
-    pub(crate) inner: PointCloudInner,
-}
-
-impl PointCloud {
+impl DisplayPointCloud {
     pub(crate) fn new(
         name: String,
         positions: Vec<[f32; 3]>,
@@ -398,70 +390,49 @@ impl PointCloud {
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
+        let element = PointCloud::new(name, positions);
+        DisplayPointCloud::init(
+            element,
+            device,
+            camera_light_bind_group_layout,
+            counter_bind_group_layout,
+            color_format,
+        )
+    }
+}
+
+impl PointCloud {
+    pub(crate) fn new(name: String, positions: Vec<[f32; 3]>) -> Self {
         let geometry = PointCloudGeometry {
             num_elements: positions.len() as u32,
             positions,
         };
-        PointCloud {
-            inner: PointCloudInner::init(
-                device,
-                name,
-                geometry,
-                camera_light_bind_group_layout,
-                counter_bind_group_layout,
-                color_format,
-            ),
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.inner.name
-    }
-
-    pub fn geometry(&self) -> &PointCloudGeometry {
-        &self.inner.geometry
-    }
-
-    pub fn shown(&self) -> bool {
-        self.inner.show
-    }
-
-    pub fn show(&mut self, show: bool) -> &mut Self {
-        self.inner.show = show;
-        self
-    }
-
-    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        self.inner.updater.data_to_show = Some(name);
-        self
+        PointCloud::init(name, geometry)
     }
 
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.inner.updater.settings.radius.radius = radius;
-        self.inner.updater.settings_changed = true;
+        self.updater.settings.radius.radius = radius;
+        self.updater.settings_changed = true;
         self
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.inner.updater.settings.color.color = color;
-        self.inner.updater.settings_changed = true;
+        self.updater.settings.color.color = color;
+        self.updater.settings_changed = true;
         self
     }
 
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut PointCloudData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        self.inner
-            .updater
+        self.updater
             .add_data(name, PointCloudData::Scalar(datas, ColorMap::default()))
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut PointCloudData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        self.inner
-            .updater
-            .add_data(name, PointCloudData::Color(datas))
+        self.updater.add_data(name, PointCloudData::Color(datas))
     }
 
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {

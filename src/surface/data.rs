@@ -79,7 +79,7 @@ impl DataUniformBuilder for VertexScalarSettings {
     }
 }
 
-pub(crate) enum SurfaceData {
+pub enum SurfaceData {
     Color(Vec<[f32; 3]>),
     FaceScalar(Vec<f32>, FaceScalarSettings),
     VertexScalar(Vec<f32>, VertexScalarSettings),

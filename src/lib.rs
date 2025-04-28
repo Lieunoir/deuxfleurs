@@ -38,12 +38,13 @@ mod updater;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
 pub use egui;
-use point_cloud::PointCloud;
+use point_cloud::{DisplayPointCloud, PointCloud};
 pub use resources::{load_mesh, load_mesh_blocking};
-use segment::Segment;
+use segment::{DisplaySegment, Segment};
 pub use settings::Settings;
-use surface::Surface;
+use surface::{DisplaySurface, Surface};
 use types::*;
+pub use updater::BareElement;
 pub use wgpu::Color;
 
 #[repr(C)]
@@ -90,11 +91,11 @@ pub struct State {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     // 3D Model
-    surfaces: IndexMap<String, Surface>,
+    surfaces: IndexMap<String, DisplaySurface>,
     //Points
-    clouds: IndexMap<String, PointCloud>,
+    clouds: IndexMap<String, DisplayPointCloud>,
     //Segments
-    segments: IndexMap<String, Segment>,
+    segments: IndexMap<String, DisplaySegment>,
     //Volume meshes
     // Lighting
     light_uniform: LightUniform,
@@ -384,10 +385,11 @@ impl State {
         use crate::updater::Positions;
         let mut min_y = 0.;
         for surface in self.surfaces.values() {
-            if surface.shown() {
-                for p in surface.geometry().get_positions() {
-                    let p = cgmath::Matrix4::from(surface.inner.updater.transform.get_transform())
-                        * cgmath::Point3::from(*p).to_homogeneous();
+            if surface.element.shown() {
+                for p in surface.element.geometry().get_positions() {
+                    let p =
+                        cgmath::Matrix4::from(surface.element.updater.transform.get_transform())
+                            * cgmath::Point3::from(*p).to_homogeneous();
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -396,9 +398,9 @@ impl State {
             }
         }
         for cloud in self.clouds.values() {
-            if cloud.shown() {
-                for p in cloud.geometry().get_positions() {
-                    let p = cgmath::Matrix4::from(cloud.inner.updater.transform.get_transform())
+            if cloud.element.shown() {
+                for p in cloud.element.geometry().get_positions() {
+                    let p = cgmath::Matrix4::from(cloud.element.updater.transform.get_transform())
                         * cgmath::Point3::from(*p).to_homogeneous();
                     let p = p / p[3];
                     if p[1] < min_y {
@@ -408,10 +410,11 @@ impl State {
             }
         }
         for segment in self.segments.values() {
-            if segment.shown() {
-                for p in segment.geometry().get_positions() {
-                    let p = cgmath::Matrix4::from(segment.inner.updater.transform.get_transform())
-                        * cgmath::Point3::from(*p).to_homogeneous();
+            if segment.element.shown() {
+                for p in segment.element.geometry().get_positions() {
+                    let p =
+                        cgmath::Matrix4::from(segment.element.updater.transform.get_transform())
+                            * cgmath::Point3::from(*p).to_homogeneous();
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -428,11 +431,11 @@ impl State {
         let mut n = 0;
         let mut center = cgmath::Point3::<f32>::new(0., 0., 0.);
         for surface in self.surfaces.values() {
-            if surface.shown() {
+            if surface.element.shown() {
                 let sbv = surface
-                    .inner
+                    .element
                     .sbv
-                    .transform(&surface.inner.updater.transform.get_transform());
+                    .transform(&surface.element.updater.transform.get_transform());
                 center += sbv.center.into();
                 n += 1;
                 if let Some(size) = &mut size {
@@ -445,11 +448,11 @@ impl State {
             }
         }
         for cloud in self.clouds.values() {
-            if cloud.shown() {
+            if cloud.element.shown() {
                 let sbv = cloud
-                    .inner
+                    .element
                     .sbv
-                    .transform(&cloud.inner.updater.transform.get_transform());
+                    .transform(&cloud.element.updater.transform.get_transform());
                 center += sbv.center.into();
                 n += 1;
                 if let Some(size) = &mut size {
@@ -462,11 +465,11 @@ impl State {
             }
         }
         for segment in self.segments.values() {
-            if segment.shown() {
+            if segment.element.shown() {
                 let sbv = segment
-                    .inner
+                    .element
                     .sbv
-                    .transform(&segment.inner.updater.transform.get_transform());
+                    .transform(&segment.element.updater.transform.get_transform());
                 center += sbv.center.into();
                 n += 1;
                 if let Some(size) = &mut size {
@@ -552,7 +555,7 @@ impl State {
         let mut sbv = None;
 
         for surface in self.surfaces.values_mut() {
-            changed |= surface.inner.refresh(
+            changed |= surface.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -562,7 +565,7 @@ impl State {
         }
 
         for cloud in self.clouds.values_mut() {
-            changed |= cloud.inner.refresh(
+            changed |= cloud.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -572,7 +575,7 @@ impl State {
         }
 
         for segment in self.segments.values_mut() {
-            changed |= segment.inner.refresh(
+            changed |= segment.refresh(
                 &self.device,
                 &mut self.queue,
                 &self.camera_light_bind_group_layout,
@@ -729,13 +732,13 @@ impl State {
                 //segment only change deph sometimes, could use conservative depth
                 //surface fully uses depth buffer(except attachments)
                 for cloud in self.clouds.values() {
-                    cloud.inner.render(&mut material_render_pass);
+                    cloud.render(&mut material_render_pass);
                 }
                 for segment in self.segments.values() {
-                    segment.inner.render(&mut material_render_pass);
+                    segment.render(&mut material_render_pass);
                 }
                 for surface in self.surfaces.values() {
-                    surface.inner.render(&mut material_render_pass);
+                    surface.render(&mut material_render_pass);
                 }
                 drop(material_render_pass);
 
@@ -791,7 +794,7 @@ impl State {
                         });
                     shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
                     for surface in self.surfaces.values() {
-                        surface.inner.render_shadow(&mut shadow_render_pass);
+                        surface.render_shadow(&mut shadow_render_pass);
                     }
 
                     drop(shadow_render_pass);
@@ -927,20 +930,13 @@ impl State {
     ) -> &mut Surface {
         let vertices: Vec<[f32; 3]> = vertices.into();
         if self.get_surface(&name).is_some()
-            && self
-                .get_surface(&name)
-                .unwrap()
-                .inner
-                .geometry
-                .vertices
-                .len()
-                == vertices.len()
+            && self.get_surface(&name).unwrap().geometry.vertices.len() == vertices.len()
         {
             let mut surface = self.surfaces.shift_remove(&name).unwrap();
             surface.change_vertices(vertices, indices.into(), &self.device);
             self.surfaces.insert(name.clone(), surface);
         } else {
-            let surface = Surface::new(
+            let surface = DisplaySurface::new(
                 name.clone(),
                 vertices,
                 indices.into(),
@@ -954,17 +950,17 @@ impl State {
             self.picker.counters_dirty = true;
         }
         self.dirty = true;
-        self.surfaces.get_mut(&name).unwrap()
+        &mut self.surfaces.get_mut(&name).unwrap().element
     }
 
     pub fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
         let res = self.surfaces.get_mut(name);
         self.dirty |= res.is_some();
-        res
+        res.map(|s| &mut s.element)
     }
 
     pub fn get_surface(&self, name: &str) -> Option<&Surface> {
-        self.surfaces.get(name)
+        self.surfaces.get(name).map(|s| &s.element)
     }
 
     pub fn register_point_cloud<V: Vertices>(
@@ -972,7 +968,7 @@ impl State {
         name: String,
         positions: V,
     ) -> &mut PointCloud {
-        let model = PointCloud::new(
+        let model = DisplayPointCloud::new(
             name.clone(),
             positions.into(),
             &self.device,
@@ -984,17 +980,17 @@ impl State {
         self.picker.counters_dirty = true;
         self.dirty = true;
         self.resize_scene();
-        self.clouds.get_mut(&name).unwrap()
+        &mut self.clouds.get_mut(&name).unwrap().element
     }
 
     pub fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
         let res = self.clouds.get_mut(name);
         self.dirty |= res.is_some();
-        res
+        res.map(|pc| &mut pc.element)
     }
 
     pub fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
-        self.clouds.get(name)
+        self.clouds.get(name).map(|pc| &pc.element)
     }
 
     /// Register list of segments
@@ -1008,7 +1004,7 @@ impl State {
         positions: V,
         connections: Vec<[u32; 2]>,
     ) -> &mut Segment {
-        let model = Segment::new(
+        let model = DisplaySegment::new(
             name.clone(),
             positions.into(),
             connections,
@@ -1021,17 +1017,17 @@ impl State {
         self.picker.counters_dirty = true;
         self.dirty = true;
         self.resize_scene();
-        self.segments.get_mut(&name).unwrap()
+        &mut self.segments.get_mut(&name).unwrap().element
     }
 
     pub fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment> {
         let res = self.segments.get_mut(name);
         self.dirty |= res.is_some();
-        res
+        res.map(|s| &mut s.element)
     }
 
     pub fn get_segment(&self, name: &str) -> Option<&Segment> {
-        self.segments.get(name)
+        self.segments.get(name).map(|s| &s.element)
     }
 
     /// Take a screenshot at the next frame

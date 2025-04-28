@@ -192,7 +192,6 @@ impl UiDataElement for TransformSettings {
     fn draw_gizmo(
         &mut self,
         ui: &mut egui::Ui,
-        _name: &str,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
         gizmo_hovered: &mut bool,

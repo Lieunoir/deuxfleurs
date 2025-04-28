@@ -6,23 +6,62 @@ use crate::ui::UiDataElement;
 use egui::{SliderClamping, Widget};
 use indexmap::IndexMap;
 
-pub struct MainDisplayGeometry<
-    Settings: NamedSettings,
-    Data: DataUniformBuilder + UiDataElement + DataSettings,
-    Geometry: Positions,
-    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-    Picker: ElementPicker<Geometry = Geometry, Settings = Settings>,
-> where
-    Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>: Render,
-{
-    pub name: String,
-    pub geometry: Geometry,
+/// Generic type for main displayed data (surface, point_clouds, etc...)
+pub struct BareElement<Settings, Data, Geometry> {
+    pub(crate) name: String,
+    pub(crate) geometry: Geometry,
     pub(crate) sbv: SBV,
     pub(crate) show: bool,
     pub(crate) updater: Updater<Settings, Data>,
-    pub(crate) renderer: Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>,
+}
+
+impl<Settings, Data, Geometry> BareElement<Settings, Data, Geometry> {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn geometry(&self) -> &Geometry {
+        &self.geometry
+    }
+
+    pub fn shown(&self) -> bool {
+        self.show
+    }
+
+    pub fn show(&mut self, show: bool) -> &mut Self {
+        self.show = show;
+        self
+    }
+
+    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
+        self.updater.data_to_show = Some(name);
+        self
+    }
+}
+
+#[allow(private_bounds)]
+impl<
+        Settings: NamedSettings,
+        Data: DataUniformBuilder + UiDataElement + DataSettings,
+        Geometry: Positions,
+    > BareElement<Settings, Data, Geometry>
+{
+    pub(crate) fn init(name: String, geometry: Geometry) -> Self {
+        let updater = Updater::new(&name);
+        let sbv = SBV::new(geometry.get_positions());
+        Self {
+            name,
+            geometry,
+            sbv,
+            show: true,
+            updater,
+        }
+    }
+}
+
+pub(crate) struct DisplayElement<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker> {
+    pub(crate) element: BareElement<Settings, Data, Geometry>,
+    pub(crate) renderer: Renderer<Fixed, DataB, Pipeline>,
     pub(crate) picker: Picker,
 }
 
@@ -34,17 +73,17 @@ impl<
         DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
         Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
         Picker: ElementPicker<Geometry = Geometry, Settings = Settings>,
-    > Render for MainDisplayGeometry<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker>
+    > Render for DisplayElement<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker>
 where
-    Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>: Render,
+    Renderer<Fixed, DataB, Pipeline>: Render,
 {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
     {
-        if self.show {
+        if self.element.show {
             self.renderer.render(render_pass);
-            self.updater.render_attached_data(render_pass);
+            self.element.updater.render_attached_data(render_pass);
         }
     }
 
@@ -52,7 +91,7 @@ where
     where
         'a: 'b,
     {
-        if self.show {
+        if self.element.show {
             self.renderer.render_shadow(render_pass);
         }
     }
@@ -66,44 +105,37 @@ impl<
         DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
         Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
         Picker: ElementPicker<Geometry = Geometry, Settings = Settings>,
-    > MainDisplayGeometry<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker>
+    > DisplayElement<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker>
 where
-    Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>: Render,
+    Renderer<Fixed, DataB, Pipeline>: Render,
 {
     pub(crate) fn init(
+        element: BareElement<Settings, Data, Geometry>,
         device: &wgpu::Device,
-        name: String,
-        geometry: Geometry,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
-        let updater = Updater::new(&name);
         let renderer = Renderer::new(
             device,
-            &geometry,
-            &updater.transform,
-            &updater.settings,
+            &element.geometry,
+            &element.updater.transform,
+            &element.updater.settings,
             camera_light_bind_group_layout,
             color_format,
         );
         let picker = Picker::new(
-            &geometry,
-            &updater.settings,
-            &updater.transform,
+            &element.geometry,
+            &element.updater.settings,
+            &element.updater.transform,
             device,
             camera_light_bind_group_layout,
             counter_bind_group_layout,
         );
-        let sbv = SBV::new(geometry.get_positions());
 
         Self {
-            name,
-            geometry,
-            show: true,
-            sbv,
+            element,
             renderer,
-            updater,
             picker,
         }
     }
@@ -116,27 +148,29 @@ where
         color_format: wgpu::TextureFormat,
         w_sbv: &mut Option<SBV>,
     ) -> bool {
-        self.updater.refresh(
-            &self.geometry,
+        self.element.updater.refresh(
+            &self.element.geometry,
             device,
             queue,
             camera_light_bind_group_layout,
             color_format,
             &mut self.renderer,
             &mut self.picker,
-            self.show,
-            &self.sbv,
+            self.element.show,
+            &self.element.sbv,
             w_sbv,
         )
     }
 
     pub(crate) fn draw_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            if ui.checkbox(&mut self.show, "Show").changed() {
-                self.updater.dirty = true;
+            if ui.checkbox(&mut self.element.show, "Show").changed() {
+                self.element.updater.dirty = true;
             }
         });
-        self.updater.draw(ui, self.geometry.get_positions());
+        self.element
+            .updater
+            .draw(ui, self.element.geometry.get_positions());
     }
 
     pub(crate) fn draw_gizmo(
@@ -146,15 +180,14 @@ where
         proj: cgmath::Matrix4<f32>,
         gizmo_hover: &mut bool,
     ) {
-        self.updater
-            .draw_gizmo(ui, &self.name, view, proj, gizmo_hover);
+        self.element.updater.draw_gizmo(ui, view, proj, gizmo_hover);
     }
 
     pub(crate) fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
     {
-        if self.show {
+        if self.element.show {
             self.picker.render(render_pass);
         }
     }
@@ -168,7 +201,7 @@ pub(crate) trait NamedSettings: Default + DataUniformBuilder + UiDataElement {
     fn set_name(self, name: &str) -> Self;
 }
 
-pub(crate) struct Updater<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement> {
+pub(crate) struct Updater<Settings, Data> {
     pub(crate) transform: TransformSettings,
     pub(crate) settings: Settings,
     pub(crate) data: IndexMap<String, Data>,
@@ -231,7 +264,7 @@ impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSet
         queue: &mut wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
-        renderer: &mut Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>,
+        renderer: &mut Renderer<Fixed, DataB, Pipeline>,
         picker: &mut Picker,
         show: bool,
         sbv: &SBV,
@@ -368,28 +401,16 @@ impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSet
     fn draw_gizmo(
         &mut self,
         ui: &mut egui::Ui,
-        name: &str,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
         gizmo_hovered: &mut bool,
     ) {
-        self.transform_changed |= self
-            .transform
-            .draw_gizmo(ui, name, view, proj, gizmo_hovered);
-        self.settings_changed |= self
-            .settings
-            .draw_gizmo(ui, name, view, proj, gizmo_hovered);
+        self.transform_changed |= self.transform.draw_gizmo(ui, view, proj, gizmo_hovered);
+        self.settings_changed |= self.settings.draw_gizmo(ui, view, proj, gizmo_hovered);
     }
 }
 
-pub(crate) struct Renderer<
-    Settings,
-    Data,
-    Geometry,
-    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-> {
+pub(crate) struct Renderer<Fixed, DataB, Pipeline> {
     pub(crate) fixed: Fixed,
     pub(crate) data_buffer: DataB,
     pub(crate) pipeline: Pipeline,
@@ -405,9 +426,9 @@ impl<
         Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
         DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
         Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-    > Renderer<Settings, Data, Geometry, Fixed, DataB, Pipeline>
+    > Renderer<Fixed, DataB, Pipeline>
 {
-    pub fn new(
+    pub(crate) fn new(
         device: &wgpu::Device,
         geometry: &Geometry,
         transform: &TransformSettings,
@@ -564,6 +585,6 @@ pub(crate) trait ElementPicker: Render {
     }
 }
 
-pub trait Positions {
+pub(crate) trait Positions {
     fn get_positions(&self) -> &[[f32; 3]];
 }

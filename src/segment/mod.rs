@@ -164,9 +164,9 @@ impl SegmentData {
 
 #[repr(C)]
 #[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct PCSettings {
-    pub radius: Radius,
-    pub color: ColorSettings,
+pub struct PCSettings {
+    radius: Radius,
+    color: ColorSettings,
 }
 
 impl UiDataElement for PCSettings {
@@ -540,14 +540,7 @@ impl RenderPipeline for SegmentPipeline {
     }
 }
 
-type SegmentRenderer = Renderer<
-    PCSettings,
-    SegmentData,
-    SegmentGeometry,
-    SegmentFixedRenderer,
-    SegmentDataBuffer,
-    SegmentPipeline,
->;
+type SegmentRenderer = Renderer<SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline>;
 
 impl Render for SegmentRenderer {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -577,7 +570,9 @@ impl Render for SegmentRenderer {
     }
 }
 
-type SegmentInner = MainDisplayGeometry<
+pub type Segment = BareElement<PCSettings, SegmentData, SegmentGeometry>;
+
+pub(crate) type DisplaySegment = DisplayElement<
     PCSettings,
     SegmentData,
     SegmentGeometry,
@@ -587,11 +582,7 @@ type SegmentInner = MainDisplayGeometry<
     Picker,
 >;
 
-pub struct Segment {
-    pub(crate) inner: SegmentInner,
-}
-
-impl Segment {
+impl DisplaySegment {
     pub(crate) fn new(
         name: String,
         positions: Vec<[f32; 3]>,
@@ -601,69 +592,50 @@ impl Segment {
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
+        let element = Segment::new(name, positions, connections);
+        Self::init(
+            element,
+            device,
+            camera_light_bind_group_layout,
+            counter_bind_group_layout,
+            color_format,
+        )
+    }
+}
+
+impl Segment {
+    pub(crate) fn new(name: String, positions: Vec<[f32; 3]>, connections: Vec<[u32; 2]>) -> Self {
         let geometry = SegmentGeometry {
             num_elements: positions.len() as u32,
             positions,
             connections,
         };
-        Segment {
-            inner: SegmentInner::init(
-                device,
-                name,
-                geometry,
-                camera_light_bind_group_layout,
-                counter_bind_group_layout,
-                color_format,
-            ),
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.inner.name
-    }
-
-    pub fn geometry(&self) -> &SegmentGeometry {
-        &self.inner.geometry
-    }
-
-    pub fn shown(&self) -> bool {
-        self.inner.show
-    }
-
-    pub fn show(&mut self, show: bool) -> &mut Self {
-        self.inner.show = show;
-        self
-    }
-
-    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        self.inner.updater.data_to_show = Some(name);
-        self
+        Segment::init(name, geometry)
     }
 
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.inner.updater.settings.radius.radius = radius;
-        self.inner.updater.settings_changed = true;
+        self.updater.settings.radius.radius = radius;
+        self.updater.settings_changed = true;
         self
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.inner.updater.settings.color.color = color;
-        self.inner.updater.settings_changed = true;
+        self.updater.settings.color.color = color;
+        self.updater.settings_changed = true;
         self
     }
 
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut SegmentData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        self.inner
-            .updater
+        self.updater
             .add_data(name, SegmentData::Scalar(datas, ColorMap::default()))
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut SegmentData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        self.inner.updater.add_data(name, SegmentData::Color(datas))
+        self.updater.add_data(name, SegmentData::Color(datas))
     }
 
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {

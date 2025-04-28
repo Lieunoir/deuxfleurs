@@ -42,7 +42,6 @@ pub(crate) trait UiDataElement {
     fn draw_gizmo(
         &mut self,
         _ui: &mut egui::Ui,
-        _name: &str,
         _view: cgmath::Matrix4<f32>,
         _proj: cgmath::Matrix4<f32>,
         _gizmo_hovered: &mut bool,
@@ -217,9 +216,9 @@ impl UI {
     pub(crate) fn draw_models(
         &mut self,
         window: &Window,
-        surfaces: &mut IndexMap<String, crate::surface::Surface>,
-        clouds: &mut IndexMap<String, crate::point_cloud::PointCloud>,
-        curves: &mut IndexMap<String, crate::segment::Segment>,
+        surfaces: &mut IndexMap<String, crate::surface::DisplaySurface>,
+        clouds: &mut IndexMap<String, crate::point_cloud::DisplayPointCloud>,
+        curves: &mut IndexMap<String, crate::segment::DisplaySegment>,
         view: cgmath::Matrix4<f32>,
         proj: cgmath::Matrix4<f32>,
     ) {
@@ -238,12 +237,12 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} vertices, {} faces",
                         name,
-                        surface.geometry().vertices.len(),
-                        surface.geometry().indices.size(),
+                        surface.element.geometry().vertices.len(),
+                        surface.element.geometry().indices.size(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        surface.inner.draw_ui(ui);
+                        surface.draw_ui(ui);
                     });
                 }
 
@@ -251,11 +250,11 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points",
                         name,
-                        cloud.geometry().positions.len(),
+                        cloud.element.geometry().positions.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        cloud.inner.draw_ui(ui);
+                        cloud.draw_ui(ui);
                     });
                 }
 
@@ -263,12 +262,12 @@ impl UI {
                     egui::CollapsingHeader::new(format!(
                         "{} : {} points, {} edges",
                         name,
-                        curve.geometry().positions.len(),
-                        curve.geometry().connections.len(),
+                        curve.element.geometry().positions.len(),
+                        curve.element.geometry().connections.len(),
                     ))
                     .default_open(true)
                     .show(ui, |ui| {
-                        curve.inner.draw_ui(ui);
+                        curve.draw_ui(ui);
                     });
                 }
                 ui.allocate_space(ui.available_size());
@@ -280,13 +279,13 @@ impl UI {
             .fixed_pos((0.0, 0.0))
             .show(&self.ctx, |ui| {
                 for (_, surface) in surfaces.iter_mut() {
-                    surface.inner.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    surface.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
                 for (_, curve) in curves.iter_mut() {
-                    curve.inner.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    curve.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
                 for (_, cloud) in clouds.iter_mut() {
-                    cloud.inner.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    cloud.draw_gizmo(ui, view, proj, &mut self.hovered);
                 }
             });
     }
