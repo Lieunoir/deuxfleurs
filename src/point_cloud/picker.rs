@@ -250,8 +250,8 @@ fn vs_main(
     //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    let camera_right = normalize(vec3<f32>(camera.view_proj.x.x, camera.view_proj.y.x, camera.view_proj.z.x));
-    let camera_up = normalize(vec3<f32>(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
+    let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
+    let camera_up = normalize(vec3<f32>(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
     //let world_position = (model_matrix * vec4<f32>(data.position, 1.)).xyz + normalize((model_matrix * vec4<f32>(model.position.x * camera_right + model.position.y * camera_up, 1.)).xyz) * settings.radius * sqrt(2.);
     let center = (model_matrix * vec4<f32>(data.position, 1.)).xyz;
     //let world_position = center + (model_matrix * vec4<f32>((model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;

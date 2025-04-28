@@ -76,7 +76,6 @@ fn vs_main(
 
     let view_axis = normalize((model_matrix * vec4<f32>(pos.position_1, 1.)).xyz - camera.view_pos.xyz);
     let camera_up = normalize(cross(center_vector, view_axis));
-    //let camera_up = normalize(vec3<f32>(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
     let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius), 1.)).xyz;
     let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
