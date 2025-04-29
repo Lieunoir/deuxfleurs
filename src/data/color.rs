@@ -13,16 +13,16 @@ const YELLOW: ColorSettings = ColorSettings {
     color: [0.63, 0.63, 0.09, 1.],
 };
 const WHITE: ColorSettings = ColorSettings {
-    color: [1., 1., 1., 1.],
+    color: [0.9, 0.9, 0.9, 1.],
 };
 const GREEN: ColorSettings = ColorSettings {
     color: [0.1, 0.50, 0.20, 1.],
 };
 const PINK: ColorSettings = ColorSettings {
-    color: [0.50, 0.1, 0.44, 1.],
+    color: [0.50, 0.1, 0.52, 1.],
 };
 const BLUE: ColorSettings = ColorSettings {
-    color: [0.2, 0.2, 0.8, 1.],
+    color: [0.22, 0.22, 0.75, 1.],
 };
 
 impl ColorSettings {

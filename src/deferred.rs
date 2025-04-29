@@ -717,7 +717,7 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) vec4<f32> {
 	let F = fresnelSchlick(dot(half_dir, normal), F0);
 	let G = GeometrySmith(normal, view_dir, light_dir, albedo.w);
 	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
-	var result = 0.4 * (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
+	var result = 0.55 * (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
 
 	let light_dir_2 = normalize(-right + up - forward);
 	//let light_dir_2 = normalize(vec3<f32>(1., 1., -1.));
@@ -726,7 +726,7 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) vec4<f32> {
 	let F2 = fresnelSchlick(dot(half_dir_2, normal), F0);
 	let G2 = GeometrySmith(normal, view_dir, light_dir_2, albedo.w);
 	let f_ct_2 = D2 * F2 * G2 / (4. * dot(view_dir, normal) * dot(light_dir_2, normal));
-	result += 1.1 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_2), 0.0);
+	result += 1.6 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_2), 0.0);
 
 	let light_dir_3 = normalize(right + up + forward);
 	let half_dir_3 = normalize(view_dir + light_dir_3);
@@ -734,7 +734,7 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) vec4<f32> {
 	let F3 = fresnelSchlick(dot(half_dir_3, normal), F0);
 	let G3 = GeometrySmith(normal, view_dir, light_dir_3, albedo.w);
 	let f_ct_3 = D3 * F3 * G3 / (4. * dot(view_dir, normal) * dot(light_dir_3, normal));
-	result += 1. * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_3), 0.0);
+	result += 1.4 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_3), 0.0);
 
 	//Tone mapping
 	let m1 = mat3x3(

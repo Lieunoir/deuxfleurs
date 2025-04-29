@@ -1,6 +1,7 @@
 use crate::ui::UiDataElement;
 use egui::Shape::Path;
-use egui::{Pos2, Stroke};
+use egui::{Color32, Pos2, Stroke};
+use egui_plot::{Bar, BarChart, Plot};
 use epaint::PathShape;
 
 #[repr(C)]
@@ -30,24 +31,76 @@ pub enum Colors {
     Coolwarm,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct ColorMap {
     pub colors: Colors,
+    bars: Vec<Bar>,
     min: f64,
     max: f64,
 }
 
-impl Default for ColorMap {
-    fn default() -> Self {
-        Self {
-            colors: Colors::Viridis,
-            min: 0.,
-            max: 1.,
+fn get_bars(values: &[f32], n_bars: usize) -> Vec<Bar> {
+    let mut max = f32::MIN;
+    let mut min = f32::MAX;
+    for v in values {
+        if max < *v {
+            max = *v;
+        }
+        if min > *v {
+            min = *v;
         }
     }
+    let mut histogram = vec![0; n_bars];
+    for v in values {
+        let clamped = (v - min) / (max - min);
+        let clamped = (clamped * (n_bars as f32)) as usize;
+        histogram[clamped.min(n_bars - 1)] += 1;
+    }
+    histogram
+        .into_iter()
+        .enumerate()
+        .map(|(i, s)| {
+            Bar::new(i as f64, s as f64)
+            //Bar::new(
+            //    "".to_string(),
+            //    Orientation::Vertical,
+            //    i as f64,
+            //    s as f64,
+            //    None,
+            //    1.,
+            //    Stroke::default(),
+            //    Color32::LIGHT_BLUE,
+            //)
+        })
+        .collect()
 }
 
 impl ColorMap {
+    pub(crate) fn new(values: &[f32]) -> Self {
+        let mut res = Self {
+            bars: get_bars(values, 20),
+            colors: Colors::Viridis,
+            min: 0.,
+            max: 1.,
+        };
+        res.apply_bar_colors();
+        res
+    }
+
+    fn apply_bar_colors(&mut self) {
+        let color_map = self.colors;
+        let n_values = self.bars.len();
+        for (i, bar) in self.bars.iter_mut().enumerate() {
+            let colors = color_map.compute_color(i as f32 / n_values as f32);
+            let bar_c = bar.clone();
+            *bar = bar_c.fill(Color32::from_rgb(
+                (colors[0] * 255.) as u8,
+                (colors[1] * 255.) as u8,
+                (colors[2] * 255.) as u8,
+            ));
+        }
+    }
+
     pub(crate) fn get_value(&self) -> ColorMapValues {
         ColorMapValues {
             colors: self.colors.get_value(),
@@ -244,6 +297,36 @@ impl Colors {
             Colors::Coolwarm => "Coolwarm",
         }
     }
+
+    fn compute_color(&self, x: f32) -> [f32; 3] {
+        //let x = (clamp(dist, data_uniform.min, data_uniform.max) - data_uniform.min) / (data_uniform.max - data_uniform.min);
+        let ColorsValues { red, green, blue } = self.get_value();
+        let polynomial = [
+            1.0,
+            x,
+            x * x,
+            x * x * x,
+            x * x * x * x,
+            x * x * x * x * x,
+            x * x * x * x * x * x,
+            x * x * x * x * x * x * x,
+        ];
+        //let v4: vec4<f32> = vec4<f32>(1.0, x, x*x, x*x*x);
+        //let v2: vec4<f32> = v4 * v4.w * x;
+        let red = polynomial
+            .iter()
+            .zip(red)
+            .fold(0., |acc, (c, v)| acc + (c * v));
+        let green = polynomial
+            .iter()
+            .zip(green)
+            .fold(0., |acc, (c, v)| acc + (c * v));
+        let blue = polynomial
+            .iter()
+            .zip(blue)
+            .fold(0., |acc, (c, v)| acc + (c * v));
+        [red, green, blue]
+    }
 }
 
 pub fn windowing_ui(
@@ -365,6 +448,19 @@ impl UiDataElement for ColorMap {
                     .selectable_value(&mut self.colors, Colors::Coolwarm, "Coolwarm")
                     .changed();
             });
+        if changed {
+            self.apply_bar_colors();
+        }
+        Plot::new("oue")
+            .label_formatter(|_, _| "".to_owned())
+            .show_y(false)
+            .allow_zoom(false)
+            .allow_scroll(false)
+            .clamp_grid(true)
+            .show_axes(false)
+            .show_grid(false)
+            .view_aspect(3.)
+            .show(ui, |ui| ui.bar_chart(BarChart::new(self.bars.clone())));
         ui.horizontal(|ui| {
             changed |=
                 windowing_ui(ui, &100., &100., 0., 1., &mut self.min, &mut self.max).changed();
