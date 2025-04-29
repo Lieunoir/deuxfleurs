@@ -235,43 +235,78 @@ impl UI {
             .min_height(650.)
             .show(&self.ctx, |ui| {
                 for (name, surface) in surfaces.iter_mut() {
-                    egui::CollapsingHeader::new(format!(
-                        "{} : {} vertices, {} faces",
+                    let label = format!(
+                        "{}: {} vertices, {} faces",
                         name,
                         surface.element.geometry().vertices.len(),
                         surface.element.geometry().indices.size(),
-                    ))
-                    .default_open(true)
-                    .show(ui, |ui| {
+                    );
+                    let id = ui.make_persistent_id(label.clone());
+                    egui::collapsing_header::CollapsingState::load_with_default_open(
+                        ui.ctx(),
+                        id,
+                        true,
+                    )
+                    .show_header(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            if ui.checkbox(&mut surface.element.show, label).changed() {
+                                surface.element.updater.dirty = true;
+                            }
+                        })
+                    })
+                    .body(|ui| {
                         surface.draw_ui(ui);
                     });
                 }
 
                 for (name, cloud) in clouds.iter_mut() {
-                    egui::CollapsingHeader::new(format!(
+                    let label = format!(
                         "{} : {} points",
                         name,
                         cloud.element.geometry().positions.len(),
-                    ))
-                    .default_open(true)
-                    .show(ui, |ui| {
+                    );
+                    let id = ui.make_persistent_id(label.clone());
+                    egui::collapsing_header::CollapsingState::load_with_default_open(
+                        ui.ctx(),
+                        id,
+                        true,
+                    )
+                    .show_header(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            if ui.checkbox(&mut cloud.element.show, label).changed() {
+                                cloud.element.updater.dirty = true;
+                            }
+                        })
+                    })
+                    .body(|ui| {
                         cloud.draw_ui(ui);
                     });
                 }
 
                 for (name, curve) in curves.iter_mut() {
-                    egui::CollapsingHeader::new(format!(
+                    let label = format!(
                         "{} : {} points, {} edges",
                         name,
                         curve.element.geometry().positions.len(),
                         curve.element.geometry().connections.len(),
-                    ))
-                    .default_open(true)
-                    .show(ui, |ui| {
+                    );
+                    let id = ui.make_persistent_id(label.clone());
+                    egui::collapsing_header::CollapsingState::load_with_default_open(
+                        ui.ctx(),
+                        id,
+                        true,
+                    )
+                    .show_header(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            if ui.checkbox(&mut curve.element.show, label).changed() {
+                                curve.element.updater.dirty = true;
+                            }
+                        })
+                    })
+                    .body(|ui| {
                         curve.draw_ui(ui);
                     });
                 }
-                ui.allocate_space(ui.available_size());
             })
         {
             self.hovered |= response.response.contains_pointer();

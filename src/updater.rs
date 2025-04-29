@@ -163,11 +163,6 @@ where
     }
 
     pub(crate) fn draw_ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            if ui.checkbox(&mut self.element.show, "Show").changed() {
-                self.element.updater.dirty = true;
-            }
-        });
         self.element
             .updater
             .draw(ui, self.element.geometry.get_positions());
@@ -358,30 +353,39 @@ impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSet
         self.settings_changed |= self.settings.draw(ui, &mut self.property_changed);
         for (name, data) in &mut self.data {
             let active = self.shown_data == Some(name.clone());
-            egui::CollapsingHeader::new(name)
-                .default_open(false)
-                .show(ui, |ui| {
-                    let mut change_active = active;
-                    ui.checkbox(&mut change_active, "Show");
-                    if change_active != active {
-                        if !active {
-                            self.data_to_show = Some(Some(name.clone()))
-                        } else {
-                            self.data_to_show = Some(None)
+            let id = ui.make_persistent_id(name);
+            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
+                .show_header(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        let mut change_active = active;
+                        ui.checkbox(&mut change_active, name.clone());
+                        if change_active != active {
+                            if !active {
+                                self.data_to_show = Some(Some(name.clone()))
+                            } else {
+                                self.data_to_show = Some(None)
+                            }
                         }
-                    }
+                    })
+                })
+                .body(|ui| {
                     self.uniform_changed |= data.draw(ui, &mut self.property_changed) && active;
                 });
         }
         for (name, field) in &mut self.attached_data {
-            egui::CollapsingHeader::new(name)
-                .default_open(false)
-                .show(ui, |ui| {
+            let id = ui.make_persistent_id(name);
+            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
+                .show_header(ui, |ui| {
                     ui.horizontal(|ui| {
-                        if ui.checkbox(&mut field.settings.show, "Show").changed() {
+                        if ui
+                            .checkbox(&mut field.settings.show, name.clone())
+                            .changed()
+                        {
                             self.dirty = true;
                         }
                     });
+                })
+                .body(|ui| {
                     //TODO move this
                     if egui::Slider::new(&mut field.settings.magnitude, 0.1..=100.0)
                         .text("Magnitude")
