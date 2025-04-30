@@ -15,16 +15,24 @@
 <a href=#15 id=15 data-nosnippet>15</a>@group(3) @binding(0)
 <a href=#16 id=16 data-nosnippet>16</a>var&lt;uniform&gt; colormap_uniform: ColorMapUniform;
 <a href=#17 id=17 data-nosnippet>17</a>
-<a href=#18 id=18 data-nosnippet>18</a>//https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
-<a href=#19 id=19 data-nosnippet>19</a>fn colormap(dist: f32) -&gt; vec3&lt;f32&gt; {
-<a href=#20 id=20 data-nosnippet>20</a>    let x = (clamp(dist, colormap_uniform.min, colormap_uniform.max) - colormap_uniform.min) / (colormap_uniform.max - colormap_uniform.min);
-<a href=#21 id=21 data-nosnippet>21</a>    let v4: vec4&lt;f32&gt; = vec4&lt;f32&gt;(1.0, x, x*x, x*x*x);
-<a href=#22 id=22 data-nosnippet>22</a>    let v2: vec4&lt;f32&gt; = v4 * v4.w * x;
-<a href=#23 id=23 data-nosnippet>23</a>    //let v2: vec2&lt;f32&gt; = vec2&lt;f32&gt;(0., 0.);
-<a href=#24 id=24 data-nosnippet>24</a>    return vec3&lt;f32&gt;(
-<a href=#25 id=25 data-nosnippet>25</a>        dot(v4, colormap_uniform.k_red_vec1) + dot(v2, colormap_uniform.k_red_vec2),
-<a href=#26 id=26 data-nosnippet>26</a>        dot(v4, colormap_uniform.k_green_vec1) + dot(v2, colormap_uniform.k_green_vec2),
-<a href=#27 id=27 data-nosnippet>27</a>        dot(v4, colormap_uniform.k_blue_vec1) + dot(v2, colormap_uniform.k_blue_vec2),
-<a href=#28 id=28 data-nosnippet>28</a>    );
-<a href=#29 id=29 data-nosnippet>29</a>}
-<a href=#30 id=30 data-nosnippet>30</a>"</span>;</code></pre></div></section></main></body></html>
+<a href=#18 id=18 data-nosnippet>18</a>fn linear_from_gamma(srgb: vec3&lt;f32&gt;) -&gt; vec3&lt;f32&gt; {
+<a href=#19 id=19 data-nosnippet>19</a>    let cutoff = srgb &lt; vec3&lt;f32&gt;(0.04045);
+<a href=#20 id=20 data-nosnippet>20</a>    let lower = srgb / vec3&lt;f32&gt;(12.92);
+<a href=#21 id=21 data-nosnippet>21</a>    let higher = pow((srgb + vec3&lt;f32&gt;(0.055)) / vec3&lt;f32&gt;(1.055), vec3&lt;f32&gt;(2.4));
+<a href=#22 id=22 data-nosnippet>22</a>    return select(higher, lower, cutoff);
+<a href=#23 id=23 data-nosnippet>23</a>}
+<a href=#24 id=24 data-nosnippet>24</a>
+<a href=#25 id=25 data-nosnippet>25</a>//https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
+<a href=#26 id=26 data-nosnippet>26</a>fn colormap(dist: f32) -&gt; vec3&lt;f32&gt; {
+<a href=#27 id=27 data-nosnippet>27</a>    let x = (clamp(dist, colormap_uniform.min, colormap_uniform.max) - colormap_uniform.min) / (colormap_uniform.max - colormap_uniform.min);
+<a href=#28 id=28 data-nosnippet>28</a>    let v4: vec4&lt;f32&gt; = vec4&lt;f32&gt;(1.0, x, x*x, x*x*x);
+<a href=#29 id=29 data-nosnippet>29</a>    let v2: vec4&lt;f32&gt; = v4 * v4.w * x;
+<a href=#30 id=30 data-nosnippet>30</a>    //let v2: vec2&lt;f32&gt; = vec2&lt;f32&gt;(0., 0.);
+<a href=#31 id=31 data-nosnippet>31</a>    let res = vec3&lt;f32&gt;(
+<a href=#32 id=32 data-nosnippet>32</a>        dot(v4, colormap_uniform.k_red_vec1) + dot(v2, colormap_uniform.k_red_vec2),
+<a href=#33 id=33 data-nosnippet>33</a>        dot(v4, colormap_uniform.k_green_vec1) + dot(v2, colormap_uniform.k_green_vec2),
+<a href=#34 id=34 data-nosnippet>34</a>        dot(v4, colormap_uniform.k_blue_vec1) + dot(v2, colormap_uniform.k_blue_vec2),
+<a href=#35 id=35 data-nosnippet>35</a>    );
+<a href=#36 id=36 data-nosnippet>36</a>    return linear_from_gamma(res);
+<a href=#37 id=37 data-nosnippet>37</a>}
+<a href=#38 id=38 data-nosnippet>38</a>"</span>;</code></pre></div></section></main></body></html>

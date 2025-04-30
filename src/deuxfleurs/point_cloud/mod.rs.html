@@ -425,19 +425,20 @@
 <a href=#425 id=425 data-nosnippet>425</a>    <span class="kw">pub fn </span>add_scalar&lt;S: Scalar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, datas: S) -&gt; <span class="kw-2">&amp;mut </span>PointCloudData {
 <a href=#426 id=426 data-nosnippet>426</a>        <span class="kw">let </span>datas = datas.into();
 <a href=#427 id=427 data-nosnippet>427</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#428 id=428 data-nosnippet>428</a>        <span class="self">self</span>.updater
-<a href=#429 id=429 data-nosnippet>429</a>            .add_data(name, PointCloudData::Scalar(datas, ColorMap::default()))
-<a href=#430 id=430 data-nosnippet>430</a>    }
-<a href=#431 id=431 data-nosnippet>431</a>
-<a href=#432 id=432 data-nosnippet>432</a>    <span class="kw">pub fn </span>add_colors&lt;C: Color&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, datas: C) -&gt; <span class="kw-2">&amp;mut </span>PointCloudData {
-<a href=#433 id=433 data-nosnippet>433</a>        <span class="kw">let </span>datas = datas.into();
-<a href=#434 id=434 data-nosnippet>434</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#435 id=435 data-nosnippet>435</a>        <span class="self">self</span>.updater.add_data(name, PointCloudData::Color(datas))
-<a href=#436 id=436 data-nosnippet>436</a>    }
-<a href=#437 id=437 data-nosnippet>437</a>
-<a href=#438 id=438 data-nosnippet>438</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>draw_element_info(<span class="kw-2">&amp;</span><span class="self">self</span>, element: usize, ui: <span class="kw-2">&amp;mut </span>egui::Ui) {
-<a href=#439 id=439 data-nosnippet>439</a>        <span class="kw">if </span>element &lt; <span class="self">self</span>.geometry().positions.len() {
-<a href=#440 id=440 data-nosnippet>440</a>            ui.label(<span class="macro">format!</span>(<span class="string">"Picked point number {}"</span>, element));
-<a href=#441 id=441 data-nosnippet>441</a>        }
-<a href=#442 id=442 data-nosnippet>442</a>    }
-<a href=#443 id=443 data-nosnippet>443</a>}</code></pre></div></section></main></body></html>
+<a href=#428 id=428 data-nosnippet>428</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas);
+<a href=#429 id=429 data-nosnippet>429</a>        <span class="self">self</span>.updater
+<a href=#430 id=430 data-nosnippet>430</a>            .add_data(name, PointCloudData::Scalar(datas, settings))
+<a href=#431 id=431 data-nosnippet>431</a>    }
+<a href=#432 id=432 data-nosnippet>432</a>
+<a href=#433 id=433 data-nosnippet>433</a>    <span class="kw">pub fn </span>add_colors&lt;C: Color&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, datas: C) -&gt; <span class="kw-2">&amp;mut </span>PointCloudData {
+<a href=#434 id=434 data-nosnippet>434</a>        <span class="kw">let </span>datas = datas.into();
+<a href=#435 id=435 data-nosnippet>435</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
+<a href=#436 id=436 data-nosnippet>436</a>        <span class="self">self</span>.updater.add_data(name, PointCloudData::Color(datas))
+<a href=#437 id=437 data-nosnippet>437</a>    }
+<a href=#438 id=438 data-nosnippet>438</a>
+<a href=#439 id=439 data-nosnippet>439</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>draw_element_info(<span class="kw-2">&amp;</span><span class="self">self</span>, element: usize, ui: <span class="kw-2">&amp;mut </span>egui::Ui) {
+<a href=#440 id=440 data-nosnippet>440</a>        <span class="kw">if </span>element &lt; <span class="self">self</span>.geometry().positions.len() {
+<a href=#441 id=441 data-nosnippet>441</a>            ui.label(<span class="macro">format!</span>(<span class="string">"Picked point number {}"</span>, element));
+<a href=#442 id=442 data-nosnippet>442</a>        }
+<a href=#443 id=443 data-nosnippet>443</a>    }
+<a href=#444 id=444 data-nosnippet>444</a>}</code></pre></div></section></main></body></html>

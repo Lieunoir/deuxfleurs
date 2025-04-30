@@ -1277,7 +1277,7 @@
 <a href=#1277 id=1277 data-nosnippet>1277</a>        settings: Settings,
 <a href=#1278 id=1278 data-nosnippet>1278</a>        callback: T,
 <a href=#1279 id=1279 data-nosnippet>1279</a>    ) {
-<a href=#1280 id=1280 data-nosnippet>1280</a>        <span class="kw">let </span>id = id.unwrap_or(<span class="string">"State"</span>.into());
+<a href=#1280 id=1280 data-nosnippet>1280</a>        <span class="kw">let </span>id = id.unwrap_or(<span class="string">"deuxfleurs"</span>.into());
 <a href=#1281 id=1281 data-nosnippet>1281</a>        <span class="macro">cfg_if::cfg_if!</span> {
 <a href=#1282 id=1282 data-nosnippet>1282</a>            <span class="kw">if </span><span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)] </span>{
 <a href=#1283 id=1283 data-nosnippet>1283</a>                std::panic::set_hook(Box::new(console_error_panic_hook::hook));

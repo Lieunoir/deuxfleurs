@@ -717,7 +717,7 @@
 <a href=#717 id=717 data-nosnippet>717</a>	let F = fresnelSchlick(dot(half_dir, normal), F0);
 <a href=#718 id=718 data-nosnippet>718</a>	let G = GeometrySmith(normal, view_dir, light_dir, albedo.w);
 <a href=#719 id=719 data-nosnippet>719</a>	let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
-<a href=#720 id=720 data-nosnippet>720</a>	var result = 0.4 * (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
+<a href=#720 id=720 data-nosnippet>720</a>	var result = 0.55 * (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
 <a href=#721 id=721 data-nosnippet>721</a>
 <a href=#722 id=722 data-nosnippet>722</a>	let light_dir_2 = normalize(-right + up - forward);
 <a href=#723 id=723 data-nosnippet>723</a>	//let light_dir_2 = normalize(vec3&lt;f32&gt;(1., 1., -1.));
@@ -726,7 +726,7 @@
 <a href=#726 id=726 data-nosnippet>726</a>	let F2 = fresnelSchlick(dot(half_dir_2, normal), F0);
 <a href=#727 id=727 data-nosnippet>727</a>	let G2 = GeometrySmith(normal, view_dir, light_dir_2, albedo.w);
 <a href=#728 id=728 data-nosnippet>728</a>	let f_ct_2 = D2 * F2 * G2 / (4. * dot(view_dir, normal) * dot(light_dir_2, normal));
-<a href=#729 id=729 data-nosnippet>729</a>	result += 1.1 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_2), 0.0);
+<a href=#729 id=729 data-nosnippet>729</a>	result += 1.6 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_2), 0.0);
 <a href=#730 id=730 data-nosnippet>730</a>
 <a href=#731 id=731 data-nosnippet>731</a>	let light_dir_3 = normalize(right + up + forward);
 <a href=#732 id=732 data-nosnippet>732</a>	let half_dir_3 = normalize(view_dir + light_dir_3);
@@ -734,7 +734,7 @@
 <a href=#734 id=734 data-nosnippet>734</a>	let F3 = fresnelSchlick(dot(half_dir_3, normal), F0);
 <a href=#735 id=735 data-nosnippet>735</a>	let G3 = GeometrySmith(normal, view_dir, light_dir_3, albedo.w);
 <a href=#736 id=736 data-nosnippet>736</a>	let f_ct_3 = D3 * F3 * G3 / (4. * dot(view_dir, normal) * dot(light_dir_3, normal));
-<a href=#737 id=737 data-nosnippet>737</a>	result += 1. * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_3), 0.0);
+<a href=#737 id=737 data-nosnippet>737</a>	result += 1.4 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_3), 0.0);
 <a href=#738 id=738 data-nosnippet>738</a>
 <a href=#739 id=739 data-nosnippet>739</a>	//Tone mapping
 <a href=#740 id=740 data-nosnippet>740</a>	let m1 = mat3x3(
