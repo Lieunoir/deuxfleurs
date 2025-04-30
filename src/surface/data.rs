@@ -12,28 +12,44 @@ struct VertexScalarSettingsBuffer {
     colormap: ColorMapValues,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct VertexScalarSettings {
     pub isoline: IsolineSettings,
     pub colormap: ColorMap,
 }
 
 impl VertexScalarSettings {
+    pub(crate) fn new(values: &[f32]) -> Self {
+        Self {
+            colormap: ColorMap::new(values),
+            isoline: IsolineSettings::default(),
+        }
+    }
+
+    pub(crate) fn recycle(&mut self, old: Self) {
+        self.isoline = old.isoline;
+        self.colormap.recycle(old.colormap);
+    }
+
     pub fn set_isolines(&mut self, isolines: f32) {
         self.isoline.isoline_number = isolines;
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct FaceScalarSettings {
     pub colormap: ColorMap,
 }
 
-impl Default for FaceScalarSettings {
-    fn default() -> Self {
+impl FaceScalarSettings {
+    pub(crate) fn new(values: &[f32]) -> Self {
         Self {
-            colormap: ColorMap::default(),
+            colormap: ColorMap::new(values),
         }
+    }
+
+    pub(crate) fn recycle(&mut self, old: Self) {
+        self.colormap.recycle(old.colormap);
     }
 }
 
@@ -54,15 +70,6 @@ impl From<&VertexScalarSettings> for VertexScalarSettingsBuffer {
         VertexScalarSettingsBuffer {
             isoline: settings.isoline,
             colormap: settings.colormap.get_value(),
-        }
-    }
-}
-
-impl Default for VertexScalarSettings {
-    fn default() -> Self {
-        Self {
-            isoline: IsolineSettings::default(),
-            colormap: ColorMap::default(),
         }
     }
 }
@@ -92,9 +99,11 @@ pub enum SurfaceData {
 impl DataSettings for SurfaceData {
     fn apply_settings(&mut self, other: Self) {
         match (self, other) {
-            (SurfaceData::FaceScalar(_, set1), SurfaceData::FaceScalar(_, set2)) => *set1 = set2,
+            (SurfaceData::FaceScalar(_, set1), SurfaceData::FaceScalar(_, set2)) => {
+                set1.recycle(set2)
+            }
             (SurfaceData::VertexScalar(_, set1), SurfaceData::VertexScalar(_, set2)) => {
-                *set1 = set2
+                set1.recycle(set2)
             }
             (SurfaceData::UVMap(_, set1), SurfaceData::UVMap(_, set2)) => *set1 = set2,
             (SurfaceData::UVCornerMap(_, set1), SurfaceData::UVCornerMap(_, set2)) => *set1 = set2,

@@ -381,15 +381,7 @@ impl DisplaySurface {
 }
 
 impl Surface {
-    pub(crate) fn new(
-        name: String,
-        vertices: Vec<[f32; 3]>,
-        indices: SurfaceIndices,
-        //device: &wgpu::Device,
-        //camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        //counter_bind_group_layout: &wgpu::BindGroupLayout,
-        //color_format: wgpu::TextureFormat,
-    ) -> Self {
+    pub(crate) fn new(name: String, vertices: Vec<[f32; 3]>, indices: SurfaceIndices) -> Self {
         let mut internal_indices = Vec::new();
         for face in &indices {
             for i in 1..face.len() - 1 {
@@ -428,10 +420,11 @@ impl Surface {
     ) -> &mut FaceScalarSettings {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
-        if let SurfaceData::FaceScalar(_, settings) = self.updater.add_data(
-            name,
-            SurfaceData::FaceScalar(datas, FaceScalarSettings::default()),
-        ) {
+        let new_settings = FaceScalarSettings::new(&datas);
+        if let SurfaceData::FaceScalar(_, settings) = self
+            .updater
+            .add_data(name, SurfaceData::FaceScalar(datas, new_settings))
+        {
             settings
         } else {
             panic!()
@@ -445,10 +438,11 @@ impl Surface {
     ) -> &mut VertexScalarSettings {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        if let SurfaceData::VertexScalar(_, settings) = self.updater.add_data(
-            name,
-            SurfaceData::VertexScalar(datas, VertexScalarSettings::default()),
-        ) {
+        let new_settings = VertexScalarSettings::new(&datas);
+        if let SurfaceData::VertexScalar(_, settings) = self
+            .updater
+            .add_data(name, SurfaceData::VertexScalar(datas, new_settings))
+        {
             settings
         } else {
             panic!()

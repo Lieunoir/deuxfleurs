@@ -1,7 +1,7 @@
 use crate::ui::UiDataElement;
 use egui::Shape::Path;
 use egui::{Color32, Pos2, Stroke};
-use egui_plot::{Bar, BarChart, Plot};
+use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};
 use epaint::PathShape;
 
 #[repr(C)]
@@ -40,16 +40,11 @@ pub struct ColorMap {
 }
 
 fn get_bars(values: &[f32], n_bars: usize) -> Vec<Bar> {
-    let mut max = f32::MIN;
-    let mut min = f32::MAX;
-    for v in values {
-        if max < *v {
-            max = *v;
-        }
-        if min > *v {
-            min = *v;
-        }
-    }
+    let (min, max) = values
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(min, max), value| {
+            (min.min(*value), max.max(*value))
+        });
     let mut histogram = vec![0; n_bars];
     for v in values {
         let clamped = (v - min) / (max - min);
@@ -60,17 +55,7 @@ fn get_bars(values: &[f32], n_bars: usize) -> Vec<Bar> {
         .into_iter()
         .enumerate()
         .map(|(i, s)| {
-            Bar::new(i as f64, s as f64)
-            //Bar::new(
-            //    "".to_string(),
-            //    Orientation::Vertical,
-            //    i as f64,
-            //    s as f64,
-            //    None,
-            //    1.,
-            //    Stroke::default(),
-            //    Color32::LIGHT_BLUE,
-            //)
+            Bar::new((min + (max - min) * i as f32) as f64, s as f64).width((max - min) as f64)
         })
         .collect()
 }
@@ -78,7 +63,7 @@ fn get_bars(values: &[f32], n_bars: usize) -> Vec<Bar> {
 impl ColorMap {
     pub(crate) fn new(values: &[f32]) -> Self {
         let mut res = Self {
-            bars: get_bars(values, 20),
+            bars: get_bars(values, 120),
             colors: Colors::Viridis,
             min: 0.,
             max: 1.,
@@ -91,13 +76,19 @@ impl ColorMap {
         let color_map = self.colors;
         let n_values = self.bars.len();
         for (i, bar) in self.bars.iter_mut().enumerate() {
-            let colors = color_map.compute_color(i as f32 / n_values as f32);
+            let value =
+                (-self.min as f32 + i as f32 / n_values as f32) / (self.max - self.min) as f32;
+            let opacify = if value < 0. || value > 1. { 0.6 } else { 1. };
+            let value = value.max(0.);
+            let value = value.min(1.);
+            let colors = color_map.compute_color(value);
             let bar_c = bar.clone();
-            *bar = bar_c.fill(Color32::from_rgb(
-                (colors[0] * 255.) as u8,
-                (colors[1] * 255.) as u8,
-                (colors[2] * 255.) as u8,
-            ));
+            let color = Color32::from_rgb(
+                (colors[0] * opacify * 255.) as u8,
+                (colors[1] * opacify * 255.) as u8,
+                (colors[2] * opacify * 255.) as u8,
+            );
+            *bar = bar_c.fill(color);
         }
     }
 
@@ -108,6 +99,13 @@ impl ColorMap {
             max: self.max as f32,
             _pad: [0; 2],
         }
+    }
+
+    pub(crate) fn recycle(&mut self, other: Self) {
+        self.min = other.min;
+        self.max = other.max;
+        self.colors = other.colors;
+        self.apply_bar_colors();
     }
 }
 
@@ -394,31 +392,16 @@ pub fn windowing_ui(
         let radius = *width as f32 / 20.;
         ui.painter().add(epaint::CircleShape {
             center: lb_pos,
-            radius: radius,
+            radius,
             fill: visuals.bg_fill,
             stroke: visuals.fg_stroke,
         });
         ui.painter().add(epaint::CircleShape {
             center: ub_pos,
-            radius: radius,
+            radius,
             fill: visuals.bg_fill,
             stroke: visuals.fg_stroke,
         });
-
-        /*
-        ui.vertical_centered(|ui| {
-            ui.horizontal(|ui| {
-                ui.add(
-                    DragValue::new( lb)
-                        .clamp_range(min..=*ub),
-                );
-                //ui.add_space(2.0 * ui.available_width() - *width as f32 / 0.85);
-                ui.add(
-                    DragValue::new( ub)
-                        .clamp_range(*lb..=max),
-                );
-            });
-        });*/
     }
     response
 }
@@ -451,19 +434,32 @@ impl UiDataElement for ColorMap {
         if changed {
             self.apply_bar_colors();
         }
-        Plot::new("oue")
+
+        Plot::new("plot")
             .label_formatter(|_, _| "".to_owned())
+            .width(200.)
             .show_y(false)
+            .show_x(true)
             .allow_zoom(false)
+            .allow_boxed_zoom(false)
             .allow_scroll(false)
+            .allow_drag(false)
             .clamp_grid(true)
             .show_axes(false)
             .show_grid(false)
-            .view_aspect(3.)
-            .show(ui, |ui| ui.bar_chart(BarChart::new(self.bars.clone())));
+            .view_aspect(4.)
+            .coordinates_formatter(
+                egui_plot::Corner::LeftTop,
+                CoordinatesFormatter::new(|c, _| format!("{:.4}", c.x)),
+            )
+            .show(ui, |ui| {
+                ui.bar_chart(BarChart::new(self.bars.clone()).allow_hover(false));
+            });
         ui.horizontal(|ui| {
-            changed |=
-                windowing_ui(ui, &100., &100., 0., 1., &mut self.min, &mut self.max).changed();
+            if windowing_ui(ui, &100., &100., 0., 1., &mut self.min, &mut self.max).changed() {
+                changed = true;
+                self.apply_bar_colors();
+            }
             ui.label("Range");
         });
         changed

@@ -425,8 +425,9 @@ impl PointCloud {
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut PointCloudData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
+        let settings = ColorMap::new(&datas);
         self.updater
-            .add_data(name, PointCloudData::Scalar(datas, ColorMap::default()))
+            .add_data(name, PointCloudData::Scalar(datas, settings))
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut PointCloudData {

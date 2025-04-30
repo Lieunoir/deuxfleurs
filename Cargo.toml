@@ -17,6 +17,7 @@ egui-wgpu = { version = "0.31", features = ["winit"] }
 egui-winit = { version = "0.31", default-features = false, features = [
     "wayland",
 ] }
+egui_plot = "0.31"
 epaint = "0.31"
 env_logger = "0.9.1"
 image = { version = "0.24.4", default-features = false, features = [
