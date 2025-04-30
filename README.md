@@ -4,7 +4,7 @@
 [doc-img]: https://img.shields.io/badge/doc-deuxfleurs-green
 [doc-url]: https://lieunoir.github.io/deuxfleurs/deuxfleurs/
 
-![screenshot_000](https://github.com/user-attachments/assets/450e9d86-f8de-419d-9de4-f329545a97e2)
+![pres](https://github.com/user-attachments/assets/e7079653-4b2c-482c-937b-d12411fda644)
 
 Viewer for geometry processing / meshes / 3d related stuff heavily inspired by [polyscope](https://polyscope.run) (which is very nice, check it out!).
 
