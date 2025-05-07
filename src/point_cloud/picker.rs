@@ -20,7 +20,6 @@ pub struct Picker {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct VertexData {
     center: [f32; 3],
-    index: u32,
 }
 
 impl Vertex for VertexData {
@@ -29,18 +28,11 @@ impl Vertex for VertexData {
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Uint32,
-                },
-            ],
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 1,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
         }
     }
 }
@@ -72,11 +64,8 @@ impl ElementPicker for Picker {
             usage: wgpu::BufferUsages::VERTEX,
         });
         let mut gpu_vertices = Vec::with_capacity(geometry.positions.len());
-        for (i, position) in geometry.positions.iter().enumerate() {
-            let vertex = VertexData {
-                center: *position,
-                index: i as u32,
-            };
+        for position in &geometry.positions {
+            let vertex = VertexData { center: *position };
             gpu_vertices.push(vertex);
         }
         let center_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -230,7 +219,7 @@ struct VertexInput {
 
 struct DataInput {
     @location(1) position: vec3<f32>,
-    @location(2) index: u32,
+    @builtin(instance_index) index: u32,
 };
 
 struct VertexOutput {

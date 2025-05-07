@@ -51,7 +51,7 @@ var<uniform> transform: TransformUniform;
 // e.g. 0 = 1st \"set\" of data, 1 = 2nd \"set\"
 struct VertexInput {
     @location(0) position: vec3<f32>,
-    @location(1) face_index: u32,
+    @builtin(vertex_index) face_index: u32,
 };
 
 // The output we send to our fragment shader
@@ -68,7 +68,7 @@ fn vs_main(
     var out: VertexOutput;
     let model_matrix = transform.model;
 
-    out.face_index = counter.count + model.face_index;
+    out.face_index = counter.count + model.face_index / 3;
 
     // We set the \"position\" by using the `clip_position` property
     // We multiply it by the camera position matrix and the instance position matrix
@@ -96,7 +96,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct VertexData {
     pub position: [f32; 3],
-    pub face_index: u32,
 }
 
 impl Vertex for VertexData {
@@ -105,18 +104,11 @@ impl Vertex for VertexData {
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Uint32,
-                },
-            ],
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
         }
     }
 }
@@ -162,7 +154,6 @@ fn build_render_pipeline(
 
 fn build_vertex_buffer(device: &wgpu::Device, surface: &SurfaceGeometry) -> wgpu::Buffer {
     let mut gpu_vertices = Vec::with_capacity(3 * surface.internal_indices.len());
-    let mut count = 0;
     for indices in surface.indices.into_iter() {
         for j in 1..indices.len() - 1 {
             let index0 = indices[0];
@@ -172,10 +163,8 @@ fn build_vertex_buffer(device: &wgpu::Device, surface: &SurfaceGeometry) -> wgpu
             for k in 0..3 {
                 gpu_vertices.push(VertexData {
                     position: surface.vertices[v_indices[k] as usize],
-                    face_index: count,
                 });
             }
-            count += 1;
         }
     }
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
