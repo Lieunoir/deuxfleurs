@@ -183,6 +183,10 @@ impl UI {
         let ctx = egui::Context::default();
         //TODO some kind of styling
         let visuals = blue_visuals();
+        ctx.set_style(egui::Style {
+            animation_time: 0.,
+            ..Default::default()
+        });
         ctx.set_visuals(visuals);
         /*
         let mut style: egui::Style = (*ctx.style()).clone();
