@@ -29,6 +29,9 @@ pub enum Colors {
     Magma,
     Plasma,
     Coolwarm,
+    Twilight,
+    BrBG,
+    RdBU,
 }
 
 #[derive(Clone, PartialEq)]
@@ -274,6 +277,73 @@ impl Colors {
         ],
     };
 
+    pub const TWILIGHT: ColorsValues = ColorsValues {
+        red: [
+            0.990215, -4.365588, 3.055973, 81.3124, -403.97992, 803.4978, -716.5665, 237.09198,
+        ],
+        green: [
+            0.9360863, -3.0730484, 23.01469, -143.63342, 386.0892, -500.5965, 319.16608, -80.99168,
+        ],
+        blue: [
+            1.0401875, -7.757017, 82.682014, -390.78943, 884.20605, -1036.1959, 610.2725,
+            -142.44864,
+        ],
+    };
+
+    pub const BRBG: ColorsValues = ColorsValues {
+        red: [
+            0.328325,
+            2.3692522,
+            0.014967918,
+            -19.132025,
+            87.46912,
+            -192.46042,
+            181.94604,
+            -60.535843,
+        ],
+        green: [
+            0.18887857, 0.90392935, 0.97115517, 37.013916, -158.98076, 250.70457, -181.76689,
+            51.20108,
+        ],
+        blue: [
+            0.019865572,
+            1.0891378,
+            -23.580093,
+            193.56819,
+            -536.8783,
+            683.78796,
+            -416.8518,
+            99.03285,
+        ],
+    };
+
+    pub const RDBU: ColorsValues = ColorsValues {
+        red: [
+            0.40488827, 3.4446564, -2.9528008, -46.060135, 229.68684, -458.21353, 405.41907,
+            -131.70804,
+        ],
+        green: [
+            -0.0004091859,
+            -0.84625244,
+            24.876186,
+            -80.24888,
+            150.61618,
+            -200.69029,
+            155.6336,
+            -49.15227,
+        ],
+        blue: [
+            0.121104434,
+            1.2048302,
+            -15.056142,
+            104.97905,
+            -231.92496,
+            193.28596,
+            -34.771202,
+            -17.459175,
+        ],
+    };
+
     pub fn get_value(&self) -> ColorsValues {
         match self {
             Colors::Turbo => Colors::TURBO,
@@ -282,6 +352,9 @@ impl Colors {
             Colors::Magma => Colors::MAGMA,
             Colors::Plasma => Colors::PLASMA,
             Colors::Coolwarm => Colors::COOLWARM,
+            Colors::Twilight => Colors::TWILIGHT,
+            Colors::BrBG => Colors::BRBG,
+            Colors::RdBU => Colors::RDBU,
         }
     }
 
@@ -293,6 +366,9 @@ impl Colors {
             Colors::Magma => "Magma",
             Colors::Plasma => "Plasma",
             Colors::Coolwarm => "Coolwarm",
+            Colors::Twilight => "Twilight",
+            Colors::BrBG => "BrBG",
+            Colors::RdBU => "RdBU",
         }
     }
 
@@ -413,22 +489,47 @@ impl UiDataElement for ColorMap {
             .selected_text(self.colors.get_name())
             .show_ui(ui, |ui| {
                 changed |= ui
-                    .selectable_value(&mut self.colors, Colors::Turbo, "Turbo")
+                    .selectable_value(&mut self.colors, Colors::Turbo, Colors::Turbo.get_name())
                     .changed();
                 changed |= ui
-                    .selectable_value(&mut self.colors, Colors::Viridis, "Viridis")
+                    .selectable_value(
+                        &mut self.colors,
+                        Colors::Viridis,
+                        Colors::Viridis.get_name(),
+                    )
                     .changed();
                 changed |= ui
-                    .selectable_value(&mut self.colors, Colors::Inferno, "Inferno")
+                    .selectable_value(
+                        &mut self.colors,
+                        Colors::Inferno,
+                        Colors::Inferno.get_name(),
+                    )
                     .changed();
                 changed |= ui
-                    .selectable_value(&mut self.colors, Colors::Magma, "Magma")
+                    .selectable_value(&mut self.colors, Colors::Magma, Colors::Magma.get_name())
                     .changed();
                 changed |= ui
-                    .selectable_value(&mut self.colors, Colors::Plasma, "Plasma")
+                    .selectable_value(&mut self.colors, Colors::Plasma, Colors::Plasma.get_name())
                     .changed();
                 changed |= ui
-                    .selectable_value(&mut self.colors, Colors::Coolwarm, "Coolwarm")
+                    .selectable_value(&mut self.colors, Colors::BrBG, Colors::BrBG.get_name())
+                    .changed();
+                changed |= ui
+                    .selectable_value(&mut self.colors, Colors::RdBU, Colors::RdBU.get_name())
+                    .changed();
+                changed |= ui
+                    .selectable_value(
+                        &mut self.colors,
+                        Colors::Coolwarm,
+                        Colors::Coolwarm.get_name(),
+                    )
+                    .changed();
+                changed |= ui
+                    .selectable_value(
+                        &mut self.colors,
+                        Colors::Twilight,
+                        Colors::Twilight.get_name(),
+                    )
                     .changed();
             });
         if changed {
