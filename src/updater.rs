@@ -143,7 +143,7 @@ where
     pub(crate) fn refresh(
         &mut self,
         device: &wgpu::Device,
-        queue: &mut wgpu::Queue,
+        queue: &wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         w_sbv: &mut Option<SBV>,
@@ -256,7 +256,7 @@ impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSet
         &mut self,
         geometry: &Geometry,
         device: &wgpu::Device,
-        queue: &mut wgpu::Queue,
+        queue: &wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         renderer: &mut Renderer<Fixed, DataB, Pipeline>,
@@ -475,7 +475,7 @@ impl<
         self.data_uniform.as_ref()
     }
 
-    fn update_settings(&mut self, settings: &Settings, queue: &mut wgpu::Queue) {
+    fn update_settings(&mut self, settings: &Settings, queue: &wgpu::Queue) {
         settings.refresh_buffer(queue, &self.settings_uniform);
     }
 
@@ -570,9 +570,9 @@ pub(crate) trait ElementPicker: Render {
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self;
 
-    fn update_transform(&self, queue: &mut wgpu::Queue, transform: &TransformSettings);
+    fn update_transform(&self, queue: &wgpu::Queue, transform: &TransformSettings);
 
-    fn update_settings(&self, queue: &mut wgpu::Queue, settings: &Self::Settings);
+    fn update_settings(&self, queue: &wgpu::Queue, settings: &Self::Settings);
 
     fn get_total_elements(&self) -> u32;
 

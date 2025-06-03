@@ -43,7 +43,7 @@ impl DataUniformBuilder for PointCloudData {
         }
     }
 
-    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         match self {
             PointCloudData::Scalar(_, colormap) => {
                 colormap.get_value().refresh_buffer(queue, data_uniform)

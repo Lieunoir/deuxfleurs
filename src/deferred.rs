@@ -786,7 +786,7 @@ impl Ground {
         &self.blurred_texture_view
     }
 
-    pub fn set_level(&mut self, queue: &mut wgpu::Queue, level: f32) {
+    pub fn set_level(&mut self, queue: &wgpu::Queue, level: f32) {
         self.level = level;
         let level = GroundLevel {
             level,

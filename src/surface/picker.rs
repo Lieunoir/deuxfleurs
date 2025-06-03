@@ -239,7 +239,7 @@ impl ElementPicker for Picker {
         }
     }
 
-    fn update_transform(&self, queue: &mut wgpu::Queue, transform: &TransformSettings) {
+    fn update_transform(&self, queue: &wgpu::Queue, transform: &TransformSettings) {
         let transform_raw = transform.to_raw();
         queue.write_buffer(
             &self.transform_buffer,
@@ -248,7 +248,7 @@ impl ElementPicker for Picker {
         );
     }
 
-    fn update_settings(&self, _queue: &mut wgpu::Queue, _settings: &Self::Settings) {}
+    fn update_settings(&self, _queue: &wgpu::Queue, _settings: &Self::Settings) {}
 
     fn get_total_elements(&self) -> u32 {
         self.tot_elements

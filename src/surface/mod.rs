@@ -35,7 +35,7 @@ impl DataUniformBuilder for SurfaceSettings {
         SurfaceSettingsValue { color: self.color }.build_uniform(device)
     }
 
-    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         SurfaceSettingsValue { color: self.color }.refresh_buffer(queue, data_uniform)
     }
 }

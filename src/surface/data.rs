@@ -58,7 +58,7 @@ impl DataUniformBuilder for FaceScalarSettings {
         self.colormap.get_value().build_uniform(device)
     }
 
-    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         self.colormap
             .get_value()
             .refresh_buffer(queue, data_uniform);
@@ -80,7 +80,7 @@ impl DataUniformBuilder for VertexScalarSettings {
         settings_buffer.build_uniform(device)
     }
 
-    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         let settings_buffer: VertexScalarSettingsBuffer = self.into();
         settings_buffer.refresh_buffer(queue, data_uniform);
     }
@@ -124,7 +124,7 @@ impl DataUniformBuilder for SurfaceData {
         }
     }
 
-    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         match self {
             SurfaceData::VertexScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
             SurfaceData::FaceScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),

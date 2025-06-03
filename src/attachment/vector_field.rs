@@ -270,7 +270,7 @@ impl VectorField {
         }
     }
 
-    pub fn update(&mut self, queue: &mut wgpu::Queue) -> bool {
+    pub fn update(&mut self, queue: &wgpu::Queue) -> bool {
         if self.settings_changed {
             queue.write_buffer(
                 &self.settings_buffer,

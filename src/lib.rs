@@ -607,7 +607,7 @@ impl RunningState {
                 }
             }
         }
-        self.ground.set_level(&mut self.queue, min_y);
+        self.ground.set_level(&self.queue, min_y);
     }
 
     /// Fit camera and ground to match the visible elements
@@ -742,7 +742,7 @@ impl RunningState {
         for surface in self.surfaces.values_mut() {
             changed |= surface.refresh(
                 &self.device,
-                &mut self.queue,
+                &self.queue,
                 &self.camera_light_bind_group_layout,
                 self.config.format,
                 &mut sbv,
@@ -752,7 +752,7 @@ impl RunningState {
         for cloud in self.clouds.values_mut() {
             changed |= cloud.refresh(
                 &self.device,
-                &mut self.queue,
+                &self.queue,
                 &self.camera_light_bind_group_layout,
                 self.config.format,
                 &mut sbv,
@@ -762,7 +762,7 @@ impl RunningState {
         for segment in self.segments.values_mut() {
             changed |= segment.refresh(
                 &self.device,
-                &mut self.queue,
+                &self.queue,
                 &self.camera_light_bind_group_layout,
                 self.config.format,
                 &mut sbv,

@@ -23,7 +23,7 @@ pub(crate) struct DataUniform {
 
 pub(crate) trait DataUniformBuilder {
     fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform>;
-    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform);
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform);
 }
 
 pub(crate) trait DataSettings {
@@ -69,7 +69,7 @@ where
         })
     }
 
-    fn refresh_buffer(&self, queue: &mut wgpu::Queue, data_uniform: &DataUniform) {
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         queue.write_buffer(&data_uniform.buffer, 0, bytemuck::cast_slice(&[*self]));
     }
 }

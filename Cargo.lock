@@ -3164,9 +3164,9 @@ dependencies = [
 
 [[package]]
 name = "transform-gizmo"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f99523780b9ee546f43e2485a1f708bc1082ba0aeda73f18690b9e6a1bf7c157"
+checksum = "a1ed25525836e568f1360098b7ca7bbe9feba4a8dc8c6e4e7efe5d9848f91631"
 dependencies = [
  "ahash",
  "ecolor",
@@ -3180,9 +3180,9 @@ dependencies = [
 
 [[package]]
 name = "transform-gizmo-egui"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a10cf575ea95c5b06f7d86495063da0bc045d4767df1aefc1099ccbfe03a4700"
+checksum = "d78f6eaec42f665eac116bb0a0c574109096d695144651b02afc767b055e0f49"
 dependencies = [
  "egui",
  "transform-gizmo",
