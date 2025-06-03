@@ -6,6 +6,8 @@ use std::{
     str::FromStr,
 };
 
+use crate::types::SurfaceIndices;
+
 type Float = f32;
 
 unsafe fn parse_float3(slice: &[u8]) -> (usize, [Float; 3]) {
@@ -176,7 +178,7 @@ fn parse_face_pos(
     off
 }
 
-pub fn load_obj<P>(file_name: P) -> (Vec<[Float; 3]>, Vec<u32>, Vec<u8>)
+pub fn load_obj<P>(file_name: P) -> (Vec<[Float; 3]>, SurfaceIndices)
 where
     P: AsRef<Path> + fmt::Debug,
 {
@@ -191,7 +193,7 @@ where
     load_obj_buf(&mut reader)
 }
 
-pub fn load_obj_buf<B>(reader: &mut B) -> (Vec<[Float; 3]>, Vec<u32>, Vec<u8>)
+pub fn load_obj_buf<B>(reader: &mut B) -> (Vec<[Float; 3]>, SurfaceIndices)
 where
     B: BufRead,
 {
@@ -257,7 +259,22 @@ where
             start = end - last;
             buf.copy_within(last..end, 0);
         }
-        (tmp_pos, indices, strides)
+        let indices = if mode == FaceMode::Polygon {
+            (indices, strides).into()
+        } else if mode == FaceMode::Quad {
+            indices
+                .chunks(4)
+                .map(|face| face.try_into().unwrap())
+                .collect::<Vec<[u32; 4]>>()
+                .into()
+        } else {
+            indices
+                .chunks(3)
+                .map(|face| face.try_into().unwrap())
+                .collect::<Vec<[u32; 3]>>()
+                .into()
+        };
+        (tmp_pos, indices)
     })
 }
 
