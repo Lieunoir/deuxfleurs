@@ -1,10 +1,294 @@
+use std::ops::Deref;
+
 use crate::aabb::SBV;
 use crate::attachment::{NewVectorField, VectorField};
 use crate::camera::Camera;
 use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
 use crate::ui::UiDataElement;
+use crate::Settings;
 use egui::{SliderClamping, Widget};
 use indexmap::IndexMap;
+
+// Picker now uses same geometry as base
+//
+// Problems: mut ref in mut ver implies only one non mut borrow at a time
+//   how to make sure data uniform modification -> only given when created for now, so not yet built
+
+struct GraphicalContext<'a> {
+    settings: &'a crate::Settings,
+    device: &'a wgpu::Device,
+    queue: &'a wgpu::Queue,
+    camera_light_bind_group_layout: &'a wgpu::BindGroupLayout,
+    color_format: wgpu::TextureFormat,
+    dirty: &'a mut bool,
+}
+
+struct BareInnerElement<Geometry, Settings, Data> {
+    name: String,
+    geometry: Geometry,
+    show: bool,
+    transform: TransformSettings,
+    settings: Settings,
+    data: IndexMap<String, Data>,
+    attached_data: IndexMap<String, NewVectorField>,
+    shown_data: Option<String>,
+}
+
+struct InnerElement<Geometry, Settings, Renderer, Data> {
+    name: String,
+    geometry: Geometry,
+    renderer: Renderer,
+    show: bool,
+    transform: TransformSettings,
+    settings: Settings,
+    data: IndexMap<String, Data>,
+    attached_data: IndexMap<String, VectorField>,
+    shown_data: Option<String>,
+}
+
+impl<Geometry, Settings, Renderer, Data> InnerElement<Geometry, Settings, Renderer, Data>
+where
+    Renderer: NewRenderer<Settings, Geometry, Data>,
+{
+    pub fn from_bare(
+        element: BareInnerElement<Geometry, Settings, Data>,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self {
+        let renderer = Renderer::new(
+            device,
+            &element.geometry,
+            &element.transform,
+            &element.settings,
+            camera_light_bind_group_layout,
+            color_format,
+        );
+
+        let attached_data = element
+            .attached_data
+            .drain(..)
+            .map(|(name, field)| {
+                let field = VectorField::new(
+                    device,
+                    camera_light_bind_group_layout,
+                    &renderer.transform_uniform.bind_group_layout,
+                    color_format,
+                    field,
+                );
+                (name, field)
+            })
+            .collect();
+
+        Self {
+            name: element.name,
+            geometry: element.geometry,
+            show: element.show,
+            transform: element.transform,
+            settings: element.settings,
+            data: element.data,
+            attached_data,
+            renderer,
+            shown_data: element.shown_data,
+        }
+    }
+}
+
+pub enum ElementMut<'a, Geometry, Settings, Renderer, Data> {
+    BareInnerElement(&'a mut BareInnerElement<Geometry, Settings, Data>),
+    GraphicalInnerElement(
+        &'a mut InnerElement<Geometry, Settings, Renderer, Data>,
+        GraphicalContext<'a>,
+    ),
+}
+pub struct ElementRef<'a, Geometry, Settings, Renderer, Data>(
+    ElementMut<'a, Geometry, Settings, Renderer, Data>,
+);
+
+impl<'a, Geometry, Settings, Renderer, Data> Deref
+    for ElementRef<'a, Geometry, Settings, Renderer, Data>
+{
+    type Target = ElementMut<'a, Geometry, Settings, Renderer, Data>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a, Geometry, Settings, Renderer, Data> ElementMut<'a, Geometry, Settings, Renderer, Data>
+where
+    Data: DataUniformBuilder,
+    Geometry: Positions,
+    Settings: NamedSettings,
+    Renderer: NewRenderer<Settings, Geometry, Data>,
+{
+    pub fn name(&self) -> &str {
+        match self {
+            ElementMut::BareInnerElement(element) => &element.name,
+            ElementMut::GraphicalInnerElement(element, _) => &element.name,
+        }
+    }
+
+    pub fn geometry(&self) -> &Geometry {
+        match self {
+            ElementMut::BareInnerElement(element) => &element.geometry,
+            ElementMut::GraphicalInnerElement(element, _) => &element.geometry,
+        }
+    }
+
+    pub fn shown(&self) -> bool {
+        match self {
+            ElementMut::BareInnerElement(element) => element.show,
+            ElementMut::GraphicalInnerElement(element, _) => element.show,
+        }
+    }
+
+    pub fn show(&mut self, show: bool) -> &mut Self {
+        match self {
+            ElementMut::BareInnerElement(element) => element.show = show,
+            ElementMut::GraphicalInnerElement(element, ctxt) => {
+                element.show = show;
+                *ctxt.dirty = true;
+            }
+        }
+        self
+    }
+
+    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
+        match self {
+            ElementMut::BareInnerElement(element) => element.shown_data = name,
+            ElementMut::GraphicalInnerElement(element, ctxt) => {
+                element.set_data(
+                    name,
+                    ctxt.device,
+                    ctxt.camera_light_bind_group_layout,
+                    ctxt.color_format,
+                    ctxt.dirty,
+                );
+            }
+        }
+        self
+    }
+}
+
+impl<Geometry, Settings, Renderer, Data> InnerElement<Geometry, Settings, Renderer, Data>
+where
+    Data: DataUniformBuilder,
+    Geometry: Positions,
+    Settings: NamedSettings,
+    Renderer: NewRenderer<Settings, Geometry, Data>,
+{
+    fn new(
+        name: String,
+        geometry: Geometry,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self {
+        let transform = TransformSettings::default();
+        let settings = Settings::default().set_name(&name);
+        let renderer = Renderer::new(
+            device,
+            &geometry,
+            &transform,
+            &settings,
+            camera_light_bind_group_layout,
+            color_format,
+        );
+        Self {
+            geometry,
+            renderer,
+            transform,
+            settings,
+            data: IndexMap::new(),
+            attached_data: IndexMap::new(),
+            shown_data: None,
+            name,
+            show: true,
+        }
+    }
+
+    fn set_data(
+        &mut self,
+        name: Option<String>,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+        refresh_screen: &mut bool,
+    ) {
+        self.shown_data = name;
+        let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
+        self.renderer
+            .build_data_buffer(device, &self.geometry, data);
+        if let Some(data_uniform) = data.map(|d| d.build_uniform(device)) {
+            self.renderer.set_data_uniform(data_uniform);
+        }
+        self.renderer.build_pipeline(
+            device,
+            data,
+            &self.settings,
+            camera_light_bind_group_layout,
+            color_format,
+        );
+        *refresh_screen = true;
+    }
+}
+
+trait NewRenderer<Settings, Geometry, Data>: Sized {
+    fn new(
+        device: &wgpu::Device,
+        geometry: &Geometry,
+        transform: &TransformSettings,
+        settings: &Settings,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self;
+
+    fn set_data_uniform(&mut self, data_uniform: Option<DataUniform>);
+
+    fn get_data_uniform(&mut self) -> Option<&DataUniform>;
+
+    fn update_settings(&mut self, settings: &Settings, queue: &wgpu::Queue);
+
+    fn build_data_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        geometry: &Geometry,
+        data: Option<&Data>,
+    );
+
+    fn build_pipeline(
+        &mut self,
+        device: &wgpu::Device,
+        data: Option<&Data>,
+        settings: &Settings,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    );
+    fn get_total_elements(&self) -> u32;
+
+    fn get_element(
+        &self,
+        _geometry: &Geometry,
+        _transform: &TransformSettings,
+        _camera: &Camera,
+        item: u32,
+        _pos_x: f32,
+        _pos_y: f32,
+    ) -> u32 {
+        item
+    }
+
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b;
+
+    fn render_shadow<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+    }
+}
 
 /// Generic type for main displayed data (surface, point_clouds, etc...)
 pub struct BareElement<Settings, Data, Geometry> {
