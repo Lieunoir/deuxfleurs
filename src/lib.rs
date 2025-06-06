@@ -1146,7 +1146,7 @@ impl RunningState {
                 .pick_file();
             if let Some(file_handle) = file {
                 let data = file_handle;
-                if let Ok((mesh_v, mesh_f)) = crate::resources::load_mesh_blocking(data.into()) {
+                if let Some((mesh_v, mesh_f)) = crate::resources::load_mesh_blocking(data.into()) {
                     event_loop_proxy
                         .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f, name))
                         .ok();
@@ -1162,7 +1162,8 @@ impl RunningState {
                 let file = file.await;
                 if let Some(file_handle) = file {
                     let data = file_handle.read().await;
-                    if let Ok((mesh_v, mesh_f)) = crate::resources::parse_preloaded_mesh(data).await
+                    if let Some((mesh_v, mesh_f)) =
+                        crate::resources::parse_preloaded_mesh(data).await
                     {
                         event_loop_proxy
                             .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f, name))
@@ -1286,9 +1287,13 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
         callback: T,
     ) {
         let id = id.unwrap_or("deuxfleurs".into());
+        #[cfg(target_arch = "wasm32")]
+        {
+            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+        }
+        #[cfg(feature = "logger")]
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
-                std::panic::set_hook(Box::new(console_error_panic_hook::hook));
                 console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
             } else {
                 env_logger::init();
