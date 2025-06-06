@@ -4,7 +4,8 @@ use crate::updater::Render;
 use egui_winit::clipboard::Clipboard;
 use indexmap::IndexMap;
 use pollster::FutureExt;
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use std::iter;
 use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
@@ -254,6 +255,7 @@ pub struct RunningState {
     ground: deferred::Ground,
     taa_counter: u8,
     aabb: aabb::SBV,
+    rng: SmallRng,
 }
 
 /// Starting point to build the app.
@@ -570,6 +572,7 @@ impl RunningState {
             ground,
             taa_counter: 0,
             aabb: aabb::SBV::default(),
+            rng: SmallRng::seed_from_u64(1),
         }
     }
 
@@ -856,13 +859,11 @@ impl RunningState {
                         request_redraw = true;
                     }
                 }
-
-                let mut rng = rand::thread_rng();
                 //let ampli = 0.5 + 0.5 * self.taa_counter as f32 / self.taa_frames as f32;
                 let ampli = 1.;
                 jitter = JitterUniform {
-                    x: ampli * 2. * (rng.gen::<f32>() - 0.5) / self.size.width as f32,
-                    y: ampli * 2. * (rng.gen::<f32>() - 0.5) / self.size.height as f32,
+                    x: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.width as f32,
+                    y: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.height as f32,
                     _padding: [0; 2],
                 };
             };
