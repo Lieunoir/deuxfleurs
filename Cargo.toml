@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ahash = "0.8.3"
 anyhow = "1.0.65"
 bytemuck = { version = "1.12.1", features = ["derive"] }
 cfg-if = "1.0.0"
@@ -14,9 +13,12 @@ cgmath = { version = "0.18.0", features = ["serde", "mint"] }
 egui = "0.31"
 transform-gizmo-egui = "0.6"
 egui-wgpu = { version = "0.31", features = ["winit"] }
-egui-winit = { version = "0.31", default-features = false, features = [
-    "wayland",
-] }
+egui-winit = { version = "0.31", default-features = false }
+#egui-winit = { version = "0.31", default-features = false, features = [
+#    "clipboard",
+#    "x11",
+#    "wayland",
+#] }
 egui_plot = "0.31"
 epaint = "0.31"
 env_logger = "0.9.1"
@@ -27,7 +29,7 @@ image = { version = "0.24.4", default-features = false, features = [
 log = "0.4.17"
 oneshot = "0.1.5"
 pollster = "0.2.5"
-rfd = "0.10.0"
+rfd = { version = "0.15", default-features = false, features = ["gtk3"] }
 wgpu = "24"
 winit = "0.30"
 
@@ -35,12 +37,18 @@ ndarray = { version = "0.15", optional = true }
 nalgebra = { version = "0.32", optional = true }
 indexmap = "2.2.3"
 rand = "0.8.5"
-clipboard = "0.5.0"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.122"
 memchr = "2.7.4"
 atoi_radix10 = { version = "0.0.1", features = ["simd"] }
 pulp = "0.18.21"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+egui-winit = { version = "0.31", default-features = false, features = [
+    "clipboard",
+    "x11",
+    "wayland",
+] }
 
 [features]
 ndarray = ["dep:ndarray"]
@@ -60,5 +68,6 @@ web-sys = { version = "0.3.64", features = [
     "Window",
     "Element",
     "Location",
+    "Clipboard",
 ] }
 js-sys = "0.3.64"

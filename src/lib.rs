@@ -1,10 +1,15 @@
 #![doc = include_str!("../README.md")]
 use crate::updater::Render;
+#[cfg(not(target_arch = "wasm32"))]
+use egui_winit::clipboard::Clipboard;
 use indexmap::IndexMap;
 use pollster::FutureExt;
 use rand::Rng;
 use std::iter;
 use std::sync::Arc;
+#[cfg(target_arch = "wasm32")]
+use web_sys::Clipboard;
+use wgpu::rwh::HasDisplayHandle;
 use wgpu::util::DeviceExt;
 use winit::application::ApplicationHandler;
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
@@ -256,6 +261,7 @@ struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     init_state: Option<InitialState>,
     state: Option<RunningState>,
     ui: Option<ui::UI>,
+    clipboard: Option<Clipboard>,
     id: String,
     width: u32,
     height: u32,
@@ -266,6 +272,7 @@ struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
 
 pub(crate) enum UserEvent {
     LoadMesh(Vec<[f32; 3]>, SurfaceIndices, String),
+    Paste(String),
     Pick,
 }
 
@@ -1292,6 +1299,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
         let mut app = Self {
             init_state: Some(init_state),
             state: None,
+            clipboard: None,
             ui: None,
             id,
             width,
@@ -1316,7 +1324,10 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             {
                 use winit::platform::web::WindowExtWebSys;
                 web_sys::window()
-                    .and_then(|win| win.document())
+                    .and_then(|win| {
+                        self.clipboard = Some(win.navigator().clipboard());
+                        win.document()
+                    })
                     .and_then(|doc| {
                         let dst = doc.get_element_by_id(&self.id)?;
                         let canvas = window.canvas()?;
@@ -1327,6 +1338,12 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                         Some(())
                     })
                     .expect("Couldn't append canvas to document body.");
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.clipboard = Some(Clipboard::new(
+                    window.display_handle().ok().map(|handle| handle.as_raw()),
+                ));
             }
 
             let init = self.init_state.take().unwrap();
@@ -1348,6 +1365,10 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             match event {
                 UserEvent::LoadMesh(mesh_v, mesh_f, name) => {
                     state.register_surface(name, mesh_v, mesh_f);
+                }
+                UserEvent::Paste(cam) => {
+                    state.camera.set(cam);
+                    state.dirty = true;
                 }
                 UserEvent::Pick => {
                     state.picker.pick(
@@ -1434,22 +1455,50 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             && key_state == ElementState::Pressed
                         {
                             if let Ok(cam) = state.camera.copy() {
-                                use clipboard::ClipboardProvider;
-                                let _ = clipboard::ClipboardContext::new().map(|mut ctx| {
-                                    let _ = ctx.set_contents(cam);
-                                });
+                                #[cfg(not(target_arch = "wasm32"))]
+                                {
+                                    let clipboard = self.clipboard.as_mut().unwrap();
+                                    clipboard.set_text(cam);
+                                }
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    let promise = self.clipboard.as_mut().unwrap().write_text(&cam);
+                                    let f = async move {
+                                        wasm_bindgen_futures::JsFuture::from(promise).await;
+                                    };
+                                    wasm_bindgen_futures::spawn_local(f);
+                                }
                             }
                         } else if state.ctrl_pressed
                             && logical_key == Key::Character(SmolStr::new_inline("v"))
                             && key_state == ElementState::Pressed
                         {
-                            use clipboard::ClipboardProvider;
-                            let _ = clipboard::ClipboardContext::new().map(|mut ctx| {
-                                if let Ok(cam) = ctx.get_contents() {
-                                    state.camera.set(cam);
-                                    state.dirty = true;
-                                }
-                            });
+                            let clipboard = self.clipboard.as_mut().unwrap();
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                if let Some(cam) = clipboard.get() {
+                                    state.proxy.send_event(crate::UserEvent::Paste(cam)).ok();
+                                    //state.camera.set(cam);
+                                    //state.dirty = true;
+                                };
+                            }
+                            #[cfg(target_arch = "wasm32")]
+                            {
+                                let promise = self.clipboard.as_mut().unwrap().read_text();
+                                let event_loop_proxy = state.proxy.clone();
+                                let f = async move {
+                                    if let Ok(res) =
+                                        wasm_bindgen_futures::JsFuture::from(promise).await
+                                    {
+                                        if let Some(cam) = res.as_string() {
+                                            event_loop_proxy
+                                                .send_event(crate::UserEvent::Paste(cam))
+                                                .ok();
+                                        }
+                                    }
+                                };
+                                wasm_bindgen_futures::spawn_local(f);
+                            }
                         }
                     }
                     WindowEvent::RedrawRequested => {
