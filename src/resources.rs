@@ -50,15 +50,5 @@ pub(crate) async fn parse_preloaded_mesh(
     let obj_cursor = Cursor::new(data);
     let mut obj_reader = BufReader::new(obj_cursor);
 
-    let (v, i, s) = crate::obj_load::load_obj_buf(&mut obj_reader);
-    let indices = if s.len() > 0 {
-        (i, s).into()
-    } else {
-        i.chunks(3)
-            .map(|face| face.try_into().unwrap())
-            .collect::<Vec<[u32; 3]>>()
-            .into()
-    };
-
-    Ok((v, indices))
+    Ok(crate::obj_load::load_obj_buf(&mut obj_reader))
 }
