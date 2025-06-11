@@ -548,21 +548,22 @@
 <a href=#548 id=548 data-nosnippet>548</a>            .clamp_grid(<span class="bool-val">true</span>)
 <a href=#549 id=549 data-nosnippet>549</a>            .show_axes(<span class="bool-val">false</span>)
 <a href=#550 id=550 data-nosnippet>550</a>            .show_grid(<span class="bool-val">false</span>)
-<a href=#551 id=551 data-nosnippet>551</a>            .view_aspect(<span class="number">4.</span>)
-<a href=#552 id=552 data-nosnippet>552</a>            .coordinates_formatter(
-<a href=#553 id=553 data-nosnippet>553</a>                egui_plot::Corner::LeftTop,
-<a href=#554 id=554 data-nosnippet>554</a>                CoordinatesFormatter::new(|c, <span class="kw">_</span>| <span class="macro">format!</span>(<span class="string">"{:.4}"</span>, c.x)),
-<a href=#555 id=555 data-nosnippet>555</a>            )
-<a href=#556 id=556 data-nosnippet>556</a>            .show(ui, |ui| {
-<a href=#557 id=557 data-nosnippet>557</a>                ui.bar_chart(BarChart::new(<span class="self">self</span>.bars.clone()).allow_hover(<span class="bool-val">false</span>));
-<a href=#558 id=558 data-nosnippet>558</a>            });
-<a href=#559 id=559 data-nosnippet>559</a>        ui.horizontal(|ui| {
-<a href=#560 id=560 data-nosnippet>560</a>            <span class="kw">if </span>windowing_ui(ui, <span class="kw-2">&amp;</span><span class="number">100.</span>, <span class="kw-2">&amp;</span><span class="number">100.</span>, <span class="number">0.</span>, <span class="number">1.</span>, <span class="kw-2">&amp;mut </span><span class="self">self</span>.min, <span class="kw-2">&amp;mut </span><span class="self">self</span>.max).changed() {
-<a href=#561 id=561 data-nosnippet>561</a>                changed = <span class="bool-val">true</span>;
-<a href=#562 id=562 data-nosnippet>562</a>                <span class="self">self</span>.apply_bar_colors();
-<a href=#563 id=563 data-nosnippet>563</a>            }
-<a href=#564 id=564 data-nosnippet>564</a>            ui.label(<span class="string">"Range"</span>);
-<a href=#565 id=565 data-nosnippet>565</a>        });
-<a href=#566 id=566 data-nosnippet>566</a>        changed
-<a href=#567 id=567 data-nosnippet>567</a>    }
-<a href=#568 id=568 data-nosnippet>568</a>}</code></pre></div></section></main></body></html>
+<a href=#551 id=551 data-nosnippet>551</a>            .show_background(<span class="bool-val">false</span>)
+<a href=#552 id=552 data-nosnippet>552</a>            .view_aspect(<span class="number">4.</span>)
+<a href=#553 id=553 data-nosnippet>553</a>            .coordinates_formatter(
+<a href=#554 id=554 data-nosnippet>554</a>                egui_plot::Corner::LeftTop,
+<a href=#555 id=555 data-nosnippet>555</a>                CoordinatesFormatter::new(|c, <span class="kw">_</span>| <span class="macro">format!</span>(<span class="string">"{:.4}"</span>, c.x)),
+<a href=#556 id=556 data-nosnippet>556</a>            )
+<a href=#557 id=557 data-nosnippet>557</a>            .show(ui, |ui| {
+<a href=#558 id=558 data-nosnippet>558</a>                ui.bar_chart(BarChart::new(<span class="self">self</span>.bars.clone()).allow_hover(<span class="bool-val">false</span>));
+<a href=#559 id=559 data-nosnippet>559</a>            });
+<a href=#560 id=560 data-nosnippet>560</a>        ui.horizontal(|ui| {
+<a href=#561 id=561 data-nosnippet>561</a>            <span class="kw">if </span>windowing_ui(ui, <span class="kw-2">&amp;</span><span class="number">100.</span>, <span class="kw-2">&amp;</span><span class="number">100.</span>, <span class="number">0.</span>, <span class="number">1.</span>, <span class="kw-2">&amp;mut </span><span class="self">self</span>.min, <span class="kw-2">&amp;mut </span><span class="self">self</span>.max).changed() {
+<a href=#562 id=562 data-nosnippet>562</a>                changed = <span class="bool-val">true</span>;
+<a href=#563 id=563 data-nosnippet>563</a>                <span class="self">self</span>.apply_bar_colors();
+<a href=#564 id=564 data-nosnippet>564</a>            }
+<a href=#565 id=565 data-nosnippet>565</a>            ui.label(<span class="string">"Range"</span>);
+<a href=#566 id=566 data-nosnippet>566</a>        });
+<a href=#567 id=567 data-nosnippet>567</a>        changed
+<a href=#568 id=568 data-nosnippet>568</a>    }
+<a href=#569 id=569 data-nosnippet>569</a>}</code></pre></div></section></main></body></html>
