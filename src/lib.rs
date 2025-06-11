@@ -134,7 +134,7 @@ impl InitialState {
     /// * `height`: requested height of the app (no effect in wasm)
     /// * `id`: serves as window title, or id element to attach to. If `None` used `"State"`.
     /// * `settings`: global app [`Settings`]
-    /// * `callback`: called every frame with a [`egui::Ui`] and a [`State`] arguments, used to
+    /// * `callback`: called every frame with a [`egui::Ui`] and a [`RunningState`] arguments, used to
     /// add UI elements and modify state accordingly.
     pub fn run<T: FnMut(&mut egui::Ui, &mut RunningState)>(
         self,

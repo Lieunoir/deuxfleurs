@@ -548,6 +548,7 @@ impl UiDataElement for ColorMap {
             .clamp_grid(true)
             .show_axes(false)
             .show_grid(false)
+            .show_background(false)
             .view_aspect(4.)
             .coordinates_formatter(
                 egui_plot::Corner::LeftTop,
