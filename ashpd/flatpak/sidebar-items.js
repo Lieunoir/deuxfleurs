@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["HostCommandFlags","SandboxFlags","SpawnFlags","SupportsFlags","UpdateStatus"],"struct":["Development","Flatpak","SpawnOptions","UpdateInfo","UpdateMonitor","UpdateProgress"]};

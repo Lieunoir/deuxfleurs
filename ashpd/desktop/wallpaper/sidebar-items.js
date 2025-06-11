@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SetOn"],"struct":["WallpaperRequest"]};

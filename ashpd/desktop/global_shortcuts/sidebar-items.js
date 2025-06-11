@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Activated","BindShortcuts","Deactivated","GlobalShortcuts","ListShortcuts","NewShortcut","Shortcut","ShortcutsChanged"]};

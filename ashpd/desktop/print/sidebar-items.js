@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Orientation","Quality"],"struct":["PageSetup","PreparePrint","PrintProxy","Settings"]};

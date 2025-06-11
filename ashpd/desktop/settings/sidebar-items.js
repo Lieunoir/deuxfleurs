@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ACCENT_COLOR_SCHEME_KEY","APPEARANCE_NAMESPACE","COLOR_SCHEME_KEY","CONTRAST_KEY"],"enum":["ColorScheme","Contrast"],"struct":["Setting","Settings"],"type":["Namespace"]};

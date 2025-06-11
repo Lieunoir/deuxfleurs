@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["identify_callsite","metadata"],"mod":["callsite","dispatcher","event","field","metadata","span","subscriber"],"struct":["Dispatch","Event","Field","Level","LevelFilter","Metadata"],"trait":["Callsite","Subscriber"]};
+window.SIDEBAR_ITEMS = {"macro":["identify_callsite","metadata"],"mod":["callsite","dispatcher","event","field","metadata","span","subscriber"],"struct":["Dispatch","Event","Field","Level","LevelFilter","Metadata","Once"],"trait":["Callsite","Subscriber"]};

@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Start a remote desktop session and interact with it."><title>ashpd::desktop::remote_desktop - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="ashpd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (1677d46cb 2025-06-10)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo-symbolic.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button><a class="logo-container" href="../../../ashpd/index.html"><img src="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo.svg" alt=""></a></nav><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../../../ashpd/index.html"><img src="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo.svg" alt="logo"></a><h2><a href="../../../ashpd/index.html">ashpd</a><span class="version">0.11.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module remote_<wbr>desktop</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In ashpd::<wbr>desktop</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">ashpd</a>::<wbr><a href="../index.html">desktop</a></div><h1>Module <span>remote_desktop</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/ashpd/desktop/remote_desktop.rs.html#1-687">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Start a remote desktop session and interact with it.</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ashpd::desktop::{
+    remote_desktop::{DeviceType, KeyState, RemoteDesktop},
+    PersistMode,
+};
+
+<span class="kw">async fn </span>run() -&gt; ashpd::Result&lt;()&gt; {
+    <span class="kw">let </span>proxy = RemoteDesktop::new().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>session = proxy.create_session().<span class="kw">await</span><span class="question-mark">?</span>;
+    proxy
+        .select_devices(
+            <span class="kw-2">&amp;</span>session,
+            DeviceType::Keyboard | DeviceType::Pointer,
+            <span class="prelude-val">None</span>,
+            PersistMode::DoNot,
+        )
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">let </span>response = proxy.start(<span class="kw-2">&amp;</span>session, <span class="prelude-val">None</span>).<span class="kw">await</span><span class="question-mark">?</span>.response()<span class="question-mark">?</span>;
+    <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, response.devices());
+
+    <span class="comment">// 13 for Enter key code
+    </span>proxy
+        .notify_keyboard_keycode(<span class="kw-2">&amp;</span>session, <span class="number">13</span>, KeyState::Pressed)
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<p>You can also use the Remote Desktop portal with the ScreenCast one. In order
+to do so, you need to call
+<a href="../screencast/struct.Screencast.html#method.select_sources" title="method ashpd::desktop::screencast::Screencast::select_sources"><code>Screencast::select_sources()</code></a>
+on the session created with
+<a href="struct.RemoteDesktop.html#method.create_session" title="method ashpd::desktop::remote_desktop::RemoteDesktop::create_session"><code>RemoteDesktop::create_session()</code></a></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ashpd::desktop::{
+    remote_desktop::{DeviceType, KeyState, RemoteDesktop},
+    screencast::{CursorMode, Screencast, SourceType},
+    PersistMode,
+};
+
+<span class="kw">async fn </span>run() -&gt; ashpd::Result&lt;()&gt; {
+    <span class="kw">let </span>remote_desktop = RemoteDesktop::new().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>screencast = Screencast::new().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>session = remote_desktop.create_session().<span class="kw">await</span><span class="question-mark">?</span>;
+
+    remote_desktop
+        .select_devices(
+            <span class="kw-2">&amp;</span>session,
+            DeviceType::Keyboard | DeviceType::Pointer,
+            <span class="prelude-val">None</span>,
+            PersistMode::DoNot,
+        )
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+    screencast
+        .select_sources(
+            <span class="kw-2">&amp;</span>session,
+            CursorMode::Metadata,
+            SourceType::Monitor | SourceType::Window,
+            <span class="bool-val">true</span>,
+            <span class="prelude-val">None</span>,
+            PersistMode::DoNot,
+        )
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">let </span>response = remote_desktop.start(<span class="kw-2">&amp;</span>session, <span class="prelude-val">None</span>).<span class="kw">await</span><span class="question-mark">?</span>.response()<span class="question-mark">?</span>;
+    <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, response.devices());
+    <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, response.streams());
+
+    <span class="comment">// 13 for Enter key code
+    </span>remote_desktop
+        .notify_keyboard_keycode(<span class="kw-2">&amp;</span>session, <span class="number">13</span>, KeyState::Pressed)
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.RemoteDesktop.html" title="struct ashpd::desktop::remote_desktop::RemoteDesktop">Remote<wbr>Desktop</a></dt><dd>The interface lets sandboxed applications create remote desktop sessions.</dd><dt><a class="struct" href="struct.SelectedDevices.html" title="struct ashpd::desktop::remote_desktop::SelectedDevices">Selected<wbr>Devices</a></dt><dd>A response to a <a href="struct.RemoteDesktop.html#method.select_devices" title="method ashpd::desktop::remote_desktop::RemoteDesktop::select_devices"><code>RemoteDesktop::select_devices</code></a> request.</dd></dl><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><dl class="item-table"><dt><a class="enum" href="enum.Axis.html" title="enum ashpd::desktop::remote_desktop::Axis">Axis</a></dt><dd>The available axis.</dd><dt><a class="enum" href="enum.DeviceType.html" title="enum ashpd::desktop::remote_desktop::DeviceType">Device<wbr>Type</a></dt><dd>A bit flag for the available devices.</dd><dt><a class="enum" href="enum.KeyState.html" title="enum ashpd::desktop::remote_desktop::KeyState">KeyState</a></dt><dd>The keyboard key state.</dd></dl></section></div></main></body></html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Capture input events from physical or logical devices."><title>ashpd::desktop::input_capture - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="ashpd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (1677d46cb 2025-06-10)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo-symbolic.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button><a class="logo-container" href="../../../ashpd/index.html"><img src="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo.svg" alt=""></a></nav><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../../../ashpd/index.html"><img src="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo.svg" alt="logo"></a><h2><a href="../../../ashpd/index.html">ashpd</a><span class="version">0.11.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module input_<wbr>capture</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a><ul><li><a href="#a-note-of-warning-regarding-the-gnome-portal-implementation" title="A Note of Warning Regarding the GNOME Portal Implementation">A Note of Warning Regarding the GNOME Portal Implementation</a></li><li><a href="#retrieving-an-ei-file-descriptor" title="Retrieving an Ei File Descriptor">Retrieving an Ei File Descriptor</a></li><li><a href="#selecting-pointer-barriers" title="Selecting Pointer Barriers.">Selecting Pointer Barriers.</a></li><li><a href="#enabling-input-capture-and-retrieving-captured-input-events" title="Enabling Input Capture and Retrieving Captured Input Events.">Enabling Input Capture and Retrieving Captured Input Events.</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In ashpd::<wbr>desktop</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">ashpd</a>::<wbr><a href="../index.html">desktop</a></div><h1>Module <span>input_capture</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/ashpd/desktop/input_capture.rs.html#1-755">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Capture input events from physical or logical devices.</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2><h3 id="a-note-of-warning-regarding-the-gnome-portal-implementation"><a class="doc-anchor" href="#a-note-of-warning-regarding-the-gnome-portal-implementation">§</a>A Note of Warning Regarding the GNOME Portal Implementation</h3>
+<p><code>xdg-desktop-portal-gnome</code> in version 46.0 has a
+<a href="https://gitlab.gnome.org/GNOME/xdg-desktop-portal-gnome/-/issues/126">bug</a>
+that prevents reenabling a disabled session.</p>
+<p>Since changing barrier locations requires a session to be disabled,
+it is currently (as of GNOME 46) not possible to change barriers
+after a session has been enabled!</p>
+<p>(the <a href="https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.InputCapture.html#org-freedesktop-portal-inputcapture-setpointerbarriers">official documentation</a>
+states that a
+<a href="struct.InputCapture.html#method.set_pointer_barriers" title="method ashpd::desktop::input_capture::InputCapture::set_pointer_barriers"><code>InputCapture::set_pointer_barriers()</code></a>
+request suspends the capture session but in reality the GNOME
+desktop portal enforces a
+<a href="struct.InputCapture.html#method.disable" title="method ashpd::desktop::input_capture::InputCapture::disable"><code>InputCapture::disable()</code></a>
+request
+in order to use
+<a href="struct.InputCapture.html#method.set_pointer_barriers" title="method ashpd::desktop::input_capture::InputCapture::set_pointer_barriers"><code>InputCapture::set_pointer_barriers()</code></a>
+)</p>
+<h3 id="retrieving-an-ei-file-descriptor"><a class="doc-anchor" href="#retrieving-an-ei-file-descriptor">§</a>Retrieving an Ei File Descriptor</h3>
+<p>The input capture portal is used to negotiate the input capture
+triggers and enable input capturing.</p>
+<p>Actual input capture events are then communicated over a unix
+stream using the <a href="https://gitlab.freedesktop.org/libinput/libei">libei protocol</a>.</p>
+<p>The lifetime of an ei file descriptor is bound by a capture session.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::os::fd::AsRawFd;
+
+<span class="kw">use </span>ashpd::desktop::input_capture::{Capabilities, InputCapture};
+
+<span class="kw">async fn </span>run() -&gt; ashpd::Result&lt;()&gt; {
+    <span class="kw">let </span>input_capture = InputCapture::new().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>(session, capabilities) = input_capture
+        .create_session(
+            <span class="prelude-val">None</span>,
+            Capabilities::Keyboard | Capabilities::Pointer | Capabilities::Touchscreen,
+        )
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="macro">eprintln!</span>(<span class="string">"capabilities: {capabilities}"</span>);
+
+    <span class="kw">let </span>eifd = input_capture.connect_to_eis(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="macro">eprintln!</span>(<span class="string">"eifd: {}"</span>, eifd.as_raw_fd());
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<h3 id="selecting-pointer-barriers"><a class="doc-anchor" href="#selecting-pointer-barriers">§</a>Selecting Pointer Barriers.</h3>
+<p>Input capture is triggered through pointer barriers that are provided
+by the client.</p>
+<p>The provided barriers need to be positioned at the edges of outputs
+(monitors) and can be denied by the compositor for various reasons, such as
+wrong placement.</p>
+<p>For debugging why a barrier placement failed, the logs of the
+active portal implementation can be useful, e.g.:</p>
+<div class="example-wrap"><pre class="language-sh"><code>journalctl --user -xeu xdg-desktop-portal-gnome.service</code></pre></div>
+<p>The following example sets up barriers according to <code>pos</code>
+(either <code>Left</code>, <code>Right</code>, <code>Top</code> or <code>Bottom</code>).</p>
+<p>Note that barriers positioned between two monitors will be denied
+and returned in the <code>failed_barrier_ids</code> vector.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ashpd::desktop::input_capture::{Barrier, BarrierID, Capabilities, InputCapture};
+
+<span class="attr">#[allow(unused)]
+</span><span class="kw">enum </span>Position {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+<span class="kw">async fn </span>run() -&gt; ashpd::Result&lt;()&gt; {
+    <span class="kw">let </span>input_capture = InputCapture::new().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>(session, _capabilities) = input_capture
+        .create_session(
+            <span class="prelude-val">None</span>,
+            Capabilities::Keyboard | Capabilities::Pointer | Capabilities::Touchscreen,
+        )
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">let </span>pos = Position::Left;
+    <span class="kw">let </span>zones = input_capture.zones(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>.response()<span class="question-mark">?</span>;
+    <span class="macro">eprintln!</span>(<span class="string">"zones: {zones:?}"</span>);
+    <span class="kw">let </span>barriers = zones
+        .regions()
+        .iter()
+        .enumerate()
+        .map(|(n, r)| {
+            <span class="kw">let </span>id = BarrierID::new((n + <span class="number">1</span>) <span class="kw">as </span>u32).expect(<span class="string">"barrier-id must be non-zero"</span>);
+            <span class="kw">let </span>(x, y) = (r.x_offset(), r.y_offset());
+            <span class="kw">let </span>(width, height) = (r.width() <span class="kw">as </span>i32, r.height() <span class="kw">as </span>i32);
+            <span class="kw">let </span>barrier_pos = <span class="kw">match </span>pos {
+                Position::Left =&gt; (x, y, x, y + height - <span class="number">1</span>), <span class="comment">// start pos, end pos, inclusive
+                </span>Position::Right =&gt; (x + width, y, x + width, y + height - <span class="number">1</span>),
+                Position::Top =&gt; (x, y, x + width - <span class="number">1</span>, y),
+                Position::Bottom =&gt; (x, y + height, x + width - <span class="number">1</span>, y + height),
+            };
+            Barrier::new(id, barrier_pos)
+        })
+        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
+    <span class="macro">eprintln!</span>(<span class="string">"requested barriers: {barriers:?}"</span>);
+
+    <span class="kw">let </span>request = input_capture
+        .set_pointer_barriers(<span class="kw-2">&amp;</span>session, <span class="kw-2">&amp;</span>barriers, zones.zone_set())
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>response = request.response()<span class="question-mark">?</span>;
+    <span class="kw">let </span>failed_barrier_ids = response.failed_barriers();
+
+    <span class="macro">eprintln!</span>(<span class="string">"failed barrier ids: {:?}"</span>, failed_barrier_ids);
+
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<h3 id="enabling-input-capture-and-retrieving-captured-input-events"><a class="doc-anchor" href="#enabling-input-capture-and-retrieving-captured-input-events">§</a>Enabling Input Capture and Retrieving Captured Input Events.</h3>
+<p>The following full example uses the <a href="https://docs.rs/reis/0.2.0/reis/">reis crate</a>
+for libei communication.</p>
+<p>Input Capture can be released using ESC.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::{collections::HashMap, os::unix::net::UnixStream, sync::OnceLock, time::Duration};
+
+<span class="kw">use </span>ashpd::desktop::input_capture::{Barrier, BarrierID, Capabilities, InputCapture};
+<span class="kw">use </span>futures_util::StreamExt;
+<span class="kw">use </span>reis::{
+    ei::{<span class="self">self</span>, keyboard::KeyState},
+    event::{DeviceCapability, EiEvent, KeyboardKey},
+};
+
+<span class="attr">#[allow(unused)]
+</span><span class="kw">enum </span>Position {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+<span class="kw">static </span>INTERFACES: OnceLock&lt;HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, u32&gt;&gt; = OnceLock::new();
+
+<span class="kw">async fn </span>run() -&gt; ashpd::Result&lt;()&gt; {
+    <span class="kw">let </span>input_capture = InputCapture::new().<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">let </span>(session, _cap) = input_capture
+        .create_session(
+            <span class="prelude-val">None</span>,
+            Capabilities::Keyboard | Capabilities::Pointer | Capabilities::Touchscreen,
+        )
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="comment">// connect to eis server
+    </span><span class="kw">let </span>fd = input_capture.connect_to_eis(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="comment">// create unix stream from fd
+    </span><span class="kw">let </span>stream = UnixStream::from(fd);
+    stream.set_nonblocking(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
+
+    <span class="comment">// create ei context
+    </span><span class="kw">let </span>context = ei::Context::new(stream)<span class="question-mark">?</span>;
+    context.flush().unwrap();
+
+    <span class="kw">let </span>(_connection, <span class="kw-2">mut </span>event_stream) = context
+        .handshake_tokio(<span class="string">"ashpd-mre"</span>, ei::handshake::ContextType::Receiver)
+        .<span class="kw">await
+        </span>.expect(<span class="string">"ei handshake failed"</span>);
+
+    <span class="kw">let </span>pos = Position::Left;
+    <span class="kw">let </span>zones = input_capture.zones(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>.response()<span class="question-mark">?</span>;
+    <span class="macro">eprintln!</span>(<span class="string">"zones: {zones:?}"</span>);
+    <span class="kw">let </span>barriers = zones
+        .regions()
+        .iter()
+        .enumerate()
+        .map(|(n, r)| {
+            <span class="kw">let </span>id = BarrierID::new((n + <span class="number">1</span>) <span class="kw">as </span>u32).expect(<span class="string">"barrier-id must be non-zero"</span>);
+            <span class="kw">let </span>(x, y) = (r.x_offset(), r.y_offset());
+            <span class="kw">let </span>(width, height) = (r.width() <span class="kw">as </span>i32, r.height() <span class="kw">as </span>i32);
+            <span class="kw">let </span>barrier_pos = <span class="kw">match </span>pos {
+                Position::Left =&gt; (x, y, x, y + height - <span class="number">1</span>), <span class="comment">// start pos, end pos, inclusive
+                </span>Position::Right =&gt; (x + width, y, x + width, y + height - <span class="number">1</span>),
+                Position::Top =&gt; (x, y, x + width - <span class="number">1</span>, y),
+                Position::Bottom =&gt; (x, y + height, x + width - <span class="number">1</span>, y + height),
+            };
+            Barrier::new(id, barrier_pos)
+        })
+        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
+    <span class="macro">eprintln!</span>(<span class="string">"requested barriers: {barriers:?}"</span>);
+
+    <span class="kw">let </span>request = input_capture
+        .set_pointer_barriers(<span class="kw-2">&amp;</span>session, <span class="kw-2">&amp;</span>barriers, zones.zone_set())
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>response = request.response()<span class="question-mark">?</span>;
+    <span class="kw">let </span>failed_barrier_ids = response.failed_barriers();
+
+    <span class="macro">eprintln!</span>(<span class="string">"failed barrier ids: {:?}"</span>, failed_barrier_ids);
+
+    input_capture.enable(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">let </span><span class="kw-2">mut </span>activate_stream = input_capture.receive_activated().<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">loop </span>{
+        <span class="kw">let </span>activated = activate_stream.next().<span class="kw">await</span>.unwrap();
+
+        <span class="macro">eprintln!</span>(<span class="string">"activated: {activated:?}"</span>);
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>ei_event = event_stream.next().<span class="kw">await</span>.unwrap().unwrap();
+            <span class="macro">eprintln!</span>(<span class="string">"ei event: {ei_event:?}"</span>);
+            <span class="kw">if let </span>EiEvent::SeatAdded(seat_event) = <span class="kw-2">&amp;</span>ei_event {
+                seat_event.seat.bind_capabilities(<span class="kw-2">&amp;</span>[
+                    DeviceCapability::Pointer,
+                    DeviceCapability::PointerAbsolute,
+                    DeviceCapability::Keyboard,
+                    DeviceCapability::Touch,
+                    DeviceCapability::Scroll,
+                    DeviceCapability::Button,
+                ]);
+                context.flush().unwrap();
+            }
+            <span class="kw">if let </span>EiEvent::DeviceAdded(<span class="kw">_</span>) = ei_event {
+                <span class="comment">// new device added -&gt; restart capture
+                </span><span class="kw">break</span>;
+            };
+            <span class="kw">if let </span>EiEvent::KeyboardKey(KeyboardKey { key, state, .. }) = ei_event {
+                <span class="kw">if </span>key == <span class="number">1 </span>&amp;&amp; state == KeyState::Press {
+                    <span class="comment">// esc pressed
+                    </span><span class="kw">break</span>;
+                }
+            }
+        }
+
+        <span class="macro">eprintln!</span>(<span class="string">"releasing input capture"</span>);
+        <span class="kw">let </span>(x, y) = activated.cursor_position().unwrap();
+        <span class="kw">let </span>(x, y) = (x <span class="kw">as </span>f64, y <span class="kw">as </span>f64);
+        <span class="kw">let </span>cursor_pos = <span class="kw">match </span>pos {
+            Position::Left =&gt; (x + <span class="number">1.</span>, y),
+            Position::Right =&gt; (x - <span class="number">1.</span>, y),
+            Position::Top =&gt; (x, y - <span class="number">1.</span>),
+            Position::Bottom =&gt; (x, y + <span class="number">1.</span>),
+        };
+        input_capture
+            .release(<span class="kw-2">&amp;</span>session, activated.activation_id(), <span class="prelude-val">Some</span>(cursor_pos))
+            .<span class="kw">await</span><span class="question-mark">?</span>;
+    }
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Activated.html" title="struct ashpd::desktop::input_capture::Activated">Activated</a></dt><dd>Indicates that an input capturing session was activated.</dd><dt><a class="struct" href="struct.Barrier.html" title="struct ashpd::desktop::input_capture::Barrier">Barrier</a></dt><dd>Input Barrier.</dd><dt><a class="struct" href="struct.Deactivated.html" title="struct ashpd::desktop::input_capture::Deactivated">Deactivated</a></dt><dd>Indicates that an input capturing session was deactivated.</dd><dt><a class="struct" href="struct.Disabled.html" title="struct ashpd::desktop::input_capture::Disabled">Disabled</a></dt><dd>Indicates that an input capturing session was disabled.</dd><dt><a class="struct" href="struct.InputCapture.html" title="struct ashpd::desktop::input_capture::InputCapture">Input<wbr>Capture</a></dt><dd>Wrapper of the DBus interface: <a href="https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.InputCapture.html"><code>org.freedesktop.portal.InputCapture</code></a>.</dd><dt><a class="struct" href="struct.Region.html" title="struct ashpd::desktop::input_capture::Region">Region</a></dt><dd>A region of a <a href="struct.Zones.html" title="struct ashpd::desktop::input_capture::Zones"><code>Zones</code></a>.</dd><dt><a class="struct" href="struct.SetPointerBarriersResponse.html" title="struct ashpd::desktop::input_capture::SetPointerBarriersResponse">SetPointer<wbr>Barriers<wbr>Response</a></dt><dd>A response to <a href="struct.InputCapture.html#method.set_pointer_barriers" title="method ashpd::desktop::input_capture::InputCapture::set_pointer_barriers"><code>InputCapture::set_pointer_barriers</code></a></dd><dt><a class="struct" href="struct.Zones.html" title="struct ashpd::desktop::input_capture::Zones">Zones</a></dt><dd>A response of <a href="struct.InputCapture.html#method.zones" title="method ashpd::desktop::input_capture::InputCapture::zones"><code>InputCapture::zones</code></a>.</dd><dt><a class="struct" href="struct.ZonesChanged.html" title="struct ashpd::desktop::input_capture::ZonesChanged">Zones<wbr>Changed</a></dt><dd>Indicates that zones available to this session changed.</dd></dl><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><dl class="item-table"><dt><a class="enum" href="enum.ActivatedBarrier.html" title="enum ashpd::desktop::input_capture::ActivatedBarrier">Activated<wbr>Barrier</a></dt><dd>information about an activation barrier</dd><dt><a class="enum" href="enum.Capabilities.html" title="enum ashpd::desktop::input_capture::Capabilities">Capabilities</a></dt><dd>Supported capabilities</dd></dl><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><dl class="item-table"><dt><a class="type" href="type.BarrierID.html" title="type ashpd::desktop::input_capture::BarrierID">BarrierID</a></dt><dd>A barrier ID.</dd></dl></section></div></main></body></html>

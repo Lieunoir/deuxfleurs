@@ -1,0 +1,38 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Interact with the documents store or transfer files across apps."><title>ashpd::documents - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="ashpd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (1677d46cb 2025-06-10)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo-symbolic.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button><a class="logo-container" href="../../ashpd/index.html"><img src="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo.svg" alt=""></a></nav><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../../ashpd/index.html"><img src="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo.svg" alt="logo"></a><h2><a href="../../ashpd/index.html">ashpd</a><span class="version">0.11.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module documents</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate ashpd</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">ashpd</a></div><h1>Module <span>documents</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/ashpd/documents/mod.rs.html#1-536">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Interact with the documents store or transfer files across apps.</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::str::FromStr;
+
+<span class="kw">use </span>ashpd::{
+    documents::{Documents, Permission},
+    AppID,
+};
+
+<span class="kw">async fn </span>run() -&gt; ashpd::Result&lt;()&gt; {
+    <span class="kw">let </span>proxy = Documents::new().<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, proxy.mount_point().<span class="kw">await</span><span class="question-mark">?</span>);
+    <span class="kw">let </span>app_id = AppID::from_str(<span class="string">"org.mozilla.firefox"</span>).unwrap();
+    <span class="kw">for </span>(doc_id, host_path) <span class="kw">in </span>proxy.list(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>app_id)).<span class="kw">await</span><span class="question-mark">? </span>{
+        <span class="kw">if </span>doc_id == <span class="string">"f2ee988d"</span>.into() {
+            <span class="kw">let </span>info = proxy.info(doc_id).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, info);
+        }
+    }
+
+    proxy
+        .grant_permissions(<span class="string">"f2ee988d"</span>, <span class="kw-2">&amp;</span>app_id, <span class="kw-2">&amp;</span>[Permission::GrantPermissions])
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+    proxy
+        .revoke_permissions(<span class="string">"f2ee988d"</span>, <span class="kw-2">&amp;</span>app_id, <span class="kw-2">&amp;</span>[Permission::Write])
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+
+    proxy.delete(<span class="string">"f2ee988d"</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.DocumentID.html" title="struct ashpd::documents::DocumentID">DocumentID</a></dt><dd>The ID of a file in the document store.</dd><dt><a class="struct" href="struct.Documents.html" title="struct ashpd::documents::Documents">Documents</a></dt><dd>The interface lets sandboxed applications make files from the outside world
+available to sandboxed applications in a controlled way.</dd><dt><a class="struct" href="struct.FileTransfer.html" title="struct ashpd::documents::FileTransfer">File<wbr>Transfer</a></dt><dd>The interface operates as a middle-man between apps when transferring files
+via drag-and-drop or copy-paste, taking care of the necessary exporting of
+files in the document portal.</dd></dl><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><dl class="item-table"><dt><a class="enum" href="enum.DocumentFlags.html" title="enum ashpd::documents::DocumentFlags">Document<wbr>Flags</a></dt><dd>Document flags</dd><dt><a class="enum" href="enum.Permission.html" title="enum ashpd::documents::Permission">Permission</a></dt><dd>The possible permissions to grant to a specific application for a specific
+document.</dd></dl><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><dl class="item-table"><dt><a class="type" href="type.Permissions.html" title="type ashpd::documents::Permissions">Permissions</a></dt><dd>A <a href="https://doc.rust-lang.org/nightly/std/collections/hash/map/struct.HashMap.html" title="struct std::collections::hash::map::HashMap"><code>HashMap</code></a> mapping application IDs to the permissions for that
+application</dd></dl></section></div></main></body></html>

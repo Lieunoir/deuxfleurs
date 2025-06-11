@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ashpd-0.11.0/src/desktop/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="ashpd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (1677d46cb 2025-06-10)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/bilelmoussaoui/ashpd/master/ashpd-demo/data/icons/com.belmoussaoui.ashpd.demo-symbolic.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">ashpd/desktop/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">mod </span>handle_token;
+<a href=#2 id=2 data-nosnippet>2</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>request;
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">mod </span>session;
+<a href=#4 id=4 data-nosnippet>4</a><span class="attr">#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"backend"</span>)))]
+<a href=#5 id=5 data-nosnippet>5</a>#[cfg(feature = <span class="string">"backend"</span>)]
+<a href=#6 id=6 data-nosnippet>6</a></span><span class="kw">pub use </span><span class="self">self</span>::handle_token::HandleToken;
+<a href=#7 id=7 data-nosnippet>7</a><span class="attr">#[cfg(not(feature = <span class="string">"backend"</span>))]
+<a href=#8 id=8 data-nosnippet>8</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::handle_token::HandleToken;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">pub use </span><span class="self">self</span>::{
+<a href=#10 id=10 data-nosnippet>10</a>    request::{Request, Response, ResponseError, ResponseType},
+<a href=#11 id=11 data-nosnippet>11</a>    session::{Session, SessionPortal},
+<a href=#12 id=12 data-nosnippet>12</a>};
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">mod </span>color;
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">pub use </span>color::Color;
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">mod </span>icon;
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">pub use </span>icon::Icon;
+<a href=#17 id=17 data-nosnippet>17</a>
+<a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub mod </span>account;
+<a href=#19 id=19 data-nosnippet>19</a><span class="kw">pub mod </span>background;
+<a href=#20 id=20 data-nosnippet>20</a><span class="kw">pub mod </span>camera;
+<a href=#21 id=21 data-nosnippet>21</a><span class="kw">pub mod </span>clipboard;
+<a href=#22 id=22 data-nosnippet>22</a><span class="attr">#[deprecated = <span class="string">"The portal does not serve any purpose as nothing really can make use of it as is."</span>]
+<a href=#23 id=23 data-nosnippet>23</a></span><span class="kw">pub mod </span>device;
+<a href=#24 id=24 data-nosnippet>24</a><span class="kw">pub mod </span>dynamic_launcher;
+<a href=#25 id=25 data-nosnippet>25</a><span class="kw">pub mod </span>email;
+<a href=#26 id=26 data-nosnippet>26</a><span class="doccomment">/// Open/save file(s) chooser.
+<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">pub mod </span>file_chooser;
+<a href=#28 id=28 data-nosnippet>28</a><span class="doccomment">/// Enable/disable/query the status of Game Mode.
+<a href=#29 id=29 data-nosnippet>29</a></span><span class="kw">pub mod </span>game_mode;
+<a href=#30 id=30 data-nosnippet>30</a><span class="doccomment">/// Register global shortcuts
+<a href=#31 id=31 data-nosnippet>31</a></span><span class="kw">pub mod </span>global_shortcuts;
+<a href=#32 id=32 data-nosnippet>32</a><span class="doccomment">/// Inhibit the session from being restarted or the user from logging out.
+<a href=#33 id=33 data-nosnippet>33</a></span><span class="kw">pub mod </span>inhibit;
+<a href=#34 id=34 data-nosnippet>34</a><span class="doccomment">/// Capture input events from physical or logical devices.
+<a href=#35 id=35 data-nosnippet>35</a></span><span class="kw">pub mod </span>input_capture;
+<a href=#36 id=36 data-nosnippet>36</a><span class="doccomment">/// Query the user's GPS location.
+<a href=#37 id=37 data-nosnippet>37</a></span><span class="kw">pub mod </span>location;
+<a href=#38 id=38 data-nosnippet>38</a><span class="doccomment">/// Monitor memory level.
+<a href=#39 id=39 data-nosnippet>39</a></span><span class="kw">pub mod </span>memory_monitor;
+<a href=#40 id=40 data-nosnippet>40</a><span class="doccomment">/// Check the status of the network on a user's machine.
+<a href=#41 id=41 data-nosnippet>41</a></span><span class="kw">pub mod </span>network_monitor;
+<a href=#42 id=42 data-nosnippet>42</a><span class="doccomment">/// Send/withdraw notifications.
+<a href=#43 id=43 data-nosnippet>43</a></span><span class="kw">pub mod </span>notification;
+<a href=#44 id=44 data-nosnippet>44</a><span class="kw">pub mod </span>open_uri;
+<a href=#45 id=45 data-nosnippet>45</a><span class="doccomment">/// Power profile monitoring.
+<a href=#46 id=46 data-nosnippet>46</a></span><span class="kw">pub mod </span>power_profile_monitor;
+<a href=#47 id=47 data-nosnippet>47</a><span class="doccomment">/// Print a document.
+<a href=#48 id=48 data-nosnippet>48</a></span><span class="kw">pub mod </span>print;
+<a href=#49 id=49 data-nosnippet>49</a><span class="doccomment">/// Proxy information.
+<a href=#50 id=50 data-nosnippet>50</a></span><span class="kw">pub mod </span>proxy_resolver;
+<a href=#51 id=51 data-nosnippet>51</a><span class="kw">pub mod </span>realtime;
+<a href=#52 id=52 data-nosnippet>52</a><span class="doccomment">/// Start a remote desktop session and interact with it.
+<a href=#53 id=53 data-nosnippet>53</a></span><span class="kw">pub mod </span>remote_desktop;
+<a href=#54 id=54 data-nosnippet>54</a><span class="kw">pub mod </span>screencast;
+<a href=#55 id=55 data-nosnippet>55</a><span class="kw">pub mod </span>screenshot;
+<a href=#56 id=56 data-nosnippet>56</a><span class="doccomment">/// Retrieve a per-application secret used to encrypt confidential data inside
+<a href=#57 id=57 data-nosnippet>57</a>/// the sandbox.
+<a href=#58 id=58 data-nosnippet>58</a></span><span class="kw">pub mod </span>secret;
+<a href=#59 id=59 data-nosnippet>59</a><span class="doccomment">/// Read &amp; listen to system settings changes.
+<a href=#60 id=60 data-nosnippet>60</a></span><span class="kw">pub mod </span>settings;
+<a href=#61 id=61 data-nosnippet>61</a><span class="kw">pub mod </span>trash;
+<a href=#62 id=62 data-nosnippet>62</a><span class="kw">pub mod </span>usb;
+<a href=#63 id=63 data-nosnippet>63</a><span class="kw">pub mod </span>wallpaper;
+<a href=#64 id=64 data-nosnippet>64</a>
+<a href=#65 id=65 data-nosnippet>65</a><span class="attr">#[cfg_attr(feature = <span class="string">"glib"</span>, derive(glib::Enum))]
+<a href=#66 id=66 data-nosnippet>66</a>#[cfg_attr(feature = <span class="string">"glib"</span>, enum_type(name = <span class="string">"AshpdPersistMode"</span>))]
+<a href=#67 id=67 data-nosnippet>67</a>#[derive(
+<a href=#68 id=68 data-nosnippet>68</a>    Default, serde_repr::Serialize_repr, PartialEq, Eq, Debug, Copy, Clone, zbus::zvariant::Type,
+<a href=#69 id=69 data-nosnippet>69</a>)]
+<a href=#70 id=70 data-nosnippet>70</a>#[doc(alias = <span class="string">"XdpPersistMode"</span>)]
+<a href=#71 id=71 data-nosnippet>71</a>#[repr(u32)]
+<a href=#72 id=72 data-nosnippet>72</a></span><span class="doccomment">/// Persistence mode for a screencast or remote desktop session.
+<a href=#73 id=73 data-nosnippet>73</a></span><span class="kw">pub enum </span>PersistMode {
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="attr">#[doc(alias = <span class="string">"XDP_PERSIST_MODE_NONE"</span>)]
+<a href=#75 id=75 data-nosnippet>75</a>    #[default]
+<a href=#76 id=76 data-nosnippet>76</a>    </span><span class="doccomment">/// Do not persist.
+<a href=#77 id=77 data-nosnippet>77</a>    </span>DoNot = <span class="number">0</span>,
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="attr">#[doc(alias = <span class="string">"XDP_PERSIST_MODE_TRANSIENT"</span>)]
+<a href=#79 id=79 data-nosnippet>79</a>    </span><span class="doccomment">/// Persist while the application is running.
+<a href=#80 id=80 data-nosnippet>80</a>    </span>Application = <span class="number">1</span>,
+<a href=#81 id=81 data-nosnippet>81</a>    <span class="attr">#[doc(alias = <span class="string">"XDP_PERSIST_MODE_PERSISTENT"</span>)]
+<a href=#82 id=82 data-nosnippet>82</a>    </span><span class="doccomment">/// Persist until explicitly revoked.
+<a href=#83 id=83 data-nosnippet>83</a>    </span>ExplicitlyRevoked = <span class="number">2</span>,
+<a href=#84 id=84 data-nosnippet>84</a>}</code></pre></div></section></main></body></html>

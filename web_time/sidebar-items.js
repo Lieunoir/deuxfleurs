@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["UNIX_EPOCH"],"struct":["Duration","Instant","SystemTime","SystemTimeError","TryFromFloatSecsError"]};
+window.SIDEBAR_ITEMS = {"constant":["UNIX_EPOCH"],"mod":["web"],"struct":["Duration","Instant","SystemTime","SystemTimeError","TryFromFloatSecsError"]};

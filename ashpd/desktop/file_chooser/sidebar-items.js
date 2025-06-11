@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Choice","FileFilter","OpenFileRequest","SaveFileRequest","SaveFilesRequest","SelectedFiles"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LimitSupport","Limits","Reader"]};
+window.SIDEBAR_ITEMS = {"type":["LimitSupport","Limits","Reader"]};
