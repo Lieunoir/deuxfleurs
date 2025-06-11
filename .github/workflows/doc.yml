@@ -23,13 +23,13 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install libglib2.0-dev libcairo2-dev libgdk-pixbuf-2.0-dev libatk1.0-0 libpango1.0-dev libatk-bridge2.0-dev libgtk-3-dev
+      #- name: Install system packages
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install libglib2.0-dev libcairo2-dev libgdk-pixbuf-2.0-dev libatk1.0-0 libpango1.0-dev libatk-bridge2.0-dev libgtk-3-dev
 
       - name: Build documentation
-        run: cargo doc
+        run: RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features
 
       - name: Finalize documentation
         run: |
