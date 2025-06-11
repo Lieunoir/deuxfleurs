@@ -26,21 +26,22 @@ impl TransformSettings {
     }
 
     pub fn to_raw(&self) -> TransformRaw {
-        use cgmath::Matrix;
-        use cgmath::SquareMatrix;
+        //use cgmath::SquareMatrix;
+        //use glam::Matrix;
         //let model = self.transform;
         let mut normal: [[f32; 3]; 3] = [[0.; 3]; 3];
         let model = self.get_transform();
         for (row, row_orig) in normal.iter_mut().zip(model) {
             *row = row_orig[0..3].try_into().unwrap();
         }
-        let mut normal: cgmath::Matrix3<f32> = normal.into();
-        normal = normal.invert().unwrap().transpose();
+        let mut normal = glam::Mat3::from_cols_array_2d(&normal);
+        normal = normal.inverse().transpose();
         //Conversion tricks from mat3x3 to mat4x4
-        let normal: cgmath::Matrix4<f32> = normal.into();
+        //let normal: cgmath::Matrix4<f32> = normal.into();
+        let normal = glam::Mat4::from_mat3(normal);
         TransformRaw {
             model,
-            normal: normal.into(),
+            normal: normal.to_cols_array_2d(),
         }
     }
     pub fn draw_transform(&mut self, ui: &mut egui::Ui, positions: &[[f32; 3]]) -> bool {
@@ -65,13 +66,11 @@ impl TransformSettings {
 
                 let model = self.get_transform();
 
-                let transfo_matrix: cgmath::Matrix4<f32> = model.into();
+                let transfo_matrix = glam::Mat4::from_cols_array_2d(&model);
                 for position in positions {
-                    let threed_point: cgmath::Point3<f32> = (*position).into();
+                    let threed_point = glam::Vec3::from_array(*position);
 
-                    let position = cgmath::Point3::<f32>::from_homogeneous(
-                        transfo_matrix * threed_point.to_homogeneous(),
-                    );
+                    let position = (transfo_matrix * threed_point.extend(1.)).truncate();
                     if position[0] < min_x {
                         min_x = position[0];
                     }
@@ -108,13 +107,11 @@ impl TransformSettings {
 
                 let model = self.get_transform();
 
-                let transfo_matrix: cgmath::Matrix4<f32> = model.into();
+                let transfo_matrix = glam::Mat4::from_cols_array_2d(&model);
                 for vertex in positions {
-                    let threed_point: cgmath::Point3<f32> = (*vertex).into();
+                    let threed_point = glam::Vec3::from_array(*vertex);
+                    let position = (transfo_matrix * threed_point.extend(1.)).truncate();
 
-                    let position = cgmath::Point3::<f32>::from_homogeneous(
-                        transfo_matrix * threed_point.to_homogeneous(),
-                    );
                     if position[0] < min_x {
                         min_x = position[0];
                     }
@@ -192,14 +189,14 @@ impl UiDataElement for TransformSettings {
     fn draw_gizmo(
         &mut self,
         ui: &mut egui::Ui,
-        view: cgmath::Matrix4<f32>,
-        proj: cgmath::Matrix4<f32>,
+        view: glam::Mat4,
+        proj: glam::Mat4,
         gizmo_hovered: &mut bool,
     ) -> bool {
         if self.show_gizmo {
             let viewport = ui.clip_rect();
-            let view: [[f32; 4]; 4] = view.into();
-            let proj: [[f32; 4]; 4] = proj.into();
+            let view: [[f32; 4]; 4] = view.to_cols_array_2d();
+            let proj: [[f32; 4]; 4] = proj.to_cols_array_2d();
             let mut view_m = DMat4::ZERO;
             let mut proj_m = DMat4::ZERO;
             for (i, (row_m, row)) in view_m

@@ -34,11 +34,6 @@ async fn load_string(file_name: &str) -> Option<String> {
     cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             fetch(file_name).await
-            //let url = format_url(file_name);
-            //let txt = reqwest::get(url)
-            //    .await?
-            //    .text()
-            //    .await?;
 
         } else {
             let path = std::path::Path::new(file_name);

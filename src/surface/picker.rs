@@ -5,7 +5,6 @@ use crate::updater::{ElementPicker, Render};
 use crate::util::create_picker_pipeline;
 use crate::util::Vertex;
 use crate::{texture, SurfaceIndices};
-use cgmath::InnerSpace;
 use wgpu::util::DeviceExt;
 
 const PICKER_SHADER: &str = "
@@ -308,13 +307,13 @@ impl ElementPicker for Picker {
                 (index, face)
             }
         };
-        let v1: cgmath::Point3<f32> = vertices[face_indices[0] as usize].into();
-        let v2: cgmath::Point3<f32> = vertices[face_indices[1] as usize].into();
-        let v3: cgmath::Point3<f32> = vertices[face_indices[2] as usize].into();
-        let v1 = v1.to_homogeneous();
-        let v2 = v2.to_homogeneous();
-        let v3 = v3.to_homogeneous();
-        let model: cgmath::Matrix4<f32> = transform.to_raw().get_model().into();
+        let v1 = glam::Vec3::from_array(vertices[face_indices[0] as usize]);
+        let v2 = glam::Vec3::from_array(vertices[face_indices[1] as usize]);
+        let v3 = glam::Vec3::from_array(vertices[face_indices[2] as usize]);
+        let v1 = v1.extend(1.);
+        let v2 = v2.extend(1.);
+        let v3 = v3.extend(1.);
+        let model = glam::Mat4::from_cols_array_2d(&transform.to_raw().get_model());
         let camera = camera.build_view_projection_matrix();
         let v1 = camera * model * v1;
         let v2 = camera * model * v2;
@@ -325,14 +324,14 @@ impl ElementPicker for Picker {
         let v1 = v1 / v1.w;
         let v2 = v2 / v2.w;
         let v3 = v3 / v3.w;
-        let p = cgmath::vec3(pos_x, pos_y, 0.);
-        let v1 = cgmath::vec3(v1.x, v1.y, 0.);
-        let v2 = cgmath::vec3(v2.x, v2.y, 0.);
-        let v3 = cgmath::vec3(v3.x, v3.y, 0.);
+        let p = glam::Vec3::new(pos_x, pos_y, 0.);
+        let v1 = glam::Vec3::new(v1.x, v1.y, 0.);
+        let v2 = glam::Vec3::new(v2.x, v2.y, 0.);
+        let v3 = glam::Vec3::new(v3.x, v3.y, 0.);
 
-        let c3 = (v1 - p).cross(v2 - p).magnitude();
-        let c1 = (v2 - p).cross(v3 - p).magnitude();
-        let c2 = (v3 - p).cross(v1 - p).magnitude();
+        let c3 = (v1 - p).cross(v2 - p).length();
+        let c1 = (v2 - p).cross(v3 - p).length();
+        let c2 = (v3 - p).cross(v1 - p).length();
         let tot = c3 + c1 + c2;
         let c1 = c1 / tot;
         let c2 = c2 / tot;

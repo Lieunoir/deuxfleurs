@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 use crate::updater::Render;
 #[cfg(not(target_arch = "wasm32"))]
@@ -582,9 +583,9 @@ impl RunningState {
         for surface in self.surfaces.values() {
             if surface.element.shown() {
                 for p in surface.element.geometry().get_positions() {
-                    let p =
-                        cgmath::Matrix4::from(surface.element.updater.transform.get_transform())
-                            * cgmath::Point3::from(*p).to_homogeneous();
+                    let p = glam::Mat4::from_cols_array_2d(
+                        &surface.element.updater.transform.get_transform(),
+                    ) * glam::Vec3::from_array(*p).extend(1.);
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -595,8 +596,9 @@ impl RunningState {
         for cloud in self.clouds.values() {
             if cloud.element.shown() {
                 for p in cloud.element.geometry().get_positions() {
-                    let p = cgmath::Matrix4::from(cloud.element.updater.transform.get_transform())
-                        * cgmath::Point3::from(*p).to_homogeneous();
+                    let p = glam::Mat4::from_cols_array_2d(
+                        &cloud.element.updater.transform.get_transform(),
+                    ) * glam::Vec3::from_array(*p).extend(1.);
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -607,9 +609,9 @@ impl RunningState {
         for segment in self.segments.values() {
             if segment.element.shown() {
                 for p in segment.element.geometry().get_positions() {
-                    let p =
-                        cgmath::Matrix4::from(segment.element.updater.transform.get_transform())
-                            * cgmath::Point3::from(*p).to_homogeneous();
+                    let p = glam::Mat4::from_cols_array_2d(
+                        &segment.element.updater.transform.get_transform(),
+                    ) * glam::Vec3::from_array(*p).extend(1.);
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -624,14 +626,14 @@ impl RunningState {
     pub fn resize_scene(&mut self) {
         let mut size = None;
         let mut n = 0;
-        let mut center = cgmath::Point3::<f32>::new(0., 0., 0.);
+        let mut center = glam::Vec3::new(0., 0., 0.);
         for surface in self.surfaces.values() {
             if surface.element.shown() {
                 let sbv = surface
                     .element
                     .sbv
                     .transform(&surface.element.updater.transform.get_transform());
-                center += sbv.center.into();
+                center += glam::Vec3::from_array(sbv.center);
                 n += 1;
                 if let Some(size) = &mut size {
                     if sbv.radius > *size {
@@ -648,7 +650,7 @@ impl RunningState {
                     .element
                     .sbv
                     .transform(&cloud.element.updater.transform.get_transform());
-                center += sbv.center.into();
+                center += glam::Vec3::from_array(sbv.center);
                 n += 1;
                 if let Some(size) = &mut size {
                     if sbv.radius > *size {
@@ -665,7 +667,7 @@ impl RunningState {
                     .element
                     .sbv
                     .transform(&segment.element.updater.transform.get_transform());
-                center += sbv.center.into();
+                center += glam::Vec3::from_array(sbv.center);
                 n += 1;
                 if let Some(size) = &mut size {
                     if sbv.radius > *size {
@@ -1137,6 +1139,7 @@ impl RunningState {
         self.dirty = true;
     }
 
+    #[cfg(feature = "obj_button")]
     pub(crate) fn send_mesh(&mut self, name: String) {
         let event_loop_proxy = self.proxy.clone();
         #[cfg(not(target_arch = "wasm32"))]

@@ -65,18 +65,17 @@ impl SBV {
     }
 
     pub fn transform(&self, transform: &[[f32; 4]; 4]) -> Self {
-        use cgmath::InnerSpace;
-        let transform: cgmath::Matrix4<f32> = (*transform).into();
-        let center: cgmath::Point3<f32> = self.center.into();
-        let center = transform * center.to_homogeneous();
+        let transform = glam::Mat4::from_cols_array_2d(transform);
+        let center = glam::Vec3::from_array(self.center);
+        let center = transform * center.extend(1.);
         let center = center / center.w;
         let center = [center.x, center.y, center.z];
-        let volume = transform.x.truncate().magnitude().max(
+        let volume = transform.x_axis.truncate().length().max(
             transform
-                .y
+                .y_axis
                 .truncate()
-                .magnitude()
-                .max(transform.z.truncate().magnitude()),
+                .length()
+                .max(transform.z_axis.truncate().length()),
         );
         let radius = self.radius * volume;
         Self { center, radius }

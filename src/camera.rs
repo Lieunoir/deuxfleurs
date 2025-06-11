@@ -1,14 +1,14 @@
 use crate::{aabb::SBV, Settings};
-use cgmath::prelude::*;
+
 use serde::{Deserialize, Serialize};
 use winit::event::*;
 
 // Camera informations for easier updating
 #[derive(Serialize, Deserialize)]
 pub struct Camera {
-    eye: cgmath::Point3<f32>,
-    target: cgmath::Point3<f32>,
-    up: cgmath::Vector3<f32>,
+    eye: glam::Vec3,
+    target: glam::Vec3,
+    up: glam::Vec3,
     #[serde(skip)]
     aspect: f32,
     #[serde(skip)]
@@ -24,7 +24,7 @@ impl Camera {
         Self {
             eye: (0.0, 0.0, -2.5).into(),
             target: (0.0, 0.0, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
+            up: glam::Vec3::new(0., 1., 0.),
             aspect,
             fovy: 45.0,
             znear: 0.01,
@@ -32,28 +32,28 @@ impl Camera {
         }
     }
 
-    pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+    pub fn build_view_projection_matrix(&self) -> glam::Mat4 {
+        let view = glam::Mat4::look_at_rh(self.eye, self.target, self.up);
+        let proj = glam::Mat4::perspective_rh(self.fovy, self.aspect, self.znear, self.zfar);
         proj * view
     }
 
-    pub fn build_view(&self) -> cgmath::Matrix4<f32> {
-        cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up)
+    pub fn build_view(&self) -> glam::Mat4 {
+        glam::Mat4::look_at_rh(self.eye, self.target, self.up)
     }
 
-    pub fn build_proj(&self) -> cgmath::Matrix4<f32> {
-        cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar)
+    pub fn build_proj(&self) -> glam::Mat4 {
+        glam::Mat4::perspective_rh(self.fovy, self.aspect, self.znear, self.zfar)
     }
 
-    pub fn set_scene_size(&mut self, size: f32, center: cgmath::Point3<f32>) {
+    pub fn set_scene_size(&mut self, size: f32, center: glam::Vec3) {
         if size > 0. {
-            let dir = cgmath::Vector3::<f32>::new(0., 0., -3.);
+            let dir = glam::Vec3::new(0., 0., -3.);
             self.eye = center + dir * size;
             self.target = center;
             self.znear = size * 0.01;
             self.zfar = size * 10.;
-            self.up = cgmath::Vector3::unit_y();
+            self.up = glam::Vec3::new(0., 1., 0.);
         }
     }
 
@@ -93,20 +93,20 @@ impl CameraUniform {
     pub fn new() -> Self {
         Self {
             view_position: [0.0; 4],
-            view_proj: cgmath::Matrix4::identity().into(),
-            view_inv: cgmath::Matrix4::identity().into(),
+            view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            view_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
             floor_bb: [0.0; 4],
-            floor_proj: cgmath::Matrix4::identity().into(),
+            floor_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 
     pub fn update_view_proj(&mut self, camera: &Camera, sbv: &SBV, level: f32) {
         // We're using Vector4 because ofthe camera_uniform 16 byte spacing requirement
-        self.view_position = camera.eye.to_homogeneous().into();
+        self.view_position = camera.eye.extend(1.).into();
         let view_proj = camera.build_view_projection_matrix();
-        self.view_proj = view_proj.into();
-        let view_inv = view_proj.inverse_transform().unwrap();
-        self.view_inv = view_inv.into();
+        self.view_proj = view_proj.to_cols_array_2d();
+        let view_inv = view_proj.inverse();
+        self.view_inv = view_inv.to_cols_array_2d();
         //let orig : cgmath::Vector4<f32> = self.view_position.into();
         let mut min_x = f32::MAX;
         let mut min_z = f32::MAX;
@@ -114,9 +114,9 @@ impl CameraUniform {
         let mut max_z = f32::MIN;
         let couples = [(-1., -1.), (-1., 1.), (1., -1.), (1., 1.)];
         for (x, y) in couples {
-            let mut target = view_inv * cgmath::Vector4::new(x, y, 1., 1.);
+            let mut target = view_inv * glam::Vec4::new(x, y, 1., 1.);
             target = target / target.w;
-            let mut origin = view_inv * cgmath::Vector4::new(x, y, 0., 1.);
+            let mut origin = view_inv * glam::Vec4::new(x, y, 0., 1.);
             origin = origin / origin.w;
             let ray = target - origin;
             if ray.y.abs() > 10e-9 {
@@ -140,9 +140,9 @@ impl CameraUniform {
         }
         let couples = [(-1., 0.), (-1., 1.), (1., 0.), (1., 1.)];
         for (x, z) in couples {
-            let mut target = view_inv * cgmath::Vector4::new(x, -1., z, 1.);
+            let mut target = view_inv * glam::Vec4::new(x, -1., z, 1.);
             target = target / target.w;
-            let mut origin = view_inv * cgmath::Vector4::new(x, 1., z, 1.);
+            let mut origin = view_inv * glam::Vec4::new(x, 1., z, 1.);
             origin = origin / origin.w;
             let ray = target - origin;
             if ray.y.abs() > 10e-9 {
@@ -166,9 +166,9 @@ impl CameraUniform {
         }
         let couples = [(-1., 0.), (-1., 1.), (1., 0.), (1., 1.)];
         for (y, z) in couples {
-            let mut target = view_inv * cgmath::Vector4::new(-1., y, z, 1.);
+            let mut target = view_inv * glam::Vec4::new(-1., y, z, 1.);
             target = target / target.w;
-            let mut origin = view_inv * cgmath::Vector4::new(1., y, z, 1.);
+            let mut origin = view_inv * glam::Vec4::new(1., y, z, 1.);
             origin = origin / origin.w;
             let ray = target - origin;
             if ray.y.abs() > 10e-9 {
@@ -199,13 +199,14 @@ impl CameraUniform {
         let c_z = 0.5 * (min_z + max_z);
         let d_x = 0.5 * (max_x - min_x);
         let d_z = 0.5 * (max_z - min_z);
-        let eye = cgmath::Point3::<f32>::new(c_x, camera.zfar, c_z);
-        let target = cgmath::Point3::<f32>::new(c_x, 0., c_z);
-        let up = cgmath::Vector3::<f32>::new(0., 0., 1.);
-        let view = cgmath::Matrix4::look_at_rh(eye, target, up);
-        let proj = cgmath::ortho(d_x, -d_x, -d_z, d_z, -camera.zfar, 2. * camera.zfar);
+        let eye = glam::Vec3::new(c_x, camera.zfar, c_z);
+        let target = glam::Vec3::new(c_x, 0., c_z);
+        let up = glam::Vec3::new(0., 0., 1.);
+        let view = glam::Mat4::look_at_rh(eye, target, up);
+        let proj =
+            glam::Mat4::orthographic_rh(d_x, -d_x, -d_z, d_z, -camera.zfar, 2. * camera.zfar);
         self.floor_bb = [min_x, min_z, max_x - min_x, max_z - min_z];
-        self.floor_proj = (proj * view).into();
+        self.floor_proj = (proj * view).to_cols_array_2d();
     }
 }
 
@@ -283,26 +284,23 @@ impl CameraController {
         let right = forward_norm.cross(camera.up);
         if let Some((dx, dy)) = self.pan_delta {
             if self.is_mouse_left_pressed {
-                let origin = cgmath::Point3::<f32> {
-                    x: 0.,
-                    y: 0.,
-                    z: 0.,
-                };
-                let eye_norm = (camera.eye - cgmath::point3::<f32>(0., 0., 0.)).normalize();
-                let eye_mag = (camera.eye - cgmath::point3::<f32>(0., 0., 0.)).magnitude();
+                let origin = glam::Vec3::new(0., 0., 0.);
+                let eye_norm = (camera.eye - glam::Vec3::new(0., 0., 0.)).normalize();
+                let eye_mag = (camera.eye - glam::Vec3::new(0., 0., 0.)).length();
                 let center_right = eye_norm.cross(camera.up);
                 let old_eye = camera.eye;
-                camera.eye = cgmath::point3::<f32>(0., 0., 0.)
+                camera.eye = glam::Vec3::new(0., 0., 0.)
                     + (eye_norm
                         + center_right * dx * 0.2 * settings.mouse_sensitivity
                         + camera.up * dy * 0.2 * settings.mouse_sensitivity)
                         .normalize()
                         * eye_mag;
-                let rotation =
-                    cgmath::Quaternion::between_vectors(old_eye - origin, camera.eye - origin);
-                camera.target = origin + rotation.rotate_vector(camera.target - origin);
-                camera.up =
-                    rotation.rotate_vector(old_eye + camera.up - origin) - (camera.eye - origin);
+                let rotation = glam::Quat::from_rotation_arc(
+                    (old_eye - origin).normalize(),
+                    (camera.eye - origin).normalize(),
+                );
+                camera.target = origin + rotation.mul_vec3(camera.target - origin);
+                camera.up = rotation.mul_vec3(old_eye + camera.up - origin) - (camera.eye - origin);
                 //camera.target = camera.eye + forward;
             } else if self.is_mouse_right_pressed {
                 camera.eye += camera.zfar

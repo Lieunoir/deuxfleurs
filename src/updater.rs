@@ -171,8 +171,8 @@ where
     pub(crate) fn draw_gizmo(
         &mut self,
         ui: &mut egui::Ui,
-        view: cgmath::Matrix4<f32>,
-        proj: cgmath::Matrix4<f32>,
+        view: glam::Mat4,
+        proj: glam::Mat4,
         gizmo_hover: &mut bool,
     ) {
         self.element.updater.draw_gizmo(ui, view, proj, gizmo_hover);
@@ -405,8 +405,8 @@ impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSet
     fn draw_gizmo(
         &mut self,
         ui: &mut egui::Ui,
-        view: cgmath::Matrix4<f32>,
-        proj: cgmath::Matrix4<f32>,
+        view: glam::Mat4,
+        proj: glam::Mat4,
         gizmo_hovered: &mut bool,
     ) {
         self.transform_changed |= self.transform.draw_gizmo(ui, view, proj, gizmo_hovered);

@@ -9,6 +9,8 @@ use indexmap::IndexMap;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "obj_button")))]
+#[cfg(feature = "obj_button")]
 /// When clicked, pops an interative window to load a mesh
 pub struct LoadObjButton<'a, 'b, 'c> {
     name: &'a str,
@@ -16,6 +18,7 @@ pub struct LoadObjButton<'a, 'b, 'c> {
     state: &'c mut RunningState,
 }
 
+#[cfg(feature = "obj_button")]
 impl<'a, 'b, 'c> LoadObjButton<'a, 'b, 'c> {
     pub fn new(name: &'a str, mesh_name: &'b str, state: &'c mut RunningState) -> Self {
         Self {
@@ -26,6 +29,7 @@ impl<'a, 'b, 'c> LoadObjButton<'a, 'b, 'c> {
     }
 }
 
+#[cfg(feature = "obj_button")]
 impl<'a, 'b, 'c> Widget for LoadObjButton<'a, 'b, 'c> {
     fn ui(self, ui: &mut egui::Ui) -> Response {
         let button = egui::Button::new(self.name);
@@ -43,8 +47,8 @@ pub(crate) trait UiDataElement {
     fn draw_gizmo(
         &mut self,
         _ui: &mut egui::Ui,
-        _view: cgmath::Matrix4<f32>,
-        _proj: cgmath::Matrix4<f32>,
+        _view: glam::Mat4,
+        _proj: glam::Mat4,
         _gizmo_hovered: &mut bool,
     ) -> bool {
         false
@@ -224,8 +228,8 @@ impl UI {
         surfaces: &mut IndexMap<String, crate::surface::DisplaySurface>,
         clouds: &mut IndexMap<String, crate::point_cloud::DisplayPointCloud>,
         curves: &mut IndexMap<String, crate::segment::DisplaySegment>,
-        view: cgmath::Matrix4<f32>,
-        proj: cgmath::Matrix4<f32>,
+        view: glam::Mat4,
+        proj: glam::Mat4,
     ) {
         let input = self.state.take_egui_input(window);
         self.ctx.begin_pass(input);
