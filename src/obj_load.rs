@@ -197,85 +197,82 @@ pub fn load_obj_buf<B>(reader: &mut B) -> (Vec<[Float; 3]>, SurfaceIndices)
 where
     B: BufRead,
 {
-    let arch = pulp::Arch::new();
-    arch.dispatch(|| {
-        let mut tmp_pos = Vec::new();
-        let mut mode = FaceMode::Undetermined;
-        let mut indices: Vec<u32> = Vec::new();
-        let mut tex_indices: Vec<u32> = Vec::new();
-        let mut n_indices: Vec<u32> = Vec::new();
-        let mut strides: Vec<u8> = Vec::new();
-        const BUFFER_SIZE: usize = 65536;
-        let mut buf = [0; BUFFER_SIZE];
-        let mut encountered_f = false;
-        let mut start = 0;
-        while let Ok(size) = reader.read(&mut buf[start..]) {
-            if size == 0 && start == 0 {
-                break;
-            }
-            let end = start + size;
-            let mut last = end - 1;
-            while buf[last] != b'\n' && last > 0 {
-                last -= 1;
-            }
-            if buf[last] != b'\n' {
-                break;
-            }
-            last += 1;
-
-            let mut i = 0;
-            while i < last {
-                match buf[i] {
-                    b'v' => match buf[i + 1] {
-                        b' ' => {
-                            let (off, pos) = unsafe { parse_float3(&buf[i + 2..]) };
-                            tmp_pos.push(pos);
-                            i += off + 2;
-                        }
-                        _ => i += find_newline(&buf[i + 1..]).unwrap() + 2,
-                    },
-                    b'f' => {
-                        if !encountered_f {
-                            encountered_f = true;
-                            indices.reserve(tmp_pos.len() * 2);
-                        }
-                        let off = parse_face_pos(
-                            &buf[i + 2..],
-                            &mut mode,
-                            &mut indices,
-                            &mut tex_indices,
-                            &mut n_indices,
-                            &mut strides,
-                            tmp_pos.len() as u32,
-                            0,
-                            0,
-                        );
-                        i += 2 + off;
-                    }
-                    _ => i += find_newline(&buf[i..]).unwrap() + 1,
-                }
-            }
-
-            start = end - last;
-            buf.copy_within(last..end, 0);
+    let mut tmp_pos = Vec::new();
+    let mut mode = FaceMode::Undetermined;
+    let mut indices: Vec<u32> = Vec::new();
+    let mut tex_indices: Vec<u32> = Vec::new();
+    let mut n_indices: Vec<u32> = Vec::new();
+    let mut strides: Vec<u8> = Vec::new();
+    const BUFFER_SIZE: usize = 65536;
+    let mut buf = [0; BUFFER_SIZE];
+    let mut encountered_f = false;
+    let mut start = 0;
+    while let Ok(size) = reader.read(&mut buf[start..]) {
+        if size == 0 && start == 0 {
+            break;
         }
-        let indices = if mode == FaceMode::Polygon {
-            (indices, strides).into()
-        } else if mode == FaceMode::Quad {
-            indices
-                .chunks(4)
-                .map(|face| face.try_into().unwrap())
-                .collect::<Vec<[u32; 4]>>()
-                .into()
-        } else {
-            indices
-                .chunks(3)
-                .map(|face| face.try_into().unwrap())
-                .collect::<Vec<[u32; 3]>>()
-                .into()
-        };
-        (tmp_pos, indices)
-    })
+        let end = start + size;
+        let mut last = end - 1;
+        while buf[last] != b'\n' && last > 0 {
+            last -= 1;
+        }
+        if buf[last] != b'\n' {
+            break;
+        }
+        last += 1;
+
+        let mut i = 0;
+        while i < last {
+            match buf[i] {
+                b'v' => match buf[i + 1] {
+                    b' ' => {
+                        let (off, pos) = unsafe { parse_float3(&buf[i + 2..]) };
+                        tmp_pos.push(pos);
+                        i += off + 2;
+                    }
+                    _ => i += find_newline(&buf[i + 1..]).unwrap() + 2,
+                },
+                b'f' => {
+                    if !encountered_f {
+                        encountered_f = true;
+                        indices.reserve(tmp_pos.len() * 2);
+                    }
+                    let off = parse_face_pos(
+                        &buf[i + 2..],
+                        &mut mode,
+                        &mut indices,
+                        &mut tex_indices,
+                        &mut n_indices,
+                        &mut strides,
+                        tmp_pos.len() as u32,
+                        0,
+                        0,
+                    );
+                    i += 2 + off;
+                }
+                _ => i += find_newline(&buf[i..]).unwrap() + 1,
+            }
+        }
+
+        start = end - last;
+        buf.copy_within(last..end, 0);
+    }
+    let indices = if mode == FaceMode::Polygon {
+        (indices, strides).into()
+    } else if mode == FaceMode::Quad {
+        indices
+            .chunks(4)
+            .map(|face| face.try_into().unwrap())
+            .collect::<Vec<[u32; 4]>>()
+            .into()
+    } else {
+        indices
+            .chunks(3)
+            .map(|face| face.try_into().unwrap())
+            .collect::<Vec<[u32; 3]>>()
+            .into()
+    };
+    (tmp_pos, indices)
 }
 
 #[derive(PartialEq)]
