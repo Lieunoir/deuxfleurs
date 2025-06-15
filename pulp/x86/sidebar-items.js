@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["V2","V3","V3Scalar"]};
