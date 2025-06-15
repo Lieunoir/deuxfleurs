@@ -25,12 +25,7 @@ rfd = { version = "0.15", default-features = false, features = [
     "async-std",
 ], optional = true }
 wgpu = "24"
-winit = { version = "0.30", default-features = false, features = [
-    "rwh_06",
-    "wayland",
-    "wayland-dlopen",
-    "x11",
-] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06"] }
 
 ndarray = { version = "0.15", optional = true }
 nalgebra = { version = "0.32", optional = true }
@@ -45,15 +40,16 @@ num-traits = "0.2.19"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 egui-winit = { version = "0.31", default-features = false, features = [
     "clipboard",
-    "x11",
-    "wayland",
 ] }
 
 [features]
+default = ["x11"]
 ndarray = ["dep:ndarray"]
 nalgebra = ["dep:nalgebra"]
 obj_button = ["dep:rfd"]
 logger = ["dep:env_logger"]
+x11 = ["egui-winit/x11", "winit/x11"]
+wayland = ["egui-winit/wayland", "winit/wayland", "winit/wayland-dlopen"]
 
 [[example]]
 name = "load_filter"
