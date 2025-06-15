@@ -323,7 +323,7 @@
 <a href=#323 id=323 data-nosnippet>323</a>                    // we're building for the web we'll have to disable some.
 <a href=#324 id=324 data-nosnippet>324</a>                    </span>required_limits: <span class="kw">if </span><span class="macro">cfg!</span>(target_arch = <span class="string">"wasm32"</span>) {
 <a href=#325 id=325 data-nosnippet>325</a>                        <span class="kw">let </span><span class="kw-2">mut </span>limits = wgpu::Limits::downlevel_webgl2_defaults();
-<a href=#326 id=326 data-nosnippet>326</a>                        limits.max_texture_dimension_2d = <span class="number">4096</span>;
+<a href=#326 id=326 data-nosnippet>326</a>                        limits.max_texture_dimension_2d = <span class="number">8192</span>;
 <a href=#327 id=327 data-nosnippet>327</a>                        limits
 <a href=#328 id=328 data-nosnippet>328</a>                    } <span class="kw">else </span>{
 <a href=#329 id=329 data-nosnippet>329</a>                        {
