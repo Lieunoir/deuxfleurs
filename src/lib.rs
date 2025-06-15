@@ -323,15 +323,13 @@ impl RunningState {
                     // we're building for the web we'll have to disable some.
                     required_limits: if cfg!(target_arch = "wasm32") {
                         let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
-                        limits.max_texture_dimension_2d = 8192;
+                        limits.max_texture_dimension_2d = adapter.limits().max_texture_dimension_2d;
+                        limits.max_buffer_size = adapter.limits().max_buffer_size;
                         limits
                     } else {
-                        {
-                            let mut limits = wgpu::Limits::default();
-                            //limits.max_buffer_size = 1073741824;
-                            limits.max_buffer_size = 2147483647;
-                            limits
-                        }
+                        let mut limits = wgpu::Limits::default();
+                        limits.max_buffer_size = adapter.limits().max_buffer_size;
+                        limits
                     },
                 },
                 None,
