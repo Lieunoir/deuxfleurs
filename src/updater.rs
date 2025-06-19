@@ -1,3 +1,4 @@
+use std::mem::transmute;
 use std::ops::Deref;
 
 use crate::aabb::SBV;
@@ -23,18 +24,8 @@ struct GraphicalContext<'a> {
     dirty: &'a mut bool,
 }
 
-struct BareInnerElement<Geometry, Settings, Data> {
-    name: String,
-    geometry: Geometry,
-    show: bool,
-    transform: TransformSettings,
-    settings: Settings,
-    data: IndexMap<String, Data>,
-    attached_data: IndexMap<String, NewVectorField>,
-    shown_data: Option<String>,
-}
-
-struct InnerElement<Geometry, Settings, Renderer, Data> {
+// `Renderer` can be `()` !
+struct Element<Geometry, Renderer, Settings, Data, AttachedGeometry> {
     name: String,
     geometry: Geometry,
     renderer: Renderer,
@@ -42,9 +33,167 @@ struct InnerElement<Geometry, Settings, Renderer, Data> {
     transform: TransformSettings,
     settings: Settings,
     data: IndexMap<String, Data>,
-    attached_data: IndexMap<String, VectorField>,
+    attached_data: IndexMap<String, AttachedGeometry>,
     shown_data: Option<String>,
 }
+
+// Upgrade Using AttachedGeometry::initialize or smth
+
+struct ElementMut<'a, Element, Context> {
+    element: &'a mut Element,
+    context: Context,
+}
+
+impl<'a, Element, Context> Deref for ElementMut<'a, Element, Context> {
+    type Target = Element;
+
+    fn deref(&self) -> &Self::Target {
+        self.element
+    }
+}
+
+impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
+    Element<Geometry, Renderer, Settings, Data, AttachedGeometry>
+{
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn geometry(&self) -> &Geometry {
+        &self.geometry
+    }
+
+    fn shown(&self) -> bool {
+        self.show
+    }
+
+    fn get_data(&self, name: &str) -> Option<&Data> {
+        self.data.get(name)
+    }
+
+    fn get_attached_geometry(&self, name: &str) -> Option<&AttachedGeometry> {
+        self.attached_data.get(name)
+    }
+}
+
+impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry>
+    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, AttachedGeometry>, ()>
+{
+    fn show(&mut self, show: bool) -> &mut Self {
+        self.element.show = show;
+        self
+    }
+
+    fn set_data(&mut self, name: Option<String>) -> &mut Self {
+        self.element.shown_data = name;
+        self
+    }
+}
+
+impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry>
+    ElementMut<
+        'a,
+        Element<Geometry, Renderer, Settings, Data, AttachedGeometry>,
+        GraphicalContext<'a>,
+    >
+{
+    fn show(&mut self, show: bool) -> &mut Self {
+        todo!()
+        //self.element.show = show;
+        //self
+    }
+
+    fn set_data(&mut self, name: Option<String>) -> &mut Self {
+        todo!()
+        //self.element.shown_data = name;
+        //self
+    }
+}
+
+trait AttachedGeometry {
+    type NewAttachedGeometry;
+
+    fn init(
+        self,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self::NewAttachedGeometry;
+}
+
+fn upgrade<Geometry, Renderer, Settings, Data, AttachedGeometryG, NewAttachedGeometryG>(
+    element: Element<Geometry, (), Settings, Data, AttachedGeometryG>,
+    device: &wgpu::Device,
+    camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+    color_format: wgpu::TextureFormat,
+) -> Element<Geometry, Renderer, Settings, Data, NewAttachedGeometryG>
+where
+    AttachedGeometryG: AttachedGeometry<NewAttachedGeometry = NewAttachedGeometryG>,
+    Renderer: NewRenderer<Settings, Geometry, Data>,
+{
+    let renderer = Renderer::new(
+        device,
+        &element.geometry,
+        &element.transform,
+        &element.settings,
+        camera_light_bind_group_layout,
+        color_format,
+    );
+
+    let attached_data = element
+        .attached_data
+        .drain(..)
+        .map(|(name, field)| {
+            (
+                name,
+                field.init(
+                    device,
+                    camera_light_bind_group_layout,
+                    &renderer.transform_uniform.bind_group_layout,
+                    color_format,
+                ),
+            )
+        })
+        .collect();
+
+    Element {
+        name: element.name,
+        geometry: element.geometry,
+        show: element.show,
+        transform: element.transform,
+        settings: element.settings,
+        data: element.data,
+        attached_data,
+        renderer,
+        shown_data: element.shown_data,
+    }
+}
+
+//enum ElementRef<'a, Geometry, Settings, Renderer, Data> {
+//    Uninited(&'a UninitedElement<Geometry, Settings, Data>),
+//    Inited(&'a InitedElement<Geometry, Settings, Renderer, Data>),
+//}
+//
+//enum ElementMut<'a, Geometry, Settings, Renderer, Data> {
+//    Uninited(&'a mut UninitedElement<Geometry, Settings, Data>),
+//    Inited(
+//        &'a mut InitedElement<Geometry, Settings, Renderer, Data>,
+//        GraphicalContext<'a>,
+//    ),
+//}
+
+//impl<'a, Geometry, Settings, Renderer, Data> ElementMut<'a, Geometry, Settings, Renderer, Data> {
+//    pub fn as_ref<'b>(&'b self) -> ElementRef<'b, Geometry, Settings, Renderer, Data>
+//    where
+//        'a: 'b,
+//    {
+//        match self {
+//            ElementMut::Uninited(element) => ElementRef::Uninited(element),
+//            ElementMut::Inited(element, _) => ElementRef::Inited(element),
+//        }
+//    }
+//}
 
 impl<Geometry, Settings, Renderer, Data> InnerElement<Geometry, Settings, Renderer, Data>
 where
@@ -94,70 +243,10 @@ where
     }
 }
 
-pub enum ElementMut<'a, Geometry, Settings, Renderer, Data> {
-    BareInnerElement(&'a mut BareInnerElement<Geometry, Settings, Data>),
-    GraphicalInnerElement(
-        &'a mut InnerElement<Geometry, Settings, Renderer, Data>,
-        GraphicalContext<'a>,
-    ),
-}
-pub struct ElementRef<'a, Geometry, Settings, Renderer, Data>(
-    ElementMut<'a, Geometry, Settings, Renderer, Data>,
-);
-
-impl<'a, Geometry, Settings, Renderer, Data> Deref
-    for ElementRef<'a, Geometry, Settings, Renderer, Data>
-{
-    type Target = ElementMut<'a, Geometry, Settings, Renderer, Data>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a, Geometry, Settings, Renderer, Data> ElementMut<'a, Geometry, Settings, Renderer, Data>
-where
-    Data: DataUniformBuilder,
-    Geometry: Positions,
-    Settings: NamedSettings,
-    Renderer: NewRenderer<Settings, Geometry, Data>,
-{
-    pub fn name(&self) -> &str {
-        match self {
-            ElementMut::BareInnerElement(element) => &element.name,
-            ElementMut::GraphicalInnerElement(element, _) => &element.name,
-        }
-    }
-
-    pub fn geometry(&self) -> &Geometry {
-        match self {
-            ElementMut::BareInnerElement(element) => &element.geometry,
-            ElementMut::GraphicalInnerElement(element, _) => &element.geometry,
-        }
-    }
-
-    pub fn shown(&self) -> bool {
-        match self {
-            ElementMut::BareInnerElement(element) => element.show,
-            ElementMut::GraphicalInnerElement(element, _) => element.show,
-        }
-    }
-
-    pub fn show(&mut self, show: bool) -> &mut Self {
-        match self {
-            ElementMut::BareInnerElement(element) => element.show = show,
-            ElementMut::GraphicalInnerElement(element, ctxt) => {
-                element.show = show;
-                *ctxt.dirty = true;
-            }
-        }
-        self
-    }
-
     pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
         match self {
-            ElementMut::BareInnerElement(element) => element.shown_data = name,
-            ElementMut::GraphicalInnerElement(element, ctxt) => {
+            Element::BareInnerElement(element) => element.shown_data = name,
+            Element::GraphicalInnerElement(element, ctxt) => {
                 element.set_data(
                     name,
                     ctxt.device,
