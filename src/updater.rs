@@ -309,16 +309,19 @@ where
         Attached::NewAttachedGeometry,
     >
     where
+        Data: DataUniformBuilder,
         Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
         DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
         Pipeline:
             RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
     {
+        let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
         let renderer = Renderer::new(
             device,
             &self.geometry,
             &self.transform,
             &self.settings,
+            data,
             camera_light_bind_group_layout,
             color_format,
         );
@@ -380,6 +383,7 @@ where
             &geometry,
             &transform,
             &settings,
+            None,
             camera_light_bind_group_layout,
             color_format,
         );
@@ -768,7 +772,7 @@ pub struct Renderer<Fixed, DataB, Pipeline> {
 
 impl<
         Settings: DataUniformBuilder,
-        Data,
+        Data: DataUniformBuilder,
         Geometry,
         Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
         DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -780,22 +784,24 @@ impl<
         geometry: &Geometry,
         transform: &TransformSettings,
         settings: &Settings,
+        data: Option<&Data>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let fixed = Fixed::initialize(device, geometry);
-        let data_buffer = DataB::new(device, geometry, None);
+        let data_buffer = DataB::new(device, geometry, data);
 
         let transform_uniform = transform.to_raw().build_uniform(device).unwrap();
         let settings_uniform = settings.build_uniform(device).unwrap();
+        let data_uniform = data.map(|d| d.build_uniform(device)).flatten();
         let pipeline = RenderPipeline::new(
             device,
-            None,
+            data,
             &fixed,
             settings,
             &transform_uniform,
             &settings_uniform,
-            None,
+            data_uniform.as_ref(),
             camera_light_bind_group_layout,
             color_format,
         );
@@ -806,7 +812,7 @@ impl<
             pipeline,
             transform_uniform,
             settings_uniform,
-            data_uniform: None,
+            data_uniform,
         }
     }
 
