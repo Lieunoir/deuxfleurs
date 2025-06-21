@@ -1,5 +1,8 @@
 use crate::data::*;
 use crate::texture;
+use crate::updater::AttachedGeometry;
+use crate::updater::GraphicalTransformationContext;
+use crate::updater::NewAttachedGeometry;
 use crate::util;
 use crate::util::Vertex;
 use wgpu::util::DeviceExt;
@@ -62,7 +65,7 @@ impl VectorFieldSettings {
     }
 }
 
-pub(crate) struct NewVectorField {
+pub struct NewVectorField {
     pub(crate) name: String,
     vectors: Vec<[f32; 3]>,
     offsets: Vec<[f32; 3]>,
@@ -282,5 +285,70 @@ impl VectorField {
         } else {
             false
         }
+    }
+}
+
+impl<'a, 'b> AttachedGeometry<'a, 'b> for NewVectorField {
+    type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
+    type Context = ();
+
+    fn new(name: String, args: Self::Args, context: &mut Self::Context) -> Self {
+        let (vectors, offsets) = args;
+        NewVectorField::new(name, vectors, offsets)
+    }
+}
+
+impl<'a, 'b> AttachedGeometry<'a, 'b> for VectorField
+where
+    'a: 'b,
+{
+    type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
+    type Context = GraphicalTransformationContext<'a, 'b>;
+
+    fn new(name: String, args: Self::Args, context: &mut Self::Context) -> Self {
+        *context.context.refresh_screen = true;
+        let (vectors, offsets) = args;
+        let new_vector_field = NewVectorField::new(name, vectors, offsets);
+        VectorField::new(
+            context.context.device,
+            context.context.camera_light_bind_group_layout,
+            context.transform_bind_group_layout,
+            context.context.color_format,
+            new_vector_field,
+        )
+    }
+
+    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+    where
+        'c: 'd,
+    {
+        if self.settings.show {
+            render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
+            //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+            render_pass.draw(0..8, 0..(self.vectors.len() as u32));
+        }
+    }
+}
+
+impl NewAttachedGeometry for NewVectorField {
+    type UpgradedAttachedGeometry = VectorField;
+
+    fn init(
+        self,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self::UpgradedAttachedGeometry {
+        VectorField::new(
+            device,
+            camera_light_bind_group_layout,
+            transform_bind_group_layout,
+            color_format,
+            self,
+        )
     }
 }

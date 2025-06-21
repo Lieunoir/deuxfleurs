@@ -485,10 +485,11 @@ impl DisplayPointCloud {
     }
 }
 
-impl<'a, Renderer, AttachedData, Context>
+impl<'a, 'b, Renderer, AttachedData, Context>
     ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>
 where
-    PointCloud<Renderer, AttachedData>: ElementTrait<'a, Data = PointCloudData, Context = Context>,
+    PointCloud<Renderer, AttachedData>:
+        ElementTrait<'a, 'b, Data = PointCloudData, Context = Context>,
 {
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
         self.element.settings.radius.radius = radius;

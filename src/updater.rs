@@ -48,7 +48,7 @@ pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attach
 //    pub trait Sealed {}
 //}
 
-pub(crate) trait ElementTrait<'a> {
+pub(crate) trait ElementTrait<'a, 'b> {
     //type Geometry: ElementGeometry;
     //type Settings: NamedSettings;
     //type Fixed: FixedRenderer<
@@ -67,6 +67,7 @@ pub(crate) trait ElementTrait<'a> {
     //type AttachedGeometry: AttachedGeometry;
     type Data;
     type Context;
+    type Attached: AttachedGeometry<'a, 'b>;
 
     fn show(&mut self, show: bool, context: &mut Self::Context);
     //{
@@ -100,11 +101,19 @@ pub(crate) trait ElementTrait<'a> {
 
     //type BareElement = Element<Geometry, (), Settings, Data, NewVectorField>;
     //type DisplayElement = Element<Geometry, (), Settings, Data, NewVectorField>;
+    fn add_attached_geometry(
+        &'b mut self,
+        name: String,
+        args: <Self::Attached as AttachedGeometry<'a, 'b>>::Args,
+        context: &'b mut Self::Context,
+    );
 }
 
-impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG> ElementTrait<'a>
+impl<'a, 'b, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG> ElementTrait<'a, 'b>
     for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
 where
+    'a: 'b,
+    AttachedG: AttachedGeometry<'a, 'b, Context = GraphicalTransformationContext<'a, 'b>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -121,6 +130,7 @@ where
     type Data = Data;
     //type AttachedGeometry = AttachedG;
     type Context = GraphicalContext<'a>;
+    type Attached = AttachedG;
 
     fn show(&mut self, show: bool, context: &mut Self::Context) {
         if self.show != show {
@@ -197,17 +207,38 @@ where
             .to_raw()
             .refresh_buffer(context.queue, &self.renderer.transform_uniform);
     }
+
+    fn add_attached_geometry(
+        &'b mut self,
+        name: String,
+        args: <Self::Attached as AttachedGeometry<'a, 'b>>::Args,
+        context: &'b mut GraphicalContext<'a>,
+    ) {
+        *context.refresh_screen = true;
+        let mut augmented_context = GraphicalTransformationContext {
+            context: &mut *context,
+            transform_bind_group_layout: &self.renderer.transform_uniform.bind_group_layout,
+        };
+        let geometry = Self::Attached::new(name.clone(), args, &mut augmented_context);
+        self.attached_data.insert(name, geometry);
+    }
 }
 
-impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<'a>
+pub(crate) struct GraphicalTransformationContext<'a, 'b> {
+    pub(crate) context: &'b mut GraphicalContext<'a>,
+    pub(crate) transform_bind_group_layout: &'b wgpu::BindGroupLayout,
+}
+
+impl<'a, 'b, Geometry, Settings, Data, AttachedG> ElementTrait<'a, 'b>
     for UninitedElement<Geometry, Settings, Data, AttachedG>
 where
     Geometry: ElementGeometry,
+    AttachedG: AttachedGeometry<'a, 'b, Context = ()>,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
     //AttachedG: AttachedGeometry,
 {
-    //type AttachedGeometry = AttachedG;
+    type Attached = AttachedG;
     type Data = Data;
     type Context = ();
 
@@ -229,6 +260,16 @@ where
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
         data
+    }
+
+    fn add_attached_geometry(
+        &mut self,
+        name: String,
+        args: AttachedG::Args,
+        context: &mut Self::Context,
+    ) {
+        let geometry = AttachedG::new(name.clone(), args, &mut ());
+        self.attached_data.insert(name, geometry);
     }
 }
 
@@ -275,7 +316,7 @@ impl<Geometry, Settings, Data, Attached> UninitedElement<Geometry, Settings, Dat
 where
     Geometry: ElementGeometry,
     Settings: DataUniformBuilder + NamedSettings,
-    Attached: AttachedGeometry,
+    Attached: NewAttachedGeometry,
 {
     pub(crate) fn new_bare(name: String, args: Geometry::Args) -> Self {
         let geometry = Geometry::new(args);
@@ -307,7 +348,7 @@ where
         Renderer<Fixed, DataB, Pipeline>,
         Settings,
         Data,
-        Attached::NewAttachedGeometry,
+        Attached::UpgradedAttachedGeometry,
     >
     where
         Data: DataUniformBuilder,
@@ -359,9 +400,11 @@ where
     }
 }
 
-impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
-    DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
+impl<'a, 'b, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
+    DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
 where
+    'a: 'b,
+    Attached: AttachedGeometry<'a, 'b>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -594,19 +637,21 @@ where
         }
     }
 
-    fn render_attached_data<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    fn render_attached_data<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
     where
-        'a: 'b,
+        'c: 'd,
     {
-        //for (_, attached) in &self.attached_data {
-        //    attached.render(render_pass);
-        //}
+        for (_, attached) in &self.attached_data {
+            attached.render(render_pass);
+        }
     }
 }
 
-impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> Render
-    for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
+impl<'a, 'b, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached> Render
+    for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
 where
+    'a: 'b,
+    Attached: AttachedGeometry<'a, 'b>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -615,9 +660,9 @@ where
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
     Renderer<Fixed, DataB, Pipeline>: Render,
 {
-    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
     where
-        'a: 'b,
+        'c: 'd,
     {
         if self.show {
             self.renderer.render(render_pass);
@@ -625,18 +670,18 @@ where
         }
     }
 
-    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    fn render_shadow<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
     where
-        'a: 'b,
+        'c: 'd,
     {
         if self.show {
             self.renderer.render_shadow(render_pass);
         }
     }
 
-    fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    fn render_picker<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
     where
-        'a: 'b,
+        'c: 'd,
     {
         if self.show {
             self.renderer.render_picker(render_pass);
@@ -658,11 +703,11 @@ where
 //    }
 //}
 
-impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry, Context>
-    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, AttachedGeometry>, Context>
+impl<'a, 'b, Geometry, Renderer, Settings, Data, Attached, Context>
+    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, Attached>, Context>
 where
-    Element<Geometry, Renderer, Settings, Data, AttachedGeometry>:
-        ElementTrait<'a, Context = Context, Data = Data>,
+    Element<Geometry, Renderer, Settings, Data, Attached>:
+        ElementTrait<'a, 'b, Context = Context, Data = Data>,
 {
     pub fn show(&mut self, show: bool) -> &mut Self {
         self.element.show(show, &mut self.context);
@@ -676,6 +721,15 @@ where
 
     pub(crate) fn add_data(&mut self, name: String, data: Data) -> &mut Data {
         self.element.add_data(name, data, &mut self.context)
+    }
+
+    pub(crate) fn add_attached_geometry(
+        &'b mut self,
+        name: String,
+        args: <<Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait<'a, 'b>>::Attached as AttachedGeometry<'a, 'b>>::Args,
+    ) {
+        self.element
+            .add_attached_geometry(name, args, &mut self.context)
     }
 
     pub(crate) fn update_settings(&mut self, rebuild_pipeline: bool) -> &mut Self {
@@ -734,8 +788,21 @@ where
 //    }
 //}
 
-pub(crate) trait AttachedGeometry {
-    type NewAttachedGeometry;
+pub(crate) trait AttachedGeometry<'a, 'b> {
+    type Args;
+    type Context;
+
+    fn new(name: String, args: Self::Args, context: &mut Self::Context) -> Self;
+
+    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+    where
+        'c: 'd,
+    {
+    }
+}
+
+pub(crate) trait NewAttachedGeometry {
+    type UpgradedAttachedGeometry;
 
     fn init(
         self,
@@ -743,11 +810,18 @@ pub(crate) trait AttachedGeometry {
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
-    ) -> Self::NewAttachedGeometry;
+    ) -> Self::UpgradedAttachedGeometry;
 }
 
-impl AttachedGeometry for () {
-    type NewAttachedGeometry = ();
+impl<'a, 'b> AttachedGeometry<'a, 'b> for () {
+    type Args = ();
+    type Context = ();
+
+    fn new(_name: String, _args: Self::Args, _context: &mut Self::Context) -> Self {}
+}
+
+impl NewAttachedGeometry for () {
+    type UpgradedAttachedGeometry = ();
 
     fn init(
         self,
@@ -755,7 +829,7 @@ impl AttachedGeometry for () {
         _camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         _transform_bind_group_layout: &wgpu::BindGroupLayout,
         _color_format: wgpu::TextureFormat,
-    ) -> Self::NewAttachedGeometry {
+    ) -> Self::UpgradedAttachedGeometry {
     }
 }
 
