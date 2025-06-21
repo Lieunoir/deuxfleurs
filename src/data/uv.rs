@@ -22,7 +22,7 @@ impl Default for UVMapSettings {
 }
 
 impl UiDataElement for UVMapSettings {
-    fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         //ui.add(egui::Slider::new(&mut self.frequency, 0.0..=100.0).text("Period"));
         changed |= egui::Slider::new(&mut self.frequency, 0.0..=100.0)

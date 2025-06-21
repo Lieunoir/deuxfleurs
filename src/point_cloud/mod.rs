@@ -27,9 +27,9 @@ impl DataSettings for PointCloudData {
 }
 
 impl UiDataElement for PointCloudData {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         match self {
-            PointCloudData::Scalar(_, settings) => settings.draw(ui, property_changed),
+            PointCloudData::Scalar(_, settings) => settings.draw_ui(ui),
             PointCloudData::Color(_) => false,
         }
     }
@@ -109,17 +109,15 @@ pub struct PCSettings {
     color: ColorSettings,
 }
 
-impl UiDataElement for PCSettings {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
-        let changed = self.radius.draw(ui, property_changed);
-        self.color.draw(ui, property_changed) || changed
-    }
-}
-
 impl NamedSettings for PCSettings {
     fn set_name(mut self, name: &str) -> Self {
         self.color = ColorSettings::new(name);
         self
+    }
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
+        let changed = self.radius.draw_ui(ui);
+        self.color.draw_ui(ui) || changed
     }
 }
 
@@ -209,26 +207,35 @@ impl Vertex for SphereScalarData {
 
 pub struct PointCloudGeometry {
     pub positions: Vec<[f32; 3]>,
-    pub num_elements: u32,
 }
 
-impl Positions for PointCloudGeometry {
+impl ElementGeometry for PointCloudGeometry {
+    type Args = Vec<[f32; 3]>;
+
+    fn new(args: Self::Args) -> Self {
+        PointCloudGeometry { positions: args }
+    }
+
     fn get_positions(&self) -> &[[f32; 3]] {
         &self.positions
     }
+
+    fn get_total_elements(&self) -> u32 {
+        self.positions.len() as u32
+    }
 }
 
-pub(crate) struct PointCloudFixedRenderer {
+pub struct PointCloudFixedRenderer {
     positions_len: u32,
     vertex_buffer: wgpu::Buffer,
     center_buffer: wgpu::Buffer,
 }
 
-pub(crate) struct PointCloudDataBuffer {
+pub struct PointCloudDataBuffer {
     sphere_data_buffer: Option<wgpu::Buffer>,
 }
 
-pub(crate) struct PointCloudPipeline {
+pub struct PointCloudPipeline {
     sphere_render_pipeline: wgpu::RenderPipeline,
 }
 
@@ -369,56 +376,34 @@ impl Render for PointCloudRenderer {
     }
 }
 
-pub type PointCloud = BareElement<PCSettings, PointCloudData, PointCloudGeometry>;
+pub type PointCloud<Renderer, AttachedData> =
+    Element<PointCloudGeometry, Renderer, PCSettings, PointCloudData, AttachedData>;
 
-pub(crate) type DisplayPointCloud = DisplayElement<
-    PCSettings,
-    PointCloudData,
-    PointCloudGeometry,
-    PointCloudFixedRenderer,
-    PointCloudDataBuffer,
-    PointCloudPipeline,
-    Picker,
->;
+pub type UninitedPointCloud = PointCloud<(), ()>;
+pub type DisplayPointCloud = PointCloud<PointCloudRenderer, ()>;
 
 impl DisplayPointCloud {
-    pub(crate) fn new(
-        name: String,
-        positions: Vec<[f32; 3]>,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self {
-        let element = PointCloud::new(name, positions);
-        DisplayPointCloud::init(
-            element,
-            device,
-            camera_light_bind_group_layout,
-            counter_bind_group_layout,
-            color_format,
-        )
+    pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
+        if element < self.geometry().positions.len() {
+            ui.label(format!("Picked point number {}", element));
+        }
     }
 }
 
-impl PointCloud {
-    pub(crate) fn new(name: String, positions: Vec<[f32; 3]>) -> Self {
-        let geometry = PointCloudGeometry {
-            num_elements: positions.len() as u32,
-            positions,
-        };
-        PointCloud::init(name, geometry)
-    }
-
+impl<'a, Renderer, AttachedData, Context>
+    ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>
+where
+    PointCloud<Renderer, AttachedData>: ElementTrait<'a, Data = PointCloudData, Context = Context>,
+{
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.updater.settings.radius.radius = radius;
-        self.updater.settings_changed = true;
+        self.element.settings.radius.radius = radius;
+        self.update_settings(false);
         self
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.updater.settings.color.color = color;
-        self.updater.settings_changed = true;
+        self.element.settings.color.color = color;
+        self.update_settings(false);
         self
     }
 
@@ -426,19 +411,12 @@ impl PointCloud {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         let settings = ColorMap::new(&datas);
-        self.updater
-            .add_data(name, PointCloudData::Scalar(datas, settings))
+        self.add_data(name, PointCloudData::Scalar(datas, settings))
     }
 
     pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut PointCloudData {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        self.updater.add_data(name, PointCloudData::Color(datas))
-    }
-
-    pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
-        if element < self.geometry().positions.len() {
-            ui.label(format!("Picked point number {}", element));
-        }
+        self.add_data(name, PointCloudData::Color(datas))
     }
 }

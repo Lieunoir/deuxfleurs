@@ -27,9 +27,9 @@ impl DataSettings for SegmentData {
 }
 
 impl UiDataElement for SegmentData {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         match self {
-            SegmentData::Scalar(_, settings) => settings.draw(ui, property_changed),
+            SegmentData::Scalar(_, settings) => settings.draw_ui(ui),
             SegmentData::Color(_) => false,
         }
     }
@@ -169,17 +169,15 @@ pub struct PCSettings {
     color: ColorSettings,
 }
 
-impl UiDataElement for PCSettings {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
-        let changed = self.radius.draw(ui, property_changed);
-        self.color.draw(ui, property_changed) || changed
-    }
-}
-
 impl NamedSettings for PCSettings {
     fn set_name(mut self, name: &str) -> Self {
         self.color = ColorSettings::new(name);
         self
+    }
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui, _rebuild_pipeline: &mut bool) -> bool {
+        let changed = self.radius.draw_ui(ui);
+        self.color.draw_ui(ui) || changed
     }
 }
 
@@ -357,16 +355,29 @@ impl Vertex for CylinderScalarData {
 pub struct SegmentGeometry {
     pub positions: Vec<[f32; 3]>,
     pub connections: Vec<[u32; 2]>,
-    pub num_elements: u32,
 }
 
-impl Positions for SegmentGeometry {
+impl ElementGeometry for SegmentGeometry {
+    type Args = (Vec<[f32; 3]>, Vec<[u32; 2]>);
+
+    fn new(args: Self::Args) -> Self {
+        let (positions, connections) = args;
+        SegmentGeometry {
+            positions,
+            connections,
+        }
+    }
+
     fn get_positions(&self) -> &[[f32; 3]] {
         &self.positions
     }
+
+    fn get_total_elements(&self) -> u32 {
+        self.positions.len() as u32
+    }
 }
 
-pub(crate) struct SegmentFixedRenderer {
+pub struct SegmentFixedRenderer {
     positions_len: u32,
     connections_len: u32,
     vertex_buffer: wgpu::Buffer,
@@ -374,12 +385,12 @@ pub(crate) struct SegmentFixedRenderer {
     cylinder_buffer: wgpu::Buffer,
 }
 
-pub(crate) struct SegmentDataBuffer {
+pub struct SegmentDataBuffer {
     sphere_data_buffer: Option<wgpu::Buffer>,
     cylinder_data_buffer: Option<wgpu::Buffer>,
 }
 
-pub(crate) struct SegmentPipeline {
+pub struct SegmentPipeline {
     sphere_render_pipeline: wgpu::RenderPipeline,
     cylinder_render_pipeline: wgpu::RenderPipeline,
 }
@@ -570,75 +581,13 @@ impl Render for SegmentRenderer {
     }
 }
 
-pub type Segment = BareElement<PCSettings, SegmentData, SegmentGeometry>;
+pub type Segment<Renderer, AttachedData> =
+    Element<SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData>;
 
-pub(crate) type DisplaySegment = DisplayElement<
-    PCSettings,
-    SegmentData,
-    SegmentGeometry,
-    SegmentFixedRenderer,
-    SegmentDataBuffer,
-    SegmentPipeline,
-    Picker,
->;
+pub type UninitedSegment = Segment<(), ()>;
+pub type DisplaySegment = Segment<SegmentRenderer, ()>;
 
 impl DisplaySegment {
-    pub(crate) fn new(
-        name: String,
-        positions: Vec<[f32; 3]>,
-        connections: Vec<[u32; 2]>,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self {
-        let element = Segment::new(name, positions, connections);
-        Self::init(
-            element,
-            device,
-            camera_light_bind_group_layout,
-            counter_bind_group_layout,
-            color_format,
-        )
-    }
-}
-
-impl Segment {
-    pub(crate) fn new(name: String, positions: Vec<[f32; 3]>, connections: Vec<[u32; 2]>) -> Self {
-        let geometry = SegmentGeometry {
-            num_elements: positions.len() as u32,
-            positions,
-            connections,
-        };
-        Segment::init(name, geometry)
-    }
-
-    pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.updater.settings.radius.radius = radius;
-        self.updater.settings_changed = true;
-        self
-    }
-
-    pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.updater.settings.color.color = color;
-        self.updater.settings_changed = true;
-        self
-    }
-
-    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut SegmentData {
-        let datas = datas.into();
-        assert!(datas.len() == self.geometry().positions.len());
-        let settings = ColorMap::new(&datas);
-        self.updater
-            .add_data(name, SegmentData::Scalar(datas, settings))
-    }
-
-    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut SegmentData {
-        let datas = datas.into();
-        assert!(datas.len() == self.geometry().positions.len());
-        self.updater.add_data(name, SegmentData::Color(datas))
-    }
-
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
         if element < self.geometry().positions.len() {
             ui.label(format!("Picked point number {}", element));
@@ -648,5 +597,43 @@ impl Segment {
                 element - self.geometry().positions.len()
             ));
         }
+    }
+}
+
+impl<'a, Renderer, AttachedData, Context> ElementMut<'a, Segment<Renderer, AttachedData>, Context>
+where
+    Segment<Renderer, AttachedData>: ElementTrait<'a, Data = SegmentData, Context = Context>,
+{
+    //pub(crate) fn new(name: String, positions: Vec<[f32; 3]>, connections: Vec<[u32; 2]>) -> Self {
+    //    let geometry = SegmentGeometry {
+    //        num_elements: positions.len() as u32,
+    //        positions,
+    //        connections,
+    //    };
+    //    Segment::init(name, geometry)
+    //}
+
+    pub fn set_radius(&mut self, radius: f32) -> &mut Self {
+        self.element.settings.radius.radius = radius;
+        self.update_settings(false)
+    }
+
+    pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
+        self.element.settings.color.color = color;
+        self.update_settings(false);
+        self
+    }
+
+    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut SegmentData {
+        let datas = datas.into();
+        assert!(datas.len() == self.geometry().positions.len());
+        let settings = ColorMap::new(&datas);
+        self.add_data(name, SegmentData::Scalar(datas, settings))
+    }
+
+    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut SegmentData {
+        let datas = datas.into();
+        assert!(datas.len() == self.geometry().positions.len());
+        self.add_data(name, SegmentData::Color(datas))
     }
 }

@@ -1,5 +1,5 @@
 use deuxfleurs::egui;
-use deuxfleurs::{load_mesh, RunningState, Settings, StateHandle};
+use deuxfleurs::{load_mesh, RunningState, Settings};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -20,7 +20,7 @@ pub async fn run() {
     // Toggle between shown or not on button pressed
     let callback = |ui: &mut egui::Ui, state: &mut RunningState| {
         if ui.add(egui::Button::new("Toggle shown")).clicked() {
-            let surface = state.get_surface_mut("bunny").unwrap();
+            let mut surface = state.get_surface_mut("bunny").unwrap();
             let shown = surface.shown();
             surface.show(!shown);
         }

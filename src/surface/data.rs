@@ -136,18 +136,16 @@ impl DataUniformBuilder for SurfaceData {
 }
 
 impl UiDataElement for SurfaceData {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         match self {
             SurfaceData::UVMap(_, data_uniform) | SurfaceData::UVCornerMap(_, data_uniform) => {
-                data_uniform.draw(ui, property_changed)
+                data_uniform.draw_ui(ui)
             }
             SurfaceData::VertexScalar(_, data_uniform) => {
-                let changed = data_uniform.colormap.draw(ui, property_changed);
-                data_uniform.isoline.draw(ui, property_changed) || changed
+                let changed = data_uniform.colormap.draw_ui(ui);
+                data_uniform.isoline.draw_ui(ui) || changed
             }
-            SurfaceData::FaceScalar(_, data_uniform) => {
-                data_uniform.colormap.draw(ui, property_changed)
-            }
+            SurfaceData::FaceScalar(_, data_uniform) => data_uniform.colormap.draw_ui(ui),
             _ => false,
         }
     }

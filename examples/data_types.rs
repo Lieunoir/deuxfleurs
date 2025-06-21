@@ -1,5 +1,5 @@
 use deuxfleurs::types::SurfaceIndices;
-use deuxfleurs::{load_mesh, RunningState, Settings, StateHandle};
+use deuxfleurs::{load_mesh, RunningState, Settings};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -45,16 +45,15 @@ pub async fn run() {
         let value = spot_v[spot_f[i][0] as usize][0];
         *face = value;
     }
-    let surface1 = handle.register_surface("spot_uv".into(), spot_uv_mesh, spot_f.clone());
+    let mut surface1 = handle.register_surface("spot_uv".into(), spot_uv_mesh, spot_f.clone());
     surface1.show_edges(true);
     surface1.add_vertex_scalar("x coord".into(), spot_data_1.clone());
-    let surface2 = handle
-        .register_surface("spot".into(), spot_v.clone(), spot_f.clone())
-        .show_edges(true);
+    let mut surface2 = handle.register_surface("spot".into(), spot_v.clone(), spot_f.clone());
+    surface2.show_edges(true);
     surface2.add_vertex_scalar("x coord".into(), spot_data_1.clone());
-    surface2
-        .add_vertex_vector_field("positions".into(), spot_v.clone())
-        .set_magnitude(0.1);
+    //surface2
+    //    .add_vertex_vector_field("positions".into(), spot_v.clone())
+    //    .set_magnitude(0.1);
     surface2.add_vertex_scalar("y coord".into(), spot_data_2);
     surface2.add_uv_map("uv".into(), spot_uv_map);
     surface2.add_corner_uv_map("corner uv".into(), spot_corner_uv_map);
@@ -73,11 +72,11 @@ pub async fn run() {
             curves.push([f[0], f[2]]);
         }
     }
-    let curve = handle.register_segment("spot_c".into(), spot_v.clone(), curves);
+    let mut curve = handle.register_segment("spot_c".into(), spot_v.clone(), curves);
     curve.add_scalar("x coord".into(), spot_data_1.clone());
     curve.set_data(Some("x coord".into()));
 
-    let pc = handle.register_point_cloud("spot_pc".into(), spot_v.clone());
+    let mut pc = handle.register_point_cloud("spot_pc".into(), spot_v.clone());
     pc.add_scalar("x coord".into(), spot_data_1);
     pc.set_radius(0.02);
 
