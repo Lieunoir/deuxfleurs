@@ -12,7 +12,6 @@ use indexmap::IndexMap;
 use pollster::FutureExt;
 use rand::Rng;
 use std::iter;
-use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 use winit::application::ApplicationHandler;
@@ -722,7 +721,12 @@ impl RunningState {
             .map(|(k, v)| {
                 (
                     k,
-                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
+                    v.upgrade(
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
                 )
             })
             .collect();
@@ -732,7 +736,12 @@ impl RunningState {
             .map(|(k, v)| {
                 (
                     k,
-                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
+                    v.upgrade(
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
                 )
             })
             .collect();
@@ -741,7 +750,12 @@ impl RunningState {
             .map(|(k, v)| {
                 (
                     k,
-                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
+                    v.upgrade(
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
                 )
             })
             .collect();
@@ -1619,6 +1633,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             &state.state.device,
                             &state.state.queue,
                             &state.state.camera_light_bind_group_layout,
+                            &state.state.picker.bind_group_layout,
                             state.state.config.format,
                             &mut state.state.dirty,
                         );

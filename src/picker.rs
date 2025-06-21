@@ -429,19 +429,11 @@ impl Picker {
                         found
                     })
                     .map(|(n, s)| {
-                        let transform = &s.transform;
                         let pos_x = (i as f32 / self.width as f32) * 2. - 1.;
                         let pos_y = -((j as f32 / self.height as f32) * 2. - 1.);
-                        //let new_value = s.picker.get_element(
-                        //    &s.geometry,
-                        //    transform,
-                        //    camera,
-                        //    value - c,
-                        //    pos_x,
-                        //    pos_y,
-                        //);
-                        //value = new_value;
-                        //c = 0;
+                        let new_value = s.get_element(camera, value - c, pos_x, pos_y);
+                        value = new_value;
+                        c = 0;
                         n
                     })
                     .or_else(|| {

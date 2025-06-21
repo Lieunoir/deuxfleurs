@@ -302,6 +302,7 @@ impl RenderPipeline for PointCloudPipeline {
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let bind_group_layouts = if let Some(uniform) = data_uniform {
