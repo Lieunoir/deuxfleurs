@@ -79,7 +79,8 @@ mod private {
     use crate::ui::UiDataElement;
     use crate::updater::{
         AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
-        FixedRenderer, GraphicalContext, NamedSettings, Render, RenderPipeline, UninitedElement,
+        FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry, Render,
+        RenderPipeline, UninitedElement,
     };
     use indexmap::IndexMap;
     pub trait GeometryHolder<'a, Element> {
@@ -102,13 +103,13 @@ mod private {
         fn get_element(&self, name: &str) -> Option<&Element>;
     }
 
-    impl<'a, Geometry, Settings, Data, Attached>
+    impl<'a, 'b, Geometry, Settings, Data, Attached>
         GeometryHolder<'a, UninitedElement<Geometry, Settings, Data, Attached>>
         for IndexMap<String, UninitedElement<Geometry, Settings, Data, Attached>>
     where
         Geometry: ElementGeometry,
         Settings: DataUniformBuilder + NamedSettings,
-        Attached: AttachedGeometry,
+        Attached: AttachedGeometry<'a, 'b> + NewAttachedGeometry,
     {
         type Args = Geometry::Args;
         type Context = ();
@@ -149,7 +150,7 @@ mod private {
         }
     }
 
-    impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
+    impl<'a, 'b, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
         GeometryHolder<
             'a,
             DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
@@ -159,6 +160,8 @@ mod private {
             DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
         >
     where
+        'a: 'b,
+        Attached: AttachedGeometry<'a, 'b>,
         Geometry: ElementGeometry,
         Data: DataUniformBuilder + DataSettings + UiDataElement,
         Settings: NamedSettings,

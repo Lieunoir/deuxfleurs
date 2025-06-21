@@ -441,8 +441,8 @@ impl Render for SurfaceRenderer {
 pub type Surface<Renderer, AttachedData> =
     Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData>;
 
-pub type UninitedSurface = Surface<(), ()>;
-pub type DisplaySurface = Surface<SurfaceRenderer, ()>;
+pub type UninitedSurface = Surface<(), NewVectorField>;
+pub type DisplaySurface = Surface<SurfaceRenderer, VectorField>;
 
 impl DisplaySurface {
     pub(crate) fn change_vertices(
@@ -567,9 +567,27 @@ impl DisplaySurface {
     }
 }
 
-impl<'a, Renderer, AttachedData, Context> ElementMut<'a, Surface<Renderer, AttachedData>, Context>
+trait TyEq
 where
-    Surface<Renderer, AttachedData>: ElementTrait<'a, Data = SurfaceData, Context = Context>,
+    Self: From<Self::Type> + Into<Self::Type>,
+    Self::Type: From<Self> + Into<Self>,
+{
+    type Type;
+}
+
+impl<T> TyEq for T {
+    type Type = T;
+}
+
+impl<'a, 'b, Renderer, AttachedData, Context>
+    ElementMut<'a, Surface<Renderer, AttachedData>, Context>
+where
+    'a: 'b,
+    Surface<Renderer, AttachedData>: ElementTrait<'a, 'b, Data = SurfaceData, Context = Context>,
+    <<Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::Attached as AttachedGeometry<
+        'a,
+        'b,
+    >>::Args: TyEq<Type = (Vec<[f32; 3]>, Vec<[f32; 3]>)>,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.element.settings.show_edges != show_edges {
@@ -656,23 +674,15 @@ where
         self.add_data(name, SurfaceData::Color(colors));
     }
 
-    //pub fn add_vertex_vector_field<V: Vertices>(
-    //    &mut self,
-    //    name: String,
-    //    vectors: V,
-    //) -> &mut VectorFieldSettings {
-    //    let vectors = vectors.into();
-    //    assert!(vectors.len() == self.geometry.vertices.len());
-    //    let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-    //    let vector_field = NewVectorField::new(name, vectors, offsets);
-    //    self.updater.queued_attached_data.push(vector_field);
-    //    &mut self
-    //        .updater
-    //        .queued_attached_data
-    //        .last_mut()
-    //        .unwrap()
-    //        .settings
-    //}
+    pub fn add_vertex_vector_field<V: Vertices>(&'b mut self, name: String, vectors: V)
+    // -> &mut VectorFieldSettings {
+    {
+        let vectors = vectors.into();
+        assert!(vectors.len() == self.geometry.vertices.len());
+        let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
+        self.add_attached_geometry(name.clone(), (offsets, vectors).into());
+        //&mut self.get_attached_geometry(&name).unwrap().settings
+    }
 
     //pub fn add_face_vector_field<V: Vertices>(
     //    &mut self,

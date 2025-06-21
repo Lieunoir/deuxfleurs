@@ -751,9 +751,10 @@ impl DisplaySegment {
     }
 }
 
-impl<'a, Renderer, AttachedData, Context> ElementMut<'a, Segment<Renderer, AttachedData>, Context>
+impl<'a, 'b, Renderer, AttachedData, Context>
+    ElementMut<'a, Segment<Renderer, AttachedData>, Context>
 where
-    Segment<Renderer, AttachedData>: ElementTrait<'a, Data = SegmentData, Context = Context>,
+    Segment<Renderer, AttachedData>: ElementTrait<'a, 'b, Data = SegmentData, Context = Context>,
 {
     //pub(crate) fn new(name: String, positions: Vec<[f32; 3]>, connections: Vec<[u32; 2]>) -> Self {
     //    let geometry = SegmentGeometry {
