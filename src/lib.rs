@@ -1,5 +1,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
+use crate::aabb::SBV;
 use crate::data::{DataSettings, DataUniformBuilder};
 use crate::point_cloud::{PointCloudGeometry, UninitedPointCloud};
 use crate::segment::{SegmentGeometry, UninitedSegment};
@@ -1010,35 +1011,24 @@ impl RunningState {
 
         let mut sbv = None;
 
-        //for surface in self.surfaces.values_mut() {
-        //    changed |= surface.refresh(
-        //        &self.device,
-        //        &self.queue,
-        //        &self.camera_light_bind_group_layout,
-        //        self.config.format,
-        //        &mut sbv,
-        //    );
-        //}
+        for surface in self.surfaces.values() {
+            if surface.show {
+                SBV::merge(&mut sbv, &surface.sbv);
+            }
+        }
 
-        //for cloud in self.clouds.values_mut() {
-        //    changed |= cloud.refresh(
-        //        &self.device,
-        //        &self.queue,
-        //        &self.camera_light_bind_group_layout,
-        //        self.config.format,
-        //        &mut sbv,
-        //    );
-        //}
+        for cloud in self.clouds.values() {
+            if cloud.show {
+                SBV::merge(&mut sbv, &cloud.sbv);
+            }
+        }
 
-        //for segment in self.segments.values_mut() {
-        //    changed |= segment.refresh(
-        //        &self.device,
-        //        &self.queue,
-        //        &self.camera_light_bind_group_layout,
-        //        self.config.format,
-        //        &mut sbv,
-        //    );
-        //}
+        for segment in self.segments.values() {
+            if segment.show {
+                SBV::merge(&mut sbv, &segment.sbv);
+            }
+        }
+
         self.state.aabb = sbv.unwrap_or_else(aabb::SBV::default);
         if self.state.should_resize {
             self.resize_scene();
