@@ -139,12 +139,11 @@ where
                 self.renderer
                     .set_data_uniform(d.build_uniform(context.device))
             });
-            self.renderer.build_pipeline(
+            self.renderer.rebuild_pipeline(
                 context.device,
                 data,
                 &self.settings,
                 context.camera_light_bind_group_layout,
-                context.counter_bind_group_layout,
                 context.color_format,
             );
             *context.refresh_screen = true;
@@ -166,12 +165,11 @@ where
             self.renderer
                 .set_data_uniform(data.build_uniform(context.device));
             // Previously shown data can have same name but different type, thus requiring pipeline rebuild
-            self.renderer.build_pipeline(
+            self.renderer.rebuild_pipeline(
                 context.device,
                 Some(data),
                 &self.settings,
                 context.camera_light_bind_group_layout,
-                context.counter_bind_group_layout,
                 context.color_format,
             );
             *context.refresh_screen = true;
@@ -184,12 +182,11 @@ where
             .refresh_buffer(context.queue, &self.renderer.settings_uniform);
         if rebuild_pipeline {
             let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-            self.renderer.build_pipeline(
+            self.renderer.rebuild_pipeline(
                 context.device,
                 data,
                 &self.settings,
                 context.camera_light_bind_group_layout,
-                context.counter_bind_group_layout,
                 context.color_format,
             );
         }
@@ -499,12 +496,11 @@ where
                 .refresh_buffer(queue, &self.renderer.settings_uniform);
             if rebuild_pipeline {
                 let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-                self.renderer.build_pipeline(
+                self.renderer.rebuild_pipeline(
                     device,
                     data,
                     &self.settings,
                     camera_light_bind_group_layout,
-                    counter_bind_group_layout,
                     color_format,
                 );
             }
@@ -530,12 +526,11 @@ where
                                 .build_data_buffer(device, &self.geometry, data);
                             self.renderer
                                 .set_data_uniform(data.map(|d| d.build_uniform(device)).flatten());
-                            self.renderer.build_pipeline(
+                            self.renderer.rebuild_pipeline(
                                 device,
                                 data,
                                 &self.settings,
                                 camera_light_bind_group_layout,
-                                counter_bind_group_layout,
                                 color_format,
                             );
                             *refresh_screen = true;
@@ -807,7 +802,7 @@ impl<
         let pipeline = RenderPipeline::new(
             device,
             data,
-            &fixed,
+            geometry,
             settings,
             &transform_uniform,
             &settings_uniform,
@@ -848,25 +843,22 @@ impl<
         self.data_buffer = DataB::new(device, geometry, data);
     }
 
-    fn build_pipeline(
+    fn rebuild_pipeline(
         &mut self,
         device: &wgpu::Device,
         data: Option<&Data>,
         settings: &Settings,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) {
-        self.pipeline = RenderPipeline::new(
+        self.pipeline.rebuild(
             device,
             data,
-            &self.fixed,
             settings,
             &self.transform_uniform,
             &self.settings_uniform,
             self.data_uniform.as_ref(),
             camera_light_bind_group_layout,
-            counter_bind_group_layout,
             color_format,
         );
     }
@@ -897,7 +889,7 @@ pub(crate) trait RenderPipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        fixed: &Self::Fixed,
+        geometry: &Self::Geometry,
         settings: &Self::Settings,
         tansform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
@@ -906,6 +898,18 @@ pub(crate) trait RenderPipeline {
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self;
+
+    fn rebuild(
+        &mut self,
+        device: &wgpu::Device,
+        data: Option<&Self::Data>,
+        settings: &Self::Settings,
+        transform_uniform: &DataUniform,
+        settings_uniform: &DataUniform,
+        data_uniform: Option<&DataUniform>,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    );
 }
 
 pub(crate) trait Render {

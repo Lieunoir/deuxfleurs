@@ -7,9 +7,7 @@ use crate::util;
 use crate::util::Vertex;
 use wgpu::util::DeviceExt;
 
-mod picker;
 mod shader;
-use picker::Picker;
 use shader::get_shader;
 
 pub enum PointCloudData {
@@ -237,6 +235,7 @@ pub struct PointCloudDataBuffer {
 
 pub struct PointCloudPipeline {
     sphere_render_pipeline: wgpu::RenderPipeline,
+    sphere_picker_render_pipeline: wgpu::RenderPipeline,
 }
 
 impl DataBuffer for PointCloudDataBuffer {
@@ -296,7 +295,7 @@ impl RenderPipeline for PointCloudPipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        _fixed: &Self::Fixed,
+        geometry: &Self::Geometry,
         _settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
@@ -347,9 +346,92 @@ impl RenderPipeline for PointCloudPipeline {
             shader,
             Some("cloud sphere render"),
         );
+
+        let picker_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Point Cloud Picker Pipeline Layout"),
+                bind_group_layouts: &[
+                    camera_light_bind_group_layout,
+                    counter_bind_group_layout,
+                    &transform_uniform.bind_group_layout,
+                    &settings_uniform.bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
+        let picker_shader = wgpu::ShaderModuleDescriptor {
+            label: Some("Point cloud Picker Shader"),
+            source: wgpu::ShaderSource::Wgsl(shader::SPHERE_PICKER_SHADER.into()),
+        };
+        let sphere_picker_render_pipeline = util::create_quad_picker_pipeline(
+            device,
+            &picker_pipeline_layout,
+            texture::Texture::PICKER_FORMAT,
+            Some(texture::Texture::DEPTH_FORMAT),
+            &[SphereVertex::desc(), SphereCenter::desc()],
+            picker_shader,
+            Some("Point Cloud picker"),
+            None,
+        );
         PointCloudPipeline {
             sphere_render_pipeline,
+            sphere_picker_render_pipeline,
         }
+    }
+
+    fn rebuild(
+        &mut self,
+        device: &wgpu::Device,
+        data: Option<&Self::Data>,
+        _settings: &Self::Settings,
+        transform_uniform: &DataUniform,
+        settings_uniform: &DataUniform,
+        data_uniform: Option<&DataUniform>,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) {
+        let bind_group_layouts = if let Some(uniform) = data_uniform {
+            vec![
+                camera_light_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+                &settings_uniform.bind_group_layout,
+                &uniform.bind_group_layout,
+            ]
+        } else {
+            vec![
+                camera_light_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+                &settings_uniform.bind_group_layout,
+            ]
+        };
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Sphere cloud Render Pipeline Layout"),
+            bind_group_layouts: &bind_group_layouts,
+            push_constant_ranges: &[],
+        });
+
+        let shader = wgpu::ShaderModuleDescriptor {
+            label: Some("sphere cloud shader"),
+            source: wgpu::ShaderSource::Wgsl(get_shader(data).into()),
+        };
+        let sphere_buffer_layout = if let Some(data) = &data {
+            vec![
+                SphereVertex::desc(),
+                SphereCenter::desc(),
+                data.sphere_desc(),
+            ]
+        } else {
+            vec![SphereVertex::desc(), SphereCenter::desc()]
+        };
+        let sphere_render_pipeline = util::create_quad_pipeline(
+            device,
+            &pipeline_layout,
+            color_format,
+            Some(texture::Texture::DEPTH_FORMAT),
+            &sphere_buffer_layout,
+            shader,
+            Some("cloud sphere render"),
+        );
+        self.sphere_render_pipeline = sphere_render_pipeline;
     }
 }
 
@@ -373,6 +455,18 @@ impl Render for PointCloudRenderer {
             render_pass.set_vertex_buffer(2, data_buffer.slice(..));
         }
         //render_pass.draw(0..6, 0..(self.fixed.positions_len));
+        render_pass.draw(0..4, 0..(self.fixed.positions_len));
+    }
+
+    fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        render_pass.set_bind_group(2, &self.transform_uniform.bind_group, &[]);
+        render_pass.set_bind_group(3, &self.settings_uniform.bind_group, &[]);
+        render_pass.set_pipeline(&self.pipeline.sphere_picker_render_pipeline);
+        render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.fixed.center_buffer.slice(..));
         render_pass.draw(0..4, 0..(self.fixed.positions_len));
     }
 }
