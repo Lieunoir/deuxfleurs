@@ -234,7 +234,7 @@ impl RenderPipeline for SurfacePipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        _fixed: &Self::Fixed,
+        geometry: &Self::Geometry,
         settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
@@ -332,12 +332,68 @@ impl RenderPipeline for SurfacePipeline {
             &[SurfaceVertex::desc()],
             picker_shader,
             Some("surface picker render"),
+            None,
         );
         SurfacePipeline {
             surface_render_pipeline,
             shadow_render_pipeline,
             picker_render_pipeline,
         }
+    }
+
+    fn rebuild(
+        &mut self,
+        device: &wgpu::Device,
+        data: Option<&Self::Data>,
+        settings: &Self::Settings,
+        transform_uniform: &DataUniform,
+        settings_uniform: &DataUniform,
+        data_uniform: Option<&DataUniform>,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) {
+        let pipeline_layout = match data_uniform {
+            Some(uniform) => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[
+                    camera_light_bind_group_layout,
+                    &transform_uniform.bind_group_layout,
+                    &settings_uniform.bind_group_layout,
+                    &uniform.bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            }),
+            None => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[
+                    camera_light_bind_group_layout,
+                    &transform_uniform.bind_group_layout,
+                    &settings_uniform.bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            }),
+        };
+        let shader = wgpu::ShaderModuleDescriptor {
+            label: Some("Normal Shader"),
+            source: wgpu::ShaderSource::Wgsl(
+                get_shader(data, settings.smooth, settings.show_edges).into(),
+            ),
+        };
+
+        let buffer_layout = match data {
+            Some(data) => vec![SurfaceVertex::desc(), data.desc()],
+            None => vec![SurfaceVertex::desc()],
+        };
+
+        self.surface_render_pipeline = util::create_render_pipeline(
+            device,
+            &pipeline_layout,
+            color_format,
+            Some(texture::Texture::DEPTH_FORMAT),
+            &buffer_layout,
+            shader,
+            Some("surface sphere render"),
+        );
     }
 }
 

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub(crate) trait Vertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
 }
@@ -160,8 +162,26 @@ pub fn create_picker_pipeline(
     vertex_layouts: &[wgpu::VertexBufferLayout],
     shader: wgpu::ShaderModuleDescriptor,
     label: Option<&str>,
+    offset: Option<u32>,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(shader);
+    let constants = match offset {
+        Some(offset) => {
+            let mut map = HashMap::new();
+            map.insert(String::from("offset"), offset as f64);
+            map
+        }
+        None => HashMap::new(),
+    };
+
+    let compilation_options_v = wgpu::PipelineCompilationOptions {
+        constants: &constants,
+        ..Default::default()
+    };
+    let compilation_options_f = wgpu::PipelineCompilationOptions {
+        constants: &constants,
+        ..Default::default()
+    };
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label,
@@ -170,7 +190,7 @@ pub fn create_picker_pipeline(
             module: &shader,
             entry_point: Some("vs_main"),
             buffers: vertex_layouts,
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            compilation_options: compilation_options_v,
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,
@@ -180,10 +200,86 @@ pub fn create_picker_pipeline(
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            compilation_options: compilation_options_f,
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
+            format,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState {
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        // If the pipeline will be used with a multiview render pass, this
+        // indicates how many array layers the attachments will have.
+        multiview: None,
+        cache: None,
+    })
+}
+
+pub fn create_quad_picker_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    color_format: wgpu::TextureFormat,
+    depth_format: Option<wgpu::TextureFormat>,
+    vertex_layouts: &[wgpu::VertexBufferLayout],
+    shader: wgpu::ShaderModuleDescriptor,
+    label: Option<&str>,
+    offset: Option<u32>,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(shader);
+    let constants = match offset {
+        Some(offset) => {
+            let mut map = HashMap::new();
+            map.insert(String::from("offset"), offset as f64);
+            map
+        }
+        None => HashMap::new(),
+    };
+
+    let compilation_options_v = wgpu::PipelineCompilationOptions {
+        constants: &constants,
+        ..Default::default()
+    };
+    let compilation_options_f = wgpu::PipelineCompilationOptions {
+        constants: &constants,
+        ..Default::default()
+    };
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label,
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: Some("vs_main"),
+            buffers: vertex_layouts,
+            compilation_options: compilation_options_v,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: Some("fs_main"),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: color_format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            compilation_options: compilation_options_f,
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleStrip,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
             cull_mode: None,
