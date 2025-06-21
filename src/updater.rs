@@ -483,7 +483,7 @@ where
             *refresh_screen = true;
         }
         let mut rebuild_pipeline = false;
-        if self.settings.draw_ui(ui, &mut rebuild_pipeline) {
+        if self.settings.draw_ui(ui, &mut rebuild_pipeline) || rebuild_pipeline {
             self.settings
                 .refresh_buffer(queue, &self.renderer.settings_uniform);
             if rebuild_pipeline {
@@ -525,6 +525,7 @@ where
                                 camera_light_bind_group_layout,
                                 color_format,
                             );
+                            *refresh_screen = true;
                         }
                     })
                 })

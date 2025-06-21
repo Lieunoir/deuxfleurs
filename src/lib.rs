@@ -1671,7 +1671,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     }
                     WindowEvent::RedrawRequested => {
                         //draw ui
-                        let mut refresh_screen = state.state.dirty;
+                        //let mut refresh_screen = state.state.dirty;
                         ui.draw_models(
                             &*state.state.window,
                             &mut state.surfaces,
@@ -1683,7 +1683,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             &state.state.queue,
                             &state.state.camera_light_bind_group_layout,
                             state.state.config.format,
-                            &mut refresh_screen,
+                            &mut state.state.dirty,
                         );
                         ui.draw_callback(state, &mut self.callback);
                         let scene_changed = state.update();
