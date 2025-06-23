@@ -518,7 +518,6 @@ where
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
@@ -590,34 +589,27 @@ where
                 });
         }
 
-        //for (name, field) in &mut self.attached_data {
-        //    let id = ui.make_persistent_id(name);
-        //    egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
-        //        .show_header(ui, |ui| {
-        //            ui.horizontal(|ui| {
-        //                if ui
-        //                    .checkbox(&mut field.settings.show, name.clone())
-        //                    .changed()
-        //                {
-        //                    self.dirty = true;
-        //                }
-        //            });
-        //        })
-        //        .body(|ui| {
-        //            //TODO move this
-        //            if egui::Slider::new(&mut field.settings.magnitude, 0.1..=100.0)
-        //                .text("Magnitude")
-        //                .clamping(SliderClamping::Never)
-        //                .logarithmic(true)
-        //                .ui(ui)
-        //                .changed()
-        //            {
-        //                field.settings_changed = true;
-        //            }
-
-        //            field.settings_changed |= field.settings.color.draw(ui, &mut false);
-        //        });
-        //}
+        for (name, field) in &mut self.attached_data {
+            let id = ui.make_persistent_id(name);
+            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
+                .show_header(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        if ui.checkbox(&mut field.shown(), name.clone()).changed() {
+                            field.show(!field.shown(), refresh_screen);
+                        }
+                    });
+                })
+                .body(|ui| {
+                    field.draw_ui(
+                        ui,
+                        device,
+                        queue,
+                        camera_light_bind_group_layout,
+                        color_format,
+                        refresh_screen,
+                    );
+                });
+        }
     }
 
     pub(crate) fn draw_gizmo(
@@ -744,55 +736,28 @@ where
     }
 }
 
-//impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
-//    ElementMut<
-//        'a,
-//        Element<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>,
-//        GraphicalContext<'a>,
-//    >
-//where
-//    Geometry: ElementGeometry,
-//    Data: DataUniformBuilder + DataSettings + UiDataElement,
-//    Settings: NamedSettings,
-//    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-//    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-//    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-//{
-//    pub fn show(self, show: bool) -> Self {
-//        if self.element.show != show {
-//            *self.context.refresh_screen = true;
-//            self.element.show = show;
-//        }
-//        self
-//    }
-//
-//    pub fn set_data(self, name: Option<String>) -> Self {
-//        self.element.set_data(
-//            name,
-//            self.context.device,
-//            self.context.camera_light_bind_group_layout,
-//            self.context.color_format,
-//            self.context.refresh_screen,
-//        );
-//        self
-//    }
-//
-//    fn update_settings(self) -> Self {
-//        self.element.update_settings(self.context.queue);
-//        self
-//    }
-//
-//    fn update_transform(self) -> Self {
-//        self.element.update_transform(self.context.queue);
-//        self
-//    }
-//}
-
 pub(crate) trait AttachedGeometry<'a, 'b> {
     type Args;
     type Context;
 
     fn new(name: String, args: Self::Args, context: &mut Self::Context) -> Self;
+
+    fn shown(&self) -> bool {
+        false
+    }
+
+    fn show(&mut self, show: bool, refresh_screen: &mut bool) {}
+
+    fn draw_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+        refresh_screen: &mut bool,
+    ) {
+    }
 
     fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
     where

@@ -1689,7 +1689,6 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             &state.state.device,
                             &state.state.queue,
                             &state.state.camera_light_bind_group_layout,
-                            &state.state.picker.bind_group_layout,
                             state.state.config.format,
                             &mut state.state.dirty,
                         );

@@ -223,7 +223,6 @@ impl UI {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
@@ -264,7 +263,6 @@ impl UI {
                             device,
                             queue,
                             camera_light_bind_group_layout,
-                            counter_bind_group_layout,
                             color_format,
                             refresh_screen,
                         );
@@ -292,7 +290,6 @@ impl UI {
                             device,
                             queue,
                             camera_light_bind_group_layout,
-                            counter_bind_group_layout,
                             color_format,
                             refresh_screen,
                         );
@@ -325,7 +322,6 @@ impl UI {
                             device,
                             queue,
                             camera_light_bind_group_layout,
-                            counter_bind_group_layout,
                             color_format,
                             refresh_screen,
                         );
