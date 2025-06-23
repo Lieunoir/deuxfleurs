@@ -606,69 +606,106 @@ where
     }
 
     pub fn add_face_scalar<S: Scalar>(
-        &mut self,
+        &'b mut self,
         name: String,
         datas: S,
-    ) -> &mut FaceScalarSettings {
+    ) -> DataMut<
+        'b,
+        ColorMap,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+    > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
-        let new_settings = FaceScalarSettings::new(&datas);
-        if let SurfaceData::FaceScalar(_, settings) =
-            self.add_data(name, SurfaceData::FaceScalar(datas, new_settings))
-        {
-            settings
-        } else {
-            panic!()
-        }
+        let new_settings = ColorMap::new(&datas);
+        self.add_data(name, SurfaceData::FaceScalar(datas, new_settings))
+            .convert(|data| {
+                if let SurfaceData::FaceScalar(_, settings) = data {
+                    settings
+                } else {
+                    panic!()
+                }
+            })
+        //if let SurfaceData::FaceScalar(_, settings) =
+        //    self.add_data(name, SurfaceData::FaceScalar(datas, new_settings)).convert
+        //{
+        //    settings
+        //} else {
+        //    panic!()
+        //}
     }
 
     pub fn add_vertex_scalar<S: Scalar>(
-        &mut self,
+        &'b mut self,
         name: String,
         datas: S,
-    ) -> &mut VertexScalarSettings {
+    ) -> DataMut<
+        'b,
+        VertexScalarSettings,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+    > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         let new_settings = VertexScalarSettings::new(&datas);
-        if let SurfaceData::VertexScalar(_, settings) =
-            self.add_data(name, SurfaceData::VertexScalar(datas, new_settings))
-        {
-            settings
-        } else {
-            panic!()
-        }
+        self.add_data(name, SurfaceData::VertexScalar(datas, new_settings))
+            .convert(|data| {
+                if let SurfaceData::VertexScalar(_, settings) = data {
+                    settings
+                } else {
+                    panic!()
+                }
+            })
     }
 
-    pub fn add_uv_map<UV: Vertices2D>(&mut self, name: String, datas: UV) -> &mut UVMapSettings {
+    pub fn add_uv_map<UV: Vertices2D>(
+        &'b mut self,
+        name: String,
+        datas: UV,
+    ) -> DataMut<
+        'b,
+        UVMapSettings,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+    > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        if let SurfaceData::UVMap(_, settings) =
-            self.add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default()))
-        {
-            settings
-        } else {
-            panic!()
-        }
+        self.add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default()))
+            .convert(|data| {
+                if let SurfaceData::UVMap(_, settings) = data {
+                    settings
+                } else {
+                    panic!()
+                }
+            })
     }
 
     pub fn add_corner_uv_map<UV: Vertices2D>(
-        &mut self,
+        &'b mut self,
         name: String,
         datas: UV,
-    ) -> &mut UVMapSettings {
+    ) -> DataMut<
+        'b,
+        UVMapSettings,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
+        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+    > {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
-        if let SurfaceData::UVCornerMap(_, settings) = self.add_data(
+        self.add_data(
             name,
             SurfaceData::UVCornerMap(datas, UVMapSettings::default()),
-        ) {
-            settings
-        } else {
-            panic!()
-        }
+        )
+        .convert(|data| {
+            if let SurfaceData::UVCornerMap(_, settings) = data {
+                settings
+            } else {
+                panic!()
+            }
+        })
     }
 
-    pub fn add_vertex_color<C: Color>(&mut self, name: String, colors: C) {
+    pub fn add_vertex_color<C: Color>(&'b mut self, name: String, colors: C) {
         let colors = colors.into();
         assert!(colors.len() == self.geometry.vertices.len());
         self.add_data(name, SurfaceData::Color(colors));

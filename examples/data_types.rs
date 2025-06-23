@@ -47,7 +47,9 @@ pub async fn run() {
     }
     let mut surface1 = handle.register_surface("spot_uv".into(), spot_uv_mesh, spot_f.clone());
     surface1.show_edges(true);
-    surface1.add_vertex_scalar("x coord".into(), spot_data_1.clone());
+    surface1
+        .add_vertex_scalar("x coord".into(), spot_data_1.clone())
+        .set_isolines(10.);
     let mut surface2 = handle.register_surface("spot".into(), spot_v.clone(), spot_f.clone());
     surface2.show_edges(true);
     surface2.add_vertex_scalar("x coord".into(), spot_data_1.clone());

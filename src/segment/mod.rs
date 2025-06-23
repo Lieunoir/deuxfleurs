@@ -1,4 +1,4 @@
-use crate::data::*;
+use crate::data::{self, *};
 use crate::segment::sphere_shader::SPHERE_PICKER_SHADER;
 use crate::texture;
 use crate::types::{Color, Scalar};
@@ -776,16 +776,32 @@ where
         self
     }
 
-    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut SegmentData {
+    pub fn add_scalar<S: Scalar>(
+        &'b mut self,
+        name: String,
+        datas: S,
+    ) -> DataMut<
+        'b,
+        ColorMap,
+        <Segment<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
+        <Segment<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+    > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         let settings = ColorMap::new(&datas);
         self.add_data(name, SegmentData::Scalar(datas, settings))
+            .convert(|data| {
+                if let SegmentData::Scalar(_, settings) = data {
+                    settings
+                } else {
+                    panic!()
+                }
+            })
     }
 
-    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut SegmentData {
+    pub fn add_colors<C: Color>(&'b mut self, name: String, datas: C) {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        self.add_data(name, SegmentData::Color(datas))
+        self.add_data(name, SegmentData::Color(datas));
     }
 }

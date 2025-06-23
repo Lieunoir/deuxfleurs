@@ -1,7 +1,10 @@
+use crate::data::Colors;
 use crate::data::DataUniform;
 use crate::data::DataUniformBuilder;
 use crate::data::{ColorMap, ColorMapValues, DataSettings, IsolineSettings, UVMapSettings};
 use crate::ui::UiDataElement;
+use crate::updater::DataMut;
+use crate::updater::DataMutTrait;
 use crate::SurfaceIndices;
 use wgpu::util::DeviceExt;
 
@@ -14,8 +17,8 @@ struct VertexScalarSettingsBuffer {
 
 #[derive(Clone)]
 pub struct VertexScalarSettings {
-    pub isoline: IsolineSettings,
-    pub colormap: ColorMap,
+    isoline: IsolineSettings,
+    colormap: ColorMap,
 }
 
 impl VertexScalarSettings {
@@ -36,32 +39,18 @@ impl VertexScalarSettings {
     }
 }
 
-#[derive(Clone)]
-pub struct FaceScalarSettings {
-    pub colormap: ColorMap,
-}
-
-impl FaceScalarSettings {
-    pub(crate) fn new(values: &[f32]) -> Self {
-        Self {
-            colormap: ColorMap::new(values),
-        }
+impl<'a, Context, Uniform> DataMut<'a, VertexScalarSettings, Context, Uniform>
+where
+    Self: DataMutTrait,
+{
+    pub fn set_isolines(&mut self, number: f32) {
+        self.inner.isoline.isoline_number = number;
+        self.update_data_settings();
     }
 
-    pub(crate) fn recycle(&mut self, old: Self) {
-        self.colormap.recycle(old.colormap);
-    }
-}
-
-impl DataUniformBuilder for FaceScalarSettings {
-    fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
-        self.colormap.get_value().build_uniform(device)
-    }
-
-    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
-        self.colormap
-            .get_value()
-            .refresh_buffer(queue, data_uniform);
+    pub fn set_colormap(&mut self, colormap: Colors) {
+        self.inner.colormap.colors = colormap;
+        self.update_data_settings();
     }
 }
 
@@ -88,7 +77,7 @@ impl DataUniformBuilder for VertexScalarSettings {
 
 pub enum SurfaceData {
     Color(Vec<[f32; 3]>),
-    FaceScalar(Vec<f32>, FaceScalarSettings),
+    FaceScalar(Vec<f32>, ColorMap),
     VertexScalar(Vec<f32>, VertexScalarSettings),
     //TODO think about edge ordering
     //EdgeScalar(Vec<f32>),
@@ -116,7 +105,7 @@ impl DataUniformBuilder for SurfaceData {
     fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
         match self {
             SurfaceData::VertexScalar(_, uniform) => uniform.build_uniform(device),
-            SurfaceData::FaceScalar(_, uniform) => uniform.build_uniform(device),
+            SurfaceData::FaceScalar(_, uniform) => uniform.get_value().build_uniform(device),
             SurfaceData::UVMap(_, uniform) => uniform.build_uniform(device),
             SurfaceData::UVCornerMap(_, uniform) => uniform.build_uniform(device),
             // Maybe use empty uniform instead of none?
@@ -127,7 +116,9 @@ impl DataUniformBuilder for SurfaceData {
     fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         match self {
             SurfaceData::VertexScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
-            SurfaceData::FaceScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
+            SurfaceData::FaceScalar(_, uniform) => {
+                uniform.get_value().refresh_buffer(queue, data_uniform)
+            }
             SurfaceData::UVMap(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
             SurfaceData::UVCornerMap(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
             _ => (),
@@ -145,7 +136,7 @@ impl UiDataElement for SurfaceData {
                 let changed = data_uniform.colormap.draw_ui(ui);
                 data_uniform.isoline.draw_ui(ui) || changed
             }
-            SurfaceData::FaceScalar(_, data_uniform) => data_uniform.colormap.draw_ui(ui),
+            SurfaceData::FaceScalar(_, data_uniform) => data_uniform.draw_ui(ui),
             _ => false,
         }
     }
