@@ -1,4 +1,5 @@
 use crate::ui::UiDataElement;
+use crate::updater::{DataMut, DataMutTrait};
 use egui::Shape::Path;
 use egui::{Color32, Pos2, Stroke};
 use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};
@@ -565,5 +566,15 @@ impl UiDataElement for ColorMap {
             ui.label("Range");
         });
         changed
+    }
+}
+
+impl<'a, Context, Uniform> DataMut<'a, ColorMap, Context, Uniform>
+where
+    Self: DataMutTrait,
+{
+    pub fn set_colormap(&mut self, colormap: Colors) {
+        self.inner.colors = colormap;
+        self.update_data_settings();
     }
 }

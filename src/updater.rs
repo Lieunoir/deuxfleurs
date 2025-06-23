@@ -48,7 +48,7 @@ pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attach
 //    pub trait Sealed {}
 //}
 
-pub(crate) trait ElementTrait<'a, 'b> {
+pub trait ElementTrait<'a, 'b> {
     //type Geometry: ElementGeometry;
     //type Settings: NamedSettings;
     //type Fixed: FixedRenderer<
@@ -67,6 +67,8 @@ pub(crate) trait ElementTrait<'a, 'b> {
     //type AttachedGeometry: AttachedGeometry;
     type Data;
     type Context;
+    type DataMutContext;
+    type DataMutUniform;
     type Attached: AttachedGeometry<'a, 'b>;
 
     fn show(&mut self, show: bool, context: &mut Self::Context);
@@ -80,12 +82,15 @@ pub(crate) trait ElementTrait<'a, 'b> {
 
     fn set_data(&mut self, name: Option<String>, context: &mut Self::Context);
 
-    fn add_data(
-        &mut self,
+    fn add_data<'c, 'd>(
+        &'c mut self,
         name: String,
         data: Self::Data,
-        context: &mut Self::Context,
-    ) -> &mut Self::Data;
+        context: &'d mut Self::Context,
+    ) -> DataMut<'b, Self::Data, Self::DataMutContext, Self::DataMutUniform>
+    where
+        'c: 'b,
+        'd: 'b;
 
     fn update_settings(&mut self, context: &mut Self::Context, rebuild_pipeline: bool) {}
     //    self.settings
@@ -115,7 +120,7 @@ where
     'a: 'b,
     AttachedG: AttachedGeometry<'a, 'b, Context = GraphicalTransformationContext<'a, 'b>>,
     Geometry: ElementGeometry,
-    Data: DataUniformBuilder + DataSettings + UiDataElement,
+    Data: DataUniformBuilder + DataSettings + UiDataElement + 'b,
     Settings: NamedSettings,
     Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
     DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -130,6 +135,8 @@ where
     type Data = Data;
     //type AttachedGeometry = AttachedG;
     type Context = GraphicalContext<'a>;
+    type DataMutContext = &'b mut Self::Context;
+    type DataMutUniform = &'b Option<DataUniform>;
     type Attached = AttachedG;
 
     fn show(&mut self, show: bool, context: &mut Self::Context) {
@@ -160,12 +167,16 @@ where
         }
     }
 
-    fn add_data(
-        &mut self,
+    fn add_data<'c, 'd>(
+        &'c mut self,
         name: String,
         data: Self::Data,
-        context: &mut Self::Context,
-    ) -> &mut Data {
+        context: &'d mut Self::Context,
+    ) -> DataMut<'b, Self::Data, Self::DataMutContext, Self::DataMutUniform>
+    where
+        'c: 'b,
+        'd: 'b,
+    {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -184,7 +195,11 @@ where
             );
             *context.refresh_screen = true;
         }
-        data
+        DataMut {
+            inner: data,
+            context: context,
+            uniform: &self.renderer.data_uniform,
+        }
     }
 
     fn update_settings(&mut self, context: &mut Self::Context, rebuild_pipeline: bool) {
@@ -234,13 +249,15 @@ impl<'a, 'b, Geometry, Settings, Data, AttachedG> ElementTrait<'a, 'b>
 where
     Geometry: ElementGeometry,
     AttachedG: AttachedGeometry<'a, 'b, Context = ()>,
-    Data: DataUniformBuilder + DataSettings + UiDataElement,
+    Data: DataUniformBuilder + DataSettings + UiDataElement + 'b,
     Settings: NamedSettings,
     //AttachedG: AttachedGeometry,
 {
     type Attached = AttachedG;
     type Data = Data;
     type Context = ();
+    type DataMutContext = ();
+    type DataMutUniform = ();
 
     fn show(&mut self, show: bool, context: &mut Self::Context) {
         self.show = show;
@@ -250,16 +267,24 @@ where
         self.shown_data = name;
     }
 
-    fn add_data(
-        &mut self,
+    fn add_data<'c, 'd>(
+        &'c mut self,
         name: String,
         data: Self::Data,
-        context: &mut Self::Context,
-    ) -> &mut Data {
+        context: &'d mut Self::Context,
+    ) -> DataMut<'b, Data, Self::Context, ()>
+    where
+        'c: 'b,
+        'd: 'b,
+    {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
-        data
+        DataMut {
+            inner: data,
+            uniform: (),
+            context: (),
+        }
     }
 
     fn add_attached_geometry(
@@ -695,6 +720,50 @@ where
 //    }
 //}
 
+pub struct DataMut<'a, T, Context, Uniform> {
+    pub(crate) inner: &'a mut T,
+    uniform: Uniform,
+    context: Context,
+}
+
+pub type UninitedData<'a, T> = DataMut<'a, T, (), ()>;
+pub type DisplayData<'a, 'b, T>
+where
+    T: DataUniformBuilder,
+= DataMut<'a, T, &'b mut GraphicalContext<'a>, &'b mut Option<DataUniform>>;
+
+impl<'a, T, Context, Uniform> DataMut<'a, T, Context, Uniform> {
+    pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(
+        self,
+        f: F,
+    ) -> DataMut<'a, U, Context, Uniform> {
+        DataMut {
+            inner: f(self.inner),
+            uniform: self.uniform,
+            context: self.context,
+        }
+    }
+}
+
+pub(crate) trait DataMutTrait {
+    fn update_data_settings(&mut self);
+}
+
+impl<'a, T> DataMutTrait for UninitedData<'a, T> {
+    fn update_data_settings(&mut self) {}
+}
+
+impl<'a, 'b, T> DataMutTrait for DisplayData<'a, 'b, T>
+where
+    T: DataUniformBuilder,
+{
+    fn update_data_settings(&mut self) {
+        self.uniform
+            .as_ref()
+            .map(|uniform| self.inner.refresh_buffer(self.context.queue, uniform));
+    }
+}
+
 impl<'a, 'b, Geometry, Renderer, Settings, Data, Attached, Context>
     ElementMut<'a, Element<Geometry, Renderer, Settings, Data, Attached>, Context>
 where
@@ -711,7 +780,14 @@ where
         self
     }
 
-    pub(crate) fn add_data(&mut self, name: String, data: Data) -> &mut Data {
+    pub(crate) fn add_data(
+        &'b mut self,
+        name: String,
+        data: Data,
+    ) -> DataMut<'b, Data,
+        <Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait<'a, 'b>>::DataMutContext,
+        <Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait<'a, 'b>>::DataMutUniform>
+    {
         self.element.add_data(name, data, &mut self.context)
     }
 

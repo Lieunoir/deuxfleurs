@@ -503,16 +503,32 @@ where
         self
     }
 
-    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> &mut PointCloudData {
+    pub fn add_scalar<S: Scalar>(
+        &'b mut self,
+        name: String,
+        datas: S,
+    ) -> DataMut<
+        'b,
+        ColorMap,
+        <PointCloud<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
+        <PointCloud<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+    > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         let settings = ColorMap::new(&datas);
         self.add_data(name, PointCloudData::Scalar(datas, settings))
+            .convert(|data| {
+                if let PointCloudData::Scalar(_, settings) = data {
+                    settings
+                } else {
+                    panic!()
+                }
+            })
     }
 
-    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) -> &mut PointCloudData {
+    pub fn add_colors<C: Color>(&'b mut self, name: String, datas: C) {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        self.add_data(name, PointCloudData::Color(datas))
+        self.add_data(name, PointCloudData::Color(datas));
     }
 }

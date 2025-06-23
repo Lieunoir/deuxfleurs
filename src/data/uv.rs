@@ -1,12 +1,13 @@
 use crate::ui::UiDataElement;
+use crate::updater::{DataMut, DataMutTrait};
 use egui::Widget;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct UVMapSettings {
-    pub color_1: [f32; 4],
-    pub color_2: [f32; 4],
-    pub frequency: f32,
+    color_1: [f32; 4],
+    color_2: [f32; 4],
+    frequency: f32,
     _padding: [f32; 3],
 }
 
@@ -63,5 +64,25 @@ impl UiDataElement for UVMapSettings {
         self.color_1 = color_1.to_array();
         self.color_2 = color_2.to_array();
         changed
+    }
+}
+
+impl<'a, Context, Uniform> DataMut<'a, UVMapSettings, Context, Uniform>
+where
+    Self: DataMutTrait,
+{
+    pub fn set_color_1(&mut self, color: [f32; 4]) {
+        self.inner.color_1 = color;
+        self.update_data_settings();
+    }
+
+    pub fn set_color_2(&mut self, color: [f32; 4]) {
+        self.inner.color_2 = color;
+        self.update_data_settings();
+    }
+
+    pub fn set_pattern_frequency(&mut self, frequency: f32) {
+        self.inner.frequency = frequency;
+        self.update_data_settings();
     }
 }

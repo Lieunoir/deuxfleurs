@@ -15,7 +15,7 @@ pub use radius::Radius;
 pub use transform::TransformSettings;
 pub use uv::UVMapSettings;
 
-pub(crate) struct DataUniform {
+pub struct DataUniform {
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
     pub buffer: wgpu::Buffer,
