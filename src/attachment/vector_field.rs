@@ -1,20 +1,23 @@
 use crate::data::*;
+use crate::settings;
 use crate::texture;
+use crate::ui::UiDataElement;
 use crate::updater::AttachedGeometry;
 use crate::updater::GraphicalTransformationContext;
 use crate::updater::NewAttachedGeometry;
 use crate::util;
 use crate::util::Vertex;
+use egui::SliderClamping;
+use egui::Widget;
 use wgpu::util::DeviceExt;
 
 pub struct VectorField {
     pub vectors: Vec<[f32; 3]>,
-    pub _offsets: Vec<[f32; 3]>,
+    pub offsets: Vec<[f32; 3]>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     vector_buffer: wgpu::Buffer,
     pub settings: VectorFieldSettings,
-    pub settings_changed: bool,
     settings_bind_group: wgpu::BindGroup,
     settings_buffer: wgpu::Buffer,
 }
@@ -248,42 +251,13 @@ impl VectorField {
         let vector_buffer = Self::build_vector_buffer(device, &vectors, &offsets);
         Self {
             vectors,
-            _offsets: offsets,
+            offsets: offsets,
             render_pipeline,
             vertex_buffer,
             vector_buffer,
             settings,
-            settings_changed: false,
             settings_bind_group,
             settings_buffer,
-        }
-    }
-
-    pub fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-        if self.settings.show {
-            render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
-            //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
-            render_pass.draw(0..8, 0..(self.vectors.len() as u32));
-        }
-    }
-
-    pub fn update(&mut self, queue: &wgpu::Queue) -> bool {
-        if self.settings_changed {
-            queue.write_buffer(
-                &self.settings_buffer,
-                0,
-                bytemuck::cast_slice(&[self.settings.to_raw()]),
-            );
-            self.settings_changed = false;
-            true
-        } else {
-            false
         }
     }
 }
@@ -316,6 +290,47 @@ where
             context.context.color_format,
             new_vector_field,
         )
+    }
+
+    fn shown(&self) -> bool {
+        self.settings.show
+    }
+
+    fn show(&mut self, show: bool, refresh_screen: &mut bool) {
+        self.settings.show = show;
+        *refresh_screen = true;
+    }
+
+    fn draw_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+        refresh_screen: &mut bool,
+    ) {
+        let mut settings_changed = false;
+        //TODO move this
+        if egui::Slider::new(&mut self.settings.magnitude, 0.1..=100.0)
+            .text("Magnitude")
+            .clamping(SliderClamping::Never)
+            .logarithmic(true)
+            .ui(ui)
+            .changed()
+        {
+            settings_changed = true;
+        }
+
+        settings_changed |= self.settings.color.draw_ui(ui);
+        if settings_changed {
+            *refresh_screen = true;
+            queue.write_buffer(
+                &self.settings_buffer,
+                0,
+                bytemuck::cast_slice(&[self.settings.to_raw()]),
+            );
+        }
     }
 
     fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
