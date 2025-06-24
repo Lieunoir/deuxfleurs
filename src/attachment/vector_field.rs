@@ -6,7 +6,6 @@ use crate::updater::AttachedGeometry;
 use crate::updater::DataMut;
 use crate::updater::DataMutTrait;
 use crate::updater::GraphicalContext;
-use crate::updater::GraphicalTransformationContext;
 use crate::updater::NewAttachedGeometry;
 use crate::util;
 use crate::util::Vertex;

@@ -1,5 +1,4 @@
 use crate::aabb::SBV;
-use crate::camera::Camera;
 use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
 use crate::ui::UiDataElement;
 use indexmap::IndexMap;
@@ -40,27 +39,7 @@ pub type UninitedElement<Geometry, Settings, Data, AttachedGeometry> =
 pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> =
     Element<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>;
 
-//mod private {
-//    pub trait Sealed {}
-//}
-
 pub trait ElementTrait {
-    //type Geometry: ElementGeometry;
-    //type Settings: NamedSettings;
-    //type Fixed: FixedRenderer<
-    //    Settings = Self::Settings,
-    //    Data = Self::Data,
-    //    Geometry = Self::Geometry,
-    //>;
-    //type DataB: DataBuffer<Settings = Self::Settings, Data = Self::Data, Geometry = Self::Geometry>;
-    //type Pipeline: RenderPipeline<
-    //    Settings = Self::Settings,
-    //    Data = Self::Data,
-    //    Geometry = Self::Geometry,
-    //    Fixed = Self::Fixed,
-    //>;
-    //type Data: DataUniformBuilder + DataSettings + UiDataElement;
-    //type AttachedGeometry: AttachedGeometry;
     type Data;
     type Context<'a>;
     type DataMutUniform<'a>
@@ -221,11 +200,6 @@ where
             uniform: &self.renderer.data_uniform,
         }
     }
-}
-
-pub(crate) struct GraphicalTransformationContext<'a, 'b> {
-    pub(crate) context: &'b mut GraphicalContext<'a>,
-    pub(crate) transform_bind_group_layout: &'b wgpu::BindGroupLayout,
 }
 
 impl<Geometry, Settings, Data, AttachedG> ElementTrait
@@ -656,7 +630,7 @@ impl<'a, T, Context, Uniform> DataMut<'a, T, Context, Uniform> {
     }
 }
 
-pub(crate) trait DataMutTrait {
+pub trait DataMutTrait {
     fn update_data_settings(&mut self);
 }
 
@@ -775,7 +749,7 @@ pub trait AttachedGeometry {
     fn get_settings(&mut self) -> &mut Self::Settings;
 }
 
-pub(crate) trait NewAttachedGeometry {
+pub trait NewAttachedGeometry {
     type UpgradedAttachedGeometry;
 
     fn init(
@@ -820,7 +794,7 @@ impl NewAttachedGeometry for () {
     }
 }
 
-pub(crate) trait NamedSettings: Default + DataUniformBuilder {
+pub trait NamedSettings: Default + DataUniformBuilder {
     fn set_name(self, name: &str) -> Self;
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool;
@@ -891,10 +865,6 @@ impl<
         self.data_uniform.as_ref()
     }
 
-    fn update_settings(&mut self, settings: &Settings, queue: &wgpu::Queue) {
-        settings.refresh_buffer(queue, &self.settings_uniform);
-    }
-
     fn build_data_buffer(
         &mut self,
         device: &wgpu::Device,
@@ -925,7 +895,7 @@ impl<
     }
 }
 
-pub(crate) trait FixedRenderer {
+pub trait FixedRenderer {
     type Settings;
     type Data;
     type Geometry;
@@ -933,7 +903,7 @@ pub(crate) trait FixedRenderer {
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self;
 }
 
-pub(crate) trait DataBuffer {
+pub trait DataBuffer {
     type Settings;
     type Data;
     type Geometry;
@@ -941,7 +911,7 @@ pub(crate) trait DataBuffer {
     fn new(device: &wgpu::Device, geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self;
 }
 
-pub(crate) trait RenderPipeline {
+pub trait RenderPipeline {
     type Settings;
     type Data;
     type Geometry;
