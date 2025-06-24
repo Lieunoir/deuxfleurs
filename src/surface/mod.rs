@@ -714,7 +714,7 @@ where
     pub fn add_vertex_vector_field<V: Vertices>(
         &'b mut self,
         name: String,
-    vectors: V, // -> &mut VectorFieldSettings {
+        vectors: V,
     ) -> DataMut<
         'b,
         <<Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData> as ElementTrait>::Attached as AttachedGeometry>::Settings,

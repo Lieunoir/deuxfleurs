@@ -47,9 +47,9 @@ pub trait ElementTrait {
         Self: 'a;
     type Attached: AttachedGeometry;
 
-    fn show<'a>(&mut self, show: bool, context: &mut Self::Context<'a>);
+    fn show(&mut self, show: bool, context: &mut Self::Context<'_>);
 
-    fn set_data<'a>(&mut self, name: Option<String>, context: &mut Self::Context<'a>);
+    fn set_data(&mut self, name: Option<String>, context: &mut Self::Context<'_>);
 
     fn add_data<'a, 'b>(
         &'b mut self,
@@ -58,9 +58,9 @@ pub trait ElementTrait {
         context: &'b mut Self::Context<'a>,
     ) -> DataMut<'b, Self::Data, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>>;
 
-    fn update_settings<'a>(&mut self, _context: &mut Self::Context<'a>, _rebuild_pipeline: bool) {}
+    fn update_settings(&mut self, _context: &mut Self::Context<'_>, _rebuild_pipeline: bool) {}
 
-    fn update_transform<'a>(&mut self, _context: &mut Self::Context<'a>) {}
+    fn update_transform(&mut self, _context: &mut Self::Context<'_>) {}
 
     fn add_attached_geometry<'a, 'b>(
         &'b mut self,
@@ -98,14 +98,14 @@ where
         Data: 'a;
     type Attached = AttachedG;
 
-    fn show<'a>(&mut self, show: bool, context: &mut Self::Context<'a>) {
+    fn show(&mut self, show: bool, context: &mut Self::Context<'_>) {
         if self.show != show {
             *context.refresh_screen = true;
             self.show = show;
         }
     }
 
-    fn set_data<'a>(&mut self, name: Option<String>, context: &mut Self::Context<'a>) {
+    fn set_data(&mut self, name: Option<String>, context: &mut Self::Context<'_>) {
         if self.shown_data != name {
             self.shown_data = name;
             let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
@@ -157,7 +157,7 @@ where
         }
     }
 
-    fn update_settings<'c>(&mut self, context: &mut Self::Context<'c>, rebuild_pipeline: bool) {
+    fn update_settings(&mut self, context: &mut Self::Context<'_>, rebuild_pipeline: bool) {
         self.settings
             .refresh_buffer(context.queue, &self.renderer.settings_uniform);
         if rebuild_pipeline {
@@ -172,7 +172,7 @@ where
         }
     }
 
-    fn update_transform<'c>(&mut self, context: &mut Self::Context<'c>) {
+    fn update_transform(&mut self, context: &mut Self::Context<'_>) {
         self.transform
             .to_raw()
             .refresh_buffer(context.queue, &self.renderer.transform_uniform);
@@ -221,11 +221,11 @@ where
         Settings: 'a,
         Data: 'a;
 
-    fn show<'a>(&mut self, show: bool, _context: &mut Self::Context<'a>) {
+    fn show(&mut self, show: bool, _context: &mut Self::Context<'_>) {
         self.show = show;
     }
 
-    fn set_data<'a>(&mut self, name: Option<String>, _context: &mut Self::Context<'a>) {
+    fn set_data(&mut self, name: Option<String>, _context: &mut Self::Context<'_>) {
         self.shown_data = name;
     }
 
@@ -563,10 +563,9 @@ where
     }
 }
 
-impl<'a, 'b, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached> Render
+impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached> Render
     for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
 where
-    'a: 'b,
     Attached: AttachedGeometry,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
@@ -576,9 +575,9 @@ where
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
     Renderer<Fixed, DataB, Pipeline>: Render,
 {
-    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'c: 'd,
+        'a: 'b,
     {
         if self.show {
             self.renderer.render(render_pass);
@@ -586,18 +585,18 @@ where
         }
     }
 
-    fn render_shadow<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'c: 'd,
+        'a: 'b,
     {
         if self.show {
             self.renderer.render_shadow(render_pass);
         }
     }
 
-    fn render_picker<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+    fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'c: 'd,
+        'a: 'b,
     {
         if self.show {
             self.renderer.render_picker(render_pass);
@@ -767,10 +766,10 @@ impl AttachedGeometry for () {
     type TransformLayout = ();
     type Settings = ();
 
-    fn new<'a>(
+    fn new(
         _name: String,
         _args: Self::Args,
-        _context: &mut Self::Context<'a>,
+        _context: &mut Self::Context<'_>,
         _transform_layout: &Self::TransformLayout,
     ) -> Self {
         ()
