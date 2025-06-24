@@ -754,7 +754,8 @@ impl DisplaySegment {
 impl<'a, 'b, Renderer, AttachedData, Context>
     ElementMut<'a, Segment<Renderer, AttachedData>, Context>
 where
-    Segment<Renderer, AttachedData>: ElementTrait<'a, 'b, Data = SegmentData, Context = Context>,
+    'a: 'b,
+    Segment<Renderer, AttachedData>: ElementTrait<Data = SegmentData, Context<'a> = Context>,
 {
     //pub(crate) fn new(name: String, positions: Vec<[f32; 3]>, connections: Vec<[u32; 2]>) -> Self {
     //    let geometry = SegmentGeometry {
@@ -783,8 +784,8 @@ where
     ) -> DataMut<
         'b,
         ColorMap,
-        <Segment<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
-        <Segment<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+        &'b mut <Segment<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <Segment<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
@@ -799,7 +800,7 @@ where
             })
     }
 
-    pub fn add_colors<C: Color>(&'b mut self, name: String, datas: C) {
+    pub fn add_colors<C: Color>(&'a mut self, name: String, datas: C) {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         self.add_data(name, SegmentData::Color(datas));

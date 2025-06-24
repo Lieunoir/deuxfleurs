@@ -53,8 +53,9 @@ pub async fn run() {
     let mut surface2 = handle.register_surface("spot".into(), spot_v.clone(), spot_f.clone());
     surface2.show_edges(true);
     surface2.add_vertex_scalar("x coord".into(), spot_data_1.clone());
-    surface2.add_vertex_vector_field("positions".into(), spot_v.clone());
-    //    .set_magnitude(0.1);
+    surface2
+        .add_vertex_vector_field("positions".into(), spot_v.clone())
+        .set_magnitude(0.1);
     surface2.add_vertex_scalar("y coord".into(), spot_data_2);
     surface2.add_uv_map("uv".into(), spot_uv_map);
     surface2.add_corner_uv_map("corner uv".into(), spot_corner_uv_map);
