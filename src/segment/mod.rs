@@ -1,4 +1,4 @@
-use crate::data::{self, *};
+use crate::data::*;
 use crate::segment::sphere_shader::SPHERE_PICKER_SHADER;
 use crate::texture;
 use crate::types::{Color, Scalar};
@@ -604,7 +604,7 @@ impl RenderPipeline for SegmentPipeline {
         &mut self,
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        settings: &Self::Settings,
+        _settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,

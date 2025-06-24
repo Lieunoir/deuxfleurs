@@ -1,13 +1,9 @@
-use std::mem::transmute;
-use std::ops::Deref;
-
 use crate::aabb::SBV;
-use crate::attachment::{NewVectorField, VectorField};
 use crate::camera::Camera;
 use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
 use crate::ui::UiDataElement;
-use egui::{SliderClamping, Widget};
 use indexmap::IndexMap;
+use std::ops::Deref;
 
 // Picker now uses same geometry as base
 //
@@ -73,37 +69,20 @@ pub trait ElementTrait {
     type Attached: AttachedGeometry;
 
     fn show<'a>(&mut self, show: bool, context: &mut Self::Context<'a>);
-    //{
-    //    if self.element.show != show {
-    //        *self.context.refresh_screen = true;
-    //        self.element.show = show;
-    //    }
-    //    self
-    //}
 
     fn set_data<'a>(&mut self, name: Option<String>, context: &mut Self::Context<'a>);
 
-    fn add_data<'a, 'b: 'c, 'c>(
+    fn add_data<'a, 'b>(
         &'b mut self,
         name: String,
         data: Self::Data,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'c, Self::Data, &'c mut Self::Context<'a>, Self::DataMutUniform<'c>>;
+    ) -> DataMut<'b, Self::Data, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>>;
 
-    fn update_settings<'a>(&mut self, context: &mut Self::Context<'a>, rebuild_pipeline: bool) {}
-    //    self.settings
-    //        .refresh_buffer(queue, &self.renderer.settings_uniform);
-    //}
+    fn update_settings<'a>(&mut self, _context: &mut Self::Context<'a>, _rebuild_pipeline: bool) {}
 
-    fn update_transform<'a>(&mut self, context: &mut Self::Context<'a>) {}
-    //    self.transform
-    //        .to_raw()
-    //        .refresh_buffer(queue, &self.renderer.transform_uniform);
-    //}
-    //{
+    fn update_transform<'a>(&mut self, _context: &mut Self::Context<'a>) {}
 
-    //type BareElement = Element<Geometry, (), Settings, Data, NewVectorField>;
-    //type DisplayElement = Element<Geometry, (), Settings, Data, NewVectorField>;
     fn add_attached_geometry<'a, 'b>(
         &'b mut self,
         name: String,
@@ -125,15 +104,8 @@ where
     Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
     DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-    //AttachedG: AttachedGeometry,
 {
-    //type Geometry = Geometry;
-    //type Settings = Settings;
-    //type Fixed = Fixed;
-    //type DataB = DataB;
-    //type Pipeline = Pipeline;
     type Data = Data;
-    //type AttachedGeometry = AttachedG;
     type Context<'a> = GraphicalContext<'a>;
     type DataMutUniform<'a>
         = &'a Option<DataUniform>
@@ -175,12 +147,12 @@ where
         }
     }
 
-    fn add_data<'a, 'b: 'c, 'c>(
+    fn add_data<'a, 'b>(
         &'b mut self,
         name: String,
         data: Self::Data,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'c, Self::Data, &'c mut Self::Context<'a>, Self::DataMutUniform<'c>> {
+    ) -> DataMut<'b, Self::Data, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -235,11 +207,6 @@ where
     ) -> DataMut<'b, Self::Attached, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
         *context.refresh_screen = true;
         {
-            //let mut augmented_context = GraphicalTransformationContext {
-            //    context: context as &'b mut Self::Context<'a>,
-            //    transform_bind_group_layout: &self.renderer.transform_uniform.bind_group_layout,
-            //};
-            //Self::Attached::new(name.clone(), args, &mut augmented_context);
             let geometry = Self::Attached::new(
                 name.clone(),
                 args,
@@ -268,7 +235,6 @@ where
     for<'a> AttachedG: AttachedGeometry<Context<'a> = &'a (), TransformLayout = ()>,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
-    //AttachedG: AttachedGeometry,
 {
     type Attached = AttachedG;
     type Data = Data;
@@ -289,19 +255,12 @@ where
         self.shown_data = name;
     }
 
-    fn add_data<'a, 'b, 'c>(
+    fn add_data<'a, 'b>(
         &'b mut self,
         name: String,
         data: Self::Data,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'c, Self::Data, &'c mut Self::Context<'a>, Self::DataMutUniform<'c>>
-    where
-        AttachedG: 'c,
-        Geometry: 'c,
-        Settings: 'c,
-        Data: 'c,
-        'b: 'c,
-    {
+    ) -> DataMut<'b, Self::Data, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -503,70 +462,6 @@ where
         }
     }
 
-    pub(crate) fn add_data(
-        &mut self,
-        name: String,
-        data: Data,
-        device: &wgpu::Device,
-        //camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        //color_format: wgpu::TextureFormat,
-        refresh_screen: &mut bool,
-    ) -> &mut Data {
-        let old_data = self.data.insert(name.clone(), data);
-        let data = self.data.get_mut(&name).unwrap();
-        old_data.map(|old| data.apply_settings(old));
-        if self.shown_data.as_ref() == Some(&name) {
-            self.renderer
-                .build_data_buffer(device, &self.geometry, Some(data));
-            self.renderer.set_data_uniform(data.build_uniform(device));
-            //self.renderer.build_pipeline(
-            //    device,
-            //    Some(data),
-            //    &self.settings,
-            //    camera_light_bind_group_layout,
-            //    color_format,
-            //);
-            *refresh_screen = true;
-        }
-        data
-    }
-
-    //pub(crate) fn set_data(
-    //    &mut self,
-    //    name: Option<String>,
-    //    device: &wgpu::Device,
-    //    camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-    //    color_format: wgpu::TextureFormat,
-    //    refresh_screen: &mut bool,
-    //) {
-    //    if self.shown_data != name {
-    //        self.shown_data = name;
-    //        let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-    //        self.renderer
-    //            .build_data_buffer(device, &self.geometry, data);
-    //        data.map(|d| self.renderer.set_data_uniform(d.build_uniform(device)));
-    //        self.renderer.build_pipeline(
-    //            device,
-    //            data,
-    //            &self.settings,
-    //            camera_light_bind_group_layout,
-    //            color_format,
-    //        );
-    //        *refresh_screen = true;
-    //    }
-    //}
-
-    //fn update_settings(&mut self, queue: &wgpu::Queue) {
-    //    self.settings
-    //        .refresh_buffer(queue, &self.renderer.settings_uniform);
-    //}
-
-    //fn update_transform(&mut self, queue: &wgpu::Queue) {
-    //    self.transform
-    //        .to_raw()
-    //        .refresh_buffer(queue, &self.renderer.transform_uniform);
-    //}
-
     pub(crate) fn draw_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -736,20 +631,6 @@ where
     }
 }
 
-//impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry>
-//    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, AttachedGeometry>, ()>
-//{
-//    pub fn show(self, show: bool) -> Self {
-//        self.element.show = show;
-//        self
-//    }
-//
-//    pub fn set_data(self, name: Option<String>) -> Self {
-//        self.element.shown_data = name;
-//        self
-//    }
-//}
-
 pub struct DataMut<'a, T, Context, Uniform> {
     pub(crate) inner: &'a mut T,
     uniform: Uniform,
@@ -851,11 +732,6 @@ where
     pub(crate) fn update_settings(&mut self, rebuild_pipeline: bool) -> &mut Self {
         self.element
             .update_settings(&mut self.context, rebuild_pipeline);
-        self
-    }
-
-    pub(crate) fn update_transform(&mut self) -> &mut Self {
-        self.element.update_transform(&mut self.context);
         self
     }
 }
@@ -1112,38 +988,6 @@ pub(crate) trait Render {
     where
         'a: 'b,
     {
-    }
-}
-
-pub(crate) trait ElementPicker: Render {
-    type Geometry;
-    type Settings: DataUniformBuilder;
-
-    fn new(
-        geometry: &Self::Geometry,
-        settings: &Self::Settings,
-        transform: &TransformSettings,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> Self;
-
-    fn update_transform(&self, queue: &wgpu::Queue, transform: &TransformSettings);
-
-    fn update_settings(&self, queue: &wgpu::Queue, settings: &Self::Settings);
-
-    fn get_total_elements(&self) -> u32;
-
-    fn get_element(
-        &self,
-        _geometry: &Self::Geometry,
-        _transform: &TransformSettings,
-        _camera: &Camera,
-        item: u32,
-        _pos_x: f32,
-        _pos_y: f32,
-    ) -> u32 {
-        item
     }
 }
 

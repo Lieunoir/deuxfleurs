@@ -1,4 +1,4 @@
-use crate::attachment::{NewVectorField, VectorField, VectorFieldSettings};
+use crate::attachment::{NewVectorField, VectorField};
 use crate::camera::Camera;
 use crate::data::*;
 use crate::texture;
@@ -234,7 +234,7 @@ impl RenderPipeline for SurfacePipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        geometry: &Self::Geometry,
+        _geometry: &Self::Geometry,
         settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
