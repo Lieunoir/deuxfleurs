@@ -583,11 +583,9 @@ impl<'a, 'b, Renderer, AttachedData, Context>
     ElementMut<'a, Surface<Renderer, AttachedData>, Context>
 where
     'a: 'b,
-    Surface<Renderer, AttachedData>: ElementTrait<'a, 'b, Data = SurfaceData, Context = Context>,
-    <<Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::Attached as AttachedGeometry<
-        'a,
-        'b,
-    >>::Args: TyEq<Type = (Vec<[f32; 3]>, Vec<[f32; 3]>)>,
+    Surface<Renderer, AttachedData>: ElementTrait<Data = SurfaceData, Context<'a> = Context>,
+    <<Surface<Renderer, AttachedData> as ElementTrait>::Attached as AttachedGeometry>::Args:
+        TyEq<Type = (Vec<[f32; 3]>, Vec<[f32; 3]>)>,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.element.settings.show_edges != show_edges {
@@ -612,8 +610,8 @@ where
     ) -> DataMut<
         'b,
         ColorMap,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
@@ -642,8 +640,8 @@ where
     ) -> DataMut<
         'b,
         VertexScalarSettings,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
@@ -665,8 +663,8 @@ where
     ) -> DataMut<
         'b,
         UVMapSettings,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
@@ -687,8 +685,8 @@ where
     ) -> DataMut<
         'b,
         UVMapSettings,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
-        <Surface<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
     > {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
@@ -711,52 +709,57 @@ where
         self.add_data(name, SurfaceData::Color(colors));
     }
 
-    pub fn add_vertex_vector_field<V: Vertices>(&'b mut self, name: String, vectors: V)
-    // -> &mut VectorFieldSettings {
-    {
+    pub fn add_vertex_vector_field<V: Vertices>(
+        &'b mut self,
+        name: String,
+    vectors: V, // -> &mut VectorFieldSettings {
+    ) -> DataMut<
+        'b,
+        <<Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData> as ElementTrait>::Attached as AttachedGeometry>::Settings,
+        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+    >{
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        self.add_attached_geometry(name.clone(), (offsets, vectors).into());
+        self.add_attached_geometry(name.clone(), (offsets, vectors).into())
+            .convert(|attached| attached.get_settings())
         //&mut self.get_attached_geometry(&name).unwrap().settings
     }
 
-    //pub fn add_face_vector_field<V: Vertices>(
-    //    &mut self,
-    //    name: String,
-    //    vectors: V,
-    //) -> &mut VectorFieldSettings {
-    //    let vectors = vectors.into();
-    //    assert!(vectors.len() == self.geometry.indices.size());
-    //    let offsets: Vec<[f32; 3]> = self
-    //        .geometry
-    //        .indices
-    //        .into_iter()
-    //        .map(|face| {
-    //            let mut res0 = 0.;
-    //            let mut res1 = 0.;
-    //            let mut res2 = 0.;
-    //            for index in face {
-    //                let vertex = self.geometry.vertices[*index as usize];
-    //                res0 += vertex[0];
-    //                res1 += vertex[1];
-    //                res2 += vertex[2];
-    //            }
-    //            res0 = res0 / face.len() as f32;
-    //            res1 = res1 / face.len() as f32;
-    //            res2 = res2 / face.len() as f32;
-    //            [res0, res1, res2]
-    //        })
-    //        .collect();
-    //    let vector_field = NewVectorField::new(name, vectors, offsets);
-    //    self.updater.queued_attached_data.push(vector_field);
-    //    &mut self
-    //        .updater
-    //        .queued_attached_data
-    //        .last_mut()
-    //        .unwrap()
-    //        .settings
-    //}
+    pub fn add_face_vector_field<V: Vertices>(&'b mut self, name: String, vectors: V
+    ) -> DataMut<
+        'b,
+        <<Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData> as ElementTrait>::Attached as AttachedGeometry>::Settings,
+        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+    >{
+        let vectors = vectors.into();
+        assert!(vectors.len() == self.geometry.indices.size());
+        let offsets: Vec<[f32; 3]> = self
+            .geometry
+            .indices
+            .into_iter()
+            .map(|face| {
+                let mut res0 = 0.;
+                let mut res1 = 0.;
+                let mut res2 = 0.;
+                for index in face {
+                    let vertex = self.geometry.vertices[*index as usize];
+                    res0 += vertex[0];
+                    res1 += vertex[1];
+                    res2 += vertex[2];
+                }
+                res0 = res0 / face.len() as f32;
+                res1 = res1 / face.len() as f32;
+                res2 = res2 / face.len() as f32;
+                [res0, res1, res2]
+            })
+            .collect();
+
+        self.add_attached_geometry(name.clone(), (offsets, vectors).into())
+            .convert(|attached| attached.get_settings())
+    }
 }
 
 fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[i8; 4]> {

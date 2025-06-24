@@ -3,6 +3,9 @@ use crate::settings;
 use crate::texture;
 use crate::ui::UiDataElement;
 use crate::updater::AttachedGeometry;
+use crate::updater::DataMut;
+use crate::updater::DataMutTrait;
+use crate::updater::GraphicalContext;
 use crate::updater::GraphicalTransformationContext;
 use crate::updater::NewAttachedGeometry;
 use crate::util;
@@ -65,6 +68,26 @@ impl VectorFieldSettings {
 
     pub fn set_color(&mut self, color: [f32; 4]) {
         self.color.color = color;
+    }
+}
+
+impl<'a, Context, Uniform> DataMut<'a, VectorFieldSettings, Context, Uniform>
+where
+    Self: DataMutTrait,
+{
+    pub fn set_magnitude(&mut self, magnitude: f32) {
+        self.inner.magnitude = magnitude;
+        self.update_data_settings();
+    }
+
+    pub fn set_color(&mut self, color: [f32; 4]) {
+        self.inner.color.color = color;
+        self.update_data_settings();
+    }
+
+    pub fn show(&mut self, show: bool) {
+        self.inner.show = show;
+        self.update_data_settings();
     }
 }
 
@@ -262,32 +285,47 @@ impl VectorField {
     }
 }
 
-impl<'a, 'b> AttachedGeometry<'a, 'b> for NewVectorField {
+impl AttachedGeometry for NewVectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Context = ();
+    type Context<'a> = &'a ();
+    type TransformLayout = ();
+    type Settings = VectorFieldSettings;
 
-    fn new(name: String, args: Self::Args, context: &mut Self::Context) -> Self {
+    fn new<'a>(
+        name: String,
+        args: Self::Args,
+        _context: &mut Self::Context<'a>,
+        _transform_layout: &(),
+    ) -> Self {
         let (vectors, offsets) = args;
         NewVectorField::new(name, vectors, offsets)
     }
+
+    fn get_settings(&mut self) -> &mut Self::Settings {
+        &mut self.settings
+    }
 }
 
-impl<'a, 'b> AttachedGeometry<'a, 'b> for VectorField
-where
-    'a: 'b,
-{
+impl AttachedGeometry for VectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Context = GraphicalTransformationContext<'a, 'b>;
+    type Context<'a> = GraphicalContext<'a>;
+    type TransformLayout = wgpu::BindGroupLayout;
+    type Settings = VectorFieldSettings;
 
-    fn new(name: String, args: Self::Args, context: &mut Self::Context) -> Self {
-        *context.context.refresh_screen = true;
+    fn new<'a>(
+        name: String,
+        args: Self::Args,
+        context: &mut Self::Context<'a>,
+        transform_layout: &Self::TransformLayout,
+    ) -> Self {
+        *context.refresh_screen = true;
         let (vectors, offsets) = args;
         let new_vector_field = NewVectorField::new(name, vectors, offsets);
         VectorField::new(
-            context.context.device,
-            context.context.camera_light_bind_group_layout,
-            context.transform_bind_group_layout,
-            context.context.color_format,
+            context.device,
+            context.camera_light_bind_group_layout,
+            transform_layout,
+            context.color_format,
             new_vector_field,
         )
     }
@@ -345,6 +383,10 @@ where
             //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
             render_pass.draw(0..8, 0..(self.vectors.len() as u32));
         }
+    }
+
+    fn get_settings(&mut self) -> &mut Self::Settings {
+        &mut self.settings
     }
 }
 

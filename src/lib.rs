@@ -109,7 +109,7 @@ mod private {
     where
         Geometry: ElementGeometry,
         Settings: DataUniformBuilder + NamedSettings,
-        Attached: AttachedGeometry<'a, 'b> + NewAttachedGeometry,
+        Attached: AttachedGeometry + NewAttachedGeometry,
     {
         type Args = Geometry::Args;
         type Context = ();
@@ -161,7 +161,7 @@ mod private {
         >
     where
         'a: 'b,
-        Attached: AttachedGeometry<'a, 'b>,
+        Attached: AttachedGeometry,
         Geometry: ElementGeometry,
         Data: DataUniformBuilder + DataSettings + UiDataElement,
         Settings: NamedSettings,

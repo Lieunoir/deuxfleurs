@@ -488,8 +488,8 @@ impl DisplayPointCloud {
 impl<'a, 'b, Renderer, AttachedData, Context>
     ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>
 where
-    PointCloud<Renderer, AttachedData>:
-        ElementTrait<'a, 'b, Data = PointCloudData, Context = Context>,
+    'a: 'b,
+    PointCloud<Renderer, AttachedData>: ElementTrait<Data = PointCloudData, Context<'a> = Context>,
 {
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
         self.element.settings.radius.radius = radius;
@@ -510,8 +510,8 @@ where
     ) -> DataMut<
         'b,
         ColorMap,
-        <PointCloud<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutContext,
-        <PointCloud<Renderer, AttachedData> as ElementTrait<'a, 'b>>::DataMutUniform,
+        &'b mut <PointCloud<Renderer, AttachedData> as ElementTrait>::Context<'a>,
+        <PointCloud<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
@@ -526,7 +526,7 @@ where
             })
     }
 
-    pub fn add_colors<C: Color>(&'b mut self, name: String, datas: C) {
+    pub fn add_colors<C: Color>(&'a mut self, name: String, datas: C) {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         self.add_data(name, PointCloudData::Color(datas));
