@@ -340,10 +340,10 @@ impl AttachedGeometry for VectorField {
     fn draw_ui(
         &mut self,
         ui: &mut egui::Ui,
-        device: &wgpu::Device,
+        _device: &wgpu::Device,
         queue: &wgpu::Queue,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
+        _camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        _color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
         let mut settings_changed = false;
