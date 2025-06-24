@@ -74,6 +74,13 @@ struct JitterUniform {
     y: f32,
     _padding: [u32; 2],
 }
+
+/// Generic structs re exported here for visibility. Refer to aliases for documentation
+pub mod internal {
+    pub use crate::private::InnerState;
+    pub use crate::updater::{Element, ElementMut};
+}
+
 mod private {
     use crate::aabb;
     use crate::data::{DataSettings, DataUniformBuilder};
@@ -84,21 +91,20 @@ mod private {
     use crate::ui::UiDataElement;
     use crate::updater::{
         AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
-        FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry, Render,
-        RenderPipeline, UninitedElement,
+        FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry, RenderPipeline,
+        UninitedElement,
     };
     use crate::Camera;
     use crate::CameraController;
     use crate::CameraUniform;
-    use crate::InnerState;
     use crate::LightUniform;
     use crate::Settings;
     use crate::UserEvent;
     use indexmap::IndexMap;
     use rand::rngs::SmallRng;
     use std::sync::Arc;
-    use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
-    use winit::{dpi::PhysicalSize, event::*, event_loop::EventLoop, window::Window};
+    use winit::event_loop::EventLoopProxy;
+    use winit::window::Window;
     pub trait GeometryHolder<Element> {
         type Args;
         type Context<'a>
@@ -309,96 +315,12 @@ mod private {
         pub(crate) rng: SmallRng,
     }
 
-    //pub trait SuperTrait<
-    //    'a,
-    //    SurfaceRenderer,
-    //    SurfaceAttachedData,
-    //    PointCloudRenderer,
-    //    PointCloudAttachedData,
-    //    SegmentRenderer,
-    //    SegmentAttachedData,
-    //    State,
-    //>
-    //where
-    //    State: ContextBuilder<'a>,
-    //    IndexMap<String, crate::Surface<SurfaceRenderer, SurfaceAttachedData>>: GeometryHolder<
-    //        'a,
-    //        crate::Surface<SurfaceRenderer, SurfaceAttachedData>,
-    //        Args = <crate::SurfaceGeometry as ElementGeometry>::Args,
-    //        Context = <State as ContextBuilder<'a>>::Context,
-    //    >,
-    //    IndexMap<String, crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>>:
-    //        GeometryHolder<
-    //            'a,
-    //            crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>,
-    //            Args = <crate::PointCloudGeometry as ElementGeometry>::Args,
-    //            Context = <State as ContextBuilder<'a>>::Context,
-    //        >,
-    //    IndexMap<String, crate::Segment<SegmentRenderer, SegmentAttachedData>>: GeometryHolder<
-    //        'a,
-    //        crate::Segment<SegmentRenderer, SegmentAttachedData>,
-    //        Args = <crate::SegmentGeometry as ElementGeometry>::Args,
-    //        Context = <State as ContextBuilder<'a>>::Context,
-    //    >,
-    //{
-    //}
-
-    //impl<
-    //        'a,
-    //        SurfaceRenderer,
-    //        SurfaceAttachedData,
-    //        PointCloudRenderer,
-    //        PointCloudAttachedData,
-    //        SegmentRenderer,
-    //        SegmentAttachedData,
-    //        State,
-    //    >
-    //    SuperTrait<
-    //        'a,
-    //        SurfaceRenderer,
-    //        SurfaceAttachedData,
-    //        PointCloudRenderer,
-    //        PointCloudAttachedData,
-    //        SegmentRenderer,
-    //        SegmentAttachedData,
-    //        State,
-    //    >
-    //    for InnerState<
-    //        crate::Surface<SurfaceRenderer, SurfaceAttachedData>,
-    //        crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>,
-    //        crate::Segment<SegmentRenderer, SegmentAttachedData>,
-    //        State,
-    //    >
-    //where
-    //    State: ContextBuilder<'a>,
-    //    IndexMap<String, crate::Surface<SurfaceRenderer, SurfaceAttachedData>>: GeometryHolder<
-    //        'a,
-    //        crate::Surface<SurfaceRenderer, SurfaceAttachedData>,
-    //        Args = <crate::SurfaceGeometry as ElementGeometry>::Args,
-    //        Context = <State as ContextBuilder<'a>>::Context,
-    //    >,
-    //    IndexMap<String, crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>>:
-    //        GeometryHolder<
-    //            'a,
-    //            crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>,
-    //            Args = <crate::PointCloudGeometry as ElementGeometry>::Args,
-    //            Context = <State as ContextBuilder<'a>>::Context,
-    //        >,
-    //    IndexMap<String, crate::Segment<SegmentRenderer, SegmentAttachedData>>: GeometryHolder<
-    //        'a,
-    //        crate::Segment<SegmentRenderer, SegmentAttachedData>,
-    //        Args = <crate::SegmentGeometry as ElementGeometry>::Args,
-    //        Context = <State as ContextBuilder<'a>>::Context,
-    //    >,
-    //{
-    //}
-}
-
-pub struct InnerState<Surface, PointCloud, Segment, State> {
-    pub(crate) surfaces: IndexMap<String, Surface>,
-    pub(crate) clouds: IndexMap<String, PointCloud>,
-    pub(crate) segments: IndexMap<String, Segment>,
-    pub(crate) state: State,
+    pub struct InnerState<Surface, PointCloud, Segment, State> {
+        pub(crate) surfaces: IndexMap<String, Surface>,
+        pub(crate) clouds: IndexMap<String, PointCloud>,
+        pub(crate) segments: IndexMap<String, Segment>,
+        pub(crate) state: State,
+    }
 }
 
 impl private::ContextBuilder for () {
@@ -412,43 +334,6 @@ pub use crate::point_cloud::{PointCloud, PointCloudMut};
 pub use crate::segment::{Segment, SegmentMut};
 pub use crate::surface::{Surface, SurfaceMut};
 
-struct Wrapper<
-    SurfaceRenderer,
-    SurfaceAttachedData,
-    PointCloudRenderer,
-    PointCloudAttachedData,
-    SegmentRenderer,
-    SegmentAttachedData,
-    State,
-> where
-    State: private::ContextBuilder,
-    for<'a> IndexMap<String, Surface<SurfaceRenderer, SurfaceAttachedData>>:
-        private::GeometryHolder<
-            Surface<SurfaceRenderer, SurfaceAttachedData>,
-            Args = <SurfaceGeometry as ElementGeometry>::Args,
-            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
-        >,
-    for<'a> IndexMap<String, PointCloud<PointCloudRenderer, PointCloudAttachedData>>:
-        private::GeometryHolder<
-            PointCloud<PointCloudRenderer, PointCloudAttachedData>,
-            Args = <PointCloudGeometry as ElementGeometry>::Args,
-            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
-        >,
-    for<'a> IndexMap<String, Segment<SegmentRenderer, SegmentAttachedData>>:
-        private::GeometryHolder<
-            Segment<SegmentRenderer, SegmentAttachedData>,
-            Args = <SegmentGeometry as ElementGeometry>::Args,
-            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
-        >,
-{
-    inner: InnerState<
-        Surface<SurfaceRenderer, SurfaceAttachedData>,
-        PointCloud<PointCloudRenderer, PointCloudAttachedData>,
-        Segment<SegmentRenderer, SegmentAttachedData>,
-        State,
-    >,
-}
-
 impl<
         SurfaceRenderer,
         SurfaceAttachedData,
@@ -458,7 +343,7 @@ impl<
         SegmentAttachedData,
         State,
     >
-    InnerState<
+    private::InnerState<
         Surface<SurfaceRenderer, SurfaceAttachedData>,
         PointCloud<PointCloudRenderer, PointCloudAttachedData>,
         Segment<SegmentRenderer, SegmentAttachedData>,
@@ -576,7 +461,8 @@ where
     }
 }
 
-pub type InitialState = InnerState<UninitedSurface, UninitedPointCloud, UninitedSegment, ()>;
+pub type InitialState =
+    private::InnerState<UninitedSurface, UninitedPointCloud, UninitedSegment, ()>;
 
 /// Creates a handle to add elements to. Needs to be run after.
 #[must_use]
@@ -631,62 +517,7 @@ impl private::ContextBuilder for private::GraphicalState {
 }
 
 pub type RunningState =
-    InnerState<DisplaySurface, DisplayPointCloud, DisplaySegment, private::GraphicalState>;
-
-//pub struct RunningState {
-//    settings: Settings,
-//
-//    window: Arc<Window>,
-//    proxy: EventLoopProxy<UserEvent>,
-//    // Graphic context
-//    surface: wgpu::Surface<'static>,
-//    device: wgpu::Device,
-//    queue: wgpu::Queue,
-//    config: wgpu::SurfaceConfiguration,
-//    // Window size
-//    size: winit::dpi::PhysicalSize<u32>,
-//    // Textures
-//    depth_texture: texture::Texture,
-//    // Screenshots
-//    screenshoter: screenshot::Screenshoter,
-//    screenshot: bool,
-//
-//    // Keyboard
-//    ctrl_pressed: bool,
-//    // Camera
-//    camera: Camera,
-//    camera_controller: CameraController,
-//    camera_uniform: CameraUniform,
-//    camera_buffer: wgpu::Buffer,
-//    // 3D Model
-//    surfaces: IndexMap<String, DisplaySurface>,
-//    //Points
-//    clouds: IndexMap<String, DisplayPointCloud>,
-//    //Segments
-//    segments: IndexMap<String, DisplaySegment>,
-//    //Volume meshes
-//    // Lighting
-//    light_uniform: LightUniform,
-//    light_buffer: wgpu::Buffer,
-//    jitter_buffer: wgpu::Buffer,
-//    camera_light_bind_group_layout: wgpu::BindGroupLayout,
-//    camera_light_bind_group: wgpu::BindGroup,
-//    // egui
-//    //ui: ui::UI,
-//    //time: std::time::Instant,
-//    dirty: bool,
-//    egui_dirty: bool,
-//    should_resize: bool,
-//
-//    // Item picker
-//    picker: picker::Picker,
-//
-//    copy: deferred::TextureCopy,
-//    pbr_renderer: deferred::PBR,
-//    ground: deferred::Ground,
-//    taa_counter: u8,
-//    aabb: aabb::SBV,
-//}
+    private::InnerState<DisplaySurface, DisplayPointCloud, DisplaySegment, private::GraphicalState>;
 
 /// Starting point to build the app.
 struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
