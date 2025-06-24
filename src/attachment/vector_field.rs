@@ -1,5 +1,4 @@
 use crate::data::*;
-use crate::settings;
 use crate::texture;
 use crate::ui::UiDataElement;
 use crate::updater::AttachedGeometry;
@@ -290,10 +289,10 @@ impl AttachedGeometry for NewVectorField {
     type TransformLayout = ();
     type Settings = VectorFieldSettings;
 
-    fn new<'a>(
+    fn new(
         name: String,
         args: Self::Args,
-        _context: &mut Self::Context<'a>,
+        _context: &mut Self::Context<'_>,
         _transform_layout: &(),
     ) -> Self {
         let (vectors, offsets) = args;
@@ -311,10 +310,10 @@ impl AttachedGeometry for VectorField {
     type TransformLayout = wgpu::BindGroupLayout;
     type Settings = VectorFieldSettings;
 
-    fn new<'a>(
+    fn new(
         name: String,
         args: Self::Args,
-        context: &mut Self::Context<'a>,
+        context: &mut Self::Context<'_>,
         transform_layout: &Self::TransformLayout,
     ) -> Self {
         *context.refresh_screen = true;
@@ -370,9 +369,9 @@ impl AttachedGeometry for VectorField {
         }
     }
 
-    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'c: 'd,
+        'a: 'b,
     {
         if self.settings.show {
             render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
