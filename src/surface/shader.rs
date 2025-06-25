@@ -111,44 +111,6 @@ fn vs_main(
     return out;
 }}
 
-const PI: f32 = 3.14159;
-
-// PBR functions taken from https://learnopengl.com/PBR/Theory
-fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {{
-    let a2     = a*a;
-    let NdotH  = max(dot(N, H), 0.0);
-    let NdotH2 = NdotH*NdotH;
-
-    let nom    = a2;
-    var denom  = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom        = PI * denom * denom;
-
-    return nom / denom;
-}}
-
-fn GeometrySchlickGGX(NdotV: f32, k: f32) -> f32
-{{
-    let nom   = NdotV;
-    let denom = NdotV * (1.0 - k) + k;
-
-    return nom / denom;
-}}
-
-fn GeometrySmith(N: vec3<f32>, V: vec3<f32>, L: vec3<f32>, k: f32) -> f32
-{{
-    let NdotV = max(dot(N, V), 0.0);
-    let NdotL = max(dot(N, L), 0.0);
-    let ggx1 = GeometrySchlickGGX(NdotV, k);
-    let ggx2 = GeometrySchlickGGX(NdotL, k);
-
-    return ggx1 * ggx2;
-}}
-
-fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32>
-{{
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}}
-
 struct MaterialOutput {{
     @location(0) albedo: vec4<f32>,
     @location(1) normal: vec4<f32>,
