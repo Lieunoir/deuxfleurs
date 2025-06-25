@@ -116,37 +116,37 @@ mod private {
     use winit::event_loop::EventLoopProxy;
     use winit::window::Window;
 
-    pub trait ContainerContextGiver<'a, Element> {
-        type Context;
-        fn get_container_mut(&'a mut self) -> (&'a mut IndexMap<String, Element>, Self::Context);
-        fn get_container(&'a self) -> &'a IndexMap<String, Element>;
+    pub trait ContextHolder {
+        type Context<'a>;
     }
 
-    pub trait GeometryHolder<'a, Element>: ContainerContextGiver<'a, Element> {
+    pub trait ContainerContextGiver<Element>: ContextHolder {
+        fn get_container_mut(&mut self) -> (&mut IndexMap<String, Element>, Self::Context<'_>);
+        fn get_container(&self) -> &IndexMap<String, Element>;
+    }
+
+    pub trait GeometryHolder<Element>: ContainerContextGiver<Element> {
         type Args;
 
         fn register(
-            &'a mut self,
+            &mut self,
             name: String,
             args: Self::Args,
-        ) -> ElementMut<'a, Element, <Self as ContainerContextGiver<'a, Element>>::Context>;
+        ) -> ElementMut<'_, Element, Self::Context<'_>>;
 
         fn get_element_mut(
-            &'a mut self,
+            &mut self,
             name: &str,
-        ) -> Option<ElementMut<'a, Element, <Self as ContainerContextGiver<'a, Element>>::Context>>;
+        ) -> Option<ElementMut<'_, Element, Self::Context<'_>>>;
 
-        fn get_element(&'a self, name: &str) -> Option<&'a Element>;
+        fn get_element(&self, name: &str) -> Option<&'_ Element>;
     }
 
-    impl<'a, Geometry, Settings, Data, Attached, T>
-        GeometryHolder<'a, UninitedElement<Geometry, Settings, Data, Attached>> for T
+    impl<Geometry, Settings, Data, Attached, T>
+        GeometryHolder<UninitedElement<Geometry, Settings, Data, Attached>> for T
     where
-        T: ContainerContextGiver<
-            'a,
-            UninitedElement<Geometry, Settings, Data, Attached>,
-            Context = (),
-        >,
+        for<'a> T: ContextHolder<Context<'a> = ()>,
+        T: ContainerContextGiver<UninitedElement<Geometry, Settings, Data, Attached>>,
         Geometry: ElementGeometry,
         Settings: DataUniformBuilder + NamedSettings,
         Attached: AttachedGeometry + NewAttachedGeometry,
@@ -154,10 +154,10 @@ mod private {
         type Args = Geometry::Args;
 
         fn register(
-            &'a mut self,
+            &mut self,
             name: String,
             args: Self::Args,
-        ) -> ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context>
+        ) -> ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>>
         {
             let element = Element::new_bare(name.clone(), args);
             let container = self.get_container_mut().0;
@@ -169,10 +169,10 @@ mod private {
         }
 
         fn get_element_mut(
-            &'a mut self,
+            &mut self,
             name: &str,
         ) -> Option<
-            ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context>,
+            ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>>,
         > {
             self.get_container_mut()
                 .0
@@ -184,23 +184,20 @@ mod private {
         }
 
         fn get_element(
-            &'a self,
+            &self,
             name: &str,
-        ) -> Option<&'a UninitedElement<Geometry, Settings, Data, Attached>> {
+        ) -> Option<&'_ UninitedElement<Geometry, Settings, Data, Attached>> {
             self.get_container().get(name)
         }
     }
 
-    impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached, T>
-        GeometryHolder<
-            'a,
-            DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-        > for T
+    impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached, T>
+        GeometryHolder<DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>>
+        for T
     where
+        for<'a> T: ContextHolder<Context<'a> = GraphicalContext<'a>>,
         T: ContainerContextGiver<
-            'a,
             DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-            Context = GraphicalContext<'a>,
         >,
         Attached: AttachedGeometry,
         Geometry: ElementGeometry,
@@ -214,13 +211,12 @@ mod private {
         type Args = Geometry::Args;
 
         fn register(
-            &'a mut self,
+            &mut self,
             name: String,
             args: Self::Args,
         ) -> ElementMut<
-            'a,
             DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-            Self::Context,
+            Self::Context<'_>,
         > {
             let (container, context) = self.get_container_mut();
             let element = Element::new(
@@ -239,13 +235,12 @@ mod private {
         }
 
         fn get_element_mut(
-            &'a mut self,
+            &mut self,
             name: &str,
         ) -> Option<
             ElementMut<
-                'a,
                 DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-                Self::Context,
+                Self::Context<'_>,
             >,
         > {
             let (container, context) = self.get_container_mut();
@@ -255,9 +250,9 @@ mod private {
         }
 
         fn get_element(
-            &'a self,
+            &self,
             name: &str,
-        ) -> Option<&'a DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>>
+        ) -> Option<&DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>>
         {
             self.get_container().get(name)
         }
@@ -316,16 +311,18 @@ mod private {
         pub(crate) rng: SmallRng,
     }
 
-    impl<'a> ContainerContextGiver<'a, DisplaySurface> for InnerGraphicalState {
-        type Context = GraphicalContext<'a>;
+    impl ContextHolder for InnerGraphicalState {
+        type Context<'a> = GraphicalContext<'a>;
+    }
 
-        fn get_container(&'a self) -> &'a IndexMap<String, DisplaySurface> {
+    impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
+        fn get_container(&self) -> &IndexMap<String, DisplaySurface> {
             &self.surfaces
         }
 
         fn get_container_mut(
-            &'a mut self,
-        ) -> (&'a mut IndexMap<String, DisplaySurface>, Self::Context) {
+            &mut self,
+        ) -> (&mut IndexMap<String, DisplaySurface>, Self::Context<'_>) {
             (
                 &mut self.surfaces,
                 Self::Context {
@@ -341,16 +338,14 @@ mod private {
         }
     }
 
-    impl<'a> ContainerContextGiver<'a, DisplayPointCloud> for InnerGraphicalState {
-        type Context = GraphicalContext<'a>;
-
-        fn get_container(&'a self) -> &'a IndexMap<String, DisplayPointCloud> {
+    impl ContainerContextGiver<DisplayPointCloud> for InnerGraphicalState {
+        fn get_container(&self) -> &IndexMap<String, DisplayPointCloud> {
             &self.clouds
         }
 
         fn get_container_mut(
-            &'a mut self,
-        ) -> (&'a mut IndexMap<String, DisplayPointCloud>, Self::Context) {
+            &mut self,
+        ) -> (&mut IndexMap<String, DisplayPointCloud>, Self::Context<'_>) {
             (
                 &mut self.clouds,
                 Self::Context {
@@ -366,16 +361,14 @@ mod private {
         }
     }
 
-    impl<'a> ContainerContextGiver<'a, DisplaySegment> for InnerGraphicalState {
-        type Context = GraphicalContext<'a>;
-
-        fn get_container(&'a self) -> &'a IndexMap<String, DisplaySegment> {
+    impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
+        fn get_container(&self) -> &IndexMap<String, DisplaySegment> {
             &self.segments
         }
 
         fn get_container_mut(
-            &'a mut self,
-        ) -> (&'a mut IndexMap<String, DisplaySegment>, Self::Context) {
+            &mut self,
+        ) -> (&mut IndexMap<String, DisplaySegment>, Self::Context<'_>) {
             (
                 &mut self.segments,
                 Self::Context {
@@ -391,13 +384,8 @@ mod private {
         }
     }
 
-    impl<'a> StateTraitType<'a> for InnerGraphicalState {
-        type Context = GraphicalContext<'a>;
-    }
-
-    impl<'a>
+    impl
         StateTrait<
-            'a,
             Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>,
             VectorField,
             Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>,
@@ -414,82 +402,62 @@ mod private {
         pub(crate) segments: IndexMap<String, UninitedSegment>,
     }
 
-    impl<'a> ContainerContextGiver<'a, UninitedSurface> for InnerBareState {
-        type Context = ();
+    impl ContextHolder for InnerBareState {
+        type Context<'a> = ();
+    }
 
-        fn get_container(&'a self) -> &'a IndexMap<String, UninitedSurface> {
+    impl ContainerContextGiver<UninitedSurface> for InnerBareState {
+        fn get_container(&self) -> &IndexMap<String, UninitedSurface> {
             &self.surfaces
         }
 
-        fn get_container_mut(&'a mut self) -> (&'a mut IndexMap<String, UninitedSurface>, ()) {
+        fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSurface>, ()) {
             (&mut self.surfaces, ())
         }
     }
 
-    impl<'a> ContainerContextGiver<'a, UninitedPointCloud> for InnerBareState {
-        type Context = ();
-
-        fn get_container(&'a self) -> &'a IndexMap<String, UninitedPointCloud> {
+    impl ContainerContextGiver<UninitedPointCloud> for InnerBareState {
+        fn get_container(&self) -> &IndexMap<String, UninitedPointCloud> {
             &self.clouds
         }
 
-        fn get_container_mut(&'a mut self) -> (&'a mut IndexMap<String, UninitedPointCloud>, ()) {
+        fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedPointCloud>, ()) {
             (&mut self.clouds, ())
         }
     }
 
-    impl<'a> ContainerContextGiver<'a, UninitedSegment> for InnerBareState {
-        type Context = ();
-
-        fn get_container(&'a self) -> &'a IndexMap<String, UninitedSegment> {
+    impl ContainerContextGiver<UninitedSegment> for InnerBareState {
+        fn get_container(&self) -> &IndexMap<String, UninitedSegment> {
             &self.segments
         }
 
-        fn get_container_mut(&'a mut self) -> (&'a mut IndexMap<String, UninitedSegment>, ()) {
+        fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSegment>, ()) {
             (&mut self.segments, ())
         }
     }
 
-    impl<'a> StateTraitType<'a> for InnerBareState {
-        type Context = ();
-    }
-
-    impl<'a> StateTrait<'a, (), NewVectorField, (), (), (), ()> for InnerBareState {}
-
-    pub trait StateTraitType<'a> {
-        type Context;
-    }
+    impl StateTrait<(), NewVectorField, (), (), (), ()> for InnerBareState {}
 
     pub trait StateTrait<
-        'a,
         SurfaceRenderer,
         SurfaceAttachedData,
         PointCloudRenderer,
         PointCloudAttachedData,
         SegmentRenderer,
         SegmentAttachedData,
-    >:
-        StateTraitType<'a>
-        + GeometryHolder<
-            'a,
+    >: GeometryHolder<
             Surface<SurfaceRenderer, SurfaceAttachedData>,
             Args = (SurfaceIndices, Vec<[f32; 3]>),
-            Context = <Self as StateTraitType<'a>>::Context,
-        > + GeometryHolder<
-            'a,
-            PointCloud<PointCloudRenderer, PointCloudAttachedData>,
-            Args = Vec<[f32; 3]>,
-            Context = <Self as StateTraitType<'a>>::Context,
-        > + GeometryHolder<
-            'a,
+        > + GeometryHolder<PointCloud<PointCloudRenderer, PointCloudAttachedData>, Args = Vec<[f32; 3]>>
+        + GeometryHolder<
             Segment<SegmentRenderer, SegmentAttachedData>,
             Args = (Vec<[f32; 3]>, Vec<[u32; 2]>),
-            Context = <Self as StateTraitType<'a>>::Context,
         >
     {
     }
 }
 
+// Ugly, wish I had some way to avoid this
 pub struct State<
     T,
     SurfaceRenderer,
@@ -509,7 +477,6 @@ pub struct State<
 );
 
 impl<
-        'a,
         SurfaceRenderer,
         SurfaceAttachedData,
         PointCloudRenderer,
@@ -528,16 +495,14 @@ impl<
         SegmentAttachedData,
     >
 where
-    T: private::StateTraitType<'a>
-        + private::StateTrait<
-            'a,
-            SurfaceRenderer,
-            SurfaceAttachedData,
-            PointCloudRenderer,
-            PointCloudAttachedData,
-            SegmentRenderer,
-            SegmentAttachedData,
-        >,
+    T: private::StateTrait<
+        SurfaceRenderer,
+        SurfaceAttachedData,
+        PointCloudRenderer,
+        PointCloudAttachedData,
+        SegmentRenderer,
+        SegmentAttachedData,
+    >,
 {
     fn new_inner(inner: T) -> Self {
         Self(
@@ -552,71 +517,47 @@ where
     }
 
     pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
-        &'a mut self,
+        &mut self,
         name: String,
         vertices: V,
         indices: I,
-    ) -> SurfaceMut<
-        'a,
-        SurfaceRenderer,
-        SurfaceAttachedData,
-        <T as private::StateTraitType<'a>>::Context,
-    > {
+    ) -> SurfaceMut<SurfaceRenderer, SurfaceAttachedData, T::Context<'_>> {
         self.0.register(name, (indices.into(), vertices.into()))
     }
 
     pub fn get_surface_mut(
-        &'a mut self,
+        &mut self,
         name: &str,
-    ) -> Option<
-        SurfaceMut<
-            'a,
-            SurfaceRenderer,
-            SurfaceAttachedData,
-            <T as private::StateTraitType<'a>>::Context,
-        >,
-    > {
+    ) -> Option<SurfaceMut<SurfaceRenderer, SurfaceAttachedData, T::Context<'_>>> {
         self.0.get_element_mut(name)
     }
 
     pub fn get_surface(
-        &'a self,
+        &self,
         name: &str,
-    ) -> Option<&'a Surface<SurfaceRenderer, SurfaceAttachedData>> {
+    ) -> Option<&Surface<SurfaceRenderer, SurfaceAttachedData>> {
         self.0.get_element(name)
     }
 
     pub fn register_point_cloud<V: Vertices>(
-        &'a mut self,
+        &mut self,
         name: String,
         positions: V,
-    ) -> PointCloudMut<
-        'a,
-        PointCloudRenderer,
-        PointCloudAttachedData,
-        <T as private::StateTraitType<'a>>::Context,
-    > {
+    ) -> PointCloudMut<PointCloudRenderer, PointCloudAttachedData, T::Context<'_>> {
         self.0.register(name, positions.into())
     }
 
     pub fn get_point_cloud_mut(
-        &'a mut self,
+        &mut self,
         name: &str,
-    ) -> Option<
-        PointCloudMut<
-            'a,
-            PointCloudRenderer,
-            PointCloudAttachedData,
-            <T as private::StateTraitType<'a>>::Context,
-        >,
-    > {
+    ) -> Option<PointCloudMut<PointCloudRenderer, PointCloudAttachedData, T::Context<'_>>> {
         self.0.get_element_mut(name)
     }
 
     pub fn get_point_cloud(
-        &'a self,
+        &self,
         name: &str,
-    ) -> Option<&'a PointCloud<PointCloudRenderer, PointCloudAttachedData>> {
+    ) -> Option<&PointCloud<PointCloudRenderer, PointCloudAttachedData>> {
         self.0.get_element(name)
     }
 
@@ -626,37 +567,25 @@ where
     /// * `positions`: segments extremities
     /// * `connections`: segments denoted by extremities indices
     pub fn register_segment<V: Vertices>(
-        &'a mut self,
+        &mut self,
         name: String,
         positions: V,
         connections: Vec<[u32; 2]>,
-    ) -> SegmentMut<
-        'a,
-        SegmentRenderer,
-        SegmentAttachedData,
-        <T as private::StateTraitType<'a>>::Context,
-    > {
+    ) -> SegmentMut<SegmentRenderer, SegmentAttachedData, T::Context<'_>> {
         self.0.register(name, (positions.into(), connections))
     }
 
     pub fn get_segment_mut(
-        &'a mut self,
+        &mut self,
         name: &str,
-    ) -> Option<
-        SegmentMut<
-            'a,
-            SegmentRenderer,
-            SegmentAttachedData,
-            <T as private::StateTraitType<'a>>::Context,
-        >,
-    > {
+    ) -> Option<SegmentMut<SegmentRenderer, SegmentAttachedData, T::Context<'_>>> {
         self.0.get_element_mut(name)
     }
 
     pub fn get_segment(
-        &'a self,
+        &self,
         name: &str,
-    ) -> Option<&'a Segment<SegmentRenderer, SegmentAttachedData>> {
+    ) -> Option<&Segment<SegmentRenderer, SegmentAttachedData>> {
         self.0.get_element(name)
     }
 }
