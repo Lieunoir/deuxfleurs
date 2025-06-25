@@ -4,11 +4,6 @@ use crate::ui::UiDataElement;
 use indexmap::IndexMap;
 use std::ops::Deref;
 
-// Picker now uses same geometry as base
-//
-// Problems: mut ref in mut ver implies only one non mut borrow at a time
-//   how to make sure data uniform modification -> only given when created for now, so not yet built
-
 pub struct GraphicalContext<'a> {
     pub(crate) settings: &'a crate::Settings,
     pub(crate) device: &'a wgpu::Device,
@@ -41,11 +36,18 @@ pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attach
 
 pub trait ElementTrait {
     type Data;
+    type Geometry: ElementGeometry;
     type Context<'a>;
     type DataMutUniform<'a>
     where
         Self: 'a;
     type Attached: AttachedGeometry;
+
+    fn replace(
+        &mut self,
+        args: <Self::Geometry as ElementGeometry>::Args,
+        context: &mut Self::Context<'_>,
+    );
 
     fn show(&mut self, show: bool, context: &mut Self::Context<'_>);
 
@@ -85,6 +87,7 @@ where
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
 {
     type Data = Data;
+    type Geometry = Geometry;
     type Context<'a> = GraphicalContext<'a>;
     type DataMutUniform<'a>
         = &'a Option<DataUniform>
@@ -97,6 +100,27 @@ where
         Settings: 'a,
         Data: 'a;
     type Attached = AttachedG;
+
+    fn replace(
+        &mut self,
+        args: <Self::Geometry as ElementGeometry>::Args,
+        context: &mut Self::Context<'_>,
+    ) {
+        let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
+        if self.geometry().can_be_replaced_by(&new_geometry) {
+            self.renderer.fixed = Fixed::initialize(context.device, &new_geometry);
+            self.geometry = new_geometry;
+        } else {
+            *self = Self::new_with_geometry(
+                self.name.clone(),
+                new_geometry,
+                context.device,
+                context.camera_light_bind_group_layout,
+                context.counter_bind_group_layout,
+                context.color_format,
+            )
+        }
+    }
 
     fn show(&mut self, show: bool, context: &mut Self::Context<'_>) {
         if self.show != show {
@@ -206,10 +230,12 @@ impl<Geometry, Settings, Data, AttachedG> ElementTrait
     for UninitedElement<Geometry, Settings, Data, AttachedG>
 where
     Geometry: ElementGeometry,
-    for<'a> AttachedG: AttachedGeometry<Context<'a> = &'a (), TransformLayout = ()>,
-    Data: DataUniformBuilder + DataSettings + UiDataElement,
+    for<'a> AttachedG: AttachedGeometry<Context<'a> = (), TransformLayout = ()>,
+    Data: DataSettings,
     Settings: NamedSettings,
+    AttachedG: NewAttachedGeometry,
 {
+    type Geometry = Geometry;
     type Attached = AttachedG;
     type Data = Data;
     type Context<'a> = ();
@@ -220,6 +246,19 @@ where
         Geometry: 'a,
         Settings: 'a,
         Data: 'a;
+
+    fn replace(
+        &mut self,
+        args: <Self::Geometry as ElementGeometry>::Args,
+        _context: &mut Self::Context<'_>,
+    ) {
+        let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
+        if self.geometry().can_be_replaced_by(&new_geometry) {
+            self.geometry = new_geometry;
+        } else {
+            *self = Self::new_bare_with_geometry(self.name.clone(), new_geometry)
+        }
+    }
 
     fn show(&mut self, show: bool, _context: &mut Self::Context<'_>) {
         self.show = show;
@@ -251,7 +290,7 @@ where
         args: <Self::Attached as AttachedGeometry>::Args,
         context: &'b mut Self::Context<'a>,
     ) -> DataMut<'b, Self::Attached, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
-        let geometry = AttachedG::new(name.clone(), args, &mut &(), &());
+        let geometry = AttachedG::new(name.clone(), args, &mut (), &());
         self.attached_data.insert(name.clone(), geometry);
         DataMut {
             inner: self.attached_data.get_mut(&name).unwrap(),
@@ -308,6 +347,10 @@ where
 {
     pub(crate) fn new_bare(name: String, args: Geometry::Args) -> Self {
         let geometry = Geometry::new(args);
+        Self::new_bare_with_geometry(name, geometry)
+    }
+
+    pub(crate) fn new_bare_with_geometry(name: String, geometry: Geometry) -> Self {
         let transform = TransformSettings::default();
         let settings = Settings::default().set_name(&name);
         let sbv = SBV::new(geometry.get_positions());
@@ -409,6 +452,24 @@ where
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let geometry = Geometry::new(args);
+        Self::new_with_geometry(
+            name,
+            geometry,
+            device,
+            camera_light_bind_group_layout,
+            counter_bind_group_layout,
+            color_format,
+        )
+    }
+
+    pub(crate) fn new_with_geometry(
+        name: String,
+        geometry: Geometry,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self {
         let transform = TransformSettings::default();
         let settings = Settings::default().set_name(&name);
         let renderer = Renderer::new(
@@ -762,7 +823,7 @@ pub trait NewAttachedGeometry {
 
 impl AttachedGeometry for () {
     type Args = ();
-    type Context<'a> = &'a ();
+    type Context<'a> = ();
     type TransformLayout = ();
     type Settings = ();
 
@@ -780,8 +841,10 @@ impl AttachedGeometry for () {
     }
 }
 
+pub struct EmptyAttached(());
+
 impl NewAttachedGeometry for () {
-    type UpgradedAttachedGeometry = ();
+    type UpgradedAttachedGeometry = EmptyAttached;
 
     fn init(
         self,
@@ -790,6 +853,27 @@ impl NewAttachedGeometry for () {
         _transform_bind_group_layout: &wgpu::BindGroupLayout,
         _color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry {
+        EmptyAttached(())
+    }
+}
+
+impl AttachedGeometry for EmptyAttached {
+    type Args = ();
+    type Context<'a> = GraphicalContext<'a>;
+    type TransformLayout = wgpu::BindGroupLayout;
+    type Settings = ();
+
+    fn new(
+        _name: String,
+        _args: Self::Args,
+        _context: &mut Self::Context<'_>,
+        _transform_layout: &Self::TransformLayout,
+    ) -> Self {
+        EmptyAttached(())
+    }
+
+    fn get_settings(&mut self) -> &mut Self::Settings {
+        &mut self.0
     }
 }
 
@@ -964,6 +1048,10 @@ pub trait ElementGeometry {
     type Args;
 
     fn new(args: Self::Args) -> Self;
+
+    fn can_be_replaced_by(&self, _other: &Self) -> bool {
+        false
+    }
 
     fn get_positions(&self) -> &[[f32; 3]];
 

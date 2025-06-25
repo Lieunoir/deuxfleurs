@@ -126,6 +126,10 @@ impl ElementGeometry for SurfaceGeometry {
     fn get_total_elements(&self) -> u32 {
         self.indices.tot_triangles() as u32
     }
+
+    fn can_be_replaced_by(&self, other: &Self) -> bool {
+        self.vertices.len() == other.vertices.len() && self.indices == other.indices
+    }
 }
 
 pub struct SurfaceFixedRenderer {
@@ -445,27 +449,6 @@ pub type UninitedSurface = Surface<(), NewVectorField>;
 pub type DisplaySurface = Surface<SurfaceRenderer, VectorField>;
 
 impl DisplaySurface {
-    pub(crate) fn change_vertices(
-        &mut self,
-        vertices: Vec<[f32; 3]>,
-        indices: SurfaceIndices,
-        device: &wgpu::Device,
-    ) {
-        let mut internal_indices = Vec::new();
-        for face in &indices {
-            for i in 1..face.len() - 1 {
-                internal_indices.push([face[0], face[i], face[i + 1]]);
-            }
-        }
-        self.geometry = SurfaceGeometry {
-            num_elements: indices.size() as u32,
-            indices,
-            vertices,
-            internal_indices,
-        };
-        self.renderer.fixed = SurfaceFixedRenderer::initialize(device, &self.geometry);
-    }
-
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
         if element < self.geometry.vertices.len() {
             ui.label(format!("Picked vertex number {}", element));

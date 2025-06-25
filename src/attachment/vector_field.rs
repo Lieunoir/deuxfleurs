@@ -285,7 +285,7 @@ impl VectorField {
 
 impl AttachedGeometry for NewVectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Context<'a> = &'a ();
+    type Context<'a> = ();
     type TransformLayout = ();
     type Settings = VectorFieldSettings;
 
