@@ -374,6 +374,10 @@ impl ElementGeometry for SegmentGeometry {
     fn get_total_elements(&self) -> u32 {
         self.positions.len() as u32 + self.connections.len() as u32
     }
+
+    fn can_be_replaced_by(&self, other: &Self) -> bool {
+        self.positions.len() == other.positions.len() && self.connections == other.connections
+    }
 }
 
 pub struct SegmentFixedRenderer {
@@ -736,7 +740,7 @@ pub type Segment<Renderer, AttachedData> =
     Element<SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData>;
 
 pub type UninitedSegment = Segment<(), ()>;
-pub type DisplaySegment = Segment<SegmentRenderer, ()>;
+pub type DisplaySegment = Segment<SegmentRenderer, EmptyAttached>;
 
 impl DisplaySegment {
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {

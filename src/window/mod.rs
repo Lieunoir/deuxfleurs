@@ -24,8 +24,8 @@ use crate::ui::UiDataElement;
 
 use crate::updater::{
     AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
-    FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry, RenderPipeline, Renderer,
-    UninitedElement,
+    EmptyAttached, FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry,
+    RenderPipeline, Renderer, UninitedElement,
 };
 use crate::Settings;
 use egui;
@@ -92,7 +92,9 @@ where
     T: ContainerContextGiver<UninitedElement<Geometry, Settings, Data, Attached>>,
     Geometry: ElementGeometry,
     Settings: DataUniformBuilder + NamedSettings,
-    Attached: AttachedGeometry + NewAttachedGeometry,
+    Data: DataSettings,
+    for<'a> Attached:
+        AttachedGeometry<Context<'a> = (), TransformLayout = ()> + NewAttachedGeometry,
 {
     type Args = Geometry::Args;
 
@@ -101,12 +103,22 @@ where
         name: String,
         args: Self::Args,
     ) -> ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
-        let element = Element::new_bare(name.clone(), args);
+        use crate::updater::ElementTrait;
         let container = self.get_container_mut().0;
-        container.insert(name.clone(), element);
-        ElementMut {
-            element: container.get_mut(&name).unwrap(),
-            context: (),
+        if container.contains_key(&name) {
+            let element = container.get_mut(&name).unwrap();
+            element.replace(args, &mut ());
+            ElementMut {
+                element,
+                context: (),
+            }
+        } else {
+            let element = Element::new_bare(name.clone(), args);
+            container.insert(name.clone(), element);
+            ElementMut {
+                element: container.get_mut(&name).unwrap(),
+                context: (),
+            }
         }
     }
 
@@ -139,7 +151,10 @@ where
     T: ContainerContextGiver<
         DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
     >,
-    Attached: AttachedGeometry,
+    for<'a> Attached: AttachedGeometry<
+        Context<'a> = GraphicalContext<'a>,
+        TransformLayout = wgpu::BindGroupLayout,
+    >,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -157,19 +172,29 @@ where
         DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
         Self::Context<'_>,
     > {
-        let (container, context) = self.get_container_mut();
-        let element = Element::new(
-            name.clone(),
-            args,
-            context.device,
-            context.camera_light_bind_group_layout,
-            context.counter_bind_group_layout,
-            context.color_format,
-        );
-        container.insert(name.clone(), element);
-        ElementMut {
-            element: container.get_mut(&name).unwrap(),
-            context,
+        use crate::updater::ElementTrait;
+        let (container, mut context) = self.get_container_mut();
+        if container.contains_key(&name) {
+            let element = container.get_mut(&name).unwrap();
+            element.replace(args, &mut context);
+            ElementMut {
+                element,
+                context: context,
+            }
+        } else {
+            let element = Element::new(
+                name.clone(),
+                args,
+                context.device,
+                context.camera_light_bind_group_layout,
+                context.counter_bind_group_layout,
+                context.color_format,
+            );
+            container.insert(name.clone(), element);
+            ElementMut {
+                element: container.get_mut(&name).unwrap(),
+                context,
+            }
         }
     }
 
@@ -254,9 +279,9 @@ impl ContextHolder for InnerGraphicalState {
     type SurfaceAttachedData = VectorField;
     type PointCloudRenderer =
         Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>;
-    type PointCloudAttachedData = ();
+    type PointCloudAttachedData = EmptyAttached;
     type SegmentRenderer = Renderer<SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline>;
-    type SegmentAttachedData = ();
+    type SegmentAttachedData = EmptyAttached;
 }
 
 impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {

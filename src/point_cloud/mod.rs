@@ -221,6 +221,10 @@ impl ElementGeometry for PointCloudGeometry {
     fn get_total_elements(&self) -> u32 {
         self.positions.len() as u32
     }
+
+    fn can_be_replaced_by(&self, other: &Self) -> bool {
+        self.positions.len() == other.positions.len()
+    }
 }
 
 pub struct PointCloudFixedRenderer {
@@ -475,7 +479,7 @@ pub type PointCloud<Renderer, AttachedData> =
     Element<PointCloudGeometry, Renderer, PCSettings, PointCloudData, AttachedData>;
 
 pub type UninitedPointCloud = PointCloud<(), ()>;
-pub type DisplayPointCloud = PointCloud<PointCloudRenderer, ()>;
+pub type DisplayPointCloud = PointCloud<PointCloudRenderer, EmptyAttached>;
 
 impl DisplayPointCloud {
     pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
