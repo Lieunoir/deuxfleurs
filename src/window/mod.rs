@@ -22,12 +22,12 @@ use crate::types::SurfaceIndices;
 use crate::types::*;
 use crate::ui::UiDataElement;
 
+use crate::Settings;
 use crate::updater::{
     AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
     EmptyAttached, FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry,
     RenderPipeline, Renderer, UninitedElement,
 };
-use crate::Settings;
 use egui;
 use indexmap::IndexMap;
 use std::ops::{Deref, DerefMut};
@@ -80,7 +80,7 @@ pub trait GeometryHolder<Element>: ContainerContextGiver<Element> {
     ) -> ElementMut<'_, Element, Self::Context<'_>>;
 
     fn get_element_mut(&mut self, name: &str)
-        -> Option<ElementMut<'_, Element, Self::Context<'_>>>;
+    -> Option<ElementMut<'_, Element, Self::Context<'_>>>;
 
     fn get_element(&self, name: &str) -> Option<&'_ Element>;
 }
@@ -152,9 +152,9 @@ where
         DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
     >,
     for<'a> Attached: AttachedGeometry<
-        Context<'a> = GraphicalContext<'a>,
-        TransformLayout = wgpu::BindGroupLayout,
-    >,
+            Context<'a> = GraphicalContext<'a>,
+            TransformLayout = wgpu::BindGroupLayout,
+        >,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -174,6 +174,7 @@ where
     > {
         use crate::updater::ElementTrait;
         let (container, mut context) = self.get_container_mut();
+        // This could be better with Polonius
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
             element.replace(args, &mut context);

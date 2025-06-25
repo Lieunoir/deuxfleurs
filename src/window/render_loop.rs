@@ -2,6 +2,7 @@ use super::{
     InitialState, InnerBareState, InnerGraphicalState, JitterUniform, LightUniform, RunningState,
     StateWrapper, UserEvent,
 };
+use crate::Settings;
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::deferred;
@@ -9,7 +10,6 @@ use crate::picker;
 use crate::screenshot;
 use crate::texture;
 use crate::updater::Render;
-use crate::Settings;
 use pollster::FutureExt;
 use rand::Rng;
 use std::iter;
@@ -586,8 +586,8 @@ impl InnerGraphicalState {
                 //let ampli = 0.5 + 0.5 * self.taa_counter as f32 / self.taa_frames as f32;
                 let ampli = 1.;
                 jitter = JitterUniform {
-                    x: ampli * 2. * (rng.gen::<f32>() - 0.5) / self.size.width as f32,
-                    y: ampli * 2. * (rng.gen::<f32>() - 0.5) / self.size.height as f32,
+                    x: ampli * 2. * (rng.random::<f32>() - 0.5) / self.size.width as f32,
+                    y: ampli * 2. * (rng.random::<f32>() - 0.5) / self.size.height as f32,
                     _padding: [0; 2],
                 };
             };
