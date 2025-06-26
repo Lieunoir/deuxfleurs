@@ -49,10 +49,10 @@ pub type UninitedElement<Geometry, Settings, Data, AttachedGeometry> =
 pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> =
     Element<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>;
 
-pub trait ElementTrait<'a, Ctxt: Context> {
+pub trait ElementTrait<Ctxt: Context> {
     type Data;
     type Geometry: ElementGeometry;
-    type Attached: AttachedGeometry<'a, Ctxt>;
+    type Attached: AttachedGeometry<Ctxt>;
 
     fn replace(&mut self, args: <Self::Geometry as ElementGeometry>::Args, context: &mut Ctxt);
 
@@ -74,16 +74,16 @@ pub trait ElementTrait<'a, Ctxt: Context> {
     fn add_attached_geometry<'b>(
         &'b mut self,
         name: String,
-        args: <Self::Attached as AttachedGeometry<'a, Ctxt>>::Args,
+        args: <Self::Attached as AttachedGeometry<Ctxt>>::Args,
         context: &'b mut Ctxt,
     ) -> DataMut<'b, Self::Attached, Ctxt>;
 }
 
 impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
-    ElementTrait<'a, GraphicalContext<'a>>
+    ElementTrait<GraphicalContext<'a>>
     for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
 where
-    for<'b> AttachedG: AttachedGeometry<'b, GraphicalContext<'b>>,
+    for<'b> AttachedG: AttachedGeometry<GraphicalContext<'b>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -199,7 +199,7 @@ where
     fn add_attached_geometry<'b>(
         &'b mut self,
         name: String,
-        args: <Self::Attached as AttachedGeometry<'a, GraphicalContext<'a>>>::Args,
+        args: <Self::Attached as AttachedGeometry<GraphicalContext<'a>>>::Args,
         context: &'b mut GraphicalContext<'a>,
     ) -> DataMut<'b, Self::Attached, GraphicalContext<'a>> {
         *context.refresh_screen = true;
@@ -220,11 +220,11 @@ where
     }
 }
 
-impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<'a, ()>
+impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<()>
     for UninitedElement<Geometry, Settings, Data, AttachedG>
 where
     Geometry: ElementGeometry,
-    for<'b> AttachedG: AttachedGeometry<'a, ()>,
+    AttachedG: AttachedGeometry<()>,
     Data: DataSettings,
     Settings: NamedSettings,
     AttachedG: NewAttachedGeometry,
@@ -269,7 +269,7 @@ where
     fn add_attached_geometry<'b>(
         &'b mut self,
         name: String,
-        args: <Self::Attached as AttachedGeometry<'a, ()>>::Args,
+        args: <Self::Attached as AttachedGeometry<()>>::Args,
         context: &'b mut (),
     ) -> DataMut<'b, Self::Attached, ()> {
         let geometry = AttachedG::new(name.clone(), args, &mut (), &());
@@ -287,7 +287,7 @@ pub struct ElementMut<'a, Element, Context> {
     pub(crate) context: Context,
 }
 
-impl<'a, Element: ElementTrait<'a, Ctxt>, Ctxt: Context> Deref for ElementMut<'a, Element, Ctxt> {
+impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> Deref for ElementMut<'a, Element, Ctxt> {
     type Target = Element;
 
     fn deref(&self) -> &Self::Target {
@@ -411,11 +411,10 @@ where
     }
 }
 
-impl<'a, 'b, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
+impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
     DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
 where
-    'a: 'b,
-    Attached: AttachedGeometry<'a, GraphicalContext<'a>>,
+    for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -604,10 +603,10 @@ where
     }
 }
 
-impl<'c, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached> Render
+impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached> Render
     for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
 where
-    Attached: AttachedGeometry<'c, GraphicalContext<'c>>,
+    for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -686,7 +685,7 @@ where
     }
 }
 
-impl<'a, Element: ElementTrait<'a, Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctxt> {
+impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctxt> {
     pub fn show(&mut self, show: bool) -> &mut Self {
         self.element.show(show, &mut self.context);
         self
@@ -708,7 +707,7 @@ impl<'a, Element: ElementTrait<'a, Ctxt>, Ctxt: Context> ElementMut<'a, Element,
     pub(crate) fn add_attached_geometry(
         &mut self,
         name: String,
-        args: <Element::Attached as AttachedGeometry<'a, Ctxt>>::Args,
+        args: <Element::Attached as AttachedGeometry<Ctxt>>::Args,
     ) -> DataMut<'_, Element::Attached, Ctxt> {
         self.element
             .add_attached_geometry(name, args, &mut self.context)
@@ -721,7 +720,7 @@ impl<'a, Element: ElementTrait<'a, Ctxt>, Ctxt: Context> ElementMut<'a, Element,
     }
 }
 
-pub trait AttachedGeometry<'a, Ctxt: Context> {
+pub trait AttachedGeometry<Ctxt: Context> {
     type Args;
     type Settings;
 
@@ -770,7 +769,7 @@ pub trait NewAttachedGeometry {
     ) -> Self::UpgradedAttachedGeometry;
 }
 
-impl<'a, Ctxt: Context> AttachedGeometry<'a, Ctxt> for () {
+impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
     type Args = ();
     type Settings = ();
 
@@ -804,7 +803,7 @@ impl NewAttachedGeometry for () {
     }
 }
 
-impl<'a, Ctxt: Context> AttachedGeometry<'a, Ctxt> for EmptyAttached {
+impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
     type Args = ();
     type Settings = ();
 

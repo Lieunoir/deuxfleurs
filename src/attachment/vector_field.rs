@@ -284,7 +284,7 @@ impl VectorField {
     }
 }
 
-impl<'a> AttachedGeometry<'a, ()> for NewVectorField {
+impl AttachedGeometry<()> for NewVectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
     type Settings = VectorFieldSettings;
 
@@ -298,7 +298,7 @@ impl<'a> AttachedGeometry<'a, ()> for NewVectorField {
     }
 }
 
-impl<'a> AttachedGeometry<'a, GraphicalContext<'a>> for VectorField {
+impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
     type Settings = VectorFieldSettings;
 

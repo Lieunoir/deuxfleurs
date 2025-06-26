@@ -494,7 +494,7 @@ pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
 
 impl<'a, Renderer, AttachedData, Ctxt: Context> PointCloudMut<'a, Renderer, AttachedData, Ctxt>
 where
-    PointCloud<Renderer, AttachedData>: ElementTrait<'a, Ctxt, Data = PointCloudData>,
+    PointCloud<Renderer, AttachedData>: ElementTrait<Ctxt, Data = PointCloudData>,
 {
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
         self.element.settings.radius.radius = radius;

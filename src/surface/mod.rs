@@ -556,17 +556,12 @@ pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
 impl<
     'a,
     Renderer,
-    AttachedData: AttachedGeometry<
-            'a,
-            Ctxt,
-            Settings = VectorFieldSettings,
-            Args = (Vec<[f32; 3]>, Vec<[f32; 3]>),
-        >,
+    AttachedData: AttachedGeometry<Ctxt, Settings = VectorFieldSettings, Args = (Vec<[f32; 3]>, Vec<[f32; 3]>)>,
     Ctxt: Context,
 > SurfaceMut<'a, Renderer, AttachedData, Ctxt>
 where
     Surface<Renderer, AttachedData>:
-        ElementTrait<'a, Ctxt, Data = SurfaceData, Attached = AttachedData>,
+        ElementTrait<Ctxt, Data = SurfaceData, Attached = AttachedData>,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.element.settings.show_edges != show_edges {
