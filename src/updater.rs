@@ -50,46 +50,42 @@ pub type UninitedElement<Geometry, Settings, Data, AttachedGeometry> =
 pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> =
     Element<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>;
 
-pub trait ElementTrait {
+pub trait ElementTrait<'a, Ctxt: Context<'a>> {
     type Data;
     type Geometry: ElementGeometry;
-    type Context<'a>: Context<'a>;
     type Attached: AttachedGeometry;
 
-    fn replace(
-        &mut self,
-        args: <Self::Geometry as ElementGeometry>::Args,
-        context: &mut Self::Context<'_>,
-    );
+    fn replace(&mut self, args: <Self::Geometry as ElementGeometry>::Args, context: &mut Ctxt);
 
-    fn show(&mut self, show: bool, context: &mut Self::Context<'_>);
+    fn show(&mut self, show: bool, context: &mut Ctxt);
 
-    fn set_data(&mut self, name: Option<String>, context: &mut Self::Context<'_>);
+    fn set_data(&mut self, name: Option<String>, context: &mut Ctxt);
 
-    fn add_data<'a, 'b>(
+    fn add_data<'b>(
         &'b mut self,
         name: String,
         data: Self::Data,
-        context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'a, 'b, Self::Data, Self::Context<'a>>;
+        context: &'b mut Ctxt,
+    ) -> DataMut<'a, 'b, Self::Data, Ctxt>;
 
-    fn update_settings(&mut self, _context: &mut Self::Context<'_>, _rebuild_pipeline: bool) {}
+    fn update_settings(&mut self, _context: &mut Ctxt, _rebuild_pipeline: bool) {}
 
-    fn update_transform(&mut self, _context: &mut Self::Context<'_>) {}
+    fn update_transform(&mut self, _context: &mut Ctxt) {}
 
-    fn add_attached_geometry<'a, 'b>(
+    fn add_attached_geometry<'b>(
         &'b mut self,
         name: String,
         args: <Self::Attached as AttachedGeometry>::Args,
-        context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'a, 'b, Self::Attached, Self::Context<'a>>;
+        context: &'b mut Ctxt,
+    ) -> DataMut<'a, 'b, Self::Attached, Ctxt>;
 }
 
-impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG> ElementTrait
+impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
+    ElementTrait<'a, GraphicalContext<'a>>
     for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
 where
-    for<'a> AttachedG: AttachedGeometry<
-            Context<'a> = GraphicalContext<'a>,
+    for<'b> AttachedG: AttachedGeometry<
+            Context<'b> = GraphicalContext<'b>,
             TransformLayout = wgpu::BindGroupLayout,
         >,
     Geometry: ElementGeometry,
@@ -101,13 +97,12 @@ where
 {
     type Data = Data;
     type Geometry = Geometry;
-    type Context<'a> = GraphicalContext<'a>;
     type Attached = AttachedG;
 
     fn replace(
         &mut self,
         args: <Self::Geometry as ElementGeometry>::Args,
-        context: &mut Self::Context<'_>,
+        context: &mut GraphicalContext<'a>,
     ) {
         let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
@@ -125,14 +120,14 @@ where
         }
     }
 
-    fn show(&mut self, show: bool, context: &mut Self::Context<'_>) {
+    fn show(&mut self, show: bool, context: &mut GraphicalContext<'a>) {
         if self.show != show {
             *context.refresh_screen = true;
             self.show = show;
         }
     }
 
-    fn set_data(&mut self, name: Option<String>, context: &mut Self::Context<'_>) {
+    fn set_data(&mut self, name: Option<String>, context: &mut GraphicalContext<'a>) {
         if self.shown_data != name {
             self.shown_data = name;
             let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
@@ -153,12 +148,12 @@ where
         }
     }
 
-    fn add_data<'a, 'b>(
+    fn add_data<'b>(
         &'b mut self,
         name: String,
         data: Self::Data,
-        context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'a, 'b, Self::Data, Self::Context<'a>> {
+        context: &'b mut GraphicalContext<'a>,
+    ) -> DataMut<'a, 'b, Self::Data, GraphicalContext<'a>> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -184,7 +179,7 @@ where
         }
     }
 
-    fn update_settings(&mut self, context: &mut Self::Context<'_>, rebuild_pipeline: bool) {
+    fn update_settings(&mut self, context: &mut GraphicalContext<'a>, rebuild_pipeline: bool) {
         self.settings
             .refresh_buffer(context.queue, &self.renderer.settings_uniform);
         if rebuild_pipeline {
@@ -199,18 +194,18 @@ where
         }
     }
 
-    fn update_transform(&mut self, context: &mut Self::Context<'_>) {
+    fn update_transform(&mut self, context: &mut GraphicalContext<'a>) {
         self.transform
             .to_raw()
             .refresh_buffer(context.queue, &self.renderer.transform_uniform);
     }
 
-    fn add_attached_geometry<'a, 'b>(
+    fn add_attached_geometry<'b>(
         &'b mut self,
         name: String,
         args: <Self::Attached as AttachedGeometry>::Args,
-        context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'a, 'b, Self::Attached, Self::Context<'a>> {
+        context: &'b mut GraphicalContext<'a>,
+    ) -> DataMut<'a, 'b, Self::Attached, GraphicalContext<'a>> {
         *context.refresh_screen = true;
         {
             let geometry = Self::Attached::new(
@@ -229,11 +224,11 @@ where
     }
 }
 
-impl<Geometry, Settings, Data, AttachedG> ElementTrait
+impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<'a, ()>
     for UninitedElement<Geometry, Settings, Data, AttachedG>
 where
     Geometry: ElementGeometry,
-    for<'a> AttachedG: AttachedGeometry<Context<'a> = (), TransformLayout = ()>,
+    for<'b> AttachedG: AttachedGeometry<Context<'b> = (), TransformLayout = ()>,
     Data: DataSettings,
     Settings: NamedSettings,
     AttachedG: NewAttachedGeometry,
@@ -241,13 +236,8 @@ where
     type Geometry = Geometry;
     type Attached = AttachedG;
     type Data = Data;
-    type Context<'a> = ();
 
-    fn replace(
-        &mut self,
-        args: <Self::Geometry as ElementGeometry>::Args,
-        _context: &mut Self::Context<'_>,
-    ) {
+    fn replace(&mut self, args: <Self::Geometry as ElementGeometry>::Args, _context: &mut ()) {
         let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
             self.geometry = new_geometry;
@@ -256,20 +246,20 @@ where
         }
     }
 
-    fn show(&mut self, show: bool, _context: &mut Self::Context<'_>) {
+    fn show(&mut self, show: bool, _context: &mut ()) {
         self.show = show;
     }
 
-    fn set_data(&mut self, name: Option<String>, _context: &mut Self::Context<'_>) {
+    fn set_data(&mut self, name: Option<String>, _context: &mut ()) {
         self.shown_data = name;
     }
 
-    fn add_data<'a, 'b>(
+    fn add_data<'b>(
         &'b mut self,
         name: String,
         data: Self::Data,
-        context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'a, 'b, Self::Data, Self::Context<'a>> {
+        context: &'b mut (),
+    ) -> DataMut<'a, 'b, Self::Data, ()> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -280,12 +270,12 @@ where
         }
     }
 
-    fn add_attached_geometry<'a, 'b>(
+    fn add_attached_geometry<'b>(
         &'b mut self,
         name: String,
         args: <Self::Attached as AttachedGeometry>::Args,
-        context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'a, 'b, Self::Attached, Self::Context<'a>> {
+        context: &'b mut (),
+    ) -> DataMut<'a, 'b, Self::Attached, ()> {
         let geometry = AttachedG::new(name.clone(), args, &mut (), &());
         self.attached_data.insert(name.clone(), geometry);
         DataMut {
@@ -301,8 +291,8 @@ pub struct ElementMut<'a, Element, Context> {
     pub(crate) context: Context,
 }
 
-impl<'a, Element: ElementTrait<Context<'a> = Context>, Context> Deref
-    for ElementMut<'a, Element, Context>
+impl<'a, Element: ElementTrait<'a, Ctxt>, Ctxt: Context<'a>> Deref
+    for ElementMut<'a, Element, Ctxt>
 {
     type Target = Element;
 
@@ -702,10 +692,7 @@ where
     }
 }
 
-impl<'a, Element: ElementTrait<Context<'a> = Ctxt>, Ctxt> ElementMut<'a, Element, Ctxt>
-where
-    Ctxt: Context<'a>,
-{
+impl<'a, Element: ElementTrait<'a, Ctxt>, Ctxt: Context<'a>> ElementMut<'a, Element, Ctxt> {
     pub fn show(&mut self, show: bool) -> &mut Self {
         self.element.show(show, &mut self.context);
         self

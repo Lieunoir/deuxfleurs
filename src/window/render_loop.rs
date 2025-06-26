@@ -582,7 +582,7 @@ impl InnerGraphicalState {
                     }
                 }
 
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
                 //let ampli = 0.5 + 0.5 * self.taa_counter as f32 / self.taa_frames as f32;
                 let ampli = 1.;
                 jitter = JitterUniform {
