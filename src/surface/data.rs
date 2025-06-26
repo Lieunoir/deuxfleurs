@@ -4,6 +4,7 @@ use crate::data::DataUniformBuilder;
 use crate::data::{ColorMap, ColorMapValues, DataSettings, IsolineSettings, UVMapSettings};
 use crate::types::SurfaceIndices;
 use crate::ui::UiDataElement;
+use crate::updater::Context;
 use crate::updater::DataMut;
 use crate::updater::DataMutTrait;
 use wgpu::util::DeviceExt;
@@ -39,7 +40,7 @@ impl VertexScalarSettings {
     }
 }
 
-impl<'a, Context, Uniform> DataMut<'a, VertexScalarSettings, Context, Uniform>
+impl<'a, 'b, Ctxt: Context<'a>> DataMut<'a, 'b, VertexScalarSettings, Ctxt>
 where
     Self: DataMutTrait,
 {

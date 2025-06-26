@@ -2,6 +2,7 @@ use crate::data::*;
 use crate::texture;
 use crate::ui::UiDataElement;
 use crate::updater::AttachedGeometry;
+use crate::updater::Context;
 use crate::updater::DataMut;
 use crate::updater::DataMutTrait;
 use crate::updater::GraphicalContext;
@@ -69,7 +70,7 @@ impl VectorFieldSettings {
     }
 }
 
-impl<'a, Context, Uniform> DataMut<'a, VectorFieldSettings, Context, Uniform>
+impl<'a, 'b, Ctxt: Context<'a>> DataMut<'a, 'b, VectorFieldSettings, Ctxt>
 where
     Self: DataMutTrait,
 {
