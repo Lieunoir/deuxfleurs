@@ -76,9 +76,9 @@ impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG> ElementTrait
     for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
 where
     for<'a> AttachedG: AttachedGeometry<
-        Context<'a> = GraphicalContext<'a>,
-        TransformLayout = wgpu::BindGroupLayout,
-    >,
+            Context<'a> = GraphicalContext<'a>,
+            TransformLayout = wgpu::BindGroupLayout,
+        >,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
@@ -307,7 +307,9 @@ pub struct ElementMut<'a, Element, Context> {
     pub(crate) context: Context,
 }
 
-impl<'a, Element, Context> Deref for ElementMut<'a, Element, Context> {
+impl<'a, Element: ElementTrait<Context<'a> = Context>, Context> Deref
+    for ElementMut<'a, Element, Context>
+{
     type Target = Element;
 
     fn deref(&self) -> &Self::Target {
@@ -709,12 +711,7 @@ where
     }
 }
 
-impl<'a, Geometry, Renderer, Settings, Data, Attached, Context>
-    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, Attached>, Context>
-where
-    Element<Geometry, Renderer, Settings, Data, Attached>:
-        ElementTrait<Context<'a> = Context, Data = Data>,
-{
+impl<'a, Element: ElementTrait<Context<'a> = Context>, Context> ElementMut<'a, Element, Context> {
     pub fn show(&mut self, show: bool) -> &mut Self {
         self.element.show(show, &mut self.context);
         self
@@ -725,40 +722,19 @@ where
         self
     }
 
-    pub(crate) fn add_data<'b, 'c>(
-        &'c mut self,
+    pub(crate) fn add_data(
+        &mut self,
         name: String,
-        data: Data,
-    ) -> DataMut<
-        'b,
-        Data,
-        &'b mut <Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait>::Context<
-            'a,
-        >,
-        <Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait>::DataMutUniform<'b>,
-    >
-    where
-        'a: 'b,
-        'c: 'b,
-    {
+        data: Element::Data,
+    ) -> DataMut<'_, Element::Data, &mut Context, Element::DataMutUniform<'_>> {
         self.element.add_data(name, data, &mut self.context)
     }
 
-    pub(crate) fn add_attached_geometry<'b>(
-        &'b mut self,
+    pub(crate) fn add_attached_geometry(
+        &mut self,
         name: String,
-        args: <<Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait>::Attached as AttachedGeometry>::Args,
-    ) -> DataMut<
-        'b,
-        <Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait>::Attached,
-        &'b mut <Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait>::Context<
-            'a,
-        >,
-        <Element<Geometry, Renderer, Settings, Data, Attached> as ElementTrait>::DataMutUniform<'b>,
-    >
-    where
-        'a: 'b,
-    {
+        args: <Element::Attached as AttachedGeometry>::Args,
+    ) -> DataMut<'_, Element::Attached, &mut Context, Element::DataMutUniform<'_>> {
         self.element
             .add_attached_geometry(name, args, &mut self.context)
     }
@@ -893,13 +869,13 @@ pub struct Renderer<Fixed, DataB, Pipeline> {
 }
 
 impl<
-        Settings: DataUniformBuilder,
-        Data: DataUniformBuilder,
-        Geometry,
-        Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-    > Renderer<Fixed, DataB, Pipeline>
+    Settings: DataUniformBuilder,
+    Data: DataUniformBuilder,
+    Geometry,
+    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+> Renderer<Fixed, DataB, Pipeline>
 {
     pub(crate) fn new(
         device: &wgpu::Device,

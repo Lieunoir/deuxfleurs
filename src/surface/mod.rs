@@ -14,7 +14,7 @@ use wgpu::util::DeviceExt;
 mod data;
 mod shader;
 pub use data::*;
-use shader::{get_shader, PICKER_SHADER, SHADOW_SHADER};
+use shader::{PICKER_SHADER, SHADOW_SHADER, get_shader};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -565,9 +565,8 @@ impl<T> TyEq for T {
 pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, Surface<Renderer, AttachedData>, Context>;
 
-impl<'a, 'b, Renderer, AttachedData, Context> SurfaceMut<'a, Renderer, AttachedData, Context>
+impl<'a, Renderer, AttachedData, Context> SurfaceMut<'a, Renderer, AttachedData, Context>
 where
-    'a: 'b,
     Surface<Renderer, AttachedData>: ElementTrait<Data = SurfaceData, Context<'a> = Context>,
     <<Surface<Renderer, AttachedData> as ElementTrait>::Attached as AttachedGeometry>::Args:
         TyEq<Type = (Vec<[f32; 3]>, Vec<[f32; 3]>)>,
@@ -589,14 +588,14 @@ where
     }
 
     pub fn add_face_scalar<S: Scalar>(
-        &'b mut self,
+        &mut self,
         name: String,
         datas: S,
     ) -> DataMut<
-        'b,
+        '_,
         ColorMap,
-        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
-        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+        &mut Context,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
@@ -619,14 +618,14 @@ where
     }
 
     pub fn add_vertex_scalar<S: Scalar>(
-        &'b mut self,
+        &mut self,
         name: String,
         datas: S,
     ) -> DataMut<
-        'b,
+        '_,
         VertexScalarSettings,
-        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
-        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+        &mut Context,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
@@ -642,14 +641,14 @@ where
     }
 
     pub fn add_uv_map<UV: Vertices2D>(
-        &'b mut self,
+        &mut self,
         name: String,
         datas: UV,
     ) -> DataMut<
-        'b,
+        '_,
         UVMapSettings,
-        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
-        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+        &mut Context,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
@@ -664,14 +663,14 @@ where
     }
 
     pub fn add_corner_uv_map<UV: Vertices2D>(
-        &'b mut self,
+        &mut self,
         name: String,
         datas: UV,
     ) -> DataMut<
-        'b,
+        '_,
         UVMapSettings,
-        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
-        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+        &mut Context,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
     > {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
@@ -688,21 +687,21 @@ where
         })
     }
 
-    pub fn add_vertex_color<C: Color>(&'b mut self, name: String, colors: C) {
+    pub fn add_vertex_color<C: Color>(&mut self, name: String, colors: C) {
         let colors = colors.into();
         assert!(colors.len() == self.geometry.vertices.len());
         self.add_data(name, SurfaceData::Color(colors));
     }
 
     pub fn add_vertex_vector_field<V: Vertices>(
-        &'b mut self,
+        &mut self,
         name: String,
         vectors: V,
     ) -> DataMut<
-        'b,
+        '_,
         <<Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData> as ElementTrait>::Attached as AttachedGeometry>::Settings,
-        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
-        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+        &mut Context,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
     >{
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
@@ -712,12 +711,12 @@ where
         //&mut self.get_attached_geometry(&name).unwrap().settings
     }
 
-    pub fn add_face_vector_field<V: Vertices>(&'b mut self, name: String, vectors: V
+    pub fn add_face_vector_field<V: Vertices>(&mut self, name: String, vectors: V
     ) -> DataMut<
-        'b,
+        '_,
         <<Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData> as ElementTrait>::Attached as AttachedGeometry>::Settings,
-        &'b mut <Surface<Renderer, AttachedData> as ElementTrait>::Context<'a>,
-        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+        &mut Context,
+        <Surface<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
     >{
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.indices.size());

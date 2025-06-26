@@ -758,9 +758,8 @@ impl DisplaySegment {
 pub type SegmentMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, Segment<Renderer, AttachedData>, Context>;
 
-impl<'a, 'b, Renderer, AttachedData, Context> SegmentMut<'a, Renderer, AttachedData, Context>
+impl<'a, Renderer, AttachedData, Context> SegmentMut<'a, Renderer, AttachedData, Context>
 where
-    'a: 'b,
     Segment<Renderer, AttachedData>: ElementTrait<Data = SegmentData, Context<'a> = Context>,
 {
     //pub(crate) fn new(name: String, positions: Vec<[f32; 3]>, connections: Vec<[u32; 2]>) -> Self {
@@ -784,14 +783,14 @@ where
     }
 
     pub fn add_scalar<S: Scalar>(
-        &'b mut self,
+        &mut self,
         name: String,
         datas: S,
     ) -> DataMut<
-        'b,
+        '_,
         ColorMap,
-        &'b mut <Segment<Renderer, AttachedData> as ElementTrait>::Context<'a>,
-        <Segment<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'b>,
+        &mut Context,
+        <Segment<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
     > {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
@@ -806,7 +805,7 @@ where
             })
     }
 
-    pub fn add_colors<C: Color>(&'a mut self, name: String, datas: C) {
+    pub fn add_colors<C: Color>(&mut self, name: String, datas: C) {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         self.add_data(name, SegmentData::Color(datas));
