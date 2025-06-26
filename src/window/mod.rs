@@ -98,8 +98,7 @@ where
     Geometry: ElementGeometry,
     Settings: DataUniformBuilder + NamedSettings,
     Data: DataSettings,
-    for<'a> Attached:
-        AttachedGeometry<Context<'a> = (), TransformLayout = ()> + NewAttachedGeometry,
+    for<'a> Attached: AttachedGeometry<'a, ()> + NewAttachedGeometry,
 {
     type Args = Geometry::Args;
 
@@ -156,10 +155,7 @@ where
     T: ContainerContextGiver<
         DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
     >,
-    for<'a> Attached: AttachedGeometry<
-            Context<'a> = GraphicalContext<'a>,
-            TransformLayout = wgpu::BindGroupLayout,
-        >,
+    for<'a> Attached: AttachedGeometry<'a, GraphicalContext<'a>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,

@@ -556,8 +556,13 @@ pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
 impl<
     'a,
     Renderer,
-    AttachedData: AttachedGeometry<Settings = VectorFieldSettings, Args = (Vec<[f32; 3]>, Vec<[f32; 3]>)>,
-    Ctxt: Context<'a>,
+    AttachedData: AttachedGeometry<
+            'a,
+            Ctxt,
+            Settings = VectorFieldSettings,
+            Args = (Vec<[f32; 3]>, Vec<[f32; 3]>),
+        >,
+    Ctxt: Context,
 > SurfaceMut<'a, Renderer, AttachedData, Ctxt>
 where
     Surface<Renderer, AttachedData>:
@@ -583,7 +588,7 @@ where
         &mut self,
         name: String,
         datas: S,
-    ) -> DataMut<'a, '_, ColorMap, Ctxt> {
+    ) -> DataMut<'_, ColorMap, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
         let new_settings = ColorMap::new(&datas);
@@ -601,7 +606,7 @@ where
         &mut self,
         name: String,
         datas: S,
-    ) -> DataMut<'a, '_, VertexScalarSettings, Ctxt> {
+    ) -> DataMut<'_, VertexScalarSettings, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         let new_settings = VertexScalarSettings::new(&datas);
@@ -619,7 +624,7 @@ where
         &mut self,
         name: String,
         datas: UV,
-    ) -> DataMut<'a, '_, UVMapSettings, Ctxt> {
+    ) -> DataMut<'_, UVMapSettings, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         self.add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default()))
@@ -636,7 +641,7 @@ where
         &mut self,
         name: String,
         datas: UV,
-    ) -> DataMut<'a, '_, UVMapSettings, Ctxt> {
+    ) -> DataMut<'_, UVMapSettings, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
         self.add_data(
@@ -662,20 +667,19 @@ where
         &mut self,
         name: String,
         vectors: V,
-    ) -> DataMut<'a, '_, VectorFieldSettings, Ctxt> {
+    ) -> DataMut<'_, VectorFieldSettings, Ctxt> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
         self.add_attached_geometry(name.clone(), (offsets, vectors).into())
             .convert(|attached| attached.get_settings())
-        //&mut self.get_attached_geometry(&name).unwrap().settings
     }
 
     pub fn add_face_vector_field<V: Vertices>(
         &mut self,
         name: String,
         vectors: V,
-    ) -> DataMut<'a, '_, VectorFieldSettings, Ctxt> {
+    ) -> DataMut<'_, VectorFieldSettings, Ctxt> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.indices.size());
         let offsets: Vec<[f32; 3]> = self
