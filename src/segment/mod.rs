@@ -760,7 +760,7 @@ pub type SegmentMut<'a, Renderer, AttachedData, Context> =
 
 impl<'a, Renderer, AttachedData, Ctxt: Context> SegmentMut<'a, Renderer, AttachedData, Ctxt>
 where
-    Segment<Renderer, AttachedData>: ElementTrait<'a, Ctxt, Data = SegmentData>,
+    Segment<Renderer, AttachedData>: ElementTrait<Ctxt, Data = SegmentData>,
 {
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
         self.element.settings.radius.radius = radius;
