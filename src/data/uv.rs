@@ -1,5 +1,5 @@
 use crate::ui::UiDataElement;
-use crate::updater::{DataMut, DataMutTrait};
+use crate::updater::{Context, DataMut, DataMutTrait};
 use egui::Widget;
 
 #[repr(C)]
@@ -67,7 +67,7 @@ impl UiDataElement for UVMapSettings {
     }
 }
 
-impl<'a, Context, Uniform> DataMut<'a, UVMapSettings, Context, Uniform>
+impl<'a, 'b, Ctxt: Context<'a>> DataMut<'a, 'b, UVMapSettings, Ctxt>
 where
     Self: DataMutTrait,
 {

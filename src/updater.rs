@@ -4,6 +4,10 @@ use crate::ui::UiDataElement;
 use indexmap::IndexMap;
 use std::ops::Deref;
 
+pub trait Context<'a> {
+    type DataUniform<'b>;
+}
+
 pub struct GraphicalContext<'a> {
     pub(crate) settings: &'a crate::Settings,
     pub(crate) device: &'a wgpu::Device,
@@ -12,6 +16,18 @@ pub struct GraphicalContext<'a> {
     pub(crate) counter_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) color_format: wgpu::TextureFormat,
     pub(crate) refresh_screen: &'a mut bool,
+}
+
+impl<'a> Context<'a> for GraphicalContext<'a> {
+    type DataUniform<'b> = &'b Option<DataUniform>;
+}
+
+impl<'a, 'b> Context<'b> for &'b mut GraphicalContext<'a> {
+    type DataUniform<'c> = &'c Option<DataUniform>;
+}
+
+impl<'a> Context<'a> for () {
+    type DataUniform<'b> = ();
 }
 
 // `Renderer` can be `()` !
@@ -37,10 +53,7 @@ pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attach
 pub trait ElementTrait {
     type Data;
     type Geometry: ElementGeometry;
-    type Context<'a>;
-    type DataMutUniform<'a>
-    where
-        Self: 'a;
+    type Context<'a>: Context<'a>;
     type Attached: AttachedGeometry;
 
     fn replace(
@@ -58,7 +71,7 @@ pub trait ElementTrait {
         name: String,
         data: Self::Data,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'b, Self::Data, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>>;
+    ) -> DataMut<'a, 'b, Self::Data, Self::Context<'a>>;
 
     fn update_settings(&mut self, _context: &mut Self::Context<'_>, _rebuild_pipeline: bool) {}
 
@@ -69,7 +82,7 @@ pub trait ElementTrait {
         name: String,
         args: <Self::Attached as AttachedGeometry>::Args,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'b, Self::Attached, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>>;
+    ) -> DataMut<'a, 'b, Self::Attached, Self::Context<'a>>;
 }
 
 impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG> ElementTrait
@@ -89,16 +102,6 @@ where
     type Data = Data;
     type Geometry = Geometry;
     type Context<'a> = GraphicalContext<'a>;
-    type DataMutUniform<'a>
-        = &'a Option<DataUniform>
-    where
-        AttachedG: 'a,
-        Geometry: 'a,
-        Fixed: 'a,
-        DataB: 'a,
-        Pipeline: 'a,
-        Settings: 'a,
-        Data: 'a;
     type Attached = AttachedG;
 
     fn replace(
@@ -155,7 +158,7 @@ where
         name: String,
         data: Self::Data,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'b, Self::Data, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
+    ) -> DataMut<'a, 'b, Self::Data, Self::Context<'a>> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -207,7 +210,7 @@ where
         name: String,
         args: <Self::Attached as AttachedGeometry>::Args,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'b, Self::Attached, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
+    ) -> DataMut<'a, 'b, Self::Attached, Self::Context<'a>> {
         *context.refresh_screen = true;
         {
             let geometry = Self::Attached::new(
@@ -239,13 +242,6 @@ where
     type Attached = AttachedG;
     type Data = Data;
     type Context<'a> = ();
-    type DataMutUniform<'a>
-        = ()
-    where
-        AttachedG: 'a,
-        Geometry: 'a,
-        Settings: 'a,
-        Data: 'a;
 
     fn replace(
         &mut self,
@@ -273,7 +269,7 @@ where
         name: String,
         data: Self::Data,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'b, Self::Data, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
+    ) -> DataMut<'a, 'b, Self::Data, Self::Context<'a>> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -289,7 +285,7 @@ where
         name: String,
         args: <Self::Attached as AttachedGeometry>::Args,
         context: &'b mut Self::Context<'a>,
-    ) -> DataMut<'b, Self::Attached, &'b mut Self::Context<'a>, Self::DataMutUniform<'b>> {
+    ) -> DataMut<'a, 'b, Self::Attached, Self::Context<'a>> {
         let geometry = AttachedG::new(name.clone(), args, &mut (), &());
         self.attached_data.insert(name.clone(), geometry);
         DataMut {
@@ -299,8 +295,6 @@ where
         }
     }
 }
-
-// Upgrade Using AttachedGeometry::initialize or smth
 
 pub struct ElementMut<'a, Element, Context> {
     pub(crate) element: &'a mut Element,
@@ -667,23 +661,20 @@ where
     }
 }
 
-pub struct DataMut<'a, T, Context, Uniform> {
-    pub(crate) inner: &'a mut T,
-    uniform: Uniform,
-    context: Context,
+pub struct DataMut<'a, 'b, T, Ctxt: Context<'a>> {
+    pub(crate) inner: &'b mut T,
+    context: &'b mut Ctxt,
+    uniform: Ctxt::DataUniform<'b>,
 }
 
-pub type UninitedData<'a, 'b, T> = DataMut<'a, T, &'b mut (), ()>;
+pub type UninitedData<'a, 'b, T> = DataMut<'a, 'b, T, ()>;
 pub type DisplayData<'a, 'b, T>
 where
     T: DataUniformBuilder,
-= DataMut<'a, T, &'b mut GraphicalContext<'a>, &'b mut Option<DataUniform>>;
+= DataMut<'a, 'b, T, GraphicalContext<'a>>;
 
-impl<'a, T, Context, Uniform> DataMut<'a, T, Context, Uniform> {
-    pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(
-        self,
-        f: F,
-    ) -> DataMut<'a, U, Context, Uniform> {
+impl<'a, 'b, T, Ctxt: Context<'a>> DataMut<'a, 'b, T, Ctxt> {
+    pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(self, f: F) -> DataMut<'a, 'b, U, Ctxt> {
         DataMut {
             inner: f(self.inner),
             uniform: self.uniform,
@@ -711,7 +702,10 @@ where
     }
 }
 
-impl<'a, Element: ElementTrait<Context<'a> = Context>, Context> ElementMut<'a, Element, Context> {
+impl<'a, Element: ElementTrait<Context<'a> = Ctxt>, Ctxt> ElementMut<'a, Element, Ctxt>
+where
+    Ctxt: Context<'a>,
+{
     pub fn show(&mut self, show: bool) -> &mut Self {
         self.element.show(show, &mut self.context);
         self
@@ -726,7 +720,7 @@ impl<'a, Element: ElementTrait<Context<'a> = Context>, Context> ElementMut<'a, E
         &mut self,
         name: String,
         data: Element::Data,
-    ) -> DataMut<'_, Element::Data, &mut Context, Element::DataMutUniform<'_>> {
+    ) -> DataMut<'a, '_, Element::Data, Ctxt> {
         self.element.add_data(name, data, &mut self.context)
     }
 
@@ -734,7 +728,7 @@ impl<'a, Element: ElementTrait<Context<'a> = Context>, Context> ElementMut<'a, E
         &mut self,
         name: String,
         args: <Element::Attached as AttachedGeometry>::Args,
-    ) -> DataMut<'_, Element::Attached, &mut Context, Element::DataMutUniform<'_>> {
+    ) -> DataMut<'a, '_, Element::Attached, Ctxt> {
         self.element
             .add_attached_geometry(name, args, &mut self.context)
     }

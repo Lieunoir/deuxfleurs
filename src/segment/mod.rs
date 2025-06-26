@@ -758,19 +758,10 @@ impl DisplaySegment {
 pub type SegmentMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, Segment<Renderer, AttachedData>, Context>;
 
-impl<'a, Renderer, AttachedData, Context> SegmentMut<'a, Renderer, AttachedData, Context>
+impl<'a, Renderer, AttachedData, Ctxt: Context<'a>> SegmentMut<'a, Renderer, AttachedData, Ctxt>
 where
-    Segment<Renderer, AttachedData>: ElementTrait<Data = SegmentData, Context<'a> = Context>,
+    Segment<Renderer, AttachedData>: ElementTrait<Data = SegmentData, Context<'a> = Ctxt>,
 {
-    //pub(crate) fn new(name: String, positions: Vec<[f32; 3]>, connections: Vec<[u32; 2]>) -> Self {
-    //    let geometry = SegmentGeometry {
-    //        num_elements: positions.len() as u32,
-    //        positions,
-    //        connections,
-    //    };
-    //    Segment::init(name, geometry)
-    //}
-
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
         self.element.settings.radius.radius = radius;
         self.update_settings(false)
@@ -786,12 +777,7 @@ where
         &mut self,
         name: String,
         datas: S,
-    ) -> DataMut<
-        '_,
-        ColorMap,
-        &mut Context,
-        <Segment<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
-    > {
+    ) -> DataMut<'a, '_, ColorMap, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         let settings = ColorMap::new(&datas);

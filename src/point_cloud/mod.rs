@@ -492,9 +492,9 @@ impl DisplayPointCloud {
 pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>;
 
-impl<'a, Renderer, AttachedData, Context> PointCloudMut<'a, Renderer, AttachedData, Context>
+impl<'a, Renderer, AttachedData, Ctxt: Context<'a>> PointCloudMut<'a, Renderer, AttachedData, Ctxt>
 where
-    PointCloud<Renderer, AttachedData>: ElementTrait<Data = PointCloudData, Context<'a> = Context>,
+    PointCloud<Renderer, AttachedData>: ElementTrait<Data = PointCloudData, Context<'a> = Ctxt>,
 {
     pub fn set_radius(&mut self, radius: f32) -> &mut Self {
         self.element.settings.radius.radius = radius;
@@ -512,13 +512,7 @@ where
         &mut self,
         name: String,
         datas: S,
-    ) -> DataMut<
-        '_,
-        ColorMap,
-        &mut Context,
-        <PointCloud<Renderer, AttachedData> as ElementTrait>::DataMutUniform<'_>,
-    >
-where {
+    ) -> DataMut<'a, '_, ColorMap, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         let settings = ColorMap::new(&datas);
