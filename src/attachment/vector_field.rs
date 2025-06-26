@@ -70,7 +70,7 @@ impl VectorFieldSettings {
     }
 }
 
-impl<'a, 'b, Ctxt: Context<'a>> DataMut<'a, 'b, VectorFieldSettings, Ctxt>
+impl<'a, Ctxt: Context> DataMut<'a, VectorFieldSettings, Ctxt>
 where
     Self: DataMutTrait,
 {
@@ -284,18 +284,11 @@ impl VectorField {
     }
 }
 
-impl AttachedGeometry for NewVectorField {
+impl<'a> AttachedGeometry<'a, ()> for NewVectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Context<'a> = ();
-    type TransformLayout = ();
     type Settings = VectorFieldSettings;
 
-    fn new(
-        name: String,
-        args: Self::Args,
-        _context: &mut Self::Context<'_>,
-        _transform_layout: &(),
-    ) -> Self {
+    fn new(name: String, args: Self::Args, _context: &mut (), _transform_layout: &()) -> Self {
         let (vectors, offsets) = args;
         NewVectorField::new(name, vectors, offsets)
     }
@@ -305,17 +298,15 @@ impl AttachedGeometry for NewVectorField {
     }
 }
 
-impl AttachedGeometry for VectorField {
+impl<'a> AttachedGeometry<'a, GraphicalContext<'a>> for VectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Context<'a> = GraphicalContext<'a>;
-    type TransformLayout = wgpu::BindGroupLayout;
     type Settings = VectorFieldSettings;
 
     fn new(
         name: String,
         args: Self::Args,
-        context: &mut Self::Context<'_>,
-        transform_layout: &Self::TransformLayout,
+        context: &mut GraphicalContext<'a>,
+        transform_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         *context.refresh_screen = true;
         let (vectors, offsets) = args;
@@ -370,9 +361,9 @@ impl AttachedGeometry for VectorField {
         }
     }
 
-    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
     where
-        'a: 'b,
+        'c: 'd,
     {
         if self.settings.show {
             render_pass.set_bind_group(2, &self.settings_bind_group, &[]);

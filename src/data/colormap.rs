@@ -568,7 +568,7 @@ impl UiDataElement for ColorMap {
     }
 }
 
-impl<'a, 'b, Ctxt: Context<'a>> DataMut<'a, 'b, ColorMap, Ctxt>
+impl<'a, Ctxt: Context> DataMut<'a, ColorMap, Ctxt>
 where
     Self: DataMutTrait,
 {

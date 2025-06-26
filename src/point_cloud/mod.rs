@@ -492,7 +492,7 @@ impl DisplayPointCloud {
 pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>;
 
-impl<'a, Renderer, AttachedData, Ctxt: Context<'a>> PointCloudMut<'a, Renderer, AttachedData, Ctxt>
+impl<'a, Renderer, AttachedData, Ctxt: Context> PointCloudMut<'a, Renderer, AttachedData, Ctxt>
 where
     PointCloud<Renderer, AttachedData>: ElementTrait<'a, Ctxt, Data = PointCloudData>,
 {
@@ -508,11 +508,7 @@ where
         self
     }
 
-    pub fn add_scalar<S: Scalar>(
-        &mut self,
-        name: String,
-        datas: S,
-    ) -> DataMut<'a, '_, ColorMap, Ctxt> {
+    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> DataMut<'_, ColorMap, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         let settings = ColorMap::new(&datas);

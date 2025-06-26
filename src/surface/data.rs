@@ -40,7 +40,7 @@ impl VertexScalarSettings {
     }
 }
 
-impl<'a, 'b, Ctxt: Context<'a>> DataMut<'a, 'b, VertexScalarSettings, Ctxt>
+impl<'a, Ctxt: Context> DataMut<'a, VertexScalarSettings, Ctxt>
 where
     Self: DataMutTrait,
 {

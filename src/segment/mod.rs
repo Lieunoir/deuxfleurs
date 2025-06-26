@@ -758,7 +758,7 @@ impl DisplaySegment {
 pub type SegmentMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, Segment<Renderer, AttachedData>, Context>;
 
-impl<'a, Renderer, AttachedData, Ctxt: Context<'a>> SegmentMut<'a, Renderer, AttachedData, Ctxt>
+impl<'a, Renderer, AttachedData, Ctxt: Context> SegmentMut<'a, Renderer, AttachedData, Ctxt>
 where
     Segment<Renderer, AttachedData>: ElementTrait<'a, Ctxt, Data = SegmentData>,
 {
@@ -773,11 +773,7 @@ where
         self
     }
 
-    pub fn add_scalar<S: Scalar>(
-        &mut self,
-        name: String,
-        datas: S,
-    ) -> DataMut<'a, '_, ColorMap, Ctxt> {
+    pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> DataMut<'_, ColorMap, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         let settings = ColorMap::new(&datas);
