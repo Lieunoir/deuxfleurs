@@ -1,4 +1,4 @@
-use crate::RunningState;
+use crate::window::RunningState;
 use egui::style::{WidgetVisuals, Widgets};
 use egui::{Color32, Stroke};
 use egui::{Response, Shadow, Widget};
