@@ -1,4 +1,5 @@
 use crate::ui::UiDataElement;
+use glam::Vec4Swizzles;
 use transform_gizmo_egui::math::{DMat4, DQuat, DVec3, Transform};
 use transform_gizmo_egui::prelude::*;
 
@@ -70,7 +71,8 @@ impl TransformSettings {
                 for position in positions {
                     let threed_point = glam::Vec3::from_array(*position);
 
-                    let position = (transfo_matrix * threed_point.extend(1.)).truncate();
+                    let position = transfo_matrix * threed_point.extend(1.);
+                    let position = position.xyz() / position.w;
                     if position[0] < min_x {
                         min_x = position[0];
                     }
@@ -91,8 +93,8 @@ impl TransformSettings {
                     }
                 }
                 let x = (max_x + min_x) / 2.;
-                //let y = (max_y + min_y) / 2.;
-                let y = min_y;
+                let y = (max_y + min_y) / 2.;
+                //let y = min_y;
                 let z = (max_z + min_z) / 2.;
                 self.translation += DVec3::from_array([-x as f64, -y as f64, -z as f64]);
                 changed = true;
@@ -110,7 +112,8 @@ impl TransformSettings {
                 let transfo_matrix = glam::Mat4::from_cols_array_2d(&model);
                 for vertex in positions {
                     let threed_point = glam::Vec3::from_array(*vertex);
-                    let position = (transfo_matrix * threed_point.extend(1.)).truncate();
+                    let position = transfo_matrix * threed_point.extend(1.);
+                    let position = position.xyz() / position.w;
 
                     if position[0] < min_x {
                         min_x = position[0];
@@ -135,7 +138,17 @@ impl TransformSettings {
                 let y = max_y - min_y;
                 let z = max_z - min_z;
                 let scale = 1. / (x * x + y * y + z * z).sqrt();
+                let box_center_x = (max_x + min_x) / 2.;
+                let box_center_y = (max_y + min_y) / 2.;
+                let box_center_z = (max_z + min_z) / 2.;
                 self.scale *= scale as f64;
+                let model_center = transfo_matrix * glam::Vec4::new(0., 0., 0., 1.);
+                let model_center = model_center.xyz() / model_center.w;
+                self.translation += glam::DVec3::from_array([
+                    -((1. - scale) * (box_center_x + model_center.x)) as f64,
+                    -((1. - scale) * (box_center_y + model_center.y)) as f64,
+                    -((1. - scale) * (box_center_z + model_center.z)) as f64,
+                ]);
                 changed = true;
             }
         });
