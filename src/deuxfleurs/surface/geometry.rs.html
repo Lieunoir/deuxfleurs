@@ -575,7 +575,7 @@
 <a href=#575 id=575 data-nosnippet>575</a>    <span class="kw">pub fn </span>add_face_scalar&lt;S: Scalar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, datas: S) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, Ctxt&gt; {
 <a href=#576 id=576 data-nosnippet>576</a>        <span class="kw">let </span>datas = datas.into();
 <a href=#577 id=577 data-nosnippet>577</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry.indices.size());
-<a href=#578 id=578 data-nosnippet>578</a>        <span class="kw">let </span>new_settings = ColorMap::new(<span class="kw-2">&amp;</span>datas);
+<a href=#578 id=578 data-nosnippet>578</a>        <span class="kw">let </span>new_settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, <span class="self">self</span>.context.get_settings());
 <a href=#579 id=579 data-nosnippet>579</a>        <span class="self">self</span>.add_data(name, SurfaceData::FaceScalar(datas, new_settings))
 <a href=#580 id=580 data-nosnippet>580</a>            .convert(|data| {
 <a href=#581 id=581 data-nosnippet>581</a>                <span class="kw">if let </span>SurfaceData::FaceScalar(<span class="kw">_</span>, settings) = data {
@@ -593,7 +593,7 @@
 <a href=#593 id=593 data-nosnippet>593</a>    ) -&gt; VertexScalarSettingsMut&lt;<span class="lifetime">'_</span>, Ctxt&gt; {
 <a href=#594 id=594 data-nosnippet>594</a>        <span class="kw">let </span>datas = datas.into();
 <a href=#595 id=595 data-nosnippet>595</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry.vertices.len());
-<a href=#596 id=596 data-nosnippet>596</a>        <span class="kw">let </span>new_settings = VertexScalarSettings::new(<span class="kw-2">&amp;</span>datas);
+<a href=#596 id=596 data-nosnippet>596</a>        <span class="kw">let </span>new_settings = VertexScalarSettings::new(<span class="kw-2">&amp;</span>datas, <span class="self">self</span>.context.get_settings());
 <a href=#597 id=597 data-nosnippet>597</a>        <span class="self">self</span>.add_data(name, SurfaceData::VertexScalar(datas, new_settings))
 <a href=#598 id=598 data-nosnippet>598</a>            .convert(|data| {
 <a href=#599 id=599 data-nosnippet>599</a>                <span class="kw">if let </span>SurfaceData::VertexScalar(<span class="kw">_</span>, settings) = data {

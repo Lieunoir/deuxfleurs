@@ -769,7 +769,7 @@
 <a href=#769 id=769 data-nosnippet>769</a>    <span class="kw">pub fn </span>add_scalar&lt;S: Scalar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, datas: S) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, Ctxt&gt; {
 <a href=#770 id=770 data-nosnippet>770</a>        <span class="kw">let </span>datas = datas.into();
 <a href=#771 id=771 data-nosnippet>771</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#772 id=772 data-nosnippet>772</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas);
+<a href=#772 id=772 data-nosnippet>772</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, <span class="self">self</span>.context.get_settings());
 <a href=#773 id=773 data-nosnippet>773</a>        <span class="self">self</span>.add_data(name, SegmentData::Scalar(datas, settings))
 <a href=#774 id=774 data-nosnippet>774</a>            .convert(|data| {
 <a href=#775 id=775 data-nosnippet>775</a>                <span class="kw">if let </span>SegmentData::Scalar(<span class="kw">_</span>, settings) = data {
