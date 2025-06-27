@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Element","ElementMut","State"],"trait":["StateTrait"]};
+window.SIDEBAR_ITEMS = {"struct":["Element","ElementMut","State"]};
