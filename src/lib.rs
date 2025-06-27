@@ -16,7 +16,6 @@ use pollster::FutureExt;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::iter;
-use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
@@ -732,7 +731,12 @@ impl RunningState {
             .map(|(k, v)| {
                 (
                     k,
-                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
+                    v.upgrade(
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
                 )
             })
             .collect();
@@ -742,7 +746,12 @@ impl RunningState {
             .map(|(k, v)| {
                 (
                     k,
-                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
+                    v.upgrade(
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
                 )
             })
             .collect();
@@ -751,7 +760,12 @@ impl RunningState {
             .map(|(k, v)| {
                 (
                     k,
-                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
+                    v.upgrade(
+                        &device,
+                        &camera_light_bind_group_layout,
+                        &picker.bind_group_layout,
+                        surface_format,
+                    ),
                 )
             })
             .collect();
@@ -1682,6 +1696,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             &state.state.device,
                             &state.state.queue,
                             &state.state.camera_light_bind_group_layout,
+                            &state.state.picker.bind_group_layout,
                             state.state.config.format,
                             &mut state.state.dirty,
                         );

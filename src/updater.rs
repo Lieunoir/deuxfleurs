@@ -144,6 +144,7 @@ where
                 data,
                 &self.settings,
                 context.camera_light_bind_group_layout,
+                context.counter_bind_group_layout,
                 context.color_format,
             );
             *context.refresh_screen = true;
@@ -170,6 +171,7 @@ where
                 Some(data),
                 &self.settings,
                 context.camera_light_bind_group_layout,
+                context.counter_bind_group_layout,
                 context.color_format,
             );
             *context.refresh_screen = true;
@@ -187,6 +189,7 @@ where
                 data,
                 &self.settings,
                 context.camera_light_bind_group_layout,
+                context.counter_bind_group_layout,
                 context.color_format,
             );
         }
@@ -300,6 +303,7 @@ where
         self,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Element<
         Geometry,
@@ -323,6 +327,7 @@ where
             &self.settings,
             data,
             camera_light_bind_group_layout,
+            counter_bind_group_layout,
             color_format,
         );
 
@@ -385,6 +390,7 @@ where
             &settings,
             None,
             camera_light_bind_group_layout,
+            counter_bind_group_layout,
             color_format,
         );
         let sbv = SBV::new(geometry.get_positions());
@@ -472,6 +478,7 @@ where
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
@@ -497,6 +504,7 @@ where
                     data,
                     &self.settings,
                     camera_light_bind_group_layout,
+                    counter_bind_group_layout,
                     color_format,
                 );
             }
@@ -527,6 +535,7 @@ where
                                 data,
                                 &self.settings,
                                 camera_light_bind_group_layout,
+                                counter_bind_group_layout,
                                 color_format,
                             );
                             *refresh_screen = true;
@@ -786,6 +795,7 @@ impl<
         settings: &Settings,
         data: Option<&Data>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let fixed = Fixed::initialize(device, geometry);
@@ -803,6 +813,7 @@ impl<
             &settings_uniform,
             data_uniform.as_ref(),
             camera_light_bind_group_layout,
+            counter_bind_group_layout,
             color_format,
         );
         //TODO can be factored
@@ -843,6 +854,7 @@ impl<
         data: Option<&Data>,
         settings: &Settings,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) {
         self.pipeline = RenderPipeline::new(
@@ -854,6 +866,7 @@ impl<
             &self.settings_uniform,
             self.data_uniform.as_ref(),
             camera_light_bind_group_layout,
+            counter_bind_group_layout,
             color_format,
         );
     }
@@ -890,6 +903,7 @@ pub(crate) trait RenderPipeline {
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self;
 }

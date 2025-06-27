@@ -1,4 +1,5 @@
 use crate::attachment::{NewVectorField, VectorField, VectorFieldSettings};
+use crate::camera::Camera;
 use crate::data::*;
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
@@ -11,11 +12,10 @@ use num_traits::cast::ToPrimitive;
 //use cgmath::num_traits::ToPrimitive;
 use wgpu::util::DeviceExt;
 mod data;
-mod picker;
 mod shader;
+use cgmath::InnerSpace;
 pub use data::*;
-use picker::Picker;
-use shader::{get_shader, SHADOW_SHADER};
+use shader::{get_shader, PICKER_SHADER, SHADOW_SHADER};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -141,6 +141,7 @@ pub struct SurfaceDataBuffer {
 pub struct SurfacePipeline {
     surface_render_pipeline: wgpu::RenderPipeline,
     shadow_render_pipeline: wgpu::RenderPipeline,
+    picker_render_pipeline: wgpu::RenderPipeline,
 }
 
 impl DataBuffer for SurfaceDataBuffer {
@@ -240,6 +241,7 @@ impl RenderPipeline for SurfacePipeline {
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let pipeline_layout = match data_uniform {
@@ -272,6 +274,16 @@ impl RenderPipeline for SurfacePipeline {
                 ],
                 push_constant_ranges: &[],
             });
+        let picker_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Surface Picker Pipeline Layout"),
+                bind_group_layouts: &[
+                    camera_light_bind_group_layout,
+                    counter_bind_group_layout,
+                    &transform_uniform.bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Normal Shader"),
             source: wgpu::ShaderSource::Wgsl(
@@ -279,8 +291,13 @@ impl RenderPipeline for SurfacePipeline {
             ),
         };
         let shadow_shader = wgpu::ShaderModuleDescriptor {
-            label: Some("Normal Shader"),
+            label: Some("Surface Shadow Shader"),
             source: wgpu::ShaderSource::Wgsl(SHADOW_SHADER.into()),
+        };
+
+        let picker_shader = wgpu::ShaderModuleDescriptor {
+            label: Some("Surface Picker Shader"),
+            source: wgpu::ShaderSource::Wgsl(PICKER_SHADER.into()),
         };
 
         let buffer_layout = match data {
@@ -307,9 +324,20 @@ impl RenderPipeline for SurfacePipeline {
             shadow_shader,
             Some("surface sphere render"),
         );
+
+        let picker_render_pipeline = util::create_picker_pipeline(
+            device,
+            &picker_pipeline_layout,
+            texture::Texture::PICKER_FORMAT,
+            Some(texture::Texture::DEPTH_FORMAT),
+            &[SurfaceVertex::desc()],
+            picker_shader,
+            Some("surface picker render"),
+        );
         SurfacePipeline {
             surface_render_pipeline,
             shadow_render_pipeline,
+            picker_render_pipeline,
         }
     }
 }
@@ -340,6 +368,16 @@ impl Render for SurfaceRenderer {
     {
         render_pass.set_bind_group(1, &self.transform_uniform.bind_group, &[]);
         render_pass.set_pipeline(&self.pipeline.shadow_render_pipeline);
+        render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
+        render_pass.draw(0..self.fixed.vertices_len, 0..1);
+    }
+
+    fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        render_pass.set_bind_group(2, &self.transform_uniform.bind_group, &[]);
+        render_pass.set_pipeline(&self.pipeline.picker_render_pipeline);
         render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
         render_pass.draw(0..self.fixed.vertices_len, 0..1);
     }
@@ -381,6 +419,95 @@ impl DisplaySurface {
                 "Picked face number {}",
                 element - self.geometry.vertices.len()
             ));
+        }
+    }
+
+    pub(crate) fn get_element(&self, camera: &Camera, item: u32, pos_x: f32, pos_y: f32) -> u32 {
+        let indices = &self.geometry.indices;
+        let vertices = &self.geometry.vertices;
+        let (face_index, face_indices) = match indices {
+            SurfaceIndices::Triangles(t) => (item, t[item as usize]),
+            SurfaceIndices::Quads(t) => (
+                item / 2,
+                if item % 2 == 0 {
+                    [
+                        t[item as usize / 2][0],
+                        t[item as usize / 2][1],
+                        t[item as usize / 2][2],
+                    ]
+                } else {
+                    [
+                        t[item as usize / 2][0],
+                        t[item as usize / 2][2],
+                        t[item as usize / 2][3],
+                    ]
+                },
+            ),
+            SurfaceIndices::Polygons(indices, s) => {
+                let mut elapsed = 0;
+                let mut index = 0;
+                let mut face = [0, 0, 0];
+                for (i, size) in s.iter().enumerate() {
+                    if elapsed + size - 2 > item {
+                        for j in 0..(size - 2) {
+                            if elapsed + j == item {
+                                index = i as u32;
+                                face = [
+                                    indices[elapsed as usize + i * 2 + 0],
+                                    indices[elapsed as usize + i * 2 + j as usize + 1],
+                                    indices[elapsed as usize + i * 2 + j as usize + 2],
+                                ];
+                                break;
+                            }
+                        }
+                        break;
+                    } else {
+                        elapsed += size - 2;
+                    }
+                }
+                (index, face)
+            }
+        };
+        let v1: cgmath::Point3<f32> = vertices[face_indices[0] as usize].into();
+        let v2: cgmath::Point3<f32> = vertices[face_indices[1] as usize].into();
+        let v3: cgmath::Point3<f32> = vertices[face_indices[2] as usize].into();
+        let v1 = v1.to_homogeneous();
+        let v2 = v2.to_homogeneous();
+        let v3 = v3.to_homogeneous();
+        let model: cgmath::Matrix4<f32> = self.transform.to_raw().get_model().into();
+        let camera = camera.build_view_projection_matrix();
+        let v1 = camera * model * v1;
+        let v2 = camera * model * v2;
+        let v3 = camera * model * v3;
+        let w1 = v1.w;
+        let w2 = v2.w;
+        let w3 = v3.w;
+        let v1 = v1 / v1.w;
+        let v2 = v2 / v2.w;
+        let v3 = v3 / v3.w;
+        let p = cgmath::vec3(pos_x, pos_y, 0.);
+        let v1 = cgmath::vec3(v1.x, v1.y, 0.);
+        let v2 = cgmath::vec3(v2.x, v2.y, 0.);
+        let v3 = cgmath::vec3(v3.x, v3.y, 0.);
+
+        let c3 = (v1 - p).cross(v2 - p).magnitude();
+        let c1 = (v2 - p).cross(v3 - p).magnitude();
+        let c2 = (v3 - p).cross(v1 - p).magnitude();
+        let tot = c3 + c1 + c2;
+        let c1 = c1 / tot;
+        let c2 = c2 / tot;
+        let c3 = c3 / tot;
+        let c1 = c1 / w1 / (c1 / w1 + c2 / w2 + c3 / w3);
+        let c2 = c2 / w2 / (c1 / w1 + c2 / w2 + c3 / w3);
+        let c3 = c3 / w3 / (c1 / w1 + c2 / w2 + c3 / w3);
+        if c1 > 0.7 {
+            face_indices[0]
+        } else if c2 > 0.7 {
+            face_indices[1]
+        } else if c3 > 0.7 {
+            face_indices[2]
+        } else {
+            vertices.len() as u32 + face_index
         }
     }
 }
