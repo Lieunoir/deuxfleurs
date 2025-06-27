@@ -39,6 +39,12 @@ pub mod internal {
     pub use crate::window::{State, StateTrait};
 }
 
+/// First initialization of the app. The resulting [`InitialState`]
+/// can then be used to register geometries and data. It the has to
+/// be ran.
+///
+/// Arguments:
+/// * `settings`: global app [`Settings`]
 #[must_use]
 pub fn init(settings: Settings) -> InitialState {
     State::new_inner(InnerBareState {
