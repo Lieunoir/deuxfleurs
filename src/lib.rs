@@ -36,7 +36,7 @@ use window::{InnerBareState, State};
 /// Re exported types for visibility
 pub mod internal {
     pub use crate::geometry::{Element, ElementMut};
-    pub use crate::window::{State, StateTrait};
+    pub use crate::window::State;
 }
 
 /// First initialization of the app. The resulting [`InitialState`]
