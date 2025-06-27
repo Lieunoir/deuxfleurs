@@ -148,7 +148,6 @@ pub struct SurfacePipeline {
 }
 
 impl DataBuffer for SurfaceDataBuffer {
-    type Settings = SurfaceSettings;
     type Data = SurfaceData;
     type Geometry = SurfaceGeometry;
 
@@ -164,8 +163,6 @@ impl DataBuffer for SurfaceDataBuffer {
 }
 
 impl FixedRenderer for SurfaceFixedRenderer {
-    type Settings = SurfaceSettings;
-    type Data = SurfaceData;
     type Geometry = SurfaceGeometry;
 
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self {
@@ -233,7 +230,6 @@ impl RenderPipeline for SurfacePipeline {
     type Settings = SurfaceSettings;
     type Data = SurfaceData;
     type Geometry = SurfaceGeometry;
-    type Fixed = SurfaceFixedRenderer;
 
     fn new(
         device: &wgpu::Device,
@@ -553,13 +549,13 @@ impl DisplaySurface {
 pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, Surface<Renderer, AttachedData>, Context>;
 
-impl<
-    'a,
-    Renderer,
-    AttachedData: AttachedGeometry<Ctxt, Settings = VectorFieldSettings, Args = (Vec<[f32; 3]>, Vec<[f32; 3]>)>,
-    Ctxt: Context,
-> SurfaceMut<'a, Renderer, AttachedData, Ctxt>
+impl<'a, Renderer, AttachedData, Ctxt: Context> SurfaceMut<'a, Renderer, AttachedData, Ctxt>
 where
+    AttachedData: AttachedGeometry<
+            Ctxt,
+            Settings = VectorFieldSettings,
+            Args = (Vec<[f32; 3]>, Vec<[f32; 3]>),
+        >,
     Surface<Renderer, AttachedData>:
         ElementTrait<Ctxt, Data = SurfaceData, Attached = AttachedData>,
 {

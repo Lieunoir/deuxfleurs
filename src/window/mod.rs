@@ -159,9 +159,9 @@ where
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
-    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    Fixed: FixedRenderer<Geometry = Geometry>,
+    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
 {
     type Args = Geometry::Args;
 

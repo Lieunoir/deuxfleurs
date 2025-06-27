@@ -87,9 +87,9 @@ where
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
-    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    Fixed: FixedRenderer<Geometry = Geometry>,
+    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
 {
     type Data = Data;
     type Geometry = Geometry;
@@ -98,7 +98,7 @@ where
     fn replace(
         &mut self,
         args: <Self::Geometry as ElementGeometry>::Args,
-        context: &mut GraphicalContext<'a>,
+        context: &mut GraphicalContext<'_>,
     ) {
         let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
@@ -116,14 +116,14 @@ where
         }
     }
 
-    fn show(&mut self, show: bool, context: &mut GraphicalContext<'a>) {
+    fn show(&mut self, show: bool, context: &mut GraphicalContext<'_>) {
         if self.show != show {
             *context.refresh_screen = true;
             self.show = show;
         }
     }
 
-    fn set_data(&mut self, name: Option<String>, context: &mut GraphicalContext<'a>) {
+    fn set_data(&mut self, name: Option<String>, context: &mut GraphicalContext<'_>) {
         if self.shown_data != name {
             self.shown_data = name;
             let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
@@ -175,7 +175,7 @@ where
         }
     }
 
-    fn update_settings(&mut self, context: &mut GraphicalContext<'a>, rebuild_pipeline: bool) {
+    fn update_settings(&mut self, context: &mut GraphicalContext<'_>, rebuild_pipeline: bool) {
         self.settings
             .refresh_buffer(context.queue, &self.renderer.settings_uniform);
         if rebuild_pipeline {
@@ -190,7 +190,7 @@ where
         }
     }
 
-    fn update_transform(&mut self, context: &mut GraphicalContext<'a>) {
+    fn update_transform(&mut self, context: &mut GraphicalContext<'_>) {
         self.transform
             .to_raw()
             .refresh_buffer(context.queue, &self.renderer.transform_uniform);
@@ -220,7 +220,7 @@ where
     }
 }
 
-impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<()>
+impl<Geometry, Settings, Data, AttachedG> ElementTrait<()>
     for UninitedElement<Geometry, Settings, Data, AttachedG>
 where
     Geometry: ElementGeometry,
@@ -363,10 +363,9 @@ where
     >
     where
         Data: DataUniformBuilder,
-        Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        Pipeline:
-            RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+        Fixed: FixedRenderer<Geometry = Geometry>,
+        DataB: DataBuffer<Data = Data, Geometry = Geometry>,
+        Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
     {
         let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
         let renderer = Renderer::new(
@@ -418,9 +417,9 @@ where
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
-    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    Fixed: FixedRenderer<Geometry = Geometry>,
+    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
 {
     pub(crate) fn new(
         name: String,
@@ -610,9 +609,9 @@ where
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: NamedSettings,
-    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    Fixed: FixedRenderer<Geometry = Geometry>,
+    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
     Renderer<Fixed, DataB, Pipeline>: Render,
 {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -651,10 +650,7 @@ pub struct DataMut<'a, T, Ctxt: Context> {
 }
 
 pub type UninitedData<'a, T> = DataMut<'a, T, ()>;
-pub type DisplayData<'a, T>
-where
-    T: DataUniformBuilder,
-= DataMut<'a, T, GraphicalContext<'a>>;
+pub type DisplayData<'a, T> = DataMut<'a, T, GraphicalContext<'a>>;
 
 impl<'a, T, Ctxt: Context> DataMut<'a, T, Ctxt> {
     pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(self, f: F) -> DataMut<'a, U, Ctxt> {
@@ -840,9 +836,9 @@ impl<
     Settings: DataUniformBuilder,
     Data: DataUniformBuilder,
     Geometry,
-    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    Fixed: FixedRenderer<Geometry = Geometry>,
+    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
 > Renderer<Fixed, DataB, Pipeline>
 {
     pub(crate) fn new(
@@ -923,15 +919,12 @@ impl<
 }
 
 pub trait FixedRenderer {
-    type Settings;
-    type Data;
     type Geometry;
 
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self;
 }
 
 pub trait DataBuffer {
-    type Settings;
     type Data;
     type Geometry;
 
@@ -942,7 +935,6 @@ pub trait RenderPipeline {
     type Settings;
     type Data;
     type Geometry;
-    type Fixed;
 
     fn new(
         device: &wgpu::Device,
