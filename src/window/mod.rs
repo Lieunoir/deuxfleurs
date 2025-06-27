@@ -1,7 +1,7 @@
 use crate::aabb::SBV;
 use crate::attachment::{NewVectorField, VectorField};
 use crate::camera::{Camera, CameraController, CameraUniform};
-use crate::data::{DataSettings, DataUniformBuilder};
+use crate::data::internal::{DataSettings, DataUniformBuilder};
 use crate::deferred;
 use crate::picker;
 use crate::point_cloud::{
@@ -510,6 +510,7 @@ where
     }
 }
 
+/// Starting point to build the app.
 pub type InitialState = State<InnerBareState>;
 
 impl InitialState {
@@ -537,9 +538,9 @@ impl InitialState {
     }
 }
 
+/// Holds the application state. Starting point to add visualization datas.
 pub type RunningState = State<InnerGraphicalState>;
 
-/// Starting point to build the app.
 struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     init_state: Option<InitialState>,
     state: Option<RunningState>,

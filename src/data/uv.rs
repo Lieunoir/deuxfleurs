@@ -67,7 +67,9 @@ impl UiDataElement for UVMapSettings {
     }
 }
 
-impl<'a, Ctxt: Context> DataMut<'a, UVMapSettings, Ctxt>
+pub type UVMapSettingsMut<'a, Ctxt> = DataMut<'a, UVMapSettings, Ctxt>;
+
+impl<'a, Ctxt: Context> UVMapSettingsMut<'a, Ctxt>
 where
     Self: DataMutTrait,
 {

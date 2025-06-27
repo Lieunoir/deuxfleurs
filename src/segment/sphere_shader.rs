@@ -1,4 +1,4 @@
-use super::SegmentData;
+use super::geometry::SegmentData;
 use crate::shader;
 
 macro_rules! SHADER { () => {"

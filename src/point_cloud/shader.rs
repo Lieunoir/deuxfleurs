@@ -1,4 +1,4 @@
-use super::PointCloudData;
+use super::geometry::PointCloudData;
 use crate::shader;
 
 macro_rules! SHADER { () => {"

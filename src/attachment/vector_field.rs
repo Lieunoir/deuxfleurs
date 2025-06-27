@@ -56,21 +56,11 @@ impl VectorFieldSettings {
             color: self.color,
         }
     }
-
-    pub fn set_magnitude(&mut self, magnitude: f32) {
-        self.magnitude = magnitude;
-    }
-
-    pub fn show(&mut self, show: bool) {
-        self.show = show;
-    }
-
-    pub fn set_color(&mut self, color: [f32; 4]) {
-        self.color.color = color;
-    }
 }
 
-impl<'a, Ctxt: Context> DataMut<'a, VectorFieldSettings, Ctxt>
+pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, VectorFieldSettings, Ctxt>;
+
+impl<'a, Ctxt: Context> VectorFieldSettingsMut<'a, Ctxt>
 where
     Self: DataMutTrait,
 {

@@ -215,7 +215,7 @@ impl UI {
     pub(crate) fn draw_models(
         &mut self,
         window: &Window,
-        surfaces: &mut IndexMap<String, crate::surface::DisplaySurface>,
+        surfaces: &mut IndexMap<String, crate::surface::geometry::DisplaySurface>,
         clouds: &mut IndexMap<String, crate::point_cloud::DisplayPointCloud>,
         curves: &mut IndexMap<String, crate::segment::DisplaySegment>,
         view: glam::Mat4,
