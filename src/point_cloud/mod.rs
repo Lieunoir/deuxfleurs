@@ -485,8 +485,10 @@ impl DisplayPointCloud {
     }
 }
 
-impl<'a, 'b, Renderer, AttachedData, Context>
-    ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>
+pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
+    ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>;
+
+impl<'a, 'b, Renderer, AttachedData, Context> PointCloudMut<'a, Renderer, AttachedData, Context>
 where
     'a: 'b,
     PointCloud<Renderer, AttachedData>: ElementTrait<Data = PointCloudData, Context<'a> = Context>,

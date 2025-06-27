@@ -579,8 +579,10 @@ impl<T> TyEq for T {
     type Type = T;
 }
 
-impl<'a, 'b, Renderer, AttachedData, Context>
-    ElementMut<'a, Surface<Renderer, AttachedData>, Context>
+pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
+    ElementMut<'a, Surface<Renderer, AttachedData>, Context>;
+
+impl<'a, 'b, Renderer, AttachedData, Context> SurfaceMut<'a, Renderer, AttachedData, Context>
 where
     'a: 'b,
     Surface<Renderer, AttachedData>: ElementTrait<Data = SurfaceData, Context<'a> = Context>,

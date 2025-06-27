@@ -751,8 +751,10 @@ impl DisplaySegment {
     }
 }
 
-impl<'a, 'b, Renderer, AttachedData, Context>
-    ElementMut<'a, Segment<Renderer, AttachedData>, Context>
+pub type SegmentMut<'a, Renderer, AttachedData, Context> =
+    ElementMut<'a, Segment<Renderer, AttachedData>, Context>;
+
+impl<'a, 'b, Renderer, AttachedData, Context> SegmentMut<'a, Renderer, AttachedData, Context>
 where
     'a: 'b,
     Segment<Renderer, AttachedData>: ElementTrait<Data = SegmentData, Context<'a> = Context>,

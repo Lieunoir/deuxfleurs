@@ -2,6 +2,7 @@
 #![doc = include_str!("../README.md")]
 use crate::aabb::SBV;
 use crate::point_cloud::{PointCloudGeometry, UninitedPointCloud};
+
 use crate::segment::{SegmentGeometry, UninitedSegment};
 use crate::surface::{SurfaceGeometry, UninitedSurface};
 use crate::updater::{ElementGeometry, ElementMut, GraphicalContext, Render};
@@ -74,39 +75,54 @@ struct JitterUniform {
     _padding: [u32; 2],
 }
 mod private {
+    use crate::aabb;
     use crate::data::{DataSettings, DataUniformBuilder};
-    use crate::point_cloud::{PointCloudGeometry, UninitedPointCloud};
-    use crate::segment::{SegmentGeometry, UninitedSegment};
-    use crate::surface::{SurfaceGeometry, UninitedSurface};
+    use crate::deferred;
+    use crate::picker;
+    use crate::screenshot;
+    use crate::texture;
     use crate::ui::UiDataElement;
     use crate::updater::{
         AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
         FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry, Render,
         RenderPipeline, UninitedElement,
     };
+    use crate::Camera;
+    use crate::CameraController;
+    use crate::CameraUniform;
+    use crate::InnerState;
+    use crate::LightUniform;
+    use crate::Settings;
+    use crate::UserEvent;
     use indexmap::IndexMap;
-    pub trait GeometryHolder<'a, Element> {
+    use rand::rngs::SmallRng;
+    use std::sync::Arc;
+    use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
+    use winit::{dpi::PhysicalSize, event::*, event_loop::EventLoop, window::Window};
+    pub trait GeometryHolder<Element> {
         type Args;
-        type Context;
+        type Context<'a>
+        where
+            Self: 'a;
 
-        fn register(
+        fn register<'a>(
             &'a mut self,
             name: String,
             args: Self::Args,
-            context: Self::Context,
-        ) -> ElementMut<'a, Element, Self::Context>;
+            context: Self::Context<'a>,
+        ) -> ElementMut<'a, Element, Self::Context<'a>>;
 
-        fn get_element_mut(
+        fn get_element_mut<'a>(
             &'a mut self,
             name: &str,
-            context: Self::Context,
-        ) -> Option<ElementMut<'a, Element, Self::Context>>;
+            context: Self::Context<'a>,
+        ) -> Option<ElementMut<'a, Element, Self::Context<'a>>>;
 
         fn get_element(&self, name: &str) -> Option<&Element>;
     }
 
-    impl<'a, 'b, Geometry, Settings, Data, Attached>
-        GeometryHolder<'a, UninitedElement<Geometry, Settings, Data, Attached>>
+    impl<Geometry, Settings, Data, Attached>
+        GeometryHolder<UninitedElement<Geometry, Settings, Data, Attached>>
         for IndexMap<String, UninitedElement<Geometry, Settings, Data, Attached>>
     where
         Geometry: ElementGeometry,
@@ -114,14 +130,20 @@ mod private {
         Attached: AttachedGeometry + NewAttachedGeometry,
     {
         type Args = Geometry::Args;
-        type Context = ();
+        type Context<'a>
+            = ()
+        where
+            Attached: 'a,
+            Data: 'a,
+            Geometry: 'a,
+            Settings: 'a;
 
-        fn register(
+        fn register<'a>(
             &'a mut self,
             name: String,
             args: Self::Args,
-            context: Self::Context,
-        ) -> ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context>
+            _context: Self::Context<'a>,
+        ) -> ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'a>>
         {
             let element = Element::new_bare(name.clone(), args);
             self.insert(name.clone(), element);
@@ -131,12 +153,12 @@ mod private {
             }
         }
 
-        fn get_element_mut(
+        fn get_element_mut<'a>(
             &'a mut self,
             name: &str,
-            _context: Self::Context,
+            _context: Self::Context<'a>,
         ) -> Option<
-            ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context>,
+            ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'a>>,
         > {
             self.get_mut(name).map(|element| ElementMut {
                 element,
@@ -152,17 +174,13 @@ mod private {
         }
     }
 
-    impl<'a, 'b, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
-        GeometryHolder<
-            'a,
-            DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-        >
+    impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
+        GeometryHolder<DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>>
         for IndexMap<
             String,
             DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
         >
     where
-        'a: 'b,
         Attached: AttachedGeometry,
         Geometry: ElementGeometry,
         Data: DataUniformBuilder + DataSettings + UiDataElement,
@@ -173,17 +191,26 @@ mod private {
             RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
     {
         type Args = Geometry::Args;
-        type Context = GraphicalContext<'a>;
+        type Context<'a>
+            = GraphicalContext<'a>
+        where
+            Geometry: 'a,
+            Fixed: 'a,
+            DataB: 'a,
+            Pipeline: 'a,
+            Settings: 'a,
+            Data: 'a,
+            Attached: 'a;
 
-        fn register(
+        fn register<'a>(
             &'a mut self,
             name: String,
             args: Self::Args,
-            context: Self::Context,
+            context: Self::Context<'a>,
         ) -> ElementMut<
             'a,
             DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-            Self::Context,
+            Self::Context<'a>,
         > {
             let element = Element::new(
                 name.clone(),
@@ -200,15 +227,15 @@ mod private {
             }
         }
 
-        fn get_element_mut(
+        fn get_element_mut<'a>(
             &'a mut self,
             name: &str,
-            context: Self::Context,
+            context: Self::Context<'a>,
         ) -> Option<
             ElementMut<
                 'a,
                 DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-                Self::Context,
+                Self::Context<'a>,
             >,
         > {
             self.get_mut(name)
@@ -224,56 +251,246 @@ mod private {
         }
     }
 
-    pub trait ContextBuilder<'a> {
-        type Context;
+    pub trait ContextBuilder {
+        type Context<'a>
+        where
+            Self: 'a;
 
-        fn get_context(&'a mut self) -> Self::Context;
+        fn get_context(&mut self) -> Self::Context<'_>;
     }
+
+    /// Holds the application state. Starting point to add visualization datas.
+    pub struct GraphicalState {
+        pub(crate) settings: Settings,
+
+        pub(crate) window: Arc<Window>,
+        pub(crate) proxy: EventLoopProxy<UserEvent>,
+        // Graphic context
+        pub(crate) surface: wgpu::Surface<'static>,
+        pub(crate) device: wgpu::Device,
+        pub(crate) queue: wgpu::Queue,
+        pub(crate) config: wgpu::SurfaceConfiguration,
+        // Window size
+        pub(crate) size: winit::dpi::PhysicalSize<u32>,
+        // Textures
+        pub(crate) depth_texture: texture::Texture,
+        // Screenshots
+        pub(crate) screenshoter: screenshot::Screenshoter,
+        pub(crate) screenshot: bool,
+
+        // Keyboard
+        pub(crate) ctrl_pressed: bool,
+        // Camera
+        pub(crate) camera: Camera,
+        pub(crate) camera_controller: CameraController,
+        pub(crate) camera_uniform: CameraUniform,
+        pub(crate) camera_buffer: wgpu::Buffer,
+        // Lighting
+        pub(crate) light_uniform: LightUniform,
+        pub(crate) light_buffer: wgpu::Buffer,
+        pub(crate) jitter_buffer: wgpu::Buffer,
+        pub(crate) camera_light_bind_group_layout: wgpu::BindGroupLayout,
+        pub(crate) camera_light_bind_group: wgpu::BindGroup,
+        // egui
+        //ui: ui::UI,
+        //time: std::time::Instant,
+        pub(crate) dirty: bool,
+        pub(crate) egui_dirty: bool,
+        pub(crate) should_resize: bool,
+
+        // Item picker
+        pub(crate) picker: picker::Picker,
+
+        pub(crate) copy: deferred::TextureCopy,
+        pub(crate) pbr_renderer: deferred::PBR,
+        pub(crate) ground: deferred::Ground,
+        pub(crate) taa_counter: u8,
+        pub(crate) aabb: aabb::SBV,
+        pub(crate) rng: SmallRng,
+    }
+
+    //pub trait SuperTrait<
+    //    'a,
+    //    SurfaceRenderer,
+    //    SurfaceAttachedData,
+    //    PointCloudRenderer,
+    //    PointCloudAttachedData,
+    //    SegmentRenderer,
+    //    SegmentAttachedData,
+    //    State,
+    //>
+    //where
+    //    State: ContextBuilder<'a>,
+    //    IndexMap<String, crate::Surface<SurfaceRenderer, SurfaceAttachedData>>: GeometryHolder<
+    //        'a,
+    //        crate::Surface<SurfaceRenderer, SurfaceAttachedData>,
+    //        Args = <crate::SurfaceGeometry as ElementGeometry>::Args,
+    //        Context = <State as ContextBuilder<'a>>::Context,
+    //    >,
+    //    IndexMap<String, crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>>:
+    //        GeometryHolder<
+    //            'a,
+    //            crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>,
+    //            Args = <crate::PointCloudGeometry as ElementGeometry>::Args,
+    //            Context = <State as ContextBuilder<'a>>::Context,
+    //        >,
+    //    IndexMap<String, crate::Segment<SegmentRenderer, SegmentAttachedData>>: GeometryHolder<
+    //        'a,
+    //        crate::Segment<SegmentRenderer, SegmentAttachedData>,
+    //        Args = <crate::SegmentGeometry as ElementGeometry>::Args,
+    //        Context = <State as ContextBuilder<'a>>::Context,
+    //    >,
+    //{
+    //}
+
+    //impl<
+    //        'a,
+    //        SurfaceRenderer,
+    //        SurfaceAttachedData,
+    //        PointCloudRenderer,
+    //        PointCloudAttachedData,
+    //        SegmentRenderer,
+    //        SegmentAttachedData,
+    //        State,
+    //    >
+    //    SuperTrait<
+    //        'a,
+    //        SurfaceRenderer,
+    //        SurfaceAttachedData,
+    //        PointCloudRenderer,
+    //        PointCloudAttachedData,
+    //        SegmentRenderer,
+    //        SegmentAttachedData,
+    //        State,
+    //    >
+    //    for InnerState<
+    //        crate::Surface<SurfaceRenderer, SurfaceAttachedData>,
+    //        crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>,
+    //        crate::Segment<SegmentRenderer, SegmentAttachedData>,
+    //        State,
+    //    >
+    //where
+    //    State: ContextBuilder<'a>,
+    //    IndexMap<String, crate::Surface<SurfaceRenderer, SurfaceAttachedData>>: GeometryHolder<
+    //        'a,
+    //        crate::Surface<SurfaceRenderer, SurfaceAttachedData>,
+    //        Args = <crate::SurfaceGeometry as ElementGeometry>::Args,
+    //        Context = <State as ContextBuilder<'a>>::Context,
+    //    >,
+    //    IndexMap<String, crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>>:
+    //        GeometryHolder<
+    //            'a,
+    //            crate::PointCloud<PointCloudRenderer, PointCloudAttachedData>,
+    //            Args = <crate::PointCloudGeometry as ElementGeometry>::Args,
+    //            Context = <State as ContextBuilder<'a>>::Context,
+    //        >,
+    //    IndexMap<String, crate::Segment<SegmentRenderer, SegmentAttachedData>>: GeometryHolder<
+    //        'a,
+    //        crate::Segment<SegmentRenderer, SegmentAttachedData>,
+    //        Args = <crate::SegmentGeometry as ElementGeometry>::Args,
+    //        Context = <State as ContextBuilder<'a>>::Context,
+    //    >,
+    //{
+    //}
 }
 
-/// Starting point to add surfaces, point clouds... to
 pub struct InnerState<Surface, PointCloud, Segment, State> {
-    surfaces: IndexMap<String, Surface>,
-    clouds: IndexMap<String, PointCloud>,
-    segments: IndexMap<String, Segment>,
-    state: State,
+    pub(crate) surfaces: IndexMap<String, Surface>,
+    pub(crate) clouds: IndexMap<String, PointCloud>,
+    pub(crate) segments: IndexMap<String, Segment>,
+    pub(crate) state: State,
 }
 
-impl<'a> private::ContextBuilder<'a> for () {
-    type Context = ();
-    fn get_context(&'a mut self) -> Self::Context {
+impl private::ContextBuilder for () {
+    type Context<'a> = ();
+    fn get_context(&mut self) -> Self::Context<'_> {
         ()
     }
 }
 
-impl<'a, Surface, PointCloud, Segment, State> InnerState<Surface, PointCloud, Segment, State>
+pub use crate::point_cloud::{PointCloud, PointCloudMut};
+pub use crate::segment::{Segment, SegmentMut};
+pub use crate::surface::{Surface, SurfaceMut};
+
+struct Wrapper<
+    SurfaceRenderer,
+    SurfaceAttachedData,
+    PointCloudRenderer,
+    PointCloudAttachedData,
+    SegmentRenderer,
+    SegmentAttachedData,
+    State,
+> where
+    State: private::ContextBuilder,
+    for<'a> IndexMap<String, Surface<SurfaceRenderer, SurfaceAttachedData>>:
+        private::GeometryHolder<
+            Surface<SurfaceRenderer, SurfaceAttachedData>,
+            Args = <SurfaceGeometry as ElementGeometry>::Args,
+            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
+        >,
+    for<'a> IndexMap<String, PointCloud<PointCloudRenderer, PointCloudAttachedData>>:
+        private::GeometryHolder<
+            PointCloud<PointCloudRenderer, PointCloudAttachedData>,
+            Args = <PointCloudGeometry as ElementGeometry>::Args,
+            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
+        >,
+    for<'a> IndexMap<String, Segment<SegmentRenderer, SegmentAttachedData>>:
+        private::GeometryHolder<
+            Segment<SegmentRenderer, SegmentAttachedData>,
+            Args = <SegmentGeometry as ElementGeometry>::Args,
+            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
+        >,
+{
+    inner: InnerState<
+        Surface<SurfaceRenderer, SurfaceAttachedData>,
+        PointCloud<PointCloudRenderer, PointCloudAttachedData>,
+        Segment<SegmentRenderer, SegmentAttachedData>,
+        State,
+    >,
+}
+
+impl<
+        SurfaceRenderer,
+        SurfaceAttachedData,
+        PointCloudRenderer,
+        PointCloudAttachedData,
+        SegmentRenderer,
+        SegmentAttachedData,
+        State,
+    >
+    InnerState<
+        Surface<SurfaceRenderer, SurfaceAttachedData>,
+        PointCloud<PointCloudRenderer, PointCloudAttachedData>,
+        Segment<SegmentRenderer, SegmentAttachedData>,
+        State,
+    >
 where
-    State: private::ContextBuilder<'a>,
-    IndexMap<String, Surface>: private::GeometryHolder<
-        'a,
-        Surface,
-        Args = <SurfaceGeometry as ElementGeometry>::Args,
-        Context = <State as private::ContextBuilder<'a>>::Context,
-    >,
-    IndexMap<String, PointCloud>: private::GeometryHolder<
-        'a,
-        PointCloud,
-        Args = <PointCloudGeometry as ElementGeometry>::Args,
-        Context = <State as private::ContextBuilder<'a>>::Context,
-    >,
-    IndexMap<String, Segment>: private::GeometryHolder<
-        'a,
-        Segment,
-        Args = <SegmentGeometry as ElementGeometry>::Args,
-        Context = <State as private::ContextBuilder<'a>>::Context,
-    >,
+    State: private::ContextBuilder,
+    for<'a> IndexMap<String, Surface<SurfaceRenderer, SurfaceAttachedData>>:
+        private::GeometryHolder<
+            Surface<SurfaceRenderer, SurfaceAttachedData>,
+            Args = <SurfaceGeometry as ElementGeometry>::Args,
+            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
+        >,
+    for<'a> IndexMap<String, PointCloud<PointCloudRenderer, PointCloudAttachedData>>:
+        private::GeometryHolder<
+            PointCloud<PointCloudRenderer, PointCloudAttachedData>,
+            Args = <PointCloudGeometry as ElementGeometry>::Args,
+            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
+        >,
+    for<'a> IndexMap<String, Segment<SegmentRenderer, SegmentAttachedData>>:
+        private::GeometryHolder<
+            Segment<SegmentRenderer, SegmentAttachedData>,
+            Args = <SegmentGeometry as ElementGeometry>::Args,
+            Context<'a> = <State as private::ContextBuilder>::Context<'a>,
+        >,
 {
     pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
-        &'a mut self,
+        &mut self,
         name: String,
         vertices: V,
         indices: I,
-    ) -> ElementMut<'a, Surface, State::Context> {
+    ) -> SurfaceMut<'_, SurfaceRenderer, SurfaceAttachedData, State::Context<'_>> {
         use crate::private::GeometryHolder;
         let context = self.state.get_context();
         self.surfaces
@@ -281,38 +498,45 @@ where
     }
 
     pub fn get_surface_mut(
-        &'a mut self,
+        &mut self,
         name: &str,
-    ) -> Option<ElementMut<'a, Surface, State::Context>> {
+    ) -> Option<SurfaceMut<'_, SurfaceRenderer, SurfaceAttachedData, State::Context<'_>>> {
         use crate::private::GeometryHolder;
         self.surfaces
             .get_element_mut(name, self.state.get_context())
     }
 
-    pub fn get_surface(&self, name: &str) -> Option<&Surface> {
+    pub fn get_surface(
+        &self,
+        name: &str,
+    ) -> Option<&Surface<SurfaceRenderer, SurfaceAttachedData>> {
         use crate::private::GeometryHolder;
         self.surfaces.get_element(name)
     }
 
     pub fn register_point_cloud<V: Vertices>(
-        &'a mut self,
+        &mut self,
         name: String,
         positions: V,
-    ) -> ElementMut<'a, PointCloud, State::Context> {
+    ) -> PointCloudMut<'_, PointCloudRenderer, PointCloudAttachedData, State::Context<'_>> {
         use crate::private::GeometryHolder;
         let context = self.state.get_context();
         self.clouds.register(name, positions.into(), context)
     }
 
     pub fn get_point_cloud_mut(
-        &'a mut self,
+        &mut self,
         name: &str,
-    ) -> Option<ElementMut<'a, PointCloud, State::Context>> {
+    ) -> Option<PointCloudMut<'_, PointCloudRenderer, PointCloudAttachedData, State::Context<'_>>>
+    {
         use crate::private::GeometryHolder;
         self.clouds.get_element_mut(name, self.state.get_context())
     }
 
-    pub fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
+    pub fn get_point_cloud(
+        &self,
+        name: &str,
+    ) -> Option<&PointCloud<PointCloudRenderer, PointCloudAttachedData>> {
         use crate::private::GeometryHolder;
         self.clouds.get_element(name)
     }
@@ -323,11 +547,11 @@ where
     /// * `positions`: segments extremities
     /// * `connections`: segments denoted by extremities indices
     pub fn register_segment<V: Vertices>(
-        &'a mut self,
+        &mut self,
         name: String,
         positions: V,
         connections: Vec<[u32; 2]>,
-    ) -> ElementMut<'a, Segment, State::Context> {
+    ) -> SegmentMut<'_, SegmentRenderer, SegmentAttachedData, State::Context<'_>> {
         use crate::private::GeometryHolder;
         let context = self.state.get_context();
         self.segments
@@ -335,21 +559,24 @@ where
     }
 
     pub fn get_segment_mut(
-        &'a mut self,
+        &mut self,
         name: &str,
-    ) -> Option<ElementMut<'a, Segment, State::Context>> {
+    ) -> Option<SegmentMut<'_, SegmentRenderer, SegmentAttachedData, State::Context<'_>>> {
         use crate::private::GeometryHolder;
         self.segments
             .get_element_mut(name, self.state.get_context())
     }
 
-    pub fn get_segment(&self, name: &str) -> Option<&Segment> {
+    pub fn get_segment(
+        &self,
+        name: &str,
+    ) -> Option<&Segment<SegmentRenderer, SegmentAttachedData>> {
         use crate::private::GeometryHolder;
         self.segments.get_element(name)
     }
 }
 
-type InitialState = InnerState<UninitedSurface, UninitedPointCloud, UninitedSegment, ()>;
+pub type InitialState = InnerState<UninitedSurface, UninitedPointCloud, UninitedSegment, ()>;
 
 /// Creates a handle to add elements to. Needs to be run after.
 #[must_use]
@@ -387,60 +614,10 @@ impl InitialState {
     }
 }
 
-/// Holds the application state. Starting point to add visualization datas.
-pub struct GraphicalState {
-    settings: Settings,
+impl private::ContextBuilder for private::GraphicalState {
+    type Context<'a> = GraphicalContext<'a>;
 
-    window: Arc<Window>,
-    proxy: EventLoopProxy<UserEvent>,
-    // Graphic context
-    surface: wgpu::Surface<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
-    // Window size
-    size: winit::dpi::PhysicalSize<u32>,
-    // Textures
-    depth_texture: texture::Texture,
-    // Screenshots
-    screenshoter: screenshot::Screenshoter,
-    screenshot: bool,
-
-    // Keyboard
-    ctrl_pressed: bool,
-    // Camera
-    camera: Camera,
-    camera_controller: CameraController,
-    camera_uniform: CameraUniform,
-    camera_buffer: wgpu::Buffer,
-    // Lighting
-    light_uniform: LightUniform,
-    light_buffer: wgpu::Buffer,
-    jitter_buffer: wgpu::Buffer,
-    camera_light_bind_group_layout: wgpu::BindGroupLayout,
-    camera_light_bind_group: wgpu::BindGroup,
-    // egui
-    //ui: ui::UI,
-    //time: std::time::Instant,
-    dirty: bool,
-    egui_dirty: bool,
-    should_resize: bool,
-
-    // Item picker
-    picker: picker::Picker,
-
-    copy: deferred::TextureCopy,
-    pbr_renderer: deferred::PBR,
-    ground: deferred::Ground,
-    taa_counter: u8,
-    aabb: aabb::SBV,
-    rng: SmallRng,
-}
-
-impl<'a> private::ContextBuilder<'a> for GraphicalState {
-    type Context = GraphicalContext<'a>;
-
-    fn get_context(&'a mut self) -> Self::Context {
+    fn get_context<'a>(&'a mut self) -> Self::Context<'a> {
         Self::Context {
             settings: &self.settings,
             device: &self.device,
@@ -454,7 +631,7 @@ impl<'a> private::ContextBuilder<'a> for GraphicalState {
 }
 
 pub type RunningState =
-    InnerState<DisplaySurface, DisplayPointCloud, DisplaySegment, GraphicalState>;
+    InnerState<DisplaySurface, DisplayPointCloud, DisplaySegment, private::GraphicalState>;
 
 //pub struct RunningState {
 //    settings: Settings,
@@ -530,8 +707,6 @@ pub(crate) enum UserEvent {
     Paste(String),
     Pick,
 }
-
-impl GraphicalState {}
 
 impl RunningState {
     // Initialize the state
@@ -790,7 +965,7 @@ impl RunningState {
             &camera_light_bind_group_layout,
             0.,
         );
-        let g_state = GraphicalState {
+        let g_state = private::GraphicalState {
             settings,
             window,
             proxy,
@@ -1392,7 +1567,7 @@ impl RunningState {
         &self.state.picker.picked_item
     }
 
-    /// Politely ask to render the next frame
+    /// Politely ask to render the next frame, even if no change is detected
     pub fn refresh(&mut self) {
         self.state.dirty = true;
     }
