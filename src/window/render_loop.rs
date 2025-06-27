@@ -950,6 +950,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
         if let Some(state) = self.state.as_mut() {
             match event {
+                #[cfg(feature = "obj_button")]
                 UserEvent::LoadMesh(mesh_v, mesh_f, name) => {
                     state.register_surface(name, mesh_v, mesh_f);
                 }

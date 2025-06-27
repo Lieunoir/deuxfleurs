@@ -556,6 +556,7 @@ struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
 }
 
 pub(crate) enum UserEvent {
+    #[cfg(feature = "obj_button")]
     LoadMesh(Vec<[f32; 3]>, crate::types::SurfaceIndices, String),
     Paste(String),
     Pick,
