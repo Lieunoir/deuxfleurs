@@ -1,9 +1,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 use crate::aabb::SBV;
-use crate::attachment::{NewVectorField, VectorField};
 use crate::private::InnerGraphicalState;
-use crate::updater::{Render, Renderer};
+use crate::updater::Render;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use indexmap::IndexMap;
@@ -11,7 +10,6 @@ use pollster::FutureExt;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::iter;
-use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
@@ -44,11 +42,9 @@ pub mod types;
 pub mod ui;
 mod updater;
 mod util;
-use crate::point_cloud::{
-    DisplayPointCloud, PointCloudDataBuffer, PointCloudFixedRenderer, PointCloudPipeline,
-};
-use crate::segment::{DisplaySegment, SegmentDataBuffer, SegmentFixedRenderer, SegmentPipeline};
-use crate::surface::{DisplaySurface, SurfaceDataBuffer, SurfaceFixedRenderer, SurfacePipeline};
+use crate::point_cloud::DisplayPointCloud;
+use crate::segment::DisplaySegment;
+use crate::surface::DisplaySurface;
 use camera::{Camera, CameraController, CameraUniform};
 pub use egui;
 pub use resources::{load_mesh, load_mesh_blocking};
@@ -118,6 +114,12 @@ mod private {
 
     pub trait ContextHolder {
         type Context<'a>;
+        type SurfaceRenderer;
+        type SurfaceAttachedData;
+        type PointCloudRenderer;
+        type PointCloudAttachedData;
+        type SegmentRenderer;
+        type SegmentAttachedData;
     }
 
     pub trait ContainerContextGiver<Element>: ContextHolder {
@@ -313,6 +315,13 @@ mod private {
 
     impl ContextHolder for InnerGraphicalState {
         type Context<'a> = GraphicalContext<'a>;
+        type SurfaceRenderer = Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>;
+        type SurfaceAttachedData = VectorField;
+        type PointCloudRenderer =
+            Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>;
+        type PointCloudAttachedData = ();
+        type SegmentRenderer = Renderer<SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline>;
+        type SegmentAttachedData = ();
     }
 
     impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
@@ -384,17 +393,7 @@ mod private {
         }
     }
 
-    impl
-        StateTrait<
-            Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>,
-            VectorField,
-            Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>,
-            (),
-            Renderer<SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline>,
-            (),
-        > for InnerGraphicalState
-    {
-    }
+    impl StateTrait for InnerGraphicalState {}
 
     pub struct InnerBareState {
         pub(crate) surfaces: IndexMap<String, UninitedSurface>,
@@ -404,6 +403,12 @@ mod private {
 
     impl ContextHolder for InnerBareState {
         type Context<'a> = ();
+        type SurfaceRenderer = ();
+        type SurfaceAttachedData = NewVectorField;
+        type PointCloudRenderer = ();
+        type PointCloudAttachedData = ();
+        type SegmentRenderer = ();
+        type SegmentAttachedData = ();
     }
 
     impl ContainerContextGiver<UninitedSurface> for InnerBareState {
@@ -436,21 +441,27 @@ mod private {
         }
     }
 
-    impl StateTrait<(), NewVectorField, (), (), (), ()> for InnerBareState {}
+    impl StateTrait for InnerBareState {}
 
-    pub trait StateTrait<
-        SurfaceRenderer,
-        SurfaceAttachedData,
-        PointCloudRenderer,
-        PointCloudAttachedData,
-        SegmentRenderer,
-        SegmentAttachedData,
-    >: GeometryHolder<
-            Surface<SurfaceRenderer, SurfaceAttachedData>,
-            Args = (SurfaceIndices, Vec<[f32; 3]>),
-        > + GeometryHolder<PointCloud<PointCloudRenderer, PointCloudAttachedData>, Args = Vec<[f32; 3]>>
+    pub trait StateTrait:
+        ContextHolder
         + GeometryHolder<
-            Segment<SegmentRenderer, SegmentAttachedData>,
+            Surface<
+                <Self as ContextHolder>::SurfaceRenderer,
+                <Self as ContextHolder>::SurfaceAttachedData,
+            >,
+            Args = (SurfaceIndices, Vec<[f32; 3]>),
+        > + GeometryHolder<
+            PointCloud<
+                <Self as ContextHolder>::PointCloudRenderer,
+                <Self as ContextHolder>::PointCloudAttachedData,
+            >,
+            Args = Vec<[f32; 3]>,
+        > + GeometryHolder<
+            Segment<
+                <Self as ContextHolder>::SegmentRenderer,
+                <Self as ContextHolder>::SegmentAttachedData,
+            >,
             Args = (Vec<[f32; 3]>, Vec<[u32; 2]>),
         >
     {
@@ -458,62 +469,14 @@ mod private {
 }
 
 // Ugly, wish I had some way to avoid this
-pub struct State<
-    T,
-    SurfaceRenderer,
-    SurfaceAttachedData,
-    PointCloudRenderer,
-    PointCloudAttachedData,
-    SegmentRenderer,
-    SegmentAttachedData,
->(
-    T,
-    PhantomData<SurfaceRenderer>,
-    PhantomData<SurfaceAttachedData>,
-    PhantomData<PointCloudRenderer>,
-    PhantomData<PointCloudAttachedData>,
-    PhantomData<SegmentRenderer>,
-    PhantomData<SegmentAttachedData>,
-);
+pub struct State<T>(T);
 
-impl<
-        SurfaceRenderer,
-        SurfaceAttachedData,
-        PointCloudRenderer,
-        PointCloudAttachedData,
-        SegmentRenderer,
-        SegmentAttachedData,
-        T,
-    >
-    State<
-        T,
-        SurfaceRenderer,
-        SurfaceAttachedData,
-        PointCloudRenderer,
-        PointCloudAttachedData,
-        SegmentRenderer,
-        SegmentAttachedData,
-    >
+impl<T> State<T>
 where
-    T: private::StateTrait<
-        SurfaceRenderer,
-        SurfaceAttachedData,
-        PointCloudRenderer,
-        PointCloudAttachedData,
-        SegmentRenderer,
-        SegmentAttachedData,
-    >,
+    T: private::StateTrait,
 {
     fn new_inner(inner: T) -> Self {
-        Self(
-            inner,
-            PhantomData,
-            PhantomData,
-            PhantomData,
-            PhantomData,
-            PhantomData,
-            PhantomData,
-        )
+        Self(inner)
     }
 
     pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
@@ -521,21 +484,21 @@ where
         name: String,
         vertices: V,
         indices: I,
-    ) -> SurfaceMut<SurfaceRenderer, SurfaceAttachedData, T::Context<'_>> {
+    ) -> SurfaceMut<T::SurfaceRenderer, T::SurfaceAttachedData, T::Context<'_>> {
         self.0.register(name, (indices.into(), vertices.into()))
     }
 
     pub fn get_surface_mut(
         &mut self,
         name: &str,
-    ) -> Option<SurfaceMut<SurfaceRenderer, SurfaceAttachedData, T::Context<'_>>> {
+    ) -> Option<SurfaceMut<T::SurfaceRenderer, T::SurfaceAttachedData, T::Context<'_>>> {
         self.0.get_element_mut(name)
     }
 
     pub fn get_surface(
         &self,
         name: &str,
-    ) -> Option<&Surface<SurfaceRenderer, SurfaceAttachedData>> {
+    ) -> Option<&Surface<T::SurfaceRenderer, T::SurfaceAttachedData>> {
         self.0.get_element(name)
     }
 
@@ -543,21 +506,22 @@ where
         &mut self,
         name: String,
         positions: V,
-    ) -> PointCloudMut<PointCloudRenderer, PointCloudAttachedData, T::Context<'_>> {
+    ) -> PointCloudMut<T::PointCloudRenderer, T::PointCloudAttachedData, T::Context<'_>> {
         self.0.register(name, positions.into())
     }
 
     pub fn get_point_cloud_mut(
         &mut self,
         name: &str,
-    ) -> Option<PointCloudMut<PointCloudRenderer, PointCloudAttachedData, T::Context<'_>>> {
+    ) -> Option<PointCloudMut<T::PointCloudRenderer, T::PointCloudAttachedData, T::Context<'_>>>
+    {
         self.0.get_element_mut(name)
     }
 
     pub fn get_point_cloud(
         &self,
         name: &str,
-    ) -> Option<&PointCloud<PointCloudRenderer, PointCloudAttachedData>> {
+    ) -> Option<&PointCloud<T::PointCloudRenderer, T::PointCloudAttachedData>> {
         self.0.get_element(name)
     }
 
@@ -571,21 +535,21 @@ where
         name: String,
         positions: V,
         connections: Vec<[u32; 2]>,
-    ) -> SegmentMut<SegmentRenderer, SegmentAttachedData, T::Context<'_>> {
+    ) -> SegmentMut<T::SegmentRenderer, T::SegmentAttachedData, T::Context<'_>> {
         self.0.register(name, (positions.into(), connections))
     }
 
     pub fn get_segment_mut(
         &mut self,
         name: &str,
-    ) -> Option<SegmentMut<SegmentRenderer, SegmentAttachedData, T::Context<'_>>> {
+    ) -> Option<SegmentMut<T::SegmentRenderer, T::SegmentAttachedData, T::Context<'_>>> {
         self.0.get_element_mut(name)
     }
 
     pub fn get_segment(
         &self,
         name: &str,
-    ) -> Option<&Segment<SegmentRenderer, SegmentAttachedData>> {
+    ) -> Option<&Segment<T::SegmentRenderer, T::SegmentAttachedData>> {
         self.0.get_element(name)
     }
 }
@@ -594,7 +558,7 @@ pub use crate::point_cloud::{PointCloud, PointCloudMut};
 pub use crate::segment::{Segment, SegmentMut};
 pub use crate::surface::{Surface, SurfaceMut};
 
-pub type InitialState = State<private::InnerBareState, (), NewVectorField, (), (), (), ()>;
+pub type InitialState = State<private::InnerBareState>;
 
 /// Creates a handle to add elements to. Needs to be run after.
 #[must_use]
@@ -631,15 +595,7 @@ impl InitialState {
     }
 }
 
-pub type RunningState = State<
-    InnerGraphicalState,
-    Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>,
-    VectorField,
-    Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>,
-    (),
-    Renderer<SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline>,
-    (),
->;
+pub type RunningState = State<InnerGraphicalState>;
 
 /// Starting point to build the app.
 struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
