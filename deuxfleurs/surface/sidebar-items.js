@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["SurfaceData"],"struct":["FaceScalarSettings","SurfaceGeometry","SurfaceSettings","VertexScalarSettings"],"type":["Surface"]};
+window.SIDEBAR_ITEMS = {"type":["Surface","SurfaceMut","VertexScalarSettingsMut"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["VectorFieldSettings"]};
+window.SIDEBAR_ITEMS = {"type":["VectorFieldSettingsMut"]};

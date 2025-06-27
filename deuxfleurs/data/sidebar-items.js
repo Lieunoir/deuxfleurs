@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Colors"],"struct":["ColorMap","ColorSettings","IsolineSettings","Radius","TransformSettings","UVMapSettings"]};
+window.SIDEBAR_ITEMS = {"enum":["Colors"],"type":["ColorMapMut","UVMapSettingsMut"]};
