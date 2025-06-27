@@ -5,6 +5,7 @@ use crate::geometry::DataMut;
 use crate::geometry::DataMutTrait;
 use crate::types::SurfaceIndices;
 use crate::ui::UiDataElement;
+use crate::{Settings, settings};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -21,9 +22,9 @@ pub struct VertexScalarSettings {
 }
 
 impl VertexScalarSettings {
-    pub(crate) fn new(values: &[f32]) -> Self {
+    pub(crate) fn new(values: &[f32], settings: &Settings) -> Self {
         Self {
-            colormap: ColorMap::new(values),
+            colormap: ColorMap::new(values, settings),
             isoline: IsolineSettings::default(),
         }
     }

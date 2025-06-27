@@ -40,10 +40,11 @@ pub mod internal {
 }
 
 #[must_use]
-pub fn init() -> InitialState {
+pub fn init(settings: Settings) -> InitialState {
     State::new_inner(InnerBareState {
         surfaces: IndexMap::new(),
         clouds: IndexMap::new(),
         segments: IndexMap::new(),
+        settings,
     })
 }

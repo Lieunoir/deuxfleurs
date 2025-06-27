@@ -93,12 +93,12 @@ pub trait GeometryHolder<Element>: ContainerContextGiver<Element> {
 impl<Geometry, Settings, Data, Attached, T>
     GeometryHolder<UninitedElement<Geometry, Settings, Data, Attached>> for T
 where
-    for<'a> T: ContextHolder<Context<'a> = ()>,
+    for<'a> T: ContextHolder<Context<'a> = &'a mut crate::Settings>,
     T: ContainerContextGiver<UninitedElement<Geometry, Settings, Data, Attached>>,
     Geometry: ElementGeometry,
     Settings: DataUniformBuilder + NamedSettings,
     Data: DataSettings,
-    Attached: AttachedGeometry<()> + NewAttachedGeometry,
+    for<'a> Attached: AttachedGeometry<&'a mut crate::Settings> + NewAttachedGeometry,
 {
     type Args = Geometry::Args;
 
@@ -108,20 +108,17 @@ where
         args: Self::Args,
     ) -> ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
         use crate::geometry::ElementTrait;
-        let container = self.get_container_mut().0;
+        let (container, mut context) = self.get_container_mut();
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
-            element.replace(args, &mut ());
-            ElementMut {
-                element,
-                context: (),
-            }
+            element.replace(args, &mut context);
+            ElementMut { element, context }
         } else {
             let element = Element::new_bare(name.clone(), args);
             container.insert(name.clone(), element);
             ElementMut {
                 element: container.get_mut(&name).unwrap(),
-                context: (),
+                context,
             }
         }
     }
@@ -131,13 +128,10 @@ where
         name: &str,
     ) -> Option<ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>>>
     {
-        self.get_container_mut()
-            .0
+        let (container, context) = self.get_container_mut();
+        container
             .get_mut(name)
-            .map(|element| ElementMut {
-                element,
-                context: (),
-            })
+            .map(|element| ElementMut { element, context })
     }
 
     fn get_element(
@@ -359,10 +353,11 @@ pub struct InnerBareState {
     pub(crate) surfaces: IndexMap<String, UninitedSurface>,
     pub(crate) clouds: IndexMap<String, UninitedPointCloud>,
     pub(crate) segments: IndexMap<String, UninitedSegment>,
+    pub settings: Settings,
 }
 
 impl ContextHolder for InnerBareState {
-    type Context<'a> = ();
+    type Context<'a> = &'a mut Settings;
     type SurfaceRenderer = ();
     type SurfaceAttachedData = NewVectorField;
     type PointCloudRenderer = ();
@@ -376,8 +371,8 @@ impl ContainerContextGiver<UninitedSurface> for InnerBareState {
         &self.surfaces
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSurface>, ()) {
-        (&mut self.surfaces, ())
+    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSurface>, &mut Settings) {
+        (&mut self.surfaces, &mut self.settings)
     }
 }
 
@@ -386,8 +381,8 @@ impl ContainerContextGiver<UninitedPointCloud> for InnerBareState {
         &self.clouds
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedPointCloud>, ()) {
-        (&mut self.clouds, ())
+    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedPointCloud>, &mut Settings) {
+        (&mut self.clouds, &mut self.settings)
     }
 }
 
@@ -396,8 +391,8 @@ impl ContainerContextGiver<UninitedSegment> for InnerBareState {
         &self.segments
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSegment>, ()) {
-        (&mut self.segments, ())
+    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSegment>, &mut Settings) {
+        (&mut self.segments, &mut self.settings)
     }
 }
 
@@ -532,10 +527,9 @@ impl InitialState {
         width: u32,
         height: u32,
         id: Option<String>,
-        settings: Settings,
         callback: T,
     ) {
-        StateWrapper::run(self, width, height, id, settings, callback);
+        StateWrapper::run(self, width, height, id, callback);
     }
 }
 
@@ -551,7 +545,6 @@ struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     width: u32,
     height: u32,
     proxy: EventLoopProxy<UserEvent>,
-    settings: Settings,
     callback: T,
 }
 
@@ -577,13 +570,8 @@ impl DerefMut for RunningState {
 }
 
 impl RunningState {
-    async fn new(
-        initial: InitialState,
-        window: Window,
-        proxy: EventLoopProxy<UserEvent>,
-        settings: Settings,
-    ) -> Self {
-        let inner = InnerGraphicalState::new(initial, window, proxy, settings).await;
+    async fn new(initial: InitialState, window: Window, proxy: EventLoopProxy<UserEvent>) -> Self {
+        let inner = InnerGraphicalState::new(initial, window, proxy).await;
         Self::new_inner(inner)
     }
 
@@ -612,14 +600,7 @@ impl RunningState {
 }
 
 impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
-    fn run(
-        init_state: InitialState,
-        width: u32,
-        height: u32,
-        id: Option<String>,
-        settings: Settings,
-        callback: T,
-    ) {
+    fn run(init_state: InitialState, width: u32, height: u32, id: Option<String>, callback: T) {
         let id = id.unwrap_or("deuxfleurs".into());
         #[cfg(target_arch = "wasm32")]
         {
@@ -645,7 +626,6 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
             width,
             height,
             proxy,
-            settings,
             callback,
         };
         event_loop.run_app(&mut app).unwrap();

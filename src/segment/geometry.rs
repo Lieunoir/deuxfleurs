@@ -769,7 +769,7 @@ where
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> ColorMapMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        let settings = ColorMap::new(&datas);
+        let settings = ColorMap::new(&datas, self.context.get_settings());
         self.add_data(name, SegmentData::Scalar(datas, settings))
             .convert(|data| {
                 if let SegmentData::Scalar(_, settings) = data {

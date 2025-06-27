@@ -506,7 +506,7 @@ where
     pub fn add_scalar<S: Scalar>(&mut self, name: String, datas: S) -> ColorMapMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        let settings = ColorMap::new(&datas);
+        let settings = ColorMap::new(&datas, self.context.get_settings());
         self.add_data(name, PointCloudData::Scalar(datas, settings))
             .convert(|data| {
                 if let PointCloudData::Scalar(_, settings) = data {

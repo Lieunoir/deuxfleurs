@@ -1,4 +1,4 @@
-use deuxfleurs::{load_mesh, RunningState, Settings};
+use deuxfleurs::{RunningState, Settings, load_mesh};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -9,7 +9,7 @@ fn main() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
-    let mut handle = deuxfleurs::init();
+    let mut handle = deuxfleurs::init(Settings::default());
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
     handle.register_surface("spot".into(), spot_v, spot_f);
 
@@ -38,11 +38,5 @@ pub async fn run() {
             }
         }
     };
-    handle.run(
-        1080,
-        720,
-        Some("deuxfleurs".into()),
-        Settings::default(),
-        callback,
-    );
+    handle.run(1080, 720, Some("deuxfleurs".into()), callback);
 }

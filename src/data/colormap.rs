@@ -1,3 +1,4 @@
+use crate::Settings;
 use crate::geometry::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
 use egui::Shape::Path;
@@ -65,10 +66,10 @@ fn get_bars(values: &[f32], n_bars: usize) -> Vec<Bar> {
 }
 
 impl ColorMap {
-    pub(crate) fn new(values: &[f32]) -> Self {
+    pub(crate) fn new(values: &[f32], settings: &Settings) -> Self {
         let mut res = Self {
             bars: get_bars(values, 120),
-            colors: Colors::Viridis,
+            colors: settings.default_color_map,
             min: 0.,
             max: 1.,
         };
@@ -115,7 +116,7 @@ impl ColorMap {
 
 impl Colors {
     // from https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
-    pub const TURBO: ColorsValues = ColorsValues {
+    pub(crate) const TURBO: ColorsValues = ColorsValues {
         red: [
             0.13572138,
             4.61539260,
@@ -147,7 +148,7 @@ impl Colors {
             0.,
         ],
     };
-    pub const VIRIDIS: ColorsValues = ColorsValues {
+    pub(crate) const VIRIDIS: ColorsValues = ColorsValues {
         red: [
             0.25664562, 1.1613264, -14.784454, 76.28986, -217.01733, 326.72885, -238.12221,
             66.48359,
@@ -166,7 +167,7 @@ impl Colors {
             0.32293624, 1.9620758, -7.801855, 24.8746, -65.22319, 110.47881, -100.77647, 36.299873,
         ],
     };
-    pub const INFERNO: ColorsValues = ColorsValues {
+    pub(crate) const INFERNO: ColorsValues = ColorsValues {
         red: [
             -0.00016338378,
             -0.073518544,
@@ -199,7 +200,7 @@ impl Colors {
         ],
     };
 
-    pub const MAGMA: ColorsValues = ColorsValues {
+    pub(crate) const MAGMA: ColorsValues = ColorsValues {
         red: [
             0.00021596998,
             -0.5137123,
@@ -232,7 +233,7 @@ impl Colors {
         ],
     };
 
-    pub const PLASMA: ColorsValues = ColorsValues {
+    pub(crate) const PLASMA: ColorsValues = ColorsValues {
         red: [
             0.05102612, 2.7417765, -10.374987, 47.75827, -122.86391, 167.50691, -115.23589,
             31.357975,
@@ -252,7 +253,7 @@ impl Colors {
         ],
     };
 
-    pub const COOLWARM: ColorsValues = ColorsValues {
+    pub(crate) const COOLWARM: ColorsValues = ColorsValues {
         red: [
             0.23141083,
             1.0209837,
@@ -278,7 +279,7 @@ impl Colors {
         ],
     };
 
-    pub const TWILIGHT: ColorsValues = ColorsValues {
+    pub(crate) const TWILIGHT: ColorsValues = ColorsValues {
         red: [
             0.990215, -4.365588, 3.055973, 81.3124, -403.97992, 803.4978, -716.5665, 237.09198,
         ],
@@ -291,7 +292,7 @@ impl Colors {
         ],
     };
 
-    pub const BRBG: ColorsValues = ColorsValues {
+    pub(crate) const BRBG: ColorsValues = ColorsValues {
         red: [
             0.328325,
             2.3692522,
@@ -318,7 +319,7 @@ impl Colors {
         ],
     };
 
-    pub const RDBU: ColorsValues = ColorsValues {
+    pub(crate) const RDBU: ColorsValues = ColorsValues {
         red: [
             0.40488827, 3.4446564, -2.9528008, -46.060135, 229.68684, -458.21353, 405.41907,
             -131.70804,
@@ -345,7 +346,7 @@ impl Colors {
         ],
     };
 
-    pub fn get_value(&self) -> ColorsValues {
+    pub(crate) fn get_value(&self) -> ColorsValues {
         match self {
             Colors::Turbo => Colors::TURBO,
             Colors::Viridis => Colors::VIRIDIS,
@@ -359,7 +360,7 @@ impl Colors {
         }
     }
 
-    pub fn get_name(&self) -> &str {
+    pub(crate) fn get_name(&self) -> &str {
         match self {
             Colors::Turbo => "Turbo",
             Colors::Viridis => "Viridis",

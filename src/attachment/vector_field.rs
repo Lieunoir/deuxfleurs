@@ -274,11 +274,16 @@ impl VectorField {
     }
 }
 
-impl AttachedGeometry<()> for NewVectorField {
+impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
     type Settings = VectorFieldSettings;
 
-    fn new(name: String, args: Self::Args, _context: &mut (), _transform_layout: &()) -> Self {
+    fn new(
+        name: String,
+        args: Self::Args,
+        _context: &mut &'a mut crate::Settings,
+        _transform_layout: &(),
+    ) -> Self {
         let (vectors, offsets) = args;
         NewVectorField::new(name, vectors, offsets)
     }

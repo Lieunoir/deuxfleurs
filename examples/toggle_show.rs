@@ -1,5 +1,5 @@
 use deuxfleurs::egui;
-use deuxfleurs::{load_mesh, RunningState, Settings};
+use deuxfleurs::{RunningState, Settings, load_mesh};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -11,7 +11,7 @@ fn main() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
     // Initialize app
-    let mut handle = deuxfleurs::init();
+    let mut handle = deuxfleurs::init(Settings::default());
 
     // Load the mesh and register it in state:
     let (v, f) = load_mesh("examples/assets/bunnyhead.obj").await.unwrap();
@@ -26,11 +26,5 @@ pub async fn run() {
         }
     };
     // Run the app
-    handle.run(
-        1080,
-        720,
-        Some("deuxfleurs-demo".into()),
-        Settings::default(),
-        callback,
-    );
+    handle.run(1080, 720, Some("deuxfleurs-demo".into()), callback);
 }

@@ -2,6 +2,8 @@ use std::num::NonZeroU8;
 
 use wgpu::Color;
 
+use crate::data::Colors;
+
 /// Global rendering settings
 #[derive(Clone)]
 pub struct Settings {
@@ -18,9 +20,10 @@ pub struct Settings {
     /// Ground shadow
     pub shadow: bool,
     /// Background color
-    pub color: Color,
+    pub background_color: Color,
     pub mouse_sensitivity: f32,
     pub zoom_sensitivity: f32,
+    pub default_color_map: Colors,
 }
 
 impl Default for Settings {
@@ -30,7 +33,7 @@ impl Default for Settings {
             rerender: false,
             taa: NonZeroU8::new(16),
             shadow: true,
-            color: Color {
+            background_color: Color {
                 r: 1.0,
                 g: 1.0,
                 b: 1.0,
@@ -38,6 +41,7 @@ impl Default for Settings {
             },
             mouse_sensitivity: 0.1,
             zoom_sensitivity: 0.1,
+            default_color_map: Colors::Viridis,
         }
     }
 }

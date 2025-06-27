@@ -11,7 +11,7 @@ fn main() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
-    let handle = deuxfleurs::init();
+    let handle = deuxfleurs::init(Settings::default());
 
     let callback = move |ui: &mut egui::Ui, state: &mut RunningState| {
         ui.label("User defined stuff here : ");
@@ -63,11 +63,5 @@ pub async fn run() {
             }
         }
     };
-    handle.run(
-        1080,
-        720,
-        Some("deuxfleurs".into()),
-        Settings::default(),
-        callback,
-    );
+    handle.run(1080, 720, Some("deuxfleurs".into()), callback);
 }

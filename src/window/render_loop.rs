@@ -38,12 +38,12 @@ impl InnerGraphicalState {
         initial: InitialState,
         window: Window,
         proxy: EventLoopProxy<UserEvent>,
-        settings: Settings,
     ) -> Self {
         let InnerBareState {
             surfaces,
             clouds,
             segments,
+            settings,
         } = initial.0;
         let size = window.inner_size();
         let window = Arc::new(window);
@@ -670,7 +670,7 @@ impl InnerGraphicalState {
                 drop(material_render_pass);
 
                 let color = if !self.screenshot && !render_copy {
-                    self.settings.color
+                    self.settings.background_color
                 } else {
                     wgpu::Color {
                         r: 0.0,
@@ -798,7 +798,7 @@ impl InnerGraphicalState {
                         },
                     )
                 } else {
-                    (view.as_ref().unwrap(), self.settings.color)
+                    (view.as_ref().unwrap(), self.settings.background_color)
                 };
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Copy Pass"),
@@ -934,10 +934,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             }
 
             let init = self.init_state.take().unwrap();
-            self.state = Some(
-                RunningState::new(init, window, self.proxy.clone(), self.settings.clone())
-                    .block_on(),
-            );
+            self.state = Some(RunningState::new(init, window, self.proxy.clone()).block_on());
             self.ui = Some(crate::ui::UI::new(
                 &self.state.as_ref().unwrap().device,
                 event_loop,

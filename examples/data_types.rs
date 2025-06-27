@@ -1,5 +1,5 @@
 use deuxfleurs::types::SurfaceIndices;
-use deuxfleurs::{load_mesh, RunningState, Settings};
+use deuxfleurs::{RunningState, Settings, load_mesh};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -11,7 +11,7 @@ fn main() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-    let mut handle = deuxfleurs::init();
+    let mut handle = deuxfleurs::init(Settings::default());
     let spot_f = match spot_f {
         SurfaceIndices::Triangles(t) => t,
         _ => panic!(),
@@ -83,11 +83,5 @@ pub async fn run() {
     pc.set_radius(0.02);
 
     let callback = move |_ui: &mut egui::Ui, _state: &mut RunningState| {};
-    handle.run(
-        1080,
-        720,
-        Some("deuxfleurs".into()),
-        Settings::default(),
-        callback,
-    );
+    handle.run(1080, 720, Some("deuxfleurs".into()), callback);
 }

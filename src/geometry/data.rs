@@ -6,8 +6,8 @@ pub struct DataMut<'a, T, Ctxt: Context> {
     pub(crate) uniform: Ctxt::DataUniform<'a>,
 }
 
-pub type UninitedData<'a, T> = DataMut<'a, T, ()>;
-pub type DisplayData<'a, T> = DataMut<'a, T, GraphicalContext<'a>>;
+pub type UninitedData<'a, 'b, T> = DataMut<'b, T, &'a mut crate::Settings>;
+pub type DisplayData<'a, 'b, T> = DataMut<'b, T, GraphicalContext<'a>>;
 
 impl<'a, T, Ctxt: Context> DataMut<'a, T, Ctxt> {
     pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(self, f: F) -> DataMut<'a, U, Ctxt> {
@@ -23,11 +23,11 @@ pub trait DataMutTrait {
     fn update_data_settings(&mut self);
 }
 
-impl<'a, T> DataMutTrait for UninitedData<'a, T> {
+impl<'a, 'b, T> DataMutTrait for UninitedData<'a, 'b, T> {
     fn update_data_settings(&mut self) {}
 }
 
-impl<'a, T> DataMutTrait for DisplayData<'a, T>
+impl<'a, 'b, T> DataMutTrait for DisplayData<'a, 'b, T>
 where
     T: DataUniformBuilder,
 {

@@ -575,7 +575,7 @@ where
     pub fn add_face_scalar<S: Scalar>(&mut self, name: String, datas: S) -> ColorMapMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
-        let new_settings = ColorMap::new(&datas);
+        let new_settings = ColorMap::new(&datas, self.context.get_settings());
         self.add_data(name, SurfaceData::FaceScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::FaceScalar(_, settings) = data {
@@ -593,7 +593,7 @@ where
     ) -> VertexScalarSettingsMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        let new_settings = VertexScalarSettings::new(&datas);
+        let new_settings = VertexScalarSettings::new(&datas, self.context.get_settings());
         self.add_data(name, SurfaceData::VertexScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::VertexScalar(_, settings) = data {

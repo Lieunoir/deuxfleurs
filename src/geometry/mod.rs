@@ -1,3 +1,4 @@
+use crate::Settings;
 use crate::aabb::SBV;
 use crate::data::TransformSettings;
 use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
@@ -12,10 +13,12 @@ mod renderer;
 pub trait Context {
     type DataUniform<'a>;
     type TransformLayout;
+
+    fn get_settings(&self) -> &Settings;
 }
 
 pub struct GraphicalContext<'a> {
-    pub(crate) settings: &'a crate::Settings,
+    pub(crate) settings: &'a Settings,
     pub(crate) device: &'a wgpu::Device,
     pub(crate) queue: &'a wgpu::Queue,
     pub(crate) camera_light_bind_group_layout: &'a wgpu::BindGroupLayout,
@@ -27,11 +30,19 @@ pub struct GraphicalContext<'a> {
 impl<'a> Context for GraphicalContext<'a> {
     type DataUniform<'b> = &'b Option<DataUniform>;
     type TransformLayout = wgpu::BindGroupLayout;
+
+    fn get_settings(&self) -> &Settings {
+        self.settings
+    }
 }
 
-impl Context for () {
+impl Context for &mut Settings {
     type DataUniform<'b> = ();
     type TransformLayout = ();
+
+    fn get_settings(&self) -> &Settings {
+        self
+    }
 }
 
 // `Renderer` can be `()` !
@@ -413,11 +424,11 @@ pub trait ElementTrait<Ctxt: Context> {
     ) -> DataMut<'b, Self::Attached, Ctxt>;
 }
 
-impl<Geometry, Settings, Data, AttachedG> ElementTrait<()>
+impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<&'a mut crate::Settings>
     for UninitedElement<Geometry, Settings, Data, AttachedG>
 where
     Geometry: ElementGeometry,
-    AttachedG: AttachedGeometry<()>,
+    AttachedG: AttachedGeometry<&'a mut crate::Settings>,
     Data: DataSettings,
     Settings: NamedSettings,
     AttachedG: NewAttachedGeometry,
@@ -426,7 +437,11 @@ where
     type Attached = AttachedG;
     type Data = Data;
 
-    fn replace(&mut self, args: <Self::Geometry as ElementGeometry>::Args, _context: &mut ()) {
+    fn replace(
+        &mut self,
+        args: <Self::Geometry as ElementGeometry>::Args,
+        _context: &mut &'a mut crate::Settings,
+    ) {
         let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
             self.geometry = new_geometry;
@@ -435,11 +450,11 @@ where
         }
     }
 
-    fn show(&mut self, show: bool, _context: &mut ()) {
+    fn show(&mut self, show: bool, _context: &mut &'a mut crate::Settings) {
         self.show = show;
     }
 
-    fn set_data(&mut self, name: Option<String>, _context: &mut ()) {
+    fn set_data(&mut self, name: Option<String>, _context: &mut &'a mut crate::Settings) {
         self.shown_data = name;
     }
 
@@ -447,30 +462,30 @@ where
         &'b mut self,
         name: String,
         data: Self::Data,
-        context: &'b mut (),
-    ) -> DataMut<'b, Self::Data, ()> {
+        context: &'b mut &'a mut crate::Settings,
+    ) -> DataMut<'b, Self::Data, &'a mut crate::Settings> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
         DataMut {
             inner: data,
             uniform: (),
-            context: context,
+            context,
         }
     }
 
     fn add_attached_geometry<'b>(
         &'b mut self,
         name: String,
-        args: <Self::Attached as AttachedGeometry<()>>::Args,
-        context: &'b mut (),
-    ) -> DataMut<'b, Self::Attached, ()> {
-        let geometry = AttachedG::new(name.clone(), args, &mut (), &());
+        args: <Self::Attached as AttachedGeometry<&'a mut crate::Settings>>::Args,
+        context: &'b mut &'a mut crate::Settings,
+    ) -> DataMut<'b, Self::Attached, &'a mut crate::Settings> {
+        let geometry = AttachedG::new(name.clone(), args, context, &());
         self.attached_data.insert(name.clone(), geometry);
         DataMut {
             inner: self.attached_data.get_mut(&name).unwrap(),
             uniform: (),
-            context: context,
+            context,
         }
     }
 }
