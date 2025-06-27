@@ -401,7 +401,6 @@ pub struct SegmentPipeline {
 }
 
 impl DataBuffer for SegmentDataBuffer {
-    type Settings = PCSettings;
     type Data = SegmentData;
     type Geometry = SegmentGeometry;
 
@@ -417,8 +416,6 @@ impl DataBuffer for SegmentDataBuffer {
 }
 
 impl FixedRenderer for SegmentFixedRenderer {
-    type Settings = PCSettings;
-    type Data = SegmentData;
     type Geometry = SegmentGeometry;
 
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self {
@@ -472,7 +469,6 @@ impl RenderPipeline for SegmentPipeline {
     type Settings = PCSettings;
     type Data = SegmentData;
     type Geometry = SegmentGeometry;
-    type Fixed = SegmentFixedRenderer;
 
     fn new(
         device: &wgpu::Device,

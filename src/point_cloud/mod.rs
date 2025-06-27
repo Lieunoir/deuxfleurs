@@ -243,7 +243,6 @@ pub struct PointCloudPipeline {
 }
 
 impl DataBuffer for PointCloudDataBuffer {
-    type Settings = PCSettings;
     type Data = PointCloudData;
     type Geometry = PointCloudGeometry;
 
@@ -254,8 +253,6 @@ impl DataBuffer for PointCloudDataBuffer {
 }
 
 impl FixedRenderer for PointCloudFixedRenderer {
-    type Settings = PCSettings;
-    type Data = PointCloudData;
     type Geometry = PointCloudGeometry;
 
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self {
@@ -294,7 +291,6 @@ impl RenderPipeline for PointCloudPipeline {
     type Settings = PCSettings;
     type Data = PointCloudData;
     type Geometry = PointCloudGeometry;
-    type Fixed = PointCloudFixedRenderer;
 
     fn new(
         device: &wgpu::Device,
