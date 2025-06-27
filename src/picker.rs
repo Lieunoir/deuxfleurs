@@ -4,7 +4,6 @@ use crate::DisplayPointCloud;
 use crate::DisplaySegment;
 use crate::DisplaySurface;
 use crate::geometry::ElementGeometry;
-use crate::geometry::Render;
 use crate::texture;
 use crate::util;
 use crate::window::UserEvent;

@@ -29,7 +29,7 @@ use web_sys::Clipboard;
 use crate::Settings;
 use crate::geometry::{
     AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
-    EmptyAttached, FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry,
+    EmptyAttached, FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry, Render,
     RenderPipeline, Renderer, UninitedElement,
 };
 use egui;
@@ -162,6 +162,7 @@ where
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
+    Renderer<Fixed, DataB, Pipeline>: Render,
 {
     type Args = Geometry::Args;
 

@@ -6,7 +6,7 @@ use crate::Settings;
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::deferred;
-use crate::geometry::Render;
+
 use crate::picker;
 use crate::screenshot;
 use crate::texture;
