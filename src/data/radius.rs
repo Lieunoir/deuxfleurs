@@ -18,7 +18,7 @@ impl Default for Radius {
 }
 
 impl UiDataElement for Radius {
-    fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         egui::Slider::new(&mut self.radius, 0.1..=100.0)
             .text("Radius")
             .clamping(egui::SliderClamping::Never)

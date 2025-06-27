@@ -1,4 +1,4 @@
-use deuxfleurs::{load_mesh, RunningState, Settings, StateHandle};
+use deuxfleurs::{load_mesh, RunningState, Settings};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -19,7 +19,7 @@ pub async fn run() {
         ui.label("Click on spot!");
         if let Some((surface_name, item)) = state.get_picked().clone() {
             if last_selected != item || last_selected_geometry != *surface_name {
-                if let Some(surface) = state.get_surface_mut(&surface_name) {
+                if let Some(mut surface) = state.get_surface_mut(&surface_name) {
                     let n_v = surface.geometry().vertices.len();
                     if item < n_v {
                         let mut selected = vec![0.; n_v];

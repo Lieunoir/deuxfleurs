@@ -483,7 +483,7 @@ pub fn windowing_ui(
 }
 
 impl UiDataElement for ColorMap {
-    fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         egui::ComboBox::from_label("ColorMap")
             .selected_text(self.colors.get_name())

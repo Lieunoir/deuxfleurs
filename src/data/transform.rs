@@ -141,52 +141,8 @@ impl TransformSettings {
         });
         changed
     }
-}
 
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct TransformRaw {
-    model: [[f32; 4]; 4],
-    //Actually 3x3 but mat4 for alignment
-    normal: [[f32; 4]; 4],
-}
-
-impl TransformRaw {
-    pub fn get_model(&self) -> [[f32; 4]; 4] {
-        self.model
-    }
-}
-
-impl Default for TransformSettings {
-    fn default() -> Self {
-        TransformSettings {
-            translation: DVec3::ZERO,
-            scale: DVec3::ONE,
-            rotation: DQuat::IDENTITY,
-            show_gizmo: false,
-            gizmo: Gizmo::default(),
-        }
-    }
-}
-
-impl UiDataElement for TransformSettings {
-    fn draw(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
-        let mut changed = false;
-        ui.horizontal(|ui| {
-            ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
-        });
-        ui.horizontal(|ui| {
-            if ui.add(egui::Button::new("Reset")).clicked() {
-                self.translation = DVec3::ZERO;
-                self.scale = DVec3::ONE;
-                self.rotation = DQuat::IDENTITY;
-                changed = true;
-            }
-        });
-        changed
-    }
-
-    fn draw_gizmo(
+    pub(crate) fn draw_gizmo(
         &mut self,
         ui: &mut egui::Ui,
         view: glam::Mat4,
@@ -271,5 +227,49 @@ impl UiDataElement for TransformSettings {
         } else {
             false
         }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct TransformRaw {
+    model: [[f32; 4]; 4],
+    //Actually 3x3 but mat4 for alignment
+    normal: [[f32; 4]; 4],
+}
+
+impl TransformRaw {
+    pub fn get_model(&self) -> [[f32; 4]; 4] {
+        self.model
+    }
+}
+
+impl Default for TransformSettings {
+    fn default() -> Self {
+        TransformSettings {
+            translation: DVec3::ZERO,
+            scale: DVec3::ONE,
+            rotation: DQuat::IDENTITY,
+            show_gizmo: false,
+            gizmo: Gizmo::default(),
+        }
+    }
+}
+
+impl UiDataElement for TransformSettings {
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut changed = false;
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
+        });
+        ui.horizontal(|ui| {
+            if ui.add(egui::Button::new("Reset")).clicked() {
+                self.translation = DVec3::ZERO;
+                self.scale = DVec3::ONE;
+                self.rotation = DQuat::IDENTITY;
+                changed = true;
+            }
+        });
+        changed
     }
 }

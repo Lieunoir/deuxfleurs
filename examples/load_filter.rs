@@ -1,6 +1,6 @@
 use deuxfleurs::types::SurfaceIndices;
 use deuxfleurs::ui::LoadObjButton;
-use deuxfleurs::{RunningState, Settings, StateHandle};
+use deuxfleurs::{RunningState, Settings};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

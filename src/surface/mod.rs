@@ -1,4 +1,4 @@
-use crate::attachment::{NewVectorField, VectorFieldSettings};
+use crate::attachment::{NewVectorField, VectorField, VectorFieldSettings};
 use crate::data::*;
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
@@ -10,7 +10,6 @@ use crate::util::Vertex;
 use num_traits::cast::ToPrimitive;
 //use cgmath::num_traits::ToPrimitive;
 use wgpu::util::DeviceExt;
-
 mod data;
 mod picker;
 mod shader;
@@ -41,24 +40,21 @@ impl DataUniformBuilder for SurfaceSettings {
     }
 }
 
-impl UiDataElement for SurfaceSettings {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool {
-        //let changed = self.radius.draw(ui);
-        let mut changed = false;
-        ui.horizontal(|ui| {
-            changed |= self.color.draw(ui, property_changed);
-            *property_changed |= ui.checkbox(&mut self.show_edges, "Edges").changed();
-            *property_changed |= ui.checkbox(&mut self.smooth, "Smooth").changed();
-        });
-        //        self.transform.draw(ui, property_changed);
-        changed
-    }
-}
-
 impl NamedSettings for SurfaceSettings {
     fn set_name(mut self, name: &str) -> Self {
         self.color = ColorSettings::new(name);
         self
+    }
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool {
+        //let changed = self.radius.draw(ui);
+        let mut changed = false;
+        ui.horizontal(|ui| {
+            changed |= self.color.draw_ui(ui);
+            *rebuild_pipeline |= ui.checkbox(&mut self.show_edges, "Edges").changed();
+            *rebuild_pipeline |= ui.checkbox(&mut self.smooth, "Smooth").changed();
+        });
+        changed
     }
 }
 #[repr(C)]
@@ -105,22 +101,44 @@ pub struct SurfaceGeometry {
     internal_indices: Vec<[u32; 3]>,
 }
 
-impl Positions for SurfaceGeometry {
+impl ElementGeometry for SurfaceGeometry {
+    type Args = (SurfaceIndices, Vec<[f32; 3]>);
+
+    fn new(args: Self::Args) -> Self {
+        let (indices, vertices) = args;
+        let mut internal_indices = Vec::new();
+        for face in &indices {
+            for i in 1..face.len() - 1 {
+                internal_indices.push([face[0], face[i], face[i + 1]]);
+            }
+        }
+        SurfaceGeometry {
+            num_elements: indices.size() as u32,
+            indices,
+            vertices,
+            internal_indices,
+        }
+    }
+
     fn get_positions(&self) -> &[[f32; 3]] {
         &self.vertices
     }
+
+    fn get_total_elements(&self) -> u32 {
+        self.indices.tot_triangles() as u32
+    }
 }
 
-pub(crate) struct SurfaceFixedRenderer {
+pub struct SurfaceFixedRenderer {
     vertex_buffer: wgpu::Buffer,
     vertices_len: u32,
 }
 
-pub(crate) struct SurfaceDataBuffer {
+pub struct SurfaceDataBuffer {
     data_buffer: Option<wgpu::Buffer>,
 }
 
-pub(crate) struct SurfacePipeline {
+pub struct SurfacePipeline {
     surface_render_pipeline: wgpu::RenderPipeline,
     shadow_render_pipeline: wgpu::RenderPipeline,
 }
@@ -327,38 +345,13 @@ impl Render for SurfaceRenderer {
     }
 }
 
-pub type Surface = BareElement<SurfaceSettings, SurfaceData, SurfaceGeometry>;
+pub type Surface<Renderer, AttachedData> =
+    Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData>;
 
-pub(crate) type DisplaySurface = DisplayElement<
-    SurfaceSettings,
-    SurfaceData,
-    SurfaceGeometry,
-    SurfaceFixedRenderer,
-    SurfaceDataBuffer,
-    SurfacePipeline,
-    Picker,
->;
+pub type UninitedSurface = Surface<(), ()>;
+pub type DisplaySurface = Surface<SurfaceRenderer, ()>;
 
 impl DisplaySurface {
-    pub(crate) fn new(
-        name: String,
-        vertices: Vec<[f32; 3]>,
-        indices: SurfaceIndices,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self {
-        let element = Surface::new(name, vertices, indices);
-        DisplaySurface::init(
-            element,
-            device,
-            camera_light_bind_group_layout,
-            counter_bind_group_layout,
-            color_format,
-        )
-    }
-
     pub(crate) fn change_vertices(
         &mut self,
         vertices: Vec<[f32; 3]>,
@@ -371,45 +364,43 @@ impl DisplaySurface {
                 internal_indices.push([face[0], face[i], face[i + 1]]);
             }
         }
-        self.element.geometry = SurfaceGeometry {
+        self.geometry = SurfaceGeometry {
             num_elements: indices.size() as u32,
             indices,
             vertices,
             internal_indices,
         };
-        self.renderer.fixed = SurfaceFixedRenderer::initialize(device, &self.element.geometry);
+        self.renderer.fixed = SurfaceFixedRenderer::initialize(device, &self.geometry);
+    }
+
+    pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
+        if element < self.geometry.vertices.len() {
+            ui.label(format!("Picked vertex number {}", element));
+        } else if element < self.geometry.vertices.len() + self.geometry.indices.size() {
+            ui.label(format!(
+                "Picked face number {}",
+                element - self.geometry.vertices.len()
+            ));
+        }
     }
 }
 
-impl Surface {
-    pub(crate) fn new(name: String, vertices: Vec<[f32; 3]>, indices: SurfaceIndices) -> Self {
-        let mut internal_indices = Vec::new();
-        for face in &indices {
-            for i in 1..face.len() - 1 {
-                internal_indices.push([face[0], face[i], face[i + 1]]);
-            }
-        }
-        let geometry = SurfaceGeometry {
-            num_elements: indices.size() as u32,
-            indices,
-            vertices,
-            internal_indices,
-        };
-        Surface::init(name, geometry)
-    }
-
+impl<'a, Renderer, AttachedData, Context> ElementMut<'a, Surface<Renderer, AttachedData>, Context>
+where
+    Surface<Renderer, AttachedData>: ElementTrait<'a, Data = SurfaceData, Context = Context>,
+{
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
-        if self.updater.settings.show_edges != show_edges {
-            self.updater.settings.show_edges = show_edges;
-            self.updater.property_changed = true;
+        if self.element.settings.show_edges != show_edges {
+            self.element.settings.show_edges = show_edges;
+            self.update_settings(true);
         }
         self
     }
 
     pub fn set_smooth(&mut self, smooth: bool) -> &mut Self {
-        if self.updater.settings.smooth != smooth {
-            self.updater.settings.smooth = smooth;
-            self.updater.property_changed = true;
+        if self.element.settings.smooth != smooth {
+            self.element.settings.smooth = smooth;
+            self.update_settings(true);
         }
         self
     }
@@ -422,9 +413,8 @@ impl Surface {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
         let new_settings = FaceScalarSettings::new(&datas);
-        if let SurfaceData::FaceScalar(_, settings) = self
-            .updater
-            .add_data(name, SurfaceData::FaceScalar(datas, new_settings))
+        if let SurfaceData::FaceScalar(_, settings) =
+            self.add_data(name, SurfaceData::FaceScalar(datas, new_settings))
         {
             settings
         } else {
@@ -440,9 +430,8 @@ impl Surface {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         let new_settings = VertexScalarSettings::new(&datas);
-        if let SurfaceData::VertexScalar(_, settings) = self
-            .updater
-            .add_data(name, SurfaceData::VertexScalar(datas, new_settings))
+        if let SurfaceData::VertexScalar(_, settings) =
+            self.add_data(name, SurfaceData::VertexScalar(datas, new_settings))
         {
             settings
         } else {
@@ -453,9 +442,8 @@ impl Surface {
     pub fn add_uv_map<UV: Vertices2D>(&mut self, name: String, datas: UV) -> &mut UVMapSettings {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        if let SurfaceData::UVMap(_, settings) = self
-            .updater
-            .add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default()))
+        if let SurfaceData::UVMap(_, settings) =
+            self.add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default()))
         {
             settings
         } else {
@@ -470,7 +458,7 @@ impl Surface {
     ) -> &mut UVMapSettings {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
-        if let SurfaceData::UVCornerMap(_, settings) = self.updater.add_data(
+        if let SurfaceData::UVCornerMap(_, settings) = self.add_data(
             name,
             SurfaceData::UVCornerMap(datas, UVMapSettings::default()),
         ) {
@@ -483,74 +471,63 @@ impl Surface {
     pub fn add_vertex_color<C: Color>(&mut self, name: String, colors: C) {
         let colors = colors.into();
         assert!(colors.len() == self.geometry.vertices.len());
-        self.updater.add_data(name, SurfaceData::Color(colors));
+        self.add_data(name, SurfaceData::Color(colors));
     }
 
-    pub fn add_vertex_vector_field<V: Vertices>(
-        &mut self,
-        name: String,
-        vectors: V,
-    ) -> &mut VectorFieldSettings {
-        let vectors = vectors.into();
-        assert!(vectors.len() == self.geometry.vertices.len());
-        let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        let vector_field = NewVectorField::new(name, vectors, offsets);
-        self.updater.queued_attached_data.push(vector_field);
-        &mut self
-            .updater
-            .queued_attached_data
-            .last_mut()
-            .unwrap()
-            .settings
-    }
+    //pub fn add_vertex_vector_field<V: Vertices>(
+    //    &mut self,
+    //    name: String,
+    //    vectors: V,
+    //) -> &mut VectorFieldSettings {
+    //    let vectors = vectors.into();
+    //    assert!(vectors.len() == self.geometry.vertices.len());
+    //    let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
+    //    let vector_field = NewVectorField::new(name, vectors, offsets);
+    //    self.updater.queued_attached_data.push(vector_field);
+    //    &mut self
+    //        .updater
+    //        .queued_attached_data
+    //        .last_mut()
+    //        .unwrap()
+    //        .settings
+    //}
 
-    pub fn add_face_vector_field<V: Vertices>(
-        &mut self,
-        name: String,
-        vectors: V,
-    ) -> &mut VectorFieldSettings {
-        let vectors = vectors.into();
-        assert!(vectors.len() == self.geometry.indices.size());
-        let offsets: Vec<[f32; 3]> = self
-            .geometry
-            .indices
-            .into_iter()
-            .map(|face| {
-                let mut res0 = 0.;
-                let mut res1 = 0.;
-                let mut res2 = 0.;
-                for index in face {
-                    let vertex = self.geometry.vertices[*index as usize];
-                    res0 += vertex[0];
-                    res1 += vertex[1];
-                    res2 += vertex[2];
-                }
-                res0 = res0 / face.len() as f32;
-                res1 = res1 / face.len() as f32;
-                res2 = res2 / face.len() as f32;
-                [res0, res1, res2]
-            })
-            .collect();
-        let vector_field = NewVectorField::new(name, vectors, offsets);
-        self.updater.queued_attached_data.push(vector_field);
-        &mut self
-            .updater
-            .queued_attached_data
-            .last_mut()
-            .unwrap()
-            .settings
-    }
-
-    pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
-        if element < self.geometry.vertices.len() {
-            ui.label(format!("Picked vertex number {}", element));
-        } else if element < self.geometry.vertices.len() + self.geometry.indices.size() {
-            ui.label(format!(
-                "Picked face number {}",
-                element - self.geometry.vertices.len()
-            ));
-        }
-    }
+    //pub fn add_face_vector_field<V: Vertices>(
+    //    &mut self,
+    //    name: String,
+    //    vectors: V,
+    //) -> &mut VectorFieldSettings {
+    //    let vectors = vectors.into();
+    //    assert!(vectors.len() == self.geometry.indices.size());
+    //    let offsets: Vec<[f32; 3]> = self
+    //        .geometry
+    //        .indices
+    //        .into_iter()
+    //        .map(|face| {
+    //            let mut res0 = 0.;
+    //            let mut res1 = 0.;
+    //            let mut res2 = 0.;
+    //            for index in face {
+    //                let vertex = self.geometry.vertices[*index as usize];
+    //                res0 += vertex[0];
+    //                res1 += vertex[1];
+    //                res2 += vertex[2];
+    //            }
+    //            res0 = res0 / face.len() as f32;
+    //            res1 = res1 / face.len() as f32;
+    //            res2 = res2 / face.len() as f32;
+    //            [res0, res1, res2]
+    //        })
+    //        .collect();
+    //    let vector_field = NewVectorField::new(name, vectors, offsets);
+    //    self.updater.queued_attached_data.push(vector_field);
+    //    &mut self
+    //        .updater
+    //        .queued_attached_data
+    //        .last_mut()
+    //        .unwrap()
+    //        .settings
+    //}
 }
 
 fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[i8; 4]> {

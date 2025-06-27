@@ -1,4 +1,4 @@
-use crate::{RunningState, StateHandle};
+use crate::RunningState;
 use egui::style::{WidgetVisuals, Widgets};
 use egui::{Color32, Stroke};
 use egui::{Response, Shadow, Widget};
@@ -42,17 +42,7 @@ impl<'a, 'b, 'c> Widget for LoadObjButton<'a, 'b, 'c> {
 }
 
 pub(crate) trait UiDataElement {
-    fn draw(&mut self, ui: &mut egui::Ui, property_changed: &mut bool) -> bool;
-
-    fn draw_gizmo(
-        &mut self,
-        _ui: &mut egui::Ui,
-        _view: glam::Mat4,
-        _proj: glam::Mat4,
-        _gizmo_hovered: &mut bool,
-    ) -> bool {
-        false
-    }
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool;
 }
 
 pub(crate) struct UI {
@@ -230,6 +220,11 @@ impl UI {
         curves: &mut IndexMap<String, crate::segment::DisplaySegment>,
         view: glam::Mat4,
         proj: glam::Mat4,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+        refresh_screen: &mut bool,
     ) {
         let input = self.state.take_egui_input(window);
         self.ctx.begin_pass(input);
@@ -246,8 +241,8 @@ impl UI {
                     let label = format!(
                         "{}: {} vertices, {} faces",
                         name,
-                        surface.element.geometry().vertices.len(),
-                        surface.element.geometry().indices.size(),
+                        surface.geometry().vertices.len(),
+                        surface.geometry().indices.size(),
                     );
                     let id = ui.make_persistent_id(label.clone());
                     egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -257,22 +252,25 @@ impl UI {
                     )
                     .show_header(ui, |ui| {
                         ui.horizontal(|ui| {
-                            if ui.checkbox(&mut surface.element.show, label).changed() {
-                                surface.element.updater.dirty = true;
+                            if ui.checkbox(&mut surface.show, label).changed() {
+                                *refresh_screen = true;
                             }
                         })
                     })
                     .body(|ui| {
-                        surface.draw_ui(ui);
+                        surface.draw_ui(
+                            ui,
+                            device,
+                            queue,
+                            camera_light_bind_group_layout,
+                            color_format,
+                            refresh_screen,
+                        );
                     });
                 }
 
                 for (name, cloud) in clouds.iter_mut() {
-                    let label = format!(
-                        "{} : {} points",
-                        name,
-                        cloud.element.geometry().positions.len(),
-                    );
+                    let label = format!("{} : {} points", name, cloud.geometry().positions.len(),);
                     let id = ui.make_persistent_id(label.clone());
                     egui::collapsing_header::CollapsingState::load_with_default_open(
                         ui.ctx(),
@@ -281,13 +279,20 @@ impl UI {
                     )
                     .show_header(ui, |ui| {
                         ui.horizontal(|ui| {
-                            if ui.checkbox(&mut cloud.element.show, label).changed() {
-                                cloud.element.updater.dirty = true;
+                            if ui.checkbox(&mut cloud.show, label).changed() {
+                                *refresh_screen = true;
                             }
                         })
                     })
                     .body(|ui| {
-                        cloud.draw_ui(ui);
+                        cloud.draw_ui(
+                            ui,
+                            device,
+                            queue,
+                            camera_light_bind_group_layout,
+                            color_format,
+                            refresh_screen,
+                        );
                     });
                 }
 
@@ -295,8 +300,8 @@ impl UI {
                     let label = format!(
                         "{} : {} points, {} edges",
                         name,
-                        curve.element.geometry().positions.len(),
-                        curve.element.geometry().connections.len(),
+                        curve.geometry().positions.len(),
+                        curve.geometry().connections.len(),
                     );
                     let id = ui.make_persistent_id(label.clone());
                     egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -306,13 +311,20 @@ impl UI {
                     )
                     .show_header(ui, |ui| {
                         ui.horizontal(|ui| {
-                            if ui.checkbox(&mut curve.element.show, label).changed() {
-                                curve.element.updater.dirty = true;
+                            if ui.checkbox(&mut curve.show, label).changed() {
+                                *refresh_screen = true;
                             }
                         })
                     })
                     .body(|ui| {
-                        curve.draw_ui(ui);
+                        curve.draw_ui(
+                            ui,
+                            device,
+                            queue,
+                            camera_light_bind_group_layout,
+                            color_format,
+                            refresh_screen,
+                        );
                     });
                 }
             })
@@ -323,13 +335,13 @@ impl UI {
             .fixed_pos((0.0, 0.0))
             .show(&self.ctx, |ui| {
                 for (_, surface) in surfaces.iter_mut() {
-                    surface.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    surface.draw_gizmo(ui, view, proj, queue, &mut self.hovered, refresh_screen);
                 }
                 for (_, curve) in curves.iter_mut() {
-                    curve.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    curve.draw_gizmo(ui, view, proj, queue, &mut self.hovered, refresh_screen);
                 }
                 for (_, cloud) in clouds.iter_mut() {
-                    cloud.draw_gizmo(ui, view, proj, &mut self.hovered);
+                    cloud.draw_gizmo(ui, view, proj, queue, &mut self.hovered, refresh_screen);
                 }
             });
     }

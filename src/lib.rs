@@ -1,6 +1,14 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
-use crate::updater::Render;
+use crate::data::{DataSettings, DataUniformBuilder};
+use crate::point_cloud::{PointCloudGeometry, UninitedPointCloud};
+use crate::segment::{SegmentGeometry, UninitedSegment};
+use crate::surface::{SurfaceGeometry, UninitedSurface};
+use crate::ui::UiDataElement;
+use crate::updater::{
+    AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
+    FixedRenderer, GraphicalContext, NamedSettings, Render, RenderPipeline, UninitedElement,
+};
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use indexmap::IndexMap;
@@ -8,6 +16,7 @@ use pollster::FutureExt;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::iter;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
@@ -29,13 +38,13 @@ pub mod data;
 mod deferred;
 mod obj_load;
 mod picker;
-pub mod point_cloud;
+mod point_cloud;
 mod resources;
 mod screenshot;
-pub mod segment;
+mod segment;
 mod settings;
 mod shader;
-pub mod surface;
+mod surface;
 mod texture;
 /// General types for genericity in functions parameters.
 pub mod types;
@@ -45,13 +54,12 @@ mod updater;
 mod util;
 use camera::{Camera, CameraController, CameraUniform};
 pub use egui;
-use point_cloud::{DisplayPointCloud, PointCloud};
+use point_cloud::DisplayPointCloud;
 pub use resources::{load_mesh, load_mesh_blocking};
-use segment::{DisplaySegment, Segment};
+use segment::DisplaySegment;
 pub use settings::Settings;
-use surface::{DisplaySurface, Surface};
+use surface::DisplaySurface;
 use types::*;
-pub use updater::BareElement;
 pub use wgpu::Color;
 
 #[repr(C)]
@@ -70,42 +78,280 @@ struct JitterUniform {
     y: f32,
     _padding: [u32; 2],
 }
+mod private {
+    use crate::data::{DataSettings, DataUniformBuilder};
+    use crate::point_cloud::{PointCloudGeometry, UninitedPointCloud};
+    use crate::segment::{SegmentGeometry, UninitedSegment};
+    use crate::surface::{SurfaceGeometry, UninitedSurface};
+    use crate::ui::UiDataElement;
+    use crate::updater::{
+        AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
+        FixedRenderer, GraphicalContext, NamedSettings, Render, RenderPipeline, UninitedElement,
+    };
+    use indexmap::IndexMap;
+    pub trait GeometryHolder<'a, Element> {
+        type Args;
+        type Context;
 
-/// Element to add surfaces, point clouds... to
-pub trait StateHandle {
-    fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
-        &mut self,
+        fn register(
+            &'a mut self,
+            name: String,
+            args: Self::Args,
+            context: Self::Context,
+        ) -> ElementMut<'a, Element, Self::Context>;
+
+        fn get_element_mut(
+            &'a mut self,
+            name: &str,
+            context: Self::Context,
+        ) -> Option<ElementMut<'a, Element, Self::Context>>;
+
+        fn get_element(&self, name: &str) -> Option<&Element>;
+    }
+
+    impl<'a, Geometry, Settings, Data, Attached>
+        GeometryHolder<'a, UninitedElement<Geometry, Settings, Data, Attached>>
+        for IndexMap<String, UninitedElement<Geometry, Settings, Data, Attached>>
+    where
+        Geometry: ElementGeometry,
+        Settings: DataUniformBuilder + NamedSettings,
+        Attached: AttachedGeometry,
+    {
+        type Args = Geometry::Args;
+        type Context = ();
+
+        fn register(
+            &'a mut self,
+            name: String,
+            args: Self::Args,
+            context: Self::Context,
+        ) -> ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context>
+        {
+            let element = Element::new_bare(name.clone(), args);
+            self.insert(name.clone(), element);
+            ElementMut {
+                element: self.get_mut(&name).unwrap(),
+                context: (),
+            }
+        }
+
+        fn get_element_mut(
+            &'a mut self,
+            name: &str,
+            _context: Self::Context,
+        ) -> Option<
+            ElementMut<'a, UninitedElement<Geometry, Settings, Data, Attached>, Self::Context>,
+        > {
+            self.get_mut(name).map(|element| ElementMut {
+                element,
+                context: (),
+            })
+        }
+
+        fn get_element(
+            &self,
+            name: &str,
+        ) -> Option<&UninitedElement<Geometry, Settings, Data, Attached>> {
+            self.get(name)
+        }
+    }
+
+    impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
+        GeometryHolder<
+            'a,
+            DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
+        >
+        for IndexMap<
+            String,
+            DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
+        >
+    where
+        Geometry: ElementGeometry,
+        Data: DataUniformBuilder + DataSettings + UiDataElement,
+        Settings: NamedSettings,
+        Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
+        DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
+        Pipeline:
+            RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    {
+        type Args = Geometry::Args;
+        type Context = GraphicalContext<'a>;
+
+        fn register(
+            &'a mut self,
+            name: String,
+            args: Self::Args,
+            context: Self::Context,
+        ) -> ElementMut<
+            'a,
+            DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
+            Self::Context,
+        > {
+            let element = Element::new(
+                name.clone(),
+                args,
+                context.device,
+                context.camera_light_bind_group_layout,
+                context.counter_bind_group_layout,
+                context.color_format,
+            );
+            self.insert(name.clone(), element);
+            ElementMut {
+                element: self.get_mut(&name).unwrap(),
+                context,
+            }
+        }
+
+        fn get_element_mut(
+            &'a mut self,
+            name: &str,
+            context: Self::Context,
+        ) -> Option<
+            ElementMut<
+                'a,
+                DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
+                Self::Context,
+            >,
+        > {
+            self.get_mut(name)
+                .map(|element| ElementMut { element, context })
+        }
+
+        fn get_element(
+            &self,
+            name: &str,
+        ) -> Option<&DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>>
+        {
+            self.get(name)
+        }
+    }
+
+    pub trait ContextBuilder<'a> {
+        type Context;
+
+        fn get_context(&'a mut self) -> Self::Context;
+    }
+}
+
+/// Starting point to add surfaces, point clouds... to
+pub struct InnerState<Surface, PointCloud, Segment, State> {
+    surfaces: IndexMap<String, Surface>,
+    clouds: IndexMap<String, PointCloud>,
+    segments: IndexMap<String, Segment>,
+    state: State,
+}
+
+impl<'a> private::ContextBuilder<'a> for () {
+    type Context = ();
+    fn get_context(&'a mut self) -> Self::Context {
+        ()
+    }
+}
+
+impl<'a, Surface, PointCloud, Segment, State> InnerState<Surface, PointCloud, Segment, State>
+where
+    State: private::ContextBuilder<'a>,
+    IndexMap<String, Surface>: private::GeometryHolder<
+        'a,
+        Surface,
+        Args = <SurfaceGeometry as ElementGeometry>::Args,
+        Context = <State as private::ContextBuilder<'a>>::Context,
+    >,
+    IndexMap<String, PointCloud>: private::GeometryHolder<
+        'a,
+        PointCloud,
+        Args = <PointCloudGeometry as ElementGeometry>::Args,
+        Context = <State as private::ContextBuilder<'a>>::Context,
+    >,
+    IndexMap<String, Segment>: private::GeometryHolder<
+        'a,
+        Segment,
+        Args = <SegmentGeometry as ElementGeometry>::Args,
+        Context = <State as private::ContextBuilder<'a>>::Context,
+    >,
+{
+    pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
+        &'a mut self,
         name: String,
         vertices: V,
         indices: I,
-    ) -> &mut Surface;
+    ) -> ElementMut<'a, Surface, State::Context> {
+        use crate::private::GeometryHolder;
+        let context = self.state.get_context();
+        self.surfaces
+            .register(name, (indices.into(), vertices.into()), context)
+    }
 
-    fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface>;
+    pub fn get_surface_mut(
+        &'a mut self,
+        name: &str,
+    ) -> Option<ElementMut<'a, Surface, State::Context>> {
+        use crate::private::GeometryHolder;
+        self.surfaces
+            .get_element_mut(name, self.state.get_context())
+    }
 
-    fn get_surface(&self, name: &str) -> Option<&Surface>;
+    pub fn get_surface(&self, name: &str) -> Option<&Surface> {
+        use crate::private::GeometryHolder;
+        self.surfaces.get_element(name)
+    }
 
-    fn register_point_cloud<V: Vertices>(&mut self, name: String, positions: V) -> &mut PointCloud;
+    pub fn register_point_cloud<V: Vertices>(
+        &'a mut self,
+        name: String,
+        positions: V,
+    ) -> ElementMut<'a, PointCloud, State::Context> {
+        use crate::private::GeometryHolder;
+        let context = self.state.get_context();
+        self.clouds.register(name, positions.into(), context)
+    }
 
-    fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud>;
+    pub fn get_point_cloud_mut(
+        &'a mut self,
+        name: &str,
+    ) -> Option<ElementMut<'a, PointCloud, State::Context>> {
+        use crate::private::GeometryHolder;
+        self.clouds.get_element_mut(name, self.state.get_context())
+    }
 
-    fn get_point_cloud(&self, name: &str) -> Option<&PointCloud>;
+    pub fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
+        use crate::private::GeometryHolder;
+        self.clouds.get_element(name)
+    }
 
     /// Register list of segments
     ///
     /// Arguments :
     /// * `positions`: segments extremities
     /// * `connections`: segments denoted by extremities indices
-    fn register_segment<V: Vertices>(
-        &mut self,
+    pub fn register_segment<V: Vertices>(
+        &'a mut self,
         name: String,
         positions: V,
         connections: Vec<[u32; 2]>,
-    ) -> &mut Segment;
+    ) -> ElementMut<'a, Segment, State::Context> {
+        use crate::private::GeometryHolder;
+        let context = self.state.get_context();
+        self.segments
+            .register(name, (positions.into(), connections), context)
+    }
 
-    fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment>;
+    pub fn get_segment_mut(
+        &'a mut self,
+        name: &str,
+    ) -> Option<ElementMut<'a, Segment, State::Context>> {
+        use crate::private::GeometryHolder;
+        self.segments
+            .get_element_mut(name, self.state.get_context())
+    }
 
-    fn get_segment(&self, name: &str) -> Option<&Segment>;
+    pub fn get_segment(&self, name: &str) -> Option<&Segment> {
+        use crate::private::GeometryHolder;
+        self.segments.get_element(name)
+    }
 }
+
+type InitialState = InnerState<UninitedSurface, UninitedPointCloud, UninitedSegment, ()>;
 
 /// Creates a handle to add elements to. Needs to be run after.
 #[must_use]
@@ -114,13 +360,8 @@ pub fn init() -> InitialState {
         surfaces: IndexMap::new(),
         clouds: IndexMap::new(),
         segments: IndexMap::new(),
+        state: (),
     }
-}
-
-pub struct InitialState {
-    surfaces: IndexMap<String, Surface>,
-    clouds: IndexMap<String, PointCloud>,
-    segments: IndexMap<String, Segment>,
 }
 
 impl InitialState {
@@ -148,62 +389,8 @@ impl InitialState {
     }
 }
 
-impl StateHandle for InitialState {
-    fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
-        &mut self,
-        name: String,
-        vertices: V,
-        indices: I,
-    ) -> &mut Surface {
-        let surface = Surface::new(name.clone(), vertices.into(), indices.into());
-        self.surfaces.insert(name.clone(), surface);
-        self.surfaces.get_mut(&name).unwrap()
-    }
-
-    fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
-        self.surfaces.get_mut(name)
-    }
-
-    fn get_surface(&self, name: &str) -> Option<&Surface> {
-        self.surfaces.get(name)
-    }
-
-    fn register_point_cloud<V: Vertices>(&mut self, name: String, positions: V) -> &mut PointCloud {
-        let cloud = PointCloud::new(name.clone(), positions.into());
-        self.clouds.insert(name.clone(), cloud);
-        self.clouds.get_mut(&name).unwrap()
-    }
-
-    fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
-        self.clouds.get_mut(name)
-    }
-
-    fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
-        self.clouds.get(name)
-    }
-
-    fn register_segment<V: Vertices>(
-        &mut self,
-        name: String,
-        positions: V,
-        connections: Vec<[u32; 2]>,
-    ) -> &mut Segment {
-        let cloud = Segment::new(name.clone(), positions.into(), connections.into());
-        self.segments.insert(name.clone(), cloud);
-        self.segments.get_mut(&name).unwrap()
-    }
-
-    fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment> {
-        self.segments.get_mut(name)
-    }
-
-    fn get_segment(&self, name: &str) -> Option<&Segment> {
-        self.segments.get(name)
-    }
-}
-
 /// Holds the application state. Starting point to add visualization datas.
-pub struct RunningState {
+pub struct GraphicalState {
     settings: Settings,
 
     window: Arc<Window>,
@@ -228,13 +415,6 @@ pub struct RunningState {
     camera_controller: CameraController,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
-    // 3D Model
-    surfaces: IndexMap<String, DisplaySurface>,
-    //Points
-    clouds: IndexMap<String, DisplayPointCloud>,
-    //Segments
-    segments: IndexMap<String, DisplaySegment>,
-    //Volume meshes
     // Lighting
     light_uniform: LightUniform,
     light_buffer: wgpu::Buffer,
@@ -259,6 +439,80 @@ pub struct RunningState {
     rng: SmallRng,
 }
 
+impl<'a> private::ContextBuilder<'a> for GraphicalState {
+    type Context = GraphicalContext<'a>;
+
+    fn get_context(&'a mut self) -> Self::Context {
+        Self::Context {
+            settings: &self.settings,
+            device: &self.device,
+            queue: &self.queue,
+            camera_light_bind_group_layout: &self.camera_light_bind_group_layout,
+            counter_bind_group_layout: &self.picker.bind_group_layout,
+            color_format: self.config.format,
+            refresh_screen: &mut self.dirty,
+        }
+    }
+}
+
+pub type RunningState =
+    InnerState<DisplaySurface, DisplayPointCloud, DisplaySegment, GraphicalState>;
+
+//pub struct RunningState {
+//    settings: Settings,
+//
+//    window: Arc<Window>,
+//    proxy: EventLoopProxy<UserEvent>,
+//    // Graphic context
+//    surface: wgpu::Surface<'static>,
+//    device: wgpu::Device,
+//    queue: wgpu::Queue,
+//    config: wgpu::SurfaceConfiguration,
+//    // Window size
+//    size: winit::dpi::PhysicalSize<u32>,
+//    // Textures
+//    depth_texture: texture::Texture,
+//    // Screenshots
+//    screenshoter: screenshot::Screenshoter,
+//    screenshot: bool,
+//
+//    // Keyboard
+//    ctrl_pressed: bool,
+//    // Camera
+//    camera: Camera,
+//    camera_controller: CameraController,
+//    camera_uniform: CameraUniform,
+//    camera_buffer: wgpu::Buffer,
+//    // 3D Model
+//    surfaces: IndexMap<String, DisplaySurface>,
+//    //Points
+//    clouds: IndexMap<String, DisplayPointCloud>,
+//    //Segments
+//    segments: IndexMap<String, DisplaySegment>,
+//    //Volume meshes
+//    // Lighting
+//    light_uniform: LightUniform,
+//    light_buffer: wgpu::Buffer,
+//    jitter_buffer: wgpu::Buffer,
+//    camera_light_bind_group_layout: wgpu::BindGroupLayout,
+//    camera_light_bind_group: wgpu::BindGroup,
+//    // egui
+//    //ui: ui::UI,
+//    //time: std::time::Instant,
+//    dirty: bool,
+//    egui_dirty: bool,
+//    should_resize: bool,
+//
+//    // Item picker
+//    picker: picker::Picker,
+//
+//    copy: deferred::TextureCopy,
+//    pbr_renderer: deferred::PBR,
+//    ground: deferred::Ground,
+//    taa_counter: u8,
+//    aabb: aabb::SBV,
+//}
+
 /// Starting point to build the app.
 struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     init_state: Option<InitialState>,
@@ -279,13 +533,16 @@ pub(crate) enum UserEvent {
     Pick,
 }
 
+impl GraphicalState {}
+
 impl RunningState {
     // Initialize the state
     async fn new(
         InitialState {
-            mut surfaces,
-            mut clouds,
-            mut segments,
+            surfaces,
+            clouds,
+            segments,
+            ..
         }: InitialState,
         window: Window,
         proxy: EventLoopProxy<UserEvent>,
@@ -471,48 +728,30 @@ impl RunningState {
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
 
         let surfaces = surfaces
-            .drain(..)
+            .into_iter()
             .map(|(k, v)| {
                 (
                     k,
-                    DisplaySurface::init(
-                        v,
-                        &device,
-                        &camera_light_bind_group_layout,
-                        &picker.bind_group_layout,
-                        surface_format,
-                    ),
+                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
                 )
             })
             .collect();
 
         let clouds = clouds
-            .drain(..)
+            .into_iter()
             .map(|(k, v)| {
                 (
                     k,
-                    DisplayPointCloud::init(
-                        v,
-                        &device,
-                        &camera_light_bind_group_layout,
-                        &picker.bind_group_layout,
-                        surface_format,
-                    ),
+                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
                 )
             })
             .collect();
         let segments = segments
-            .drain(..)
+            .into_iter()
             .map(|(k, v)| {
                 (
                     k,
-                    DisplaySegment::init(
-                        v,
-                        &device,
-                        &camera_light_bind_group_layout,
-                        &picker.bind_group_layout,
-                        surface_format,
-                    ),
+                    v.upgrade(&device, &camera_light_bind_group_layout, surface_format),
                 )
             })
             .collect();
@@ -538,7 +777,7 @@ impl RunningState {
             &camera_light_bind_group_layout,
             0.,
         );
-        Self {
+        let g_state = GraphicalState {
             settings,
             window,
             proxy,
@@ -555,9 +794,6 @@ impl RunningState {
             camera_controller,
             camera_buffer,
             camera_uniform,
-            surfaces,
-            clouds,
-            segments,
             light_uniform,
             light_buffer,
             jitter_buffer,
@@ -574,18 +810,23 @@ impl RunningState {
             taa_counter: 0,
             aabb: aabb::SBV::default(),
             rng: SmallRng::seed_from_u64(1),
+        };
+        RunningState {
+            state: g_state,
+            surfaces,
+            segments,
+            clouds,
         }
     }
 
     fn set_floor(&mut self) {
-        use crate::updater::Positions;
+        use crate::updater::ElementGeometry;
         let mut min_y = 0.;
         for surface in self.surfaces.values() {
-            if surface.element.shown() {
-                for p in surface.element.geometry().get_positions() {
-                    let p = glam::Mat4::from_cols_array_2d(
-                        &surface.element.updater.transform.get_transform(),
-                    ) * glam::Vec3::from_array(*p).extend(1.);
+            if surface.shown() {
+                for p in surface.geometry().get_positions() {
+                    let p = glam::Mat4::from_cols_array_2d(&surface.transform.get_transform())
+                        * glam::Vec3::from_array(*p).extend(1.);
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -594,11 +835,10 @@ impl RunningState {
             }
         }
         for cloud in self.clouds.values() {
-            if cloud.element.shown() {
-                for p in cloud.element.geometry().get_positions() {
-                    let p = glam::Mat4::from_cols_array_2d(
-                        &cloud.element.updater.transform.get_transform(),
-                    ) * glam::Vec3::from_array(*p).extend(1.);
+            if cloud.shown() {
+                for p in cloud.geometry().get_positions() {
+                    let p = glam::Mat4::from_cols_array_2d(&cloud.transform.get_transform())
+                        * glam::Vec3::from_array(*p).extend(1.);
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -607,11 +847,10 @@ impl RunningState {
             }
         }
         for segment in self.segments.values() {
-            if segment.element.shown() {
-                for p in segment.element.geometry().get_positions() {
-                    let p = glam::Mat4::from_cols_array_2d(
-                        &segment.element.updater.transform.get_transform(),
-                    ) * glam::Vec3::from_array(*p).extend(1.);
+            if segment.shown() {
+                for p in segment.geometry().get_positions() {
+                    let p = glam::Mat4::from_cols_array_2d(&segment.transform.get_transform())
+                        * glam::Vec3::from_array(*p).extend(1.);
                     let p = p / p[3];
                     if p[1] < min_y {
                         min_y = p[1];
@@ -619,7 +858,7 @@ impl RunningState {
                 }
             }
         }
-        self.ground.set_level(&self.queue, min_y);
+        self.state.ground.set_level(&self.state.queue, min_y);
     }
 
     /// Fit camera and ground to match the visible elements
@@ -628,11 +867,8 @@ impl RunningState {
         let mut n = 0;
         let mut center = glam::Vec3::new(0., 0., 0.);
         for surface in self.surfaces.values() {
-            if surface.element.shown() {
-                let sbv = surface
-                    .element
-                    .sbv
-                    .transform(&surface.element.updater.transform.get_transform());
+            if surface.shown() {
+                let sbv = surface.sbv.transform(&surface.transform.get_transform());
                 center += glam::Vec3::from_array(sbv.center);
                 n += 1;
                 if let Some(size) = &mut size {
@@ -645,11 +881,8 @@ impl RunningState {
             }
         }
         for cloud in self.clouds.values() {
-            if cloud.element.shown() {
-                let sbv = cloud
-                    .element
-                    .sbv
-                    .transform(&cloud.element.updater.transform.get_transform());
+            if cloud.shown() {
+                let sbv = cloud.sbv.transform(&cloud.transform.get_transform());
                 center += glam::Vec3::from_array(sbv.center);
                 n += 1;
                 if let Some(size) = &mut size {
@@ -662,11 +895,8 @@ impl RunningState {
             }
         }
         for segment in self.segments.values() {
-            if segment.element.shown() {
-                let sbv = segment
-                    .element
-                    .sbv
-                    .transform(&segment.element.updater.transform.get_transform());
+            if segment.shown() {
+                let sbv = segment.sbv.transform(&segment.transform.get_transform());
                 center += glam::Vec3::from_array(sbv.center);
                 n += 1;
                 if let Some(size) = &mut size {
@@ -681,8 +911,9 @@ impl RunningState {
         if n > 0 {
             center = center / (n as f32);
         }
-        self.dirty = true;
-        self.camera
+        self.state.dirty = true;
+        self.state
+            .camera
             .set_scene_size(size.unwrap_or_else(|| 1.), center);
         self.set_floor();
     }
@@ -690,28 +921,35 @@ impl RunningState {
     // Keeps state in sync with window size when changed
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
-            self.size = new_size;
-            self.config.width = new_size.width;
-            self.config.height = new_size.height;
-            self.surface.configure(&self.device, &self.config);
+            self.state.size = new_size;
+            self.state.config.width = new_size.width;
+            self.state.config.height = new_size.height;
+            self.state
+                .surface
+                .configure(&self.state.device, &self.state.config);
             // Make sure to current window size to depth texture - required for calc
-            self.depth_texture =
-                texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
-            self.screenshoter
-                .resize(&self.device, new_size.width, new_size.height);
-            self.camera.resize(new_size.width, new_size.height);
-            self.picker
-                .resize(&self.device, new_size.width, new_size.height);
-            self.copy.resize(
-                &self.device,
-                self.config.format,
+            self.state.depth_texture = texture::Texture::create_depth_texture(
+                &self.state.device,
+                &self.state.config,
+                "depth_texture",
+            );
+            self.state
+                .screenshoter
+                .resize(&self.state.device, new_size.width, new_size.height);
+            self.state.camera.resize(new_size.width, new_size.height);
+            self.state
+                .picker
+                .resize(&self.state.device, new_size.width, new_size.height);
+            self.state.copy.resize(
+                &self.state.device,
+                self.state.config.format,
                 new_size.width,
                 new_size.height,
             );
-            self.pbr_renderer.resize(
-                &self.device,
-                self.config.format,
-                &self.depth_texture.view,
+            self.state.pbr_renderer.resize(
+                &self.state.device,
+                self.state.config.format,
+                &self.state.depth_texture.view,
                 new_size.width,
                 new_size.height,
             );
@@ -721,73 +959,80 @@ impl RunningState {
     // Handle input using WindowEvent
     fn input(&mut self, event: &WindowEvent, ui_hovered: bool) -> bool {
         // Send any input to camera controller
-        let changed = self.camera_controller.process_events(event, ui_hovered);
-        self.dirty |= changed;
-        (!ui_hovered && self.picker.input(event)) || changed
+        let changed = self
+            .state
+            .camera_controller
+            .process_events(event, ui_hovered);
+        self.state.dirty |= changed;
+        (!ui_hovered && self.state.picker.input(event)) || changed
     }
 
     fn update(&mut self) -> bool {
         // Sync local app state with camera
-        self.camera_controller
-            .update_camera(&mut self.camera, &self.settings);
-        self.camera_uniform
-            .update_view_proj(&self.camera, &self.aabb, self.ground.level);
-        self.queue.write_buffer(
-            &self.camera_buffer,
+        self.state
+            .camera_controller
+            .update_camera(&mut self.state.camera, &self.state.settings);
+        self.state.camera_uniform.update_view_proj(
+            &self.state.camera,
+            &self.state.aabb,
+            self.state.ground.level,
+        );
+        self.state.queue.write_buffer(
+            &self.state.camera_buffer,
             0,
-            bytemuck::cast_slice(&[self.camera_uniform]),
+            bytemuck::cast_slice(&[self.state.camera_uniform]),
         );
 
         // Update the light
         // TODO other optional light behaviors
-        self.light_uniform.position = self.camera.get_position();
-        self.queue.write_buffer(
-            &self.light_buffer,
+        self.state.light_uniform.position = self.state.camera.get_position();
+        self.state.queue.write_buffer(
+            &self.state.light_buffer,
             0,
-            bytemuck::cast_slice(&[self.light_uniform]),
+            bytemuck::cast_slice(&[self.state.light_uniform]),
         );
 
-        let mut changed = self.dirty;
+        let mut changed = self.state.dirty;
 
         let mut sbv = None;
 
-        for surface in self.surfaces.values_mut() {
-            changed |= surface.refresh(
-                &self.device,
-                &self.queue,
-                &self.camera_light_bind_group_layout,
-                self.config.format,
-                &mut sbv,
-            );
-        }
+        //for surface in self.surfaces.values_mut() {
+        //    changed |= surface.refresh(
+        //        &self.device,
+        //        &self.queue,
+        //        &self.camera_light_bind_group_layout,
+        //        self.config.format,
+        //        &mut sbv,
+        //    );
+        //}
 
-        for cloud in self.clouds.values_mut() {
-            changed |= cloud.refresh(
-                &self.device,
-                &self.queue,
-                &self.camera_light_bind_group_layout,
-                self.config.format,
-                &mut sbv,
-            );
-        }
+        //for cloud in self.clouds.values_mut() {
+        //    changed |= cloud.refresh(
+        //        &self.device,
+        //        &self.queue,
+        //        &self.camera_light_bind_group_layout,
+        //        self.config.format,
+        //        &mut sbv,
+        //    );
+        //}
 
-        for segment in self.segments.values_mut() {
-            changed |= segment.refresh(
-                &self.device,
-                &self.queue,
-                &self.camera_light_bind_group_layout,
-                self.config.format,
-                &mut sbv,
-            );
-        }
-        self.aabb = sbv.unwrap_or_else(aabb::SBV::default);
-        if self.should_resize {
+        //for segment in self.segments.values_mut() {
+        //    changed |= segment.refresh(
+        //        &self.device,
+        //        &self.queue,
+        //        &self.camera_light_bind_group_layout,
+        //        self.config.format,
+        //        &mut sbv,
+        //    );
+        //}
+        self.state.aabb = sbv.unwrap_or_else(aabb::SBV::default);
+        if self.state.should_resize {
             self.resize_scene();
-            self.should_resize = false;
+            self.state.should_resize = false;
             changed = true;
         }
 
-        self.dirty = false;
+        self.state.dirty = false;
         changed
     }
 
@@ -803,32 +1048,33 @@ impl RunningState {
         //self.time = std::time::Instant::now();
 
         let mut request_redraw = false;
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let mut encoder =
+            self.state
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
         let (user_cmd_bufs, clipped_primitives, screen_descriptor) = ui.render_deltas(
-            &self.device,
-            &self.queue,
+            &self.state.device,
+            &self.state.queue,
             &mut encoder,
-            self.size.width,
-            self.size.height,
+            self.state.size.width,
+            self.state.size.height,
         );
 
-        self.egui_dirty |= self.picker.render(
-            &self.device,
+        self.state.egui_dirty |= self.state.picker.render(
+            &self.state.device,
             &mut encoder,
-            &self.depth_texture.view,
-            &self.camera_light_bind_group,
+            &self.state.depth_texture.view,
+            &self.state.camera_light_bind_group,
             &self.surfaces,
             &self.clouds,
             &self.segments,
         );
 
-        let output = if !self.screenshot {
-            Some(self.surface.get_current_texture()?)
+        let output = if !self.state.screenshot {
+            Some(self.state.surface.get_current_texture()?)
         } else {
             None
         };
@@ -839,22 +1085,22 @@ impl RunningState {
                     .create_view(&wgpu::TextureViewDescriptor::default())
             });
 
-            let mut render = self.settings.rerender;
+            let mut render = self.state.settings.rerender;
             let mut render_copy = false;
             let jitter;
-            if scene_changed || !self.settings.taa.is_some() {
+            if scene_changed || !self.state.settings.taa.is_some() {
                 // We rerender the scene from scratch
-                request_redraw = self.settings.taa.is_some() && !self.settings.rerender;
+                request_redraw = self.state.settings.taa.is_some() && !self.state.settings.rerender;
                 render = true;
-                self.taa_counter = 0;
+                self.state.taa_counter = 0;
                 jitter = JitterUniform {
                     x: 0.,
                     y: 0.,
                     _padding: [0; 2],
                 };
             } else {
-                if let Some(taa_frames) = self.settings.taa {
-                    if self.taa_counter < taa_frames.get() {
+                if let Some(taa_frames) = self.state.settings.taa {
+                    if self.state.taa_counter < taa_frames.get() {
                         // The scene hasn't changed but we need more copies for taa
                         render = true;
                         render_copy = true;
@@ -864,20 +1110,25 @@ impl RunningState {
                 //let ampli = 0.5 + 0.5 * self.taa_counter as f32 / self.taa_frames as f32;
                 let ampli = 1.;
                 jitter = JitterUniform {
-                    x: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.width as f32,
-                    y: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.height as f32,
+                    x: ampli * 2. * (self.state.rng.random::<f32>() - 0.5)
+                        / self.state.size.width as f32,
+                    y: ampli * 2. * (self.state.rng.random::<f32>() - 0.5)
+                        / self.state.size.height as f32,
                     _padding: [0; 2],
                 };
             };
-            self.queue
-                .write_buffer(&self.jitter_buffer, 0, bytemuck::cast_slice(&[jitter]));
+            self.state.queue.write_buffer(
+                &self.state.jitter_buffer,
+                0,
+                bytemuck::cast_slice(&[jitter]),
+            );
 
-            if render || self.screenshot {
-                let view_ref = if self.screenshot {
-                    self.copy.get_view()
+            if render || self.state.screenshot {
+                let view_ref = if self.state.screenshot {
+                    self.state.copy.get_view()
                 } else if render_copy {
-                    self.taa_counter += 1;
-                    self.copy.get_view()
+                    self.state.taa_counter += 1;
+                    self.state.copy.get_view()
                 } else {
                     &view.as_ref().unwrap()
                 };
@@ -887,7 +1138,7 @@ impl RunningState {
                         label: Some("Material Render Pass"),
                         color_attachments: &[
                             Some(wgpu::RenderPassColorAttachment {
-                                view: self.pbr_renderer.get_albedo_view(),
+                                view: self.state.pbr_renderer.get_albedo_view(),
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -900,7 +1151,7 @@ impl RunningState {
                                 },
                             }),
                             Some(wgpu::RenderPassColorAttachment {
-                                view: self.pbr_renderer.get_normals_view(),
+                                view: self.state.pbr_renderer.get_normals_view(),
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -914,7 +1165,7 @@ impl RunningState {
                             }),
                         ],
                         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.depth_texture.view,
+                            view: &self.state.depth_texture.view,
                             depth_ops: Some(wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(1.0),
                                 store: wgpu::StoreOp::Store,
@@ -925,7 +1176,7 @@ impl RunningState {
                         timestamp_writes: None,
                     });
 
-                material_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                material_render_pass.set_bind_group(0, &self.state.camera_light_bind_group, &[]);
 
                 //order matters!
                 //cloud discard so no depth test
@@ -942,8 +1193,8 @@ impl RunningState {
                 }
                 drop(material_render_pass);
 
-                let color = if !self.screenshot && !render_copy {
-                    self.settings.color
+                let color = if !self.state.screenshot && !render_copy {
+                    self.state.settings.color
                 } else {
                     wgpu::Color {
                         r: 0.0,
@@ -968,15 +1219,15 @@ impl RunningState {
                     timestamp_writes: None,
                 });
 
-                pbr_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                self.pbr_renderer.render(&mut pbr_render_pass);
+                pbr_render_pass.set_bind_group(0, &self.state.camera_light_bind_group, &[]);
+                self.state.pbr_renderer.render(&mut pbr_render_pass);
                 drop(pbr_render_pass);
-                if self.settings.shadow {
+                if self.state.settings.shadow {
                     let mut shadow_render_pass =
                         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                             label: Some("Shadow Render Pass"),
                             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: self.ground.get_texture_view(),
+                                view: self.state.ground.get_texture_view(),
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -992,14 +1243,15 @@ impl RunningState {
                             occlusion_query_set: None,
                             timestamp_writes: None,
                         });
-                    shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                    shadow_render_pass.set_bind_group(0, &self.state.camera_light_bind_group, &[]);
                     for surface in self.surfaces.values() {
                         surface.render_shadow(&mut shadow_render_pass);
                     }
 
                     drop(shadow_render_pass);
-                    self.ground
-                        .blur(&mut encoder, &self.camera_light_bind_group);
+                    self.state
+                        .ground
+                        .blur(&mut encoder, &self.state.camera_light_bind_group);
                     let mut ground_render_pass =
                         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                             label: Some("Shadow Render Pass"),
@@ -1014,7 +1266,7 @@ impl RunningState {
                             // Create a depth stencil buffer using the depth texture
                             depth_stencil_attachment: Some(
                                 wgpu::RenderPassDepthStencilAttachment {
-                                    view: &self.depth_texture.view,
+                                    view: &self.state.depth_texture.view,
                                     depth_ops: Some(wgpu::Operations {
                                         load: wgpu::LoadOp::Load,
                                         store: wgpu::StoreOp::Store,
@@ -1025,13 +1277,13 @@ impl RunningState {
                             occlusion_query_set: None,
                             timestamp_writes: None,
                         });
-                    ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                    self.ground.render(&mut ground_render_pass);
+                    ground_render_pass.set_bind_group(0, &self.state.camera_light_bind_group, &[]);
+                    self.state.ground.render(&mut ground_render_pass);
                     drop(ground_render_pass);
                 }
 
                 // Draw the gui
-                if !self.screenshot && !render_copy {
+                if !self.state.screenshot && !render_copy {
                     let ui_render_pass = encoder
                         .begin_render_pass(&wgpu::RenderPassDescriptor {
                             label: Some("Ui Render Pass"),
@@ -1055,14 +1307,16 @@ impl RunningState {
 
             //do blending with previous frame
             if render_copy {
-                let factor = (self.taa_counter as f64 - 1.) / (self.taa_counter as f64);
-                self.copy.blend(&mut encoder, factor, self.taa_counter == 1);
+                let factor = (self.state.taa_counter as f64 - 1.) / (self.state.taa_counter as f64);
+                self.state
+                    .copy
+                    .blend(&mut encoder, factor, self.state.taa_counter == 1);
             }
 
-            if self.screenshot || (!render || render_copy) {
-                let (view_ref, color) = if self.screenshot {
+            if self.state.screenshot || (!render || render_copy) {
+                let (view_ref, color) = if self.state.screenshot {
                     (
-                        self.screenshoter.get_view(),
+                        self.state.screenshoter.get_view(),
                         wgpu::Color {
                             r: 0.,
                             g: 0.,
@@ -1071,7 +1325,7 @@ impl RunningState {
                         },
                     )
                 } else {
-                    (view.as_ref().unwrap(), self.settings.color)
+                    (view.as_ref().unwrap(), self.state.settings.color)
                 };
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Copy Pass"),
@@ -1087,26 +1341,28 @@ impl RunningState {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                if self.screenshot {
-                    self.copy.screenshot(&mut render_pass);
+                if self.state.screenshot {
+                    self.state.copy.screenshot(&mut render_pass);
                 } else {
-                    self.copy.copy(&mut render_pass);
+                    self.state.copy.copy(&mut render_pass);
                 }
 
                 let render_pass = render_pass.forget_lifetime();
-                if !self.screenshot {
+                if !self.state.screenshot {
                     ui.render(render_pass, &clipped_primitives, &screen_descriptor);
                 }
             }
         }
 
-        if self.screenshot {
-            self.screenshoter.copy_texture_to_buffer(&mut encoder);
-            let index = self.queue.submit(iter::once(encoder.finish()));
-            self.screenshoter.create_png(&self.device, index);
-            self.screenshot = false;
+        if self.state.screenshot {
+            self.state.screenshoter.copy_texture_to_buffer(&mut encoder);
+            let index = self.state.queue.submit(iter::once(encoder.finish()));
+            self.state
+                .screenshoter
+                .create_png(&self.state.device, index);
+            self.state.screenshot = false;
         } else {
-            self.queue.submit(
+            self.state.queue.submit(
                 user_cmd_bufs
                     .into_iter()
                     .chain(iter::once(encoder.finish())),
@@ -1114,8 +1370,8 @@ impl RunningState {
             output.unwrap().present();
         }
 
-        self.picker.post_render(event_loop_proxy);
-        if self.picker.pick_locked || !self.settings.lazy_draw {
+        self.state.picker.post_render(event_loop_proxy);
+        if self.state.picker.pick_locked || !self.state.settings.lazy_draw {
             request_redraw = true;
         }
         Ok(request_redraw)
@@ -1123,7 +1379,7 @@ impl RunningState {
 
     /// Take a screenshot at the next frame
     pub fn screenshot(&mut self) {
-        self.screenshot = true;
+        self.state.screenshot = true;
     }
 
     /// Get current selected object: first the name, then index `i` of the selected element
@@ -1131,17 +1387,17 @@ impl RunningState {
     /// For a surface mesh, if `i` < `nv` then the selected element si the vertex of index `i`.
     /// If `nv` <= i < `nv + nf`, it corresponds to the face of index `i - nv`.
     pub fn get_picked(&self) -> &Option<(String, usize)> {
-        &self.picker.picked_item
+        &self.state.picker.picked_item
     }
 
     /// Politely ask to render the next frame
     pub fn refresh(&mut self) {
-        self.dirty = true;
+        self.state.dirty = true;
     }
 
     #[cfg(feature = "obj_button")]
     pub(crate) fn send_mesh(&mut self, name: String) {
-        let event_loop_proxy = self.proxy.clone();
+        let event_loop_proxy = self.state.proxy.clone();
         #[cfg(not(target_arch = "wasm32"))]
         {
             let file = rfd::FileDialog::new()
@@ -1176,107 +1432,6 @@ impl RunningState {
             };
             wasm_bindgen_futures::spawn_local(f);
         }
-    }
-}
-
-impl StateHandle for RunningState {
-    fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
-        &mut self,
-        name: String,
-        vertices: V,
-        indices: I,
-    ) -> &mut Surface {
-        let vertices: Vec<[f32; 3]> = vertices.into();
-        if self.get_surface(&name).is_some()
-            && self.get_surface(&name).unwrap().geometry.vertices.len() == vertices.len()
-        {
-            let mut surface = self.surfaces.shift_remove(&name).unwrap();
-            surface.change_vertices(vertices, indices.into(), &self.device);
-            self.surfaces.insert(name.clone(), surface);
-        } else {
-            let surface = DisplaySurface::new(
-                name.clone(),
-                vertices,
-                indices.into(),
-                &self.device,
-                &self.camera_light_bind_group_layout,
-                &self.picker.bind_group_layout,
-                self.config.format,
-            );
-            self.surfaces.insert(name.clone(), surface);
-            self.should_resize = true;
-            self.picker.counters_dirty = true;
-        }
-        self.dirty = true;
-        &mut self.surfaces.get_mut(&name).unwrap().element
-    }
-
-    fn get_surface_mut(&mut self, name: &str) -> Option<&mut Surface> {
-        let res = self.surfaces.get_mut(name);
-        self.dirty |= res.is_some();
-        res.map(|s| &mut s.element)
-    }
-
-    fn get_surface(&self, name: &str) -> Option<&Surface> {
-        self.surfaces.get(name).map(|s| &s.element)
-    }
-
-    fn register_point_cloud<V: Vertices>(&mut self, name: String, positions: V) -> &mut PointCloud {
-        let model = DisplayPointCloud::new(
-            name.clone(),
-            positions.into(),
-            &self.device,
-            &self.camera_light_bind_group_layout,
-            &self.picker.bind_group_layout,
-            self.config.format,
-        );
-        self.clouds.insert(name.clone(), model);
-        self.picker.counters_dirty = true;
-        self.dirty = true;
-        self.should_resize = true;
-        &mut self.clouds.get_mut(&name).unwrap().element
-    }
-
-    fn get_point_cloud_mut(&mut self, name: &str) -> Option<&mut PointCloud> {
-        let res = self.clouds.get_mut(name);
-        self.dirty |= res.is_some();
-        res.map(|pc| &mut pc.element)
-    }
-
-    fn get_point_cloud(&self, name: &str) -> Option<&PointCloud> {
-        self.clouds.get(name).map(|pc| &pc.element)
-    }
-
-    fn register_segment<V: Vertices>(
-        &mut self,
-        name: String,
-        positions: V,
-        connections: Vec<[u32; 2]>,
-    ) -> &mut Segment {
-        let model = DisplaySegment::new(
-            name.clone(),
-            positions.into(),
-            connections,
-            &self.device,
-            &self.camera_light_bind_group_layout,
-            &self.picker.bind_group_layout,
-            self.config.format,
-        );
-        self.segments.insert(name.clone(), model);
-        self.picker.counters_dirty = true;
-        self.dirty = true;
-        self.should_resize = true;
-        &mut self.segments.get_mut(&name).unwrap().element
-    }
-
-    fn get_segment_mut(&mut self, name: &str) -> Option<&mut Segment> {
-        let res = self.segments.get_mut(name);
-        self.dirty |= res.is_some();
-        res.map(|s| &mut s.element)
-    }
-
-    fn get_segment(&self, name: &str) -> Option<&Segment> {
-        self.segments.get(name).map(|s| &s.element)
     }
 }
 
@@ -1361,10 +1516,10 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     .block_on(),
             );
             self.ui = Some(ui::UI::new(
-                &self.state.as_ref().unwrap().device,
+                &self.state.as_ref().unwrap().state.device,
                 event_loop,
-                self.state.as_ref().unwrap().config.format,
-                self.state.as_ref().unwrap().window.scale_factor(),
+                self.state.as_ref().unwrap().state.config.format,
+                self.state.as_ref().unwrap().state.window.scale_factor(),
             ));
         }
     }
@@ -1376,15 +1531,15 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     state.register_surface(name, mesh_v, mesh_f);
                 }
                 UserEvent::Paste(cam) => {
-                    state.camera.set(cam);
-                    state.dirty = true;
+                    state.state.camera.set(cam);
+                    state.state.dirty = true;
                 }
                 UserEvent::Pick => {
-                    state.picker.pick(
+                    state.state.picker.pick(
                         &state.surfaces,
                         &state.clouds,
                         &state.segments,
-                        &state.camera,
+                        &state.state.camera,
                     );
                 }
             }
@@ -1400,8 +1555,8 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
         //TODO the `if let` stuff is hacky and messy
         let (processed, ui_hovered) =
             if let (Some(ui), Some(state)) = (self.ui.as_mut(), self.state.as_mut()) {
-                if window_id == state.window.id() {
-                    (ui.process_event(&*state.window, &event), ui.hovered)
+                if window_id == state.state.window.id() {
+                    (ui.process_event(&*state.state.window, &event), ui.hovered)
                 } else {
                     return;
                 }
@@ -1420,14 +1575,14 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             if let Some(state) = self.state.as_mut() {
                 match event {
                     WindowEvent::RedrawRequested => {
-                        if state.egui_dirty {
-                            state.window.request_redraw();
-                            state.egui_dirty = false;
+                        if state.state.egui_dirty {
+                            state.state.window.request_redraw();
+                            state.state.egui_dirty = false;
                         } else {
-                            state.egui_dirty = true;
+                            state.state.egui_dirty = true;
                         }
                     }
-                    _ => state.window.request_redraw(),
+                    _ => state.state.window.request_redraw(),
                 }
             }
         }
@@ -1439,8 +1594,8 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     WindowEvent::CloseRequested => event_loop.exit(),
                     WindowEvent::Resized(physical_size) => {
                         state.resize(physical_size);
-                        state.dirty = true;
-                        state.window.request_redraw();
+                        state.state.dirty = true;
+                        state.state.window.request_redraw();
                     }
                     WindowEvent::KeyboardInput {
                         event:
@@ -1454,16 +1609,16 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     } => {
                         if logical_key == Key::Named(NamedKey::Control) {
                             if key_state == ElementState::Pressed {
-                                state.ctrl_pressed = true;
+                                state.state.ctrl_pressed = true;
                             } else if key_state == ElementState::Released {
-                                state.ctrl_pressed = false;
+                                state.state.ctrl_pressed = false;
                             }
                         }
-                        if state.ctrl_pressed
+                        if state.state.ctrl_pressed
                             && logical_key == Key::Character(SmolStr::new_inline("c"))
                             && key_state == ElementState::Pressed
                         {
-                            if let Ok(cam) = state.camera.copy() {
+                            if let Ok(cam) = state.state.camera.copy() {
                                 #[cfg(not(target_arch = "wasm32"))]
                                 {
                                     let clipboard = self.clipboard.as_mut().unwrap();
@@ -1478,7 +1633,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                                     wasm_bindgen_futures::spawn_local(f);
                                 }
                             }
-                        } else if state.ctrl_pressed
+                        } else if state.state.ctrl_pressed
                             && logical_key == Key::Character(SmolStr::new_inline("v"))
                             && key_state == ElementState::Pressed
                         {
@@ -1486,7 +1641,11 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             #[cfg(not(target_arch = "wasm32"))]
                             {
                                 if let Some(cam) = clipboard.get() {
-                                    state.proxy.send_event(crate::UserEvent::Paste(cam)).ok();
+                                    state
+                                        .state
+                                        .proxy
+                                        .send_event(crate::UserEvent::Paste(cam))
+                                        .ok();
                                     //state.camera.set(cam);
                                     //state.dirty = true;
                                 };
@@ -1494,7 +1653,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             #[cfg(target_arch = "wasm32")]
                             {
                                 let promise = self.clipboard.as_mut().unwrap().read_text();
-                                let event_loop_proxy = state.proxy.clone();
+                                let event_loop_proxy = state.state.proxy.clone();
                                 let f = async move {
                                     if let Ok(res) =
                                         wasm_bindgen_futures::JsFuture::from(promise).await
@@ -1512,13 +1671,19 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     }
                     WindowEvent::RedrawRequested => {
                         //draw ui
+                        let mut refresh_screen = state.state.dirty;
                         ui.draw_models(
-                            &*state.window,
+                            &*state.state.window,
                             &mut state.surfaces,
                             &mut state.clouds,
                             &mut state.segments,
-                            state.camera.build_view(),
-                            state.camera.build_proj(),
+                            state.state.camera.build_view(),
+                            state.state.camera.build_proj(),
+                            &state.state.device,
+                            &state.state.queue,
+                            &state.state.camera_light_bind_group_layout,
+                            state.state.config.format,
+                            &mut refresh_screen,
                         );
                         ui.draw_callback(state, &mut self.callback);
                         let scene_changed = state.update();
@@ -1526,15 +1691,15 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                         match state.render(&self.proxy, ui, scene_changed) {
                             Ok(request_redraw) => {
                                 if request_redraw {
-                                    state.window.request_redraw();
+                                    state.state.window.request_redraw();
                                 }
-                                ui.handle_platform_output(&*state.window)}
+                                ui.handle_platform_output(&*state.state.window)}
                             ,
                             // Reconfigure the surface if it's lost or outdated
                             Err(
                                 wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
                             ) => {
-                                state.resize(state.size)
+                                state.resize(state.state.size)
                             },
                             // The system is out of memory, we should probably quit
                             Err(wgpu::SurfaceError::OutOfMemory) | Err(wgpu::SurfaceError::Other) => event_loop.exit(),
@@ -1549,7 +1714,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             }
         } else {
             if let Some(state) = self.state.as_mut() {
-                state.window.request_redraw();
+                state.state.window.request_redraw();
             }
         }
     }

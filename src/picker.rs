@@ -1,7 +1,9 @@
 use crate::camera::Camera;
 
 use crate::texture;
+use crate::updater::ElementGeometry;
 use crate::updater::ElementPicker;
+use crate::updater::Render;
 use crate::util;
 use crate::DisplayPointCloud;
 use crate::DisplaySegment;
@@ -243,7 +245,7 @@ impl Picker {
                                 _padding_2: 0,
                                 _padding_3: 0,
                             };
-                            counter += surface.get_total_elements();
+                            counter += surface.geometry().get_total_elements();
 
                             //TODO use one dynamic buffer instead
                             let counter_buffer =
@@ -272,7 +274,7 @@ impl Picker {
                             _padding_2: 0,
                             _padding_3: 0,
                         };
-                        counter += cloud.get_total_elements();
+                        counter += cloud.geometry().get_total_elements();
 
                         let counter_buffer =
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -298,7 +300,7 @@ impl Picker {
                             _padding_2: 0,
                             _padding_3: 0,
                         };
-                        counter += curve.get_total_elements();
+                        counter += curve.geometry().get_total_elements();
 
                         let counter_buffer =
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -419,35 +421,37 @@ impl Picker {
                 if let Some(name) = surfaces
                     .iter()
                     .find(|(_key, surface)| {
-                        let found = c <= value && value < c + surface.get_total_elements();
+                        let found =
+                            c <= value && value < c + surface.geometry().get_total_elements();
                         if !found {
-                            c += surface.get_total_elements();
+                            c += surface.geometry().get_total_elements();
                         }
                         found
                     })
                     .map(|(n, s)| {
-                        let transform = &s.element.updater.transform;
+                        let transform = &s.transform;
                         let pos_x = (i as f32 / self.width as f32) * 2. - 1.;
                         let pos_y = -((j as f32 / self.height as f32) * 2. - 1.);
-                        let new_value = s.picker.get_element(
-                            &s.element.geometry,
-                            transform,
-                            camera,
-                            value - c,
-                            pos_x,
-                            pos_y,
-                        );
-                        value = new_value;
-                        c = 0;
+                        //let new_value = s.picker.get_element(
+                        //    &s.geometry,
+                        //    transform,
+                        //    camera,
+                        //    value - c,
+                        //    pos_x,
+                        //    pos_y,
+                        //);
+                        //value = new_value;
+                        //c = 0;
                         n
                     })
                     .or_else(|| {
                         clouds
                             .iter()
                             .find(|(_key, cloud)| {
-                                let found = c <= value && value < c + cloud.get_total_elements();
+                                let found =
+                                    c <= value && value < c + cloud.geometry().get_total_elements();
                                 if !found {
-                                    c += cloud.get_total_elements();
+                                    c += cloud.geometry().get_total_elements();
                                 }
                                 found
                             })
@@ -457,9 +461,10 @@ impl Picker {
                         curves
                             .iter()
                             .find(|(_key, curve)| {
-                                let found = c <= value && value < c + curve.get_total_elements();
+                                let found =
+                                    c <= value && value < c + curve.geometry().get_total_elements();
                                 if !found {
-                                    c += curve.get_total_elements();
+                                    c += curve.geometry().get_total_elements();
                                 }
                                 found
                             })

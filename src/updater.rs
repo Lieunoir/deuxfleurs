@@ -6,7 +6,6 @@ use crate::attachment::{NewVectorField, VectorField};
 use crate::camera::Camera;
 use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
 use crate::ui::UiDataElement;
-use crate::Settings;
 use egui::{SliderClamping, Widget};
 use indexmap::IndexMap;
 
@@ -15,33 +14,229 @@ use indexmap::IndexMap;
 // Problems: mut ref in mut ver implies only one non mut borrow at a time
 //   how to make sure data uniform modification -> only given when created for now, so not yet built
 
-struct GraphicalContext<'a> {
-    settings: &'a crate::Settings,
-    device: &'a wgpu::Device,
-    queue: &'a wgpu::Queue,
-    camera_light_bind_group_layout: &'a wgpu::BindGroupLayout,
-    color_format: wgpu::TextureFormat,
-    dirty: &'a mut bool,
+pub struct GraphicalContext<'a> {
+    pub(crate) settings: &'a crate::Settings,
+    pub(crate) device: &'a wgpu::Device,
+    pub(crate) queue: &'a wgpu::Queue,
+    pub(crate) camera_light_bind_group_layout: &'a wgpu::BindGroupLayout,
+    pub(crate) counter_bind_group_layout: &'a wgpu::BindGroupLayout,
+    pub(crate) color_format: wgpu::TextureFormat,
+    pub(crate) refresh_screen: &'a mut bool,
 }
 
 // `Renderer` can be `()` !
-struct Element<Geometry, Renderer, Settings, Data, AttachedGeometry> {
+pub struct Element<Geometry, Renderer, Settings, Data, AttachedGeometry> {
     name: String,
-    geometry: Geometry,
-    renderer: Renderer,
-    show: bool,
-    transform: TransformSettings,
-    settings: Settings,
+    pub(crate) geometry: Geometry,
+    pub(crate) renderer: Renderer,
+    pub(crate) show: bool,
+    pub(crate) transform: TransformSettings,
+    pub(crate) settings: Settings,
     data: IndexMap<String, Data>,
     attached_data: IndexMap<String, AttachedGeometry>,
     shown_data: Option<String>,
+    pub(crate) sbv: SBV,
+}
+
+pub type UninitedElement<Geometry, Settings, Data, AttachedGeometry> =
+    Element<Geometry, (), Settings, Data, AttachedGeometry>;
+
+pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> =
+    Element<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>;
+
+//mod private {
+//    pub trait Sealed {}
+//}
+
+pub(crate) trait ElementTrait<'a> {
+    //type Geometry: ElementGeometry;
+    //type Settings: NamedSettings;
+    //type Fixed: FixedRenderer<
+    //    Settings = Self::Settings,
+    //    Data = Self::Data,
+    //    Geometry = Self::Geometry,
+    //>;
+    //type DataB: DataBuffer<Settings = Self::Settings, Data = Self::Data, Geometry = Self::Geometry>;
+    //type Pipeline: RenderPipeline<
+    //    Settings = Self::Settings,
+    //    Data = Self::Data,
+    //    Geometry = Self::Geometry,
+    //    Fixed = Self::Fixed,
+    //>;
+    //type Data: DataUniformBuilder + DataSettings + UiDataElement;
+    //type AttachedGeometry: AttachedGeometry;
+    type Data;
+    type Context;
+
+    fn show(&mut self, show: bool, context: &mut Self::Context);
+    //{
+    //    if self.element.show != show {
+    //        *self.context.refresh_screen = true;
+    //        self.element.show = show;
+    //    }
+    //    self
+    //}
+
+    fn set_data(&mut self, name: Option<String>, context: &mut Self::Context);
+
+    fn add_data(
+        &mut self,
+        name: String,
+        data: Self::Data,
+        context: &mut Self::Context,
+    ) -> &mut Self::Data;
+
+    fn update_settings(&mut self, context: &mut Self::Context, rebuild_pipeline: bool) {}
+    //    self.settings
+    //        .refresh_buffer(queue, &self.renderer.settings_uniform);
+    //}
+
+    fn update_transform(&mut self, context: &mut Self::Context) {}
+    //    self.transform
+    //        .to_raw()
+    //        .refresh_buffer(queue, &self.renderer.transform_uniform);
+    //}
+    //{
+
+    //type BareElement = Element<Geometry, (), Settings, Data, NewVectorField>;
+    //type DisplayElement = Element<Geometry, (), Settings, Data, NewVectorField>;
+}
+
+impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG> ElementTrait<'a>
+    for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
+where
+    Geometry: ElementGeometry,
+    Data: DataUniformBuilder + DataSettings + UiDataElement,
+    Settings: NamedSettings,
+    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    //AttachedG: AttachedGeometry,
+{
+    //type Geometry = Geometry;
+    //type Settings = Settings;
+    //type Fixed = Fixed;
+    //type DataB = DataB;
+    //type Pipeline = Pipeline;
+    type Data = Data;
+    //type AttachedGeometry = AttachedG;
+    type Context = GraphicalContext<'a>;
+
+    fn show(&mut self, show: bool, context: &mut Self::Context) {
+        if self.show != show {
+            *context.refresh_screen = true;
+            self.show = show;
+        }
+    }
+
+    fn set_data(&mut self, name: Option<String>, context: &mut Self::Context) {
+        if self.shown_data != name {
+            self.shown_data = name;
+            let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
+            self.renderer
+                .build_data_buffer(context.device, &self.geometry, data);
+            data.map(|d| {
+                self.renderer
+                    .set_data_uniform(d.build_uniform(context.device))
+            });
+            self.renderer.build_pipeline(
+                context.device,
+                data,
+                &self.settings,
+                context.camera_light_bind_group_layout,
+                context.color_format,
+            );
+            *context.refresh_screen = true;
+        }
+    }
+
+    fn add_data(
+        &mut self,
+        name: String,
+        data: Self::Data,
+        context: &mut Self::Context,
+    ) -> &mut Data {
+        let old_data = self.data.insert(name.clone(), data);
+        let data = self.data.get_mut(&name).unwrap();
+        old_data.map(|old| data.apply_settings(old));
+        if self.shown_data.as_ref() == Some(&name) {
+            self.renderer
+                .build_data_buffer(context.device, &self.geometry, Some(data));
+            self.renderer
+                .set_data_uniform(data.build_uniform(context.device));
+            // Previously shown data can have same name but different type, thus requiring pipeline rebuild
+            self.renderer.build_pipeline(
+                context.device,
+                Some(data),
+                &self.settings,
+                context.camera_light_bind_group_layout,
+                context.color_format,
+            );
+            *context.refresh_screen = true;
+        }
+        data
+    }
+
+    fn update_settings(&mut self, context: &mut Self::Context, rebuild_pipeline: bool) {
+        self.settings
+            .refresh_buffer(context.queue, &self.renderer.settings_uniform);
+        if rebuild_pipeline {
+            let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
+            self.renderer.build_pipeline(
+                context.device,
+                data,
+                &self.settings,
+                context.camera_light_bind_group_layout,
+                context.color_format,
+            );
+        }
+    }
+
+    fn update_transform(&mut self, context: &mut Self::Context) {
+        self.transform
+            .to_raw()
+            .refresh_buffer(context.queue, &self.renderer.transform_uniform);
+    }
+}
+
+impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<'a>
+    for UninitedElement<Geometry, Settings, Data, AttachedG>
+where
+    Geometry: ElementGeometry,
+    Data: DataUniformBuilder + DataSettings + UiDataElement,
+    Settings: NamedSettings,
+    //AttachedG: AttachedGeometry,
+{
+    //type AttachedGeometry = AttachedG;
+    type Data = Data;
+    type Context = ();
+
+    fn show(&mut self, show: bool, context: &mut Self::Context) {
+        self.show = show;
+    }
+
+    fn set_data(&mut self, name: Option<String>, context: &mut Self::Context) {
+        self.shown_data = name;
+    }
+
+    fn add_data(
+        &mut self,
+        name: String,
+        data: Self::Data,
+        context: &mut Self::Context,
+    ) -> &mut Data {
+        let old_data = self.data.insert(name.clone(), data);
+        let data = self.data.get_mut(&name).unwrap();
+        old_data.map(|old| data.apply_settings(old));
+        data
+    }
 }
 
 // Upgrade Using AttachedGeometry::initialize or smth
 
-struct ElementMut<'a, Element, Context> {
-    element: &'a mut Element,
-    context: Context,
+pub struct ElementMut<'a, Element, Context> {
+    pub(crate) element: &'a mut Element,
+    pub(crate) context: Context,
 }
 
 impl<'a, Element, Context> Deref for ElementMut<'a, Element, Context> {
@@ -55,340 +250,6 @@ impl<'a, Element, Context> Deref for ElementMut<'a, Element, Context> {
 impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
     Element<Geometry, Renderer, Settings, Data, AttachedGeometry>
 {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn geometry(&self) -> &Geometry {
-        &self.geometry
-    }
-
-    fn shown(&self) -> bool {
-        self.show
-    }
-
-    fn get_data(&self, name: &str) -> Option<&Data> {
-        self.data.get(name)
-    }
-
-    fn get_attached_geometry(&self, name: &str) -> Option<&AttachedGeometry> {
-        self.attached_data.get(name)
-    }
-}
-
-impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry>
-    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, AttachedGeometry>, ()>
-{
-    fn show(&mut self, show: bool) -> &mut Self {
-        self.element.show = show;
-        self
-    }
-
-    fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        self.element.shown_data = name;
-        self
-    }
-}
-
-impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry>
-    ElementMut<
-        'a,
-        Element<Geometry, Renderer, Settings, Data, AttachedGeometry>,
-        GraphicalContext<'a>,
-    >
-{
-    fn show(&mut self, show: bool) -> &mut Self {
-        todo!()
-        //self.element.show = show;
-        //self
-    }
-
-    fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        todo!()
-        //self.element.shown_data = name;
-        //self
-    }
-}
-
-trait AttachedGeometry {
-    type NewAttachedGeometry;
-
-    fn init(
-        self,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        transform_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self::NewAttachedGeometry;
-}
-
-fn upgrade<Geometry, Renderer, Settings, Data, AttachedGeometryG, NewAttachedGeometryG>(
-    element: Element<Geometry, (), Settings, Data, AttachedGeometryG>,
-    device: &wgpu::Device,
-    camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-    color_format: wgpu::TextureFormat,
-) -> Element<Geometry, Renderer, Settings, Data, NewAttachedGeometryG>
-where
-    AttachedGeometryG: AttachedGeometry<NewAttachedGeometry = NewAttachedGeometryG>,
-    Renderer: NewRenderer<Settings, Geometry, Data>,
-{
-    let renderer = Renderer::new(
-        device,
-        &element.geometry,
-        &element.transform,
-        &element.settings,
-        camera_light_bind_group_layout,
-        color_format,
-    );
-
-    let attached_data = element
-        .attached_data
-        .drain(..)
-        .map(|(name, field)| {
-            (
-                name,
-                field.init(
-                    device,
-                    camera_light_bind_group_layout,
-                    &renderer.transform_uniform.bind_group_layout,
-                    color_format,
-                ),
-            )
-        })
-        .collect();
-
-    Element {
-        name: element.name,
-        geometry: element.geometry,
-        show: element.show,
-        transform: element.transform,
-        settings: element.settings,
-        data: element.data,
-        attached_data,
-        renderer,
-        shown_data: element.shown_data,
-    }
-}
-
-//enum ElementRef<'a, Geometry, Settings, Renderer, Data> {
-//    Uninited(&'a UninitedElement<Geometry, Settings, Data>),
-//    Inited(&'a InitedElement<Geometry, Settings, Renderer, Data>),
-//}
-//
-//enum ElementMut<'a, Geometry, Settings, Renderer, Data> {
-//    Uninited(&'a mut UninitedElement<Geometry, Settings, Data>),
-//    Inited(
-//        &'a mut InitedElement<Geometry, Settings, Renderer, Data>,
-//        GraphicalContext<'a>,
-//    ),
-//}
-
-//impl<'a, Geometry, Settings, Renderer, Data> ElementMut<'a, Geometry, Settings, Renderer, Data> {
-//    pub fn as_ref<'b>(&'b self) -> ElementRef<'b, Geometry, Settings, Renderer, Data>
-//    where
-//        'a: 'b,
-//    {
-//        match self {
-//            ElementMut::Uninited(element) => ElementRef::Uninited(element),
-//            ElementMut::Inited(element, _) => ElementRef::Inited(element),
-//        }
-//    }
-//}
-
-impl<Geometry, Settings, Renderer, Data> InnerElement<Geometry, Settings, Renderer, Data>
-where
-    Renderer: NewRenderer<Settings, Geometry, Data>,
-{
-    pub fn from_bare(
-        element: BareInnerElement<Geometry, Settings, Data>,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self {
-        let renderer = Renderer::new(
-            device,
-            &element.geometry,
-            &element.transform,
-            &element.settings,
-            camera_light_bind_group_layout,
-            color_format,
-        );
-
-        let attached_data = element
-            .attached_data
-            .drain(..)
-            .map(|(name, field)| {
-                let field = VectorField::new(
-                    device,
-                    camera_light_bind_group_layout,
-                    &renderer.transform_uniform.bind_group_layout,
-                    color_format,
-                    field,
-                );
-                (name, field)
-            })
-            .collect();
-
-        Self {
-            name: element.name,
-            geometry: element.geometry,
-            show: element.show,
-            transform: element.transform,
-            settings: element.settings,
-            data: element.data,
-            attached_data,
-            renderer,
-            shown_data: element.shown_data,
-        }
-    }
-}
-
-    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        match self {
-            Element::BareInnerElement(element) => element.shown_data = name,
-            Element::GraphicalInnerElement(element, ctxt) => {
-                element.set_data(
-                    name,
-                    ctxt.device,
-                    ctxt.camera_light_bind_group_layout,
-                    ctxt.color_format,
-                    ctxt.dirty,
-                );
-            }
-        }
-        self
-    }
-}
-
-impl<Geometry, Settings, Renderer, Data> InnerElement<Geometry, Settings, Renderer, Data>
-where
-    Data: DataUniformBuilder,
-    Geometry: Positions,
-    Settings: NamedSettings,
-    Renderer: NewRenderer<Settings, Geometry, Data>,
-{
-    fn new(
-        name: String,
-        geometry: Geometry,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self {
-        let transform = TransformSettings::default();
-        let settings = Settings::default().set_name(&name);
-        let renderer = Renderer::new(
-            device,
-            &geometry,
-            &transform,
-            &settings,
-            camera_light_bind_group_layout,
-            color_format,
-        );
-        Self {
-            geometry,
-            renderer,
-            transform,
-            settings,
-            data: IndexMap::new(),
-            attached_data: IndexMap::new(),
-            shown_data: None,
-            name,
-            show: true,
-        }
-    }
-
-    fn set_data(
-        &mut self,
-        name: Option<String>,
-        device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-        refresh_screen: &mut bool,
-    ) {
-        self.shown_data = name;
-        let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-        self.renderer
-            .build_data_buffer(device, &self.geometry, data);
-        if let Some(data_uniform) = data.map(|d| d.build_uniform(device)) {
-            self.renderer.set_data_uniform(data_uniform);
-        }
-        self.renderer.build_pipeline(
-            device,
-            data,
-            &self.settings,
-            camera_light_bind_group_layout,
-            color_format,
-        );
-        *refresh_screen = true;
-    }
-}
-
-trait NewRenderer<Settings, Geometry, Data>: Sized {
-    fn new(
-        device: &wgpu::Device,
-        geometry: &Geometry,
-        transform: &TransformSettings,
-        settings: &Settings,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self;
-
-    fn set_data_uniform(&mut self, data_uniform: Option<DataUniform>);
-
-    fn get_data_uniform(&mut self) -> Option<&DataUniform>;
-
-    fn update_settings(&mut self, settings: &Settings, queue: &wgpu::Queue);
-
-    fn build_data_buffer(
-        &mut self,
-        device: &wgpu::Device,
-        geometry: &Geometry,
-        data: Option<&Data>,
-    );
-
-    fn build_pipeline(
-        &mut self,
-        device: &wgpu::Device,
-        data: Option<&Data>,
-        settings: &Settings,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    );
-    fn get_total_elements(&self) -> u32;
-
-    fn get_element(
-        &self,
-        _geometry: &Geometry,
-        _transform: &TransformSettings,
-        _camera: &Camera,
-        item: u32,
-        _pos_x: f32,
-        _pos_y: f32,
-    ) -> u32 {
-        item
-    }
-
-    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b;
-
-    fn render_shadow<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-    }
-}
-
-/// Generic type for main displayed data (surface, point_clouds, etc...)
-pub struct BareElement<Settings, Data, Geometry> {
-    pub(crate) name: String,
-    pub(crate) geometry: Geometry,
-    pub(crate) sbv: SBV,
-    pub(crate) show: bool,
-    pub(crate) updater: Updater<Settings, Data>,
-}
-
-impl<Settings, Data, Geometry> BareElement<Settings, Data, Geometry> {
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -401,144 +262,310 @@ impl<Settings, Data, Geometry> BareElement<Settings, Data, Geometry> {
         self.show
     }
 
-    pub fn show(&mut self, show: bool) -> &mut Self {
-        self.show = show;
-        self
+    pub fn get_data(&self, name: &str) -> Option<&Data> {
+        self.data.get(name)
     }
 
-    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        self.updater.data_to_show = Some(name);
-        self
+    pub fn get_attached_geometry(&self, name: &str) -> Option<&AttachedGeometry> {
+        self.attached_data.get(name)
     }
 }
 
-#[allow(private_bounds)]
-impl<
-        Settings: NamedSettings,
-        Data: DataUniformBuilder + UiDataElement + DataSettings,
-        Geometry: Positions,
-    > BareElement<Settings, Data, Geometry>
+impl<Geometry, Settings, Data, Attached> UninitedElement<Geometry, Settings, Data, Attached>
+where
+    Geometry: ElementGeometry,
+    Settings: DataUniformBuilder + NamedSettings,
+    Attached: AttachedGeometry,
 {
-    pub(crate) fn init(name: String, geometry: Geometry) -> Self {
-        let updater = Updater::new(&name);
+    pub(crate) fn new_bare(name: String, args: Geometry::Args) -> Self {
+        let geometry = Geometry::new(args);
+        let transform = TransformSettings::default();
+        let settings = Settings::default().set_name(&name);
         let sbv = SBV::new(geometry.get_positions());
         Self {
-            name,
             geometry,
-            sbv,
+            renderer: (),
+            transform,
+            settings,
+            data: IndexMap::new(),
+            attached_data: IndexMap::new(),
+            shown_data: None,
+            name,
             show: true,
-            updater,
+            sbv,
         }
     }
-}
 
-pub(crate) struct DisplayElement<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker> {
-    pub(crate) element: BareElement<Settings, Data, Geometry>,
-    pub(crate) renderer: Renderer<Fixed, DataB, Pipeline>,
-    pub(crate) picker: Picker,
-}
-
-impl<
-        Settings: NamedSettings,
-        Data: DataUniformBuilder + UiDataElement + DataSettings,
-        Geometry: Positions,
+    pub(crate) fn upgrade<Fixed, DataB, Pipeline>(
+        self,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Element<
+        Geometry,
+        Renderer<Fixed, DataB, Pipeline>,
+        Settings,
+        Data,
+        Attached::NewAttachedGeometry,
+    >
+    where
         Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
         DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-        Picker: ElementPicker<Geometry = Geometry, Settings = Settings>,
-    > Render for DisplayElement<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker>
-where
-    Renderer<Fixed, DataB, Pipeline>: Render,
-{
-    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
+        Pipeline:
+            RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
     {
-        if self.element.show {
-            self.renderer.render(render_pass);
-            self.element.updater.render_attached_data(render_pass);
-        }
-    }
+        let renderer = Renderer::new(
+            device,
+            &self.geometry,
+            &self.transform,
+            &self.settings,
+            camera_light_bind_group_layout,
+            color_format,
+        );
 
-    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-        if self.element.show {
-            self.renderer.render_shadow(render_pass);
+        let attached_data = self
+            .attached_data
+            .into_iter()
+            .map(|(name, field)| {
+                (
+                    name,
+                    field.init(
+                        device,
+                        camera_light_bind_group_layout,
+                        &renderer.transform_uniform.bind_group_layout,
+                        color_format,
+                    ),
+                )
+            })
+            .collect();
+
+        Element {
+            name: self.name,
+            geometry: self.geometry,
+            show: self.show,
+            transform: self.transform,
+            settings: self.settings,
+            data: self.data,
+            attached_data,
+            renderer,
+            shown_data: self.shown_data,
+            sbv: self.sbv,
         }
     }
 }
 
-impl<
-        Settings: NamedSettings,
-        Data: DataUniformBuilder + UiDataElement + DataSettings,
-        Geometry: Positions,
-        Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-        Picker: ElementPicker<Geometry = Geometry, Settings = Settings>,
-    > DisplayElement<Settings, Data, Geometry, Fixed, DataB, Pipeline, Picker>
+impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
+    DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
 where
-    Renderer<Fixed, DataB, Pipeline>: Render,
+    Geometry: ElementGeometry,
+    Data: DataUniformBuilder + DataSettings + UiDataElement,
+    Settings: NamedSettings,
+    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
 {
-    pub(crate) fn init(
-        element: BareElement<Settings, Data, Geometry>,
+    pub(crate) fn new(
+        name: String,
+        args: Geometry::Args,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
+        let geometry = Geometry::new(args);
+        let transform = TransformSettings::default();
+        let settings = Settings::default().set_name(&name);
         let renderer = Renderer::new(
             device,
-            &element.geometry,
-            &element.updater.transform,
-            &element.updater.settings,
+            &geometry,
+            &transform,
+            &settings,
             camera_light_bind_group_layout,
             color_format,
         );
-        let picker = Picker::new(
-            &element.geometry,
-            &element.updater.settings,
-            &element.updater.transform,
-            device,
-            camera_light_bind_group_layout,
-            counter_bind_group_layout,
-        );
-
+        let sbv = SBV::new(geometry.get_positions());
         Self {
-            element,
+            geometry,
             renderer,
-            picker,
+            transform,
+            settings,
+            data: IndexMap::new(),
+            attached_data: IndexMap::new(),
+            shown_data: None,
+            name,
+            show: true,
+            sbv,
         }
     }
 
-    pub(crate) fn refresh(
+    pub(crate) fn add_data(
         &mut self,
+        name: String,
+        data: Data,
+        device: &wgpu::Device,
+        //camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        //color_format: wgpu::TextureFormat,
+        refresh_screen: &mut bool,
+    ) -> &mut Data {
+        let old_data = self.data.insert(name.clone(), data);
+        let data = self.data.get_mut(&name).unwrap();
+        old_data.map(|old| data.apply_settings(old));
+        if self.shown_data.as_ref() == Some(&name) {
+            self.renderer
+                .build_data_buffer(device, &self.geometry, Some(data));
+            self.renderer.set_data_uniform(data.build_uniform(device));
+            //self.renderer.build_pipeline(
+            //    device,
+            //    Some(data),
+            //    &self.settings,
+            //    camera_light_bind_group_layout,
+            //    color_format,
+            //);
+            *refresh_screen = true;
+        }
+        data
+    }
+
+    //pub(crate) fn set_data(
+    //    &mut self,
+    //    name: Option<String>,
+    //    device: &wgpu::Device,
+    //    camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+    //    color_format: wgpu::TextureFormat,
+    //    refresh_screen: &mut bool,
+    //) {
+    //    if self.shown_data != name {
+    //        self.shown_data = name;
+    //        let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
+    //        self.renderer
+    //            .build_data_buffer(device, &self.geometry, data);
+    //        data.map(|d| self.renderer.set_data_uniform(d.build_uniform(device)));
+    //        self.renderer.build_pipeline(
+    //            device,
+    //            data,
+    //            &self.settings,
+    //            camera_light_bind_group_layout,
+    //            color_format,
+    //        );
+    //        *refresh_screen = true;
+    //    }
+    //}
+
+    //fn update_settings(&mut self, queue: &wgpu::Queue) {
+    //    self.settings
+    //        .refresh_buffer(queue, &self.renderer.settings_uniform);
+    //}
+
+    //fn update_transform(&mut self, queue: &wgpu::Queue) {
+    //    self.transform
+    //        .to_raw()
+    //        .refresh_buffer(queue, &self.renderer.transform_uniform);
+    //}
+
+    pub(crate) fn draw_ui(
+        &mut self,
+        ui: &mut egui::Ui,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
-        w_sbv: &mut Option<SBV>,
-    ) -> bool {
-        self.element.updater.refresh(
-            &self.element.geometry,
-            device,
-            queue,
-            camera_light_bind_group_layout,
-            color_format,
-            &mut self.renderer,
-            &mut self.picker,
-            self.element.show,
-            &self.element.sbv,
-            w_sbv,
-        )
-    }
+        refresh_screen: &mut bool,
+    ) {
+        // While it may look like some graphical operations could be batched together,
+        // since there is usually one ui interaction at a time, this isn't needed
+        if self
+            .transform
+            .draw_transform(ui, self.geometry.get_positions())
+        {
+            self.transform
+                .to_raw()
+                .refresh_buffer(queue, &self.renderer.transform_uniform);
+            *refresh_screen = true;
+        }
+        let mut rebuild_pipeline = false;
+        if self.settings.draw_ui(ui, &mut rebuild_pipeline) {
+            self.settings
+                .refresh_buffer(queue, &self.renderer.settings_uniform);
+            if rebuild_pipeline {
+                let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
+                self.renderer.build_pipeline(
+                    device,
+                    data,
+                    &self.settings,
+                    camera_light_bind_group_layout,
+                    color_format,
+                );
+            }
+            *refresh_screen = true;
+        }
+        for (name, data) in &mut self.data {
+            let active = self.shown_data.as_ref() == Some(&name);
+            let id = ui.make_persistent_id(name);
+            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
+                .show_header(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        let mut prev_active = active;
+                        ui.checkbox(&mut prev_active, name.clone());
+                        if prev_active != active {
+                            let data = if !active {
+                                self.shown_data = Some(name.clone());
+                                Some(&*data)
+                            } else {
+                                self.shown_data = None;
+                                None
+                            };
+                            self.renderer
+                                .build_data_buffer(device, &self.geometry, data);
+                            self.renderer
+                                .set_data_uniform(data.map(|d| d.build_uniform(device)).flatten());
+                            self.renderer.build_pipeline(
+                                device,
+                                data,
+                                &self.settings,
+                                camera_light_bind_group_layout,
+                                color_format,
+                            );
+                        }
+                    })
+                })
+                .body(|ui| {
+                    if data.draw_ui(ui) && active {
+                        if let Some(data_uniform) = self.renderer.get_data_uniform() {
+                            data.refresh_buffer(queue, data_uniform);
+                            *refresh_screen = true;
+                        }
+                    }
+                });
+        }
 
-    pub(crate) fn draw_ui(&mut self, ui: &mut egui::Ui) {
-        self.element
-            .updater
-            .draw(ui, self.element.geometry.get_positions());
+        //for (name, field) in &mut self.attached_data {
+        //    let id = ui.make_persistent_id(name);
+        //    egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
+        //        .show_header(ui, |ui| {
+        //            ui.horizontal(|ui| {
+        //                if ui
+        //                    .checkbox(&mut field.settings.show, name.clone())
+        //                    .changed()
+        //                {
+        //                    self.dirty = true;
+        //                }
+        //            });
+        //        })
+        //        .body(|ui| {
+        //            //TODO move this
+        //            if egui::Slider::new(&mut field.settings.magnitude, 0.1..=100.0)
+        //                .text("Magnitude")
+        //                .clamping(SliderClamping::Never)
+        //                .logarithmic(true)
+        //                .ui(ui)
+        //                .changed()
+        //            {
+        //                field.settings_changed = true;
+        //            }
+
+        //            field.settings_changed |= field.settings.color.draw(ui, &mut false);
+        //        });
+        //}
     }
 
     pub(crate) fn draw_gizmo(
@@ -546,248 +573,190 @@ where
         ui: &mut egui::Ui,
         view: glam::Mat4,
         proj: glam::Mat4,
-        gizmo_hover: &mut bool,
-    ) {
-        self.element.updater.draw_gizmo(ui, view, proj, gizmo_hover);
-    }
-
-    pub(crate) fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-        if self.element.show {
-            self.picker.render(render_pass);
-        }
-    }
-
-    pub(crate) fn get_total_elements(&self) -> u32 {
-        self.picker.get_total_elements()
-    }
-}
-
-pub(crate) trait NamedSettings: Default + DataUniformBuilder + UiDataElement {
-    fn set_name(self, name: &str) -> Self;
-}
-
-pub(crate) struct Updater<Settings, Data> {
-    pub(crate) transform: TransformSettings,
-    pub(crate) settings: Settings,
-    pub(crate) data: IndexMap<String, Data>,
-    pub(crate) queued_attached_data: Vec<NewVectorField>,
-    attached_data: IndexMap<String, VectorField>,
-    pub(crate) shown_data: Option<String>,
-    pub(crate) data_to_show: Option<Option<String>>,
-    pub(crate) property_changed: bool,
-    pub(crate) uniform_changed: bool,
-    pub(crate) settings_changed: bool,
-    pub(crate) transform_changed: bool,
-    pub(crate) dirty: bool,
-}
-
-impl<Settings: NamedSettings, Data: DataUniformBuilder + UiDataElement + DataSettings>
-    Updater<Settings, Data>
-{
-    fn new(name: &str) -> Self {
-        Self {
-            transform: TransformSettings::default(),
-            settings: Settings::default().set_name(name),
-            data: IndexMap::new(),
-            queued_attached_data: Vec::new(),
-            attached_data: IndexMap::new(),
-            shown_data: None,
-            data_to_show: None,
-            property_changed: false,
-            uniform_changed: false,
-            settings_changed: false,
-            transform_changed: false,
-            dirty: false,
-        }
-    }
-
-    pub(crate) fn add_data(&mut self, name: String, data: Data) -> &mut Data {
-        if let Some(data_name) = &mut self.shown_data {
-            if *data_name == name {
-                self.data_to_show = Some(Some(data_name.clone()));
-                self.shown_data = None;
-            }
-        }
-        let old_data = self.data.insert(name.clone(), data);
-        let data = self.data.get_mut(&name).unwrap();
-        if let Some(old_data) = old_data {
-            data.apply_settings(old_data);
-        }
-        data
-    }
-
-    pub(crate) fn refresh<
-        Geometry,
-        Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
-        Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
-        Picker: ElementPicker<Geometry = Geometry, Settings = Settings>,
-    >(
-        &mut self,
-        geometry: &Geometry,
-        device: &wgpu::Device,
         queue: &wgpu::Queue,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-        renderer: &mut Renderer<Fixed, DataB, Pipeline>,
-        picker: &mut Picker,
-        show: bool,
-        sbv: &SBV,
-        w_sbv: &mut Option<SBV>,
-    ) -> bool {
-        let mut refresh_screen = self.dirty;
-        self.dirty = false;
-        if let Some(data) = self.data_to_show.take() {
-            self.data_to_show = None;
-            self.shown_data = data.clone();
-            let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-            renderer.build_data_buffer(device, geometry, data);
-            self.property_changed = true;
-            refresh_screen = true;
-        }
-        if self.settings_changed {
-            renderer.update_settings(&self.settings, queue);
-            picker.update_settings(queue, &self.settings);
-            self.settings_changed = false;
-            refresh_screen = true;
-        }
-        if self.transform_changed {
+        gizmo_hovered: &mut bool,
+        refresh_screen: &mut bool,
+    ) {
+        if self.transform.draw_gizmo(ui, view, proj, gizmo_hovered) {
             self.transform
                 .to_raw()
-                .refresh_buffer(queue, &renderer.transform_uniform);
-            self.transform_changed = false;
-            picker.update_transform(queue, &self.transform);
-            refresh_screen = true;
+                .refresh_buffer(queue, &self.renderer.transform_uniform);
+            *refresh_screen = true;
         }
-        if self.property_changed {
-            let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-            let data_uniform = data.map(|d| d.build_uniform(device));
-            if let Some(data_uniform) = data_uniform {
-                renderer.set_data_uniform(data_uniform);
-            }
-            renderer.build_pipeline(
-                device,
-                data,
-                &self.settings,
-                camera_light_bind_group_layout,
-                color_format,
-            );
-            self.property_changed = false;
-            self.settings_changed = false;
-            self.uniform_changed = false;
-            refresh_screen = true;
-        } else if self.uniform_changed {
-            let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-            if let Some(data) = data {
-                if let Some(data_uniform) = renderer.get_data_uniform() {
-                    data.refresh_buffer(queue, data_uniform);
-                    refresh_screen = true;
-                }
-            }
-            self.uniform_changed = false;
-        }
-        refresh_screen |= !self.queued_attached_data.is_empty();
-        for queued in self.queued_attached_data.drain(..) {
-            //TODO recover settings
-            let name = queued.name.clone();
-            let field = VectorField::new(
-                device,
-                camera_light_bind_group_layout,
-                &renderer.transform_uniform.bind_group_layout,
-                color_format,
-                queued,
-            );
-            //let vector_field = VectorFieldData { field, shown };
-            self.attached_data.insert(name, field);
-        }
-        for (_, attached) in &mut self.attached_data {
-            refresh_screen |= attached.update(queue);
-        }
-        if show {
-            SBV::merge(w_sbv, &sbv.transform(&self.transform.get_transform()));
-        }
-        refresh_screen
     }
 
     fn render_attached_data<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
     {
-        for (_, attached) in &self.attached_data {
-            attached.render(render_pass);
-        }
-    }
-
-    fn draw(&mut self, ui: &mut egui::Ui, positions: &[[f32; 3]]) {
-        self.transform_changed |= self.transform.draw_transform(ui, positions);
-        self.settings_changed |= self.settings.draw(ui, &mut self.property_changed);
-        for (name, data) in &mut self.data {
-            let active = self.shown_data == Some(name.clone());
-            let id = ui.make_persistent_id(name);
-            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
-                .show_header(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        let mut change_active = active;
-                        ui.checkbox(&mut change_active, name.clone());
-                        if change_active != active {
-                            if !active {
-                                self.data_to_show = Some(Some(name.clone()))
-                            } else {
-                                self.data_to_show = Some(None)
-                            }
-                        }
-                    })
-                })
-                .body(|ui| {
-                    self.uniform_changed |= data.draw(ui, &mut self.property_changed) && active;
-                });
-        }
-        for (name, field) in &mut self.attached_data {
-            let id = ui.make_persistent_id(name);
-            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
-                .show_header(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        if ui
-                            .checkbox(&mut field.settings.show, name.clone())
-                            .changed()
-                        {
-                            self.dirty = true;
-                        }
-                    });
-                })
-                .body(|ui| {
-                    //TODO move this
-                    if egui::Slider::new(&mut field.settings.magnitude, 0.1..=100.0)
-                        .text("Magnitude")
-                        .clamping(SliderClamping::Never)
-                        .logarithmic(true)
-                        .ui(ui)
-                        .changed()
-                    {
-                        field.settings_changed = true;
-                    }
-
-                    field.settings_changed |= field.settings.color.draw(ui, &mut false);
-                });
-        }
-    }
-
-    fn draw_gizmo(
-        &mut self,
-        ui: &mut egui::Ui,
-        view: glam::Mat4,
-        proj: glam::Mat4,
-        gizmo_hovered: &mut bool,
-    ) {
-        self.transform_changed |= self.transform.draw_gizmo(ui, view, proj, gizmo_hovered);
-        self.settings_changed |= self.settings.draw_gizmo(ui, view, proj, gizmo_hovered);
+        //for (_, attached) in &self.attached_data {
+        //    attached.render(render_pass);
+        //}
     }
 }
 
-pub(crate) struct Renderer<Fixed, DataB, Pipeline> {
+impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> Render
+    for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
+where
+    Geometry: ElementGeometry,
+    Data: DataUniformBuilder + DataSettings + UiDataElement,
+    Settings: NamedSettings,
+    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
+    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+    Renderer<Fixed, DataB, Pipeline>: Render,
+{
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        if self.show {
+            self.renderer.render(render_pass);
+            self.render_attached_data(render_pass);
+        }
+    }
+
+    fn render_shadow<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        if self.show {
+            self.renderer.render_shadow(render_pass);
+        }
+    }
+
+    fn render_picker<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        if self.show {
+            self.renderer.render_picker(render_pass);
+        }
+    }
+}
+
+//impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry>
+//    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, AttachedGeometry>, ()>
+//{
+//    pub fn show(self, show: bool) -> Self {
+//        self.element.show = show;
+//        self
+//    }
+//
+//    pub fn set_data(self, name: Option<String>) -> Self {
+//        self.element.shown_data = name;
+//        self
+//    }
+//}
+
+impl<'a, Geometry, Renderer, Settings, Data, AttachedGeometry, Context>
+    ElementMut<'a, Element<Geometry, Renderer, Settings, Data, AttachedGeometry>, Context>
+where
+    Element<Geometry, Renderer, Settings, Data, AttachedGeometry>:
+        ElementTrait<'a, Context = Context, Data = Data>,
+{
+    pub fn show(&mut self, show: bool) -> &mut Self {
+        self.element.show(show, &mut self.context);
+        self
+    }
+
+    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
+        self.element.set_data(name, &mut self.context);
+        self
+    }
+
+    pub(crate) fn add_data(&mut self, name: String, data: Data) -> &mut Data {
+        self.element.add_data(name, data, &mut self.context)
+    }
+
+    pub(crate) fn update_settings(&mut self, rebuild_pipeline: bool) -> &mut Self {
+        self.element
+            .update_settings(&mut self.context, rebuild_pipeline);
+        self
+    }
+
+    pub(crate) fn update_transform(&mut self) -> &mut Self {
+        self.element.update_transform(&mut self.context);
+        self
+    }
+}
+
+//impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry>
+//    ElementMut<
+//        'a,
+//        Element<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>,
+//        GraphicalContext<'a>,
+//    >
+//where
+//    Geometry: ElementGeometry,
+//    Data: DataUniformBuilder + DataSettings + UiDataElement,
+//    Settings: NamedSettings,
+//    Fixed: FixedRenderer<Settings = Settings, Data = Data, Geometry = Geometry>,
+//    DataB: DataBuffer<Settings = Settings, Data = Data, Geometry = Geometry>,
+//    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry, Fixed = Fixed>,
+//{
+//    pub fn show(self, show: bool) -> Self {
+//        if self.element.show != show {
+//            *self.context.refresh_screen = true;
+//            self.element.show = show;
+//        }
+//        self
+//    }
+//
+//    pub fn set_data(self, name: Option<String>) -> Self {
+//        self.element.set_data(
+//            name,
+//            self.context.device,
+//            self.context.camera_light_bind_group_layout,
+//            self.context.color_format,
+//            self.context.refresh_screen,
+//        );
+//        self
+//    }
+//
+//    fn update_settings(self) -> Self {
+//        self.element.update_settings(self.context.queue);
+//        self
+//    }
+//
+//    fn update_transform(self) -> Self {
+//        self.element.update_transform(self.context.queue);
+//        self
+//    }
+//}
+
+pub(crate) trait AttachedGeometry {
+    type NewAttachedGeometry;
+
+    fn init(
+        self,
+        device: &wgpu::Device,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_bind_group_layout: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> Self::NewAttachedGeometry;
+}
+
+impl AttachedGeometry for () {
+    type NewAttachedGeometry = ();
+
+    fn init(
+        self,
+        _device: &wgpu::Device,
+        _camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        _transform_bind_group_layout: &wgpu::BindGroupLayout,
+        _color_format: wgpu::TextureFormat,
+    ) -> Self::NewAttachedGeometry {
+    }
+}
+
+pub(crate) trait NamedSettings: Default + DataUniformBuilder {
+    fn set_name(self, name: &str) -> Self;
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool;
+}
+
+pub struct Renderer<Fixed, DataB, Pipeline> {
     pub(crate) fixed: Fixed,
     pub(crate) data_buffer: DataB,
     pub(crate) pipeline: Pipeline,
@@ -928,6 +897,12 @@ pub(crate) trait Render {
         'a: 'b,
     {
     }
+
+    fn render_picker<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+    }
 }
 
 pub(crate) trait ElementPicker: Render {
@@ -962,6 +937,12 @@ pub(crate) trait ElementPicker: Render {
     }
 }
 
-pub(crate) trait Positions {
+pub trait ElementGeometry {
+    type Args;
+
+    fn new(args: Self::Args) -> Self;
+
     fn get_positions(&self) -> &[[f32; 3]];
+
+    fn get_total_elements(&self) -> u32;
 }
