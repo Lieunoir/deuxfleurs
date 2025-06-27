@@ -5,6 +5,7 @@ pub mod attachment;
 mod camera;
 pub mod data;
 mod deferred;
+mod geometry;
 mod obj_load;
 mod picker;
 pub mod point_cloud;
@@ -19,7 +20,6 @@ mod texture;
 pub mod types;
 ///  Custom Ui components for mesh loading
 pub mod ui;
-mod updater;
 mod util;
 mod window;
 use crate::point_cloud::DisplayPointCloud;
@@ -35,7 +35,7 @@ use window::{InnerBareState, State};
 
 /// Re exported types for visibility
 pub mod internal {
-    pub use crate::updater::{DataMut, Element, ElementMut};
+    pub use crate::geometry::{Element, ElementMut};
     pub use crate::window::{State, StateTrait};
 }
 

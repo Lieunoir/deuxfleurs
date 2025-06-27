@@ -1,13 +1,13 @@
 use crate::camera::Camera;
 
-use crate::texture;
-use crate::updater::ElementGeometry;
-use crate::updater::Render;
-use crate::util;
-use crate::window::UserEvent;
 use crate::DisplayPointCloud;
 use crate::DisplaySegment;
 use crate::DisplaySurface;
+use crate::geometry::ElementGeometry;
+use crate::geometry::Render;
+use crate::texture;
+use crate::util;
+use crate::window::UserEvent;
 use indexmap::IndexMap;
 use wgpu::util::DeviceExt;
 use winit::event::*;

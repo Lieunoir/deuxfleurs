@@ -6,10 +6,10 @@ use crate::Settings;
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::deferred;
+use crate::geometry::Render;
 use crate::picker;
 use crate::screenshot;
 use crate::texture;
-use crate::updater::Render;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use pollster::FutureExt;
@@ -329,7 +329,7 @@ impl InnerGraphicalState {
     }
 
     fn set_floor(&mut self) {
-        use crate::updater::ElementGeometry;
+        use crate::geometry::ElementGeometry;
         let mut min_y = 0.;
         for surface in self.surfaces.values() {
             if surface.shown() {

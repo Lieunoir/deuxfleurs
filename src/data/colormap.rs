@@ -1,5 +1,5 @@
+use crate::geometry::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
-use crate::updater::{Context, DataMut, DataMutTrait};
 use egui::Shape::Path;
 use egui::{Color32, Pos2, Stroke};
 use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};

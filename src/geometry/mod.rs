@@ -2,8 +2,12 @@ use crate::aabb::SBV;
 use crate::data::TransformSettings;
 use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
 use crate::ui::UiDataElement;
+pub(crate) use data::{DataMut, DataMutTrait};
 use indexmap::IndexMap;
+pub(crate) use renderer::*;
 use std::ops::Deref;
+mod data;
+mod renderer;
 
 pub trait Context {
     type DataUniform<'a>;
@@ -644,44 +648,6 @@ where
     }
 }
 
-pub struct DataMut<'a, T, Ctxt: Context> {
-    pub(crate) inner: &'a mut T,
-    context: &'a mut Ctxt,
-    uniform: Ctxt::DataUniform<'a>,
-}
-
-pub type UninitedData<'a, T> = DataMut<'a, T, ()>;
-pub type DisplayData<'a, T> = DataMut<'a, T, GraphicalContext<'a>>;
-
-impl<'a, T, Ctxt: Context> DataMut<'a, T, Ctxt> {
-    pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(self, f: F) -> DataMut<'a, U, Ctxt> {
-        DataMut {
-            inner: f(self.inner),
-            uniform: self.uniform,
-            context: self.context,
-        }
-    }
-}
-
-pub trait DataMutTrait {
-    fn update_data_settings(&mut self);
-}
-
-impl<'a, T> DataMutTrait for UninitedData<'a, T> {
-    fn update_data_settings(&mut self) {}
-}
-
-impl<'a, T> DataMutTrait for DisplayData<'a, T>
-where
-    T: DataUniformBuilder,
-{
-    fn update_data_settings(&mut self) {
-        self.uniform
-            .as_ref()
-            .map(|uniform| self.inner.refresh_buffer(self.context.queue, uniform));
-    }
-}
-
 impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctxt> {
     pub fn show(&mut self, show: bool) -> &mut Self {
         self.element.show(show, &mut self.context);
@@ -822,163 +788,6 @@ pub trait NamedSettings: Default + DataUniformBuilder {
     fn set_name(self, name: &str) -> Self;
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool;
-}
-
-pub struct Renderer<Fixed, DataB, Pipeline> {
-    pub(crate) fixed: Fixed,
-    pub(crate) data_buffer: DataB,
-    pub(crate) pipeline: Pipeline,
-    pub(crate) transform_uniform: DataUniform,
-    pub(crate) settings_uniform: DataUniform,
-    pub(crate) data_uniform: Option<DataUniform>,
-}
-
-impl<
-    Settings: DataUniformBuilder,
-    Data: DataUniformBuilder,
-    Geometry,
-    Fixed: FixedRenderer<Geometry = Geometry>,
-    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
-> Renderer<Fixed, DataB, Pipeline>
-{
-    pub(crate) fn new(
-        device: &wgpu::Device,
-        geometry: &Geometry,
-        transform: &TransformSettings,
-        settings: &Settings,
-        data: Option<&Data>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self {
-        let fixed = Fixed::initialize(device, geometry);
-        let data_buffer = DataB::new(device, geometry, data);
-
-        let transform_uniform = transform.to_raw().build_uniform(device).unwrap();
-        let settings_uniform = settings.build_uniform(device).unwrap();
-        let data_uniform = data.map(|d| d.build_uniform(device)).flatten();
-        let pipeline = RenderPipeline::new(
-            device,
-            data,
-            geometry,
-            settings,
-            &transform_uniform,
-            &settings_uniform,
-            data_uniform.as_ref(),
-            camera_light_bind_group_layout,
-            counter_bind_group_layout,
-            color_format,
-        );
-        //TODO can be factored
-        Self {
-            fixed,
-            data_buffer,
-            pipeline,
-            transform_uniform,
-            settings_uniform,
-            data_uniform,
-        }
-    }
-
-    fn set_data_uniform(&mut self, data_uniform: Option<DataUniform>) {
-        self.data_uniform = data_uniform;
-    }
-
-    fn get_data_uniform(&mut self) -> Option<&DataUniform> {
-        self.data_uniform.as_ref()
-    }
-
-    fn build_data_buffer(
-        &mut self,
-        device: &wgpu::Device,
-        geometry: &Geometry,
-        data: Option<&Data>,
-    ) {
-        self.data_buffer = DataB::new(device, geometry, data);
-    }
-
-    fn rebuild_pipeline(
-        &mut self,
-        device: &wgpu::Device,
-        data: Option<&Data>,
-        settings: &Settings,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) {
-        self.pipeline.rebuild(
-            device,
-            data,
-            settings,
-            &self.transform_uniform,
-            &self.settings_uniform,
-            self.data_uniform.as_ref(),
-            camera_light_bind_group_layout,
-            color_format,
-        );
-    }
-}
-
-pub trait FixedRenderer {
-    type Geometry;
-
-    fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self;
-}
-
-pub trait DataBuffer {
-    type Data;
-    type Geometry;
-
-    fn new(device: &wgpu::Device, geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self;
-}
-
-pub trait RenderPipeline {
-    type Settings;
-    type Data;
-    type Geometry;
-
-    fn new(
-        device: &wgpu::Device,
-        data: Option<&Self::Data>,
-        geometry: &Self::Geometry,
-        settings: &Self::Settings,
-        tansform_uniform: &DataUniform,
-        settings_uniform: &DataUniform,
-        data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    ) -> Self;
-
-    fn rebuild(
-        &mut self,
-        device: &wgpu::Device,
-        data: Option<&Self::Data>,
-        settings: &Self::Settings,
-        transform_uniform: &DataUniform,
-        settings_uniform: &DataUniform,
-        data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-    );
-}
-
-pub(crate) trait Render {
-    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b;
-
-    fn render_shadow<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-    }
-
-    fn render_picker<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-    }
 }
 
 pub trait ElementGeometry {

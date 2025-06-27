@@ -27,7 +27,7 @@ use egui_winit::clipboard::Clipboard;
 use web_sys::Clipboard;
 
 use crate::Settings;
-use crate::updater::{
+use crate::geometry::{
     AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
     EmptyAttached, FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry,
     RenderPipeline, Renderer, UninitedElement,
@@ -107,7 +107,7 @@ where
         name: String,
         args: Self::Args,
     ) -> ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
-        use crate::updater::ElementTrait;
+        use crate::geometry::ElementTrait;
         let container = self.get_container_mut().0;
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
@@ -173,7 +173,7 @@ where
         DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
         Self::Context<'_>,
     > {
-        use crate::updater::ElementTrait;
+        use crate::geometry::ElementTrait;
         let (container, mut context) = self.get_container_mut();
         // This could be better with Polonius
         if container.contains_key(&name) {

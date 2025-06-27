@@ -1,9 +1,9 @@
 use crate::data::{internal::*, *};
+use crate::geometry::*;
 use crate::segment::sphere_shader::SPHERE_PICKER_SHADER;
 use crate::texture;
 use crate::types::{Color, Scalar};
 use crate::ui::UiDataElement;
-use crate::updater::*;
 use crate::util;
 use crate::util::Vertex;
 use wgpu::util::DeviceExt;

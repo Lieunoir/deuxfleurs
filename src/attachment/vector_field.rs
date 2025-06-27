@@ -1,12 +1,12 @@
 use crate::data::*;
+use crate::geometry::AttachedGeometry;
+use crate::geometry::Context;
+use crate::geometry::{DataMut, DataMutTrait};
+
+use crate::geometry::GraphicalContext;
+use crate::geometry::NewAttachedGeometry;
 use crate::texture;
 use crate::ui::UiDataElement;
-use crate::updater::AttachedGeometry;
-use crate::updater::Context;
-use crate::updater::DataMut;
-use crate::updater::DataMutTrait;
-use crate::updater::GraphicalContext;
-use crate::updater::NewAttachedGeometry;
 use crate::util;
 use crate::util::Vertex;
 use egui::SliderClamping;

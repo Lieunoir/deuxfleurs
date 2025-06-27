@@ -1,10 +1,10 @@
 use crate::data::Colors;
 use crate::data::{internal::*, *};
+use crate::geometry::Context;
+use crate::geometry::DataMut;
+use crate::geometry::DataMutTrait;
 use crate::types::SurfaceIndices;
 use crate::ui::UiDataElement;
-use crate::updater::Context;
-use crate::updater::DataMut;
-use crate::updater::DataMutTrait;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]

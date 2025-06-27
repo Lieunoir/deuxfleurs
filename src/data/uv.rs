@@ -1,5 +1,5 @@
+use crate::geometry::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
-use crate::updater::{Context, DataMut, DataMutTrait};
 use egui::Widget;
 
 #[repr(C)]
