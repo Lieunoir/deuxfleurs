@@ -1,5 +1,6 @@
 use crate::aabb::SBV;
-use crate::data::{DataSettings, DataUniform, DataUniformBuilder, TransformSettings};
+use crate::data::TransformSettings;
+use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
 use crate::ui::UiDataElement;
 use indexmap::IndexMap;
 use std::ops::Deref;

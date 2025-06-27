@@ -1,7 +1,5 @@
 use crate::data::Colors;
-use crate::data::DataUniform;
-use crate::data::DataUniformBuilder;
-use crate::data::{ColorMap, ColorMapValues, DataSettings, IsolineSettings, UVMapSettings};
+use crate::data::{internal::*, *};
 use crate::types::SurfaceIndices;
 use crate::ui::UiDataElement;
 use crate::updater::Context;
@@ -40,7 +38,9 @@ impl VertexScalarSettings {
     }
 }
 
-impl<'a, Ctxt: Context> DataMut<'a, VertexScalarSettings, Ctxt>
+pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, VertexScalarSettings, Ctxt>;
+
+impl<'a, Ctxt: Context> VertexScalarSettingsMut<'a, Ctxt>
 where
     Self: DataMutTrait,
 {
