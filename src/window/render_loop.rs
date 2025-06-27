@@ -2,6 +2,7 @@ use super::{
     InitialState, InnerBareState, InnerGraphicalState, JitterUniform, LightUniform, RunningState,
     StateWrapper, UserEvent,
 };
+use crate::Settings;
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::deferred;
@@ -9,7 +10,6 @@ use crate::picker;
 use crate::screenshot;
 use crate::texture;
 use crate::updater::Render;
-use crate::Settings;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use pollster::FutureExt;
