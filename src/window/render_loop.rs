@@ -589,7 +589,6 @@ impl InnerGraphicalState {
                     }
                 }
 
-                //let ampli = 0.5 + 0.5 * self.taa_counter as f32 / self.taa_frames as f32;
                 let ampli = 1.;
                 jitter = JitterUniform {
                     x: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.width as f32,

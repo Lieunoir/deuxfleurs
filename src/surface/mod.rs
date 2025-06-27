@@ -561,7 +561,7 @@ impl<
 > SurfaceMut<'a, Renderer, AttachedData, Ctxt>
 where
     Surface<Renderer, AttachedData>:
-        ElementTrait<Data = SurfaceData, Context<'a> = Ctxt, Attached = AttachedData>,
+        ElementTrait<'a, Ctxt, Data = SurfaceData, Attached = AttachedData>,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.element.settings.show_edges != show_edges {
