@@ -295,7 +295,7 @@ impl RenderPipeline for PointCloudPipeline {
     fn new(
         device: &wgpu::Device,
         data: Option<&Self::Data>,
-        geometry: &Self::Geometry,
+        _geometry: &Self::Geometry,
         _settings: &Self::Settings,
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,

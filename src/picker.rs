@@ -2,7 +2,6 @@ use crate::camera::Camera;
 
 use crate::texture;
 use crate::updater::ElementGeometry;
-use crate::updater::ElementPicker;
 use crate::updater::Render;
 use crate::util;
 use crate::DisplayPointCloud;

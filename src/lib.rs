@@ -1,15 +1,10 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 use crate::aabb::SBV;
-use crate::data::{DataSettings, DataUniformBuilder};
 use crate::point_cloud::{PointCloudGeometry, UninitedPointCloud};
 use crate::segment::{SegmentGeometry, UninitedSegment};
 use crate::surface::{SurfaceGeometry, UninitedSurface};
-use crate::ui::UiDataElement;
-use crate::updater::{
-    AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
-    FixedRenderer, GraphicalContext, NamedSettings, Render, RenderPipeline, UninitedElement,
-};
+use crate::updater::{ElementGeometry, ElementMut, GraphicalContext, Render};
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use indexmap::IndexMap;
