@@ -476,14 +476,6 @@ pub type PointCloud<Renderer, AttachedData> =
 pub type UninitedPointCloud = PointCloud<(), ()>;
 pub type DisplayPointCloud = PointCloud<PointCloudRenderer, EmptyAttached>;
 
-impl DisplayPointCloud {
-    pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
-        if element < self.geometry().positions.len() {
-            ui.label(format!("Picked point number {}", element));
-        }
-    }
-}
-
 pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>;
 

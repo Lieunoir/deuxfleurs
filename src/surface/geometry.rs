@@ -4,6 +4,7 @@ use crate::attachment::{NewVectorField, VectorField, VectorFieldSettings, Vector
 use crate::camera::Camera;
 use crate::data::{internal::*, *};
 use crate::geometry::*;
+use crate::picker::SurfacePicked;
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
 use crate::types::{SurfaceIndices, Vertices2D};
@@ -442,18 +443,13 @@ pub type UninitedSurface = Surface<(), NewVectorField>;
 pub type DisplaySurface = Surface<SurfaceRenderer, VectorField>;
 
 impl DisplaySurface {
-    pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
-        if element < self.geometry.vertices.len() {
-            ui.label(format!("Picked vertex number {}", element));
-        } else if element < self.geometry.vertices.len() + self.geometry.indices.size() {
-            ui.label(format!(
-                "Picked face number {}",
-                element - self.geometry.vertices.len()
-            ));
-        }
-    }
-
-    pub(crate) fn get_element(&self, camera: &Camera, item: u32, pos_x: f32, pos_y: f32) -> u32 {
+    pub(crate) fn get_element(
+        &self,
+        camera: &Camera,
+        item: u32,
+        pos_x: f32,
+        pos_y: f32,
+    ) -> SurfacePicked {
         let indices = &self.geometry.indices;
         let vertices = &self.geometry.vertices;
         let (face_index, face_indices) = match indices {
@@ -532,13 +528,13 @@ impl DisplaySurface {
         let c2 = c2 / w2 / (c1 / w1 + c2 / w2 + c3 / w3);
         let c3 = c3 / w3 / (c1 / w1 + c2 / w2 + c3 / w3);
         if c1 > 0.7 {
-            face_indices[0]
+            SurfacePicked::Vertex(face_indices[0])
         } else if c2 > 0.7 {
-            face_indices[1]
+            SurfacePicked::Vertex(face_indices[1])
         } else if c3 > 0.7 {
-            face_indices[2]
+            SurfacePicked::Vertex(face_indices[2])
         } else {
-            vertices.len() as u32 + face_index
+            SurfacePicked::Face(face_index)
         }
     }
 }

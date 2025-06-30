@@ -7,7 +7,7 @@ pub mod data;
 mod deferred;
 mod geometry;
 mod obj_load;
-mod picker;
+pub mod picker;
 pub mod point_cloud;
 mod resources;
 mod screenshot;

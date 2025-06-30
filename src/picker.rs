@@ -11,12 +11,12 @@ use indexmap::IndexMap;
 use wgpu::util::DeviceExt;
 use winit::event::*;
 
-pub struct Picker {
+pub(crate) struct Picker {
     texture: wgpu::Texture,
     texture_view: wgpu::TextureView,
     buffer: wgpu::Buffer,
     buffer_dimensions: util::BufferDimensions,
-    pub picked_item: Option<(String, usize)>,
+    pub picked_item: Option<(String, Picked)>,
     item_to_pick: Option<(usize, usize)>,
     //lock to ensure buffer isn't used while mapped
     pub pick_locked: bool,
@@ -30,9 +30,58 @@ pub struct Picker {
     height: u32,
 }
 
+#[derive(PartialEq, Clone)]
+pub enum SurfacePicked {
+    Vertex(u32),
+    Face(u32),
+    Edge(u32),
+}
+
+#[derive(PartialEq, Clone)]
+pub enum SegmentPicked {
+    Point(u32),
+    Edge(u32),
+}
+
+#[derive(PartialEq, Clone)]
+pub enum Picked {
+    Surface(SurfacePicked),
+    PointCloud(u32),
+    Segment(SegmentPicked),
+}
+
+impl Picked {
+    pub(crate) fn draw_element_info(&self, ui: &mut egui::Ui) {
+        match self {
+            Picked::Surface(picked) => match picked {
+                SurfacePicked::Vertex(picked) => {
+                    ui.label(format!("Picked vertex number {}", picked));
+                }
+                SurfacePicked::Face(picked) => {
+                    ui.label(format!("Picked face number {}", picked));
+                }
+                SurfacePicked::Edge(picked) => {
+                    ui.label(format!("Picked edge number {}", picked));
+                }
+            },
+            Picked::PointCloud(picked) => {
+                ui.label(format!("Picked point number {}", picked));
+            }
+            Picked::Segment(picked) => match picked {
+                SegmentPicked::Point(picked) => {
+                    ui.label(format!("Picked point number {}", picked));
+                }
+                SegmentPicked::Edge(picked) => {
+                    ui.label(format!("Picked edge number {}", picked));
+                }
+            },
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct CounterUniform {
+pub(crate) struct CounterUniform {
     count: u32,
     _padding_1: u32,
     _padding_2: u32,
@@ -416,7 +465,7 @@ impl Picker {
                     | (data[index + 1] as u32) << 8
                     | (data[index] as u32);
                 let mut c = 1;
-                if let Some(name) = surfaces
+                if let Some((name, picked)) = surfaces
                     .iter()
                     .find(|(_key, surface)| {
                         let found =
@@ -429,10 +478,10 @@ impl Picker {
                     .map(|(n, s)| {
                         let pos_x = (i as f32 / self.width as f32) * 2. - 1.;
                         let pos_y = -((j as f32 / self.height as f32) * 2. - 1.);
-                        let new_value = s.get_element(camera, value - c, pos_x, pos_y);
-                        value = new_value;
-                        c = 0;
-                        n
+                        (
+                            n,
+                            Picked::Surface(s.get_element(camera, value - c, pos_x, pos_y)),
+                        )
                     })
                     .or_else(|| {
                         clouds
@@ -445,7 +494,7 @@ impl Picker {
                                 }
                                 found
                             })
-                            .map(|(n, _pc)| n)
+                            .map(|(n, _pc)| (n, Picked::PointCloud(value - c)))
                     })
                     .or_else(|| {
                         curves
@@ -458,10 +507,10 @@ impl Picker {
                                 }
                                 found
                             })
-                            .map(|(n, _pc)| n)
+                            .map(|(n, curve)| (n, Picked::Segment(curve.get_element(value - c))))
                     })
                 {
-                    self.picked_item = Some((name.clone(), (value - c) as usize));
+                    self.picked_item = Some((name.clone(), picked));
                 } else {
                     self.picked_item = None;
                 }

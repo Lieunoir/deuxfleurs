@@ -1,3 +1,4 @@
+use crate::picker::Picked;
 use crate::window::RunningState;
 use egui::style::{WidgetVisuals, Widgets};
 use egui::{Color32, Shadow, Stroke};
@@ -362,16 +363,9 @@ impl UI {
                 if ui.add(egui::Button::new("Screenshot")).clicked() {
                     state.screenshot();
                 }
-                if let Some((picked_name, picked_number)) = state.get_picked() {
-                    let picked_number = *picked_number;
+                if let Some((picked_name, picked)) = state.get_picked() {
                     ui.label(format!("Picked {}", picked_name));
-                    if let Some(surface) = state.get_surface(&picked_name) {
-                        surface.draw_element_info(picked_number, ui);
-                    } else if let Some(cloud) = state.get_point_cloud(&picked_name) {
-                        cloud.draw_element_info(picked_number, ui);
-                    } else if let Some(curve) = state.get_segment(&picked_name) {
-                        curve.draw_element_info(picked_number, ui);
-                    }
+                    picked.draw_element_info(ui);
                 }
 
                 callback(ui, state)

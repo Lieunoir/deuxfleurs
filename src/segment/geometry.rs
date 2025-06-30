@@ -1,5 +1,6 @@
 use crate::data::{internal::*, *};
 use crate::geometry::*;
+use crate::picker::SegmentPicked;
 use crate::segment::sphere_shader::SPHERE_PICKER_SHADER;
 use crate::texture;
 use crate::types::{Color, Scalar};
@@ -735,19 +736,6 @@ pub type Segment<Renderer, AttachedData> =
 pub type UninitedSegment = Segment<(), ()>;
 pub type DisplaySegment = Segment<SegmentRenderer, EmptyAttached>;
 
-impl DisplaySegment {
-    pub(crate) fn draw_element_info(&self, element: usize, ui: &mut egui::Ui) {
-        if element < self.geometry().positions.len() {
-            ui.label(format!("Picked point number {}", element));
-        } else if element - self.geometry().positions.len() < self.geometry().connections.len() {
-            ui.label(format!(
-                "Picked edge number {}",
-                element - self.geometry().positions.len()
-            ));
-        }
-    }
-}
-
 pub type SegmentMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, Segment<Renderer, AttachedData>, Context>;
 
@@ -784,5 +772,15 @@ where
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         self.add_data(name, SegmentData::Color(datas));
+    }
+}
+
+impl DisplaySegment {
+    pub(crate) fn get_element(&self, index: u32) -> SegmentPicked {
+        if index < self.geometry().positions.len() as u32 {
+            SegmentPicked::Point(index)
+        } else {
+            SegmentPicked::Edge(index - self.geometry().positions.len() as u32)
+        }
     }
 }

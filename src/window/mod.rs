@@ -3,7 +3,7 @@ use crate::attachment::{NewVectorField, VectorField};
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::data::internal::{DataSettings, DataUniformBuilder};
 use crate::deferred;
-use crate::picker;
+use crate::picker::{self, Picked};
 use crate::point_cloud::{
     DisplayPointCloud, PointCloud, PointCloudDataBuffer, PointCloudFixedRenderer, PointCloudMut,
     PointCloudPipeline, UninitedPointCloud,
@@ -581,11 +581,8 @@ impl RunningState {
         self.0.screenshot();
     }
 
-    /// Get current selected object: first the name, then index `i` of the selected element
-    ///
-    /// For a surface mesh, if `i` < `nv` then the selected element si the vertex of index `i`.
-    /// If `nv` <= i < `nv + nf`, it corresponds to the face of index `i - nv`.
-    pub fn get_picked(&self) -> &Option<(String, usize)> {
+    /// Get current selected object: first the name, then index `i` and type of the selected element
+    pub fn get_picked(&self) -> &Option<(String, Picked)> {
         self.0.get_picked()
     }
 

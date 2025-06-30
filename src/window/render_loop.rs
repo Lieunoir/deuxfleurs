@@ -7,7 +7,7 @@ use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::deferred;
 
-use crate::picker;
+use crate::picker::{self, Picked};
 use crate::screenshot;
 use crate::texture;
 #[cfg(not(target_arch = "wasm32"))]
@@ -852,7 +852,7 @@ impl InnerGraphicalState {
         self.screenshot = true;
     }
 
-    pub(crate) fn get_picked(&self) -> &Option<(String, usize)> {
+    pub(crate) fn get_picked(&self) -> &Option<(String, Picked)> {
         &self.picker.picked_item
     }
 

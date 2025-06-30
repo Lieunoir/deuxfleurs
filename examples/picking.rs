@@ -1,4 +1,7 @@
-use deuxfleurs::{RunningState, Settings, load_mesh};
+use deuxfleurs::{
+    RunningState, Settings, load_mesh,
+    picker::{Picked, SurfacePicked},
+};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -13,26 +16,28 @@ pub async fn run() {
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
     handle.register_surface("spot".into(), spot_v, spot_f);
 
-    let mut last_selected = 0;
+    let mut last_selected = None;
     let mut last_selected_geometry = "".into();
     let callback = move |ui: &mut egui::Ui, state: &mut RunningState| {
         ui.label("Click on spot!");
         if let Some((surface_name, item)) = state.get_picked().clone() {
-            if last_selected != item || last_selected_geometry != *surface_name {
+            if last_selected.as_ref() != Some(&item) || last_selected_geometry != *surface_name {
                 if let Some(mut surface) = state.get_surface_mut(&surface_name) {
+                    last_selected = Some(item.clone());
+                    last_selected_geometry = surface_name.clone();
                     let n_v = surface.geometry().vertices.len();
-                    if item < n_v {
-                        let mut selected = vec![0.; n_v];
-                        last_selected = item;
-                        last_selected_geometry = surface_name.clone();
-                        selected[item] = 1.;
-                        surface.add_vertex_scalar("selected vertex".into(), selected);
-                    } else {
-                        let mut selected = vec![0.; surface.geometry().indices.size()];
-                        last_selected = item;
-                        last_selected_geometry = surface_name.clone();
-                        selected[item - n_v] = 1.;
-                        surface.add_face_scalar("selected face".into(), selected);
+                    match item {
+                        Picked::Surface(SurfacePicked::Vertex(item)) => {
+                            let mut selected = vec![0.; n_v];
+                            selected[item as usize] = 1.;
+                            surface.add_vertex_scalar("selected vertex".into(), selected);
+                        }
+                        Picked::Surface(SurfacePicked::Face(item)) => {
+                            let mut selected = vec![0.; surface.geometry().indices.size()];
+                            selected[item as usize] = 1.;
+                            surface.add_face_scalar("selected face".into(), selected);
+                        }
+                        _ => {}
                     }
                 }
             }
