@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["init","load_mesh","load_mesh_blocking"],"mod":["attachment","data","internal","point_cloud","segment","surface","types","ui"],"struct":["Color","Settings"],"type":["InitialState","RunningState"]};
+window.SIDEBAR_ITEMS = {"fn":["init","load_mesh","load_mesh_blocking"],"mod":["attachment","data","internal","picker","point_cloud","segment","surface","types","ui"],"struct":["Color","Settings"],"type":["InitialState","RunningState"]};
