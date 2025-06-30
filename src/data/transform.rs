@@ -26,10 +26,11 @@ impl TransformSettings {
         model
     }
 
+    pub fn get_transform_d(&self) -> DMat4 {
+        DMat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    }
+
     pub fn to_raw(&self) -> TransformRaw {
-        //use cgmath::SquareMatrix;
-        //use glam::Matrix;
-        //let model = self.transform;
         let mut normal: [[f32; 3]; 3] = [[0.; 3]; 3];
         let model = self.get_transform();
         for (row, row_orig) in normal.iter_mut().zip(model) {
@@ -37,8 +38,6 @@ impl TransformSettings {
         }
         let mut normal = glam::Mat3::from_cols_array_2d(&normal);
         normal = normal.inverse().transpose();
-        //Conversion tricks from mat3x3 to mat4x4
-        //let normal: cgmath::Matrix4<f32> = normal.into();
         let normal = glam::Mat4::from_mat3(normal);
         TransformRaw {
             model,
@@ -164,42 +163,8 @@ impl TransformSettings {
     ) -> bool {
         if self.show_gizmo {
             let viewport = ui.clip_rect();
-            let view: [[f32; 4]; 4] = view.to_cols_array_2d();
-            let proj: [[f32; 4]; 4] = proj.to_cols_array_2d();
-            let mut view_m = DMat4::ZERO;
-            let mut proj_m = DMat4::ZERO;
-            for (i, (row_m, row)) in view_m
-                .to_cols_array_2d()
-                .iter_mut()
-                .zip(view.into_iter())
-                .enumerate()
-            {
-                for (v_m, v) in row_m.iter_mut().zip(row.into_iter()) {
-                    *v_m = v as f64;
-                }
-                match i {
-                    0 => view_m.x_axis = (*row_m).into(),
-                    1 => view_m.y_axis = (*row_m).into(),
-                    2 => view_m.z_axis = (*row_m).into(),
-                    _ => view_m.w_axis = (*row_m).into(),
-                }
-            }
-            for (i, (row_m, row)) in proj_m
-                .to_cols_array_2d()
-                .iter_mut()
-                .zip(proj.into_iter())
-                .enumerate()
-            {
-                for (v_m, v) in row_m.iter_mut().zip(row.into_iter()) {
-                    *v_m = v as f64;
-                }
-                match i {
-                    0 => proj_m.x_axis = (*row_m).into(),
-                    1 => proj_m.y_axis = (*row_m).into(),
-                    2 => proj_m.z_axis = (*row_m).into(),
-                    _ => proj_m.w_axis = (*row_m).into(),
-                }
-            }
+            let view_m = view.as_dmat4();
+            let proj_m = proj.as_dmat4();
             self.gizmo.update_config(GizmoConfig {
                 view_matrix: view_m.into(),
                 projection_matrix: proj_m.into(),
@@ -240,6 +205,25 @@ impl TransformSettings {
         } else {
             false
         }
+    }
+
+    pub(crate) fn get_local_transform(&self, vertex: [f32; 3]) -> Transform {
+        let pos = glam::Vec3::from_array(vertex);
+        let pos = pos.as_dvec3();
+        let pos = self.scale * pos;
+        let pos = self.rotation * pos;
+        Transform::from_scale_rotation_translation(
+            self.scale,
+            self.rotation,
+            self.translation + pos,
+        )
+    }
+
+    pub(crate) fn reverse_local_transform(&self, translation: DVec3) -> [f32; 3] {
+        let pos = translation - self.translation;
+        let pos = self.rotation.inverse() * pos;
+        let pos = pos / self.scale;
+        pos.as_vec3().into()
     }
 }
 

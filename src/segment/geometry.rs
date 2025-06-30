@@ -376,6 +376,14 @@ impl ElementGeometry for SegmentGeometry {
     fn can_be_replaced_by(&self, other: &Self) -> bool {
         self.positions.len() == other.positions.len() && self.connections == other.connections
     }
+
+    fn get_vertex_pos(&self, vertex: u32) -> [f32; 3] {
+        self.positions[vertex as usize]
+    }
+
+    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
+        self.positions[vertex as usize] = pos;
+    }
 }
 
 pub struct SegmentFixedRenderer {
@@ -427,32 +435,35 @@ impl FixedRenderer for SegmentFixedRenderer {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let mut gpu_vertices = Vec::with_capacity(geometry.positions.len());
-        for position in geometry.positions.iter() {
-            let vertex = SphereCenter {
+        let gpu_vertices = geometry
+            .positions
+            .iter()
+            .map(|position| SphereCenter {
                 position: *position,
-            };
-            gpu_vertices.push(vertex);
-        }
+            })
+            .collect::<Vec<_>>();
+
         let center_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Segment Sphere Center Buffer"),
             contents: bytemuck::cast_slice(&gpu_vertices),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
-        let mut gpu_vertices2 = Vec::with_capacity(geometry.connections.len());
-        for connection in &geometry.connections {
-            let vertex = CylinderData {
+        let gpu_vertices2 = geometry
+            .connections
+            .iter()
+            .map(|connection| CylinderData {
                 position_1: geometry.positions[connection[0] as usize],
                 position_2: geometry.positions[connection[1] as usize],
-            };
-            gpu_vertices2.push(vertex);
-        }
+            })
+            .collect::<Vec<_>>();
+
         let cylinder_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Segment Cylinder Buffer"),
             contents: bytemuck::cast_slice(&gpu_vertices2),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
+
         Self {
             vertex_buffer,
             center_buffer,
@@ -460,6 +471,32 @@ impl FixedRenderer for SegmentFixedRenderer {
             connections_len: geometry.connections.len() as u32,
             positions_len: geometry.positions.len() as u32,
         }
+    }
+
+    fn update_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, geometry: &Self::Geometry) {
+        let gpu_vertices = geometry
+            .positions
+            .iter()
+            .map(|position| SphereCenter {
+                position: *position,
+            })
+            .collect::<Vec<_>>();
+        queue.write_buffer(&self.center_buffer, 0, bytemuck::cast_slice(&gpu_vertices));
+
+        let gpu_vertices2 = geometry
+            .connections
+            .iter()
+            .map(|connection| CylinderData {
+                position_1: geometry.positions[connection[0] as usize],
+                position_2: geometry.positions[connection[1] as usize],
+            })
+            .collect::<Vec<_>>();
+
+        queue.write_buffer(
+            &self.cylinder_buffer,
+            0,
+            bytemuck::cast_slice(&gpu_vertices2),
+        );
     }
 }
 

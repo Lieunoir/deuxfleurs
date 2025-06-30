@@ -8,6 +8,8 @@ use crate::texture;
 use crate::util;
 use crate::window::UserEvent;
 use indexmap::IndexMap;
+use transform_gizmo_egui::GizmoOrientation;
+use transform_gizmo_egui::{Gizmo, GizmoConfig, GizmoExt, GizmoMode, enum_set, math::Transform};
 use wgpu::util::DeviceExt;
 use winit::event::*;
 
@@ -28,6 +30,8 @@ pub(crate) struct Picker {
     pub counters_dirty: bool,
     width: u32,
     height: u32,
+    gizmo: Gizmo,
+    show_gizmo: bool,
 }
 
 #[derive(PartialEq, Clone)]
@@ -50,34 +54,7 @@ pub enum Picked {
     Segment(SegmentPicked),
 }
 
-impl Picked {
-    pub(crate) fn draw_element_info(&self, ui: &mut egui::Ui) {
-        match self {
-            Picked::Surface(picked) => match picked {
-                SurfacePicked::Vertex(picked) => {
-                    ui.label(format!("Picked vertex number {}", picked));
-                }
-                SurfacePicked::Face(picked) => {
-                    ui.label(format!("Picked face number {}", picked));
-                }
-                SurfacePicked::Edge(picked) => {
-                    ui.label(format!("Picked edge number {}", picked));
-                }
-            },
-            Picked::PointCloud(picked) => {
-                ui.label(format!("Picked point number {}", picked));
-            }
-            Picked::Segment(picked) => match picked {
-                SegmentPicked::Point(picked) => {
-                    ui.label(format!("Picked point number {}", picked));
-                }
-                SegmentPicked::Edge(picked) => {
-                    ui.label(format!("Picked edge number {}", picked));
-                }
-            },
-        }
-    }
-}
+impl Picked {}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -163,6 +140,8 @@ impl Picker {
             counters_dirty: true,
             width,
             height,
+            gizmo: Gizmo::new(GizmoConfig::default()),
+            show_gizmo: false,
         }
     }
 
@@ -254,10 +233,6 @@ impl Picker {
                         view: tex_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            // Set the clear color during redraw
-                            // This is basically a background color applied if an object isn't taking up space
-
-                            // A standard clear color
                             load: wgpu::LoadOp::Clear(wgpu::Color {
                                 r: 0.0,
                                 g: 0.0,
@@ -267,7 +242,6 @@ impl Picker {
                             store: wgpu::StoreOp::Store,
                         },
                     })],
-                    // Create a depth stencil buffer using the depth texture
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: depth_texture_view,
                         depth_ops: Some(wgpu::Operations {
@@ -460,7 +434,7 @@ impl Picker {
             let data = buffer_slice.get_mapped_range();
             if let Some((i, j)) = self.item_to_pick {
                 let index = j * self.buffer_dimensions.padded_bytes_per_row + 4 * i;
-                let mut value = (data[index + 3] as u32) << 24
+                let value = (data[index + 3] as u32) << 24
                     | (data[index + 2] as u32) << 16
                     | (data[index + 1] as u32) << 8
                     | (data[index] as u32);
@@ -519,5 +493,135 @@ impl Picker {
         }
         self.buffer.unmap();
         self.pick_locked = false;
+    }
+
+    pub(crate) fn draw_ui(&mut self, ui: &mut egui::Ui) {
+        if let Some((picked_name, picked)) = self.picked_item.as_ref() {
+            ui.label(format!("Picked {}", picked_name));
+
+            match picked {
+                Picked::Surface(picked) => match picked {
+                    SurfacePicked::Vertex(picked) => {
+                        ui.label(format!("Picked vertex number {}", picked));
+                    }
+                    SurfacePicked::Face(picked) => {
+                        ui.label(format!("Picked face number {}", picked));
+                    }
+                    SurfacePicked::Edge(picked) => {
+                        ui.label(format!("Picked edge number {}", picked));
+                    }
+                },
+                Picked::PointCloud(picked) => {
+                    ui.label(format!("Picked point number {}", picked));
+                }
+                Picked::Segment(picked) => match picked {
+                    SegmentPicked::Point(picked) => {
+                        ui.label(format!("Picked point number {}", picked));
+                    }
+                    SegmentPicked::Edge(picked) => {
+                        ui.label(format!("Picked edge number {}", picked));
+                    }
+                },
+            }
+            match picked {
+                Picked::Surface(SurfacePicked::Vertex(_))
+                | Picked::PointCloud(_)
+                | Picked::Segment(SegmentPicked::Point(_)) => {
+                    ui.checkbox(&mut self.show_gizmo, "Show Edition Gizmo");
+                }
+                _ => (), //self.show_gizmo = false,
+            }
+        }
+    }
+
+    pub(crate) fn draw_gizmo(
+        &mut self,
+        ui: &mut egui::Ui,
+        view: glam::Mat4,
+        proj: glam::Mat4,
+        queue: &wgpu::Queue,
+        surfaces: &mut IndexMap<String, crate::surface::geometry::DisplaySurface>,
+        clouds: &mut IndexMap<String, crate::point_cloud::DisplayPointCloud>,
+        curves: &mut IndexMap<String, crate::segment::DisplaySegment>,
+        gizmo_hovered: &mut bool,
+    ) -> bool {
+        if self.show_gizmo {
+            let viewport = ui.clip_rect();
+            let view_m = view.as_dmat4();
+            let proj_m = proj.as_dmat4();
+            self.gizmo.update_config(GizmoConfig {
+                view_matrix: view_m.into(),
+                projection_matrix: proj_m.into(),
+                modes: GizmoMode::all_translate().difference(enum_set!(GizmoMode::TranslateView)),
+                orientation: GizmoOrientation::Local,
+                viewport,
+                ..Default::default()
+            });
+
+            let interacted = match self.picked_item.as_ref() {
+                Some((name, Picked::Surface(SurfacePicked::Vertex(v)))) => surfaces
+                    .get_mut(name)
+                    .map(|surface| {
+                        let pos = surface.geometry().get_vertex_pos(*v);
+                        let transform = surface.transform.get_local_transform(pos);
+                        if let Some((_result, new_transforms)) =
+                            self.gizmo.interact(ui, &[transform])
+                        {
+                            let new_pos = surface
+                                .transform
+                                .reverse_local_transform(new_transforms[0].translation.into());
+                            surface.move_vertex(queue, *v, new_pos);
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .or(Some(false))
+                    .unwrap(),
+                Some((name, Picked::PointCloud(v))) => clouds
+                    .get_mut(name)
+                    .map(|cloud| {
+                        let pos = cloud.geometry().get_vertex_pos(*v);
+                        let transform = cloud.transform.get_local_transform(pos);
+                        if let Some((_result, new_transforms)) =
+                            self.gizmo.interact(ui, &[transform])
+                        {
+                            let new_pos = cloud
+                                .transform
+                                .reverse_local_transform(new_transforms[0].translation.into());
+                            cloud.move_vertex(queue, *v, new_pos);
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .or(Some(false))
+                    .unwrap(),
+                Some((name, Picked::Segment(SegmentPicked::Point(v)))) => curves
+                    .get_mut(name)
+                    .map(|curve| {
+                        let pos = curve.geometry().get_vertex_pos(*v);
+                        let transform = curve.transform.get_local_transform(pos);
+                        if let Some((_result, new_transforms)) =
+                            self.gizmo.interact(ui, &[transform])
+                        {
+                            let new_pos = curve
+                                .transform
+                                .reverse_local_transform(new_transforms[0].translation.into());
+                            curve.move_vertex(queue, *v, new_pos);
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .or(Some(false))
+                    .unwrap(),
+                _ => false,
+            };
+            *gizmo_hovered |= self.gizmo.is_focused();
+            interacted
+        } else {
+            false
+        }
     }
 }

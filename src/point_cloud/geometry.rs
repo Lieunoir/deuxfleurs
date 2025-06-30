@@ -224,6 +224,14 @@ impl ElementGeometry for PointCloudGeometry {
     fn can_be_replaced_by(&self, other: &Self) -> bool {
         self.positions.len() == other.positions.len()
     }
+
+    fn get_vertex_pos(&self, vertex: u32) -> [f32; 3] {
+        self.positions[vertex as usize]
+    }
+
+    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
+        self.positions[vertex as usize] = pos;
+    }
 }
 
 pub struct PointCloudFixedRenderer {
@@ -275,7 +283,7 @@ impl FixedRenderer for PointCloudFixedRenderer {
         let center_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Cloud Sphere Center Buffer"),
             contents: bytemuck::cast_slice(&gpu_vertices),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
         Self {
@@ -283,6 +291,17 @@ impl FixedRenderer for PointCloudFixedRenderer {
             center_buffer,
             positions_len: geometry.positions.len() as u32,
         }
+    }
+
+    fn update_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, geometry: &Self::Geometry) {
+        let gpu_vertices = geometry
+            .positions
+            .iter()
+            .map(|position| SphereCenter {
+                position: *position,
+            })
+            .collect::<Vec<_>>();
+        queue.write_buffer(&self.center_buffer, 0, bytemuck::cast_slice(&gpu_vertices));
     }
 }
 

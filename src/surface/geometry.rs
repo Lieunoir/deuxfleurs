@@ -128,6 +128,14 @@ impl ElementGeometry for SurfaceGeometry {
     fn can_be_replaced_by(&self, other: &Self) -> bool {
         self.vertices.len() == other.vertices.len() && self.indices == other.indices
     }
+
+    fn get_vertex_pos(&self, vertex: u32) -> [f32; 3] {
+        self.vertices[vertex as usize]
+    }
+
+    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
+        self.vertices[vertex as usize] = pos;
+    }
 }
 
 pub struct SurfaceFixedRenderer {
@@ -212,7 +220,7 @@ impl FixedRenderer for SurfaceFixedRenderer {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(&gpu_vertices),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
         Self {
@@ -221,6 +229,52 @@ impl FixedRenderer for SurfaceFixedRenderer {
             vertex_buffer,
             vertices_len,
         }
+    }
+
+    fn update_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, geometry: &Self::Geometry) {
+        let normals = compute_normals(&geometry.vertices, &geometry.indices);
+        let face_normals = compute_face_normals(&geometry.vertices, &geometry.indices);
+        let mut gpu_vertices = Vec::with_capacity(3 * geometry.internal_indices.len());
+        for (face, face_normal) in geometry.indices.into_iter().zip(face_normals) {
+            for j in 1..face.len() - 1 {
+                for k in 0..3 {
+                    let barycentric_coords = if face.len() == 3 {
+                        match k {
+                            0 => 4,
+                            1 => 2,
+                            _ => 1,
+                        }
+                    } else {
+                        match j {
+                            1 => match k {
+                                0 => 6,
+                                1 => 2,
+                                _ => 3,
+                            },
+                            _ if j == (face.len() - 2) => match k {
+                                0 => 5,
+                                1 => 3,
+                                _ => 1,
+                            },
+                            _ => match k {
+                                0 => 7,
+                                1 => 3,
+                                _ => 3,
+                            },
+                        }
+                    };
+                    let index = if k != 0 { (j - 1 + k) as usize } else { 0 };
+                    let mut normal = normals[face[index] as usize];
+                    normal[3] = barycentric_coords;
+                    gpu_vertices.push(SurfaceVertex {
+                        position: geometry.vertices[face[index] as usize],
+                        normal,
+                        face_normal,
+                    });
+                }
+            }
+        }
+        queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&gpu_vertices));
     }
 }
 

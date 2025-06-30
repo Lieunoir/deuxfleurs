@@ -2,7 +2,6 @@ use super::{
     InitialState, InnerBareState, InnerGraphicalState, JitterUniform, LightUniform, RunningState,
     StateWrapper, UserEvent,
 };
-use crate::Settings;
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::deferred;
@@ -1097,6 +1096,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             &mut state.0.surfaces,
                             &mut state.0.clouds,
                             &mut state.0.segments,
+                            &mut state.0.picker,
                             state.0.camera.build_view(),
                             state.0.camera.build_proj(),
                             &state.0.device,

@@ -1,4 +1,4 @@
-use crate::picker::Picked;
+use crate::picker::Picker;
 use crate::window::RunningState;
 use egui::style::{WidgetVisuals, Widgets};
 use egui::{Color32, Shadow, Stroke};
@@ -220,6 +220,7 @@ impl UI {
         surfaces: &mut IndexMap<String, crate::surface::geometry::DisplaySurface>,
         clouds: &mut IndexMap<String, crate::point_cloud::DisplayPointCloud>,
         curves: &mut IndexMap<String, crate::segment::DisplaySegment>,
+        picker: &mut Picker,
         view: glam::Mat4,
         proj: glam::Mat4,
         device: &wgpu::Device,
@@ -345,6 +346,16 @@ impl UI {
                 for (_, cloud) in clouds.iter_mut() {
                     cloud.draw_gizmo(ui, view, proj, queue, &mut self.hovered, refresh_screen);
                 }
+                *refresh_screen |= picker.draw_gizmo(
+                    ui,
+                    view,
+                    proj,
+                    queue,
+                    surfaces,
+                    clouds,
+                    curves,
+                    &mut self.hovered,
+                );
             });
     }
 
@@ -363,10 +374,7 @@ impl UI {
                 if ui.add(egui::Button::new("Screenshot")).clicked() {
                     state.screenshot();
                 }
-                if let Some((picked_name, picked)) = state.get_picked() {
-                    ui.label(format!("Picked {}", picked_name));
-                    picked.draw_element_info(ui);
-                }
+                state.picker.draw_ui(ui);
 
                 callback(ui, state)
             })

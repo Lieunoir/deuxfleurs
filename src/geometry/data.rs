@@ -120,6 +120,10 @@ pub trait ElementGeometry {
     fn get_positions(&self) -> &[[f32; 3]];
 
     fn get_total_elements(&self) -> u32;
+
+    fn get_vertex_pos(&self, vertex: u32) -> [f32; 3];
+
+    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]);
 }
 
 pub trait AttachedGeometry<Ctxt: Context> {

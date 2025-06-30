@@ -261,7 +261,7 @@ pub struct InnerGraphicalState {
     should_resize: bool,
 
     // Item picker
-    picker: picker::Picker,
+    pub(crate) picker: picker::Picker,
 
     copy: deferred::TextureCopy,
     pbr_renderer: deferred::PBR,

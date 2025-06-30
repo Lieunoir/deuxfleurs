@@ -363,6 +363,13 @@ where
         }
     }
 
+    pub(crate) fn move_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, pos: [f32; 3]) {
+        self.geometry.move_vertex(vertex, pos);
+        self.renderer
+            .fixed
+            .update_vertex(queue, vertex, &self.geometry);
+    }
+
     pub(crate) fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,

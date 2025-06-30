@@ -100,6 +100,8 @@ pub trait FixedRenderer {
     type Geometry;
 
     fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self;
+
+    fn update_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, geometry: &Self::Geometry);
 }
 
 pub trait DataBuffer {
