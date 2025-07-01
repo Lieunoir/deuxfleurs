@@ -490,19 +490,28 @@ impl InnerGraphicalState {
 
         for surface in self.surfaces.values() {
             if surface.show {
-                SBV::merge(&mut sbv, &surface.sbv);
+                SBV::merge(
+                    &mut sbv,
+                    &surface.sbv.transform(&surface.transform.get_transform()),
+                );
             }
         }
 
         for cloud in self.clouds.values() {
             if cloud.show {
-                SBV::merge(&mut sbv, &cloud.sbv);
+                SBV::merge(
+                    &mut sbv,
+                    &cloud.sbv.transform(&cloud.transform.get_transform()),
+                );
             }
         }
 
         for segment in self.segments.values() {
             if segment.show {
-                SBV::merge(&mut sbv, &segment.sbv);
+                SBV::merge(
+                    &mut sbv,
+                    &segment.sbv.transform(&segment.transform.get_transform()),
+                );
             }
         }
 
