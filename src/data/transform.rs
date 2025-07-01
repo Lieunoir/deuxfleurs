@@ -26,10 +26,6 @@ impl TransformSettings {
         model
     }
 
-    pub fn get_transform_d(&self) -> DMat4 {
-        DMat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
-    }
-
     pub fn to_raw(&self) -> TransformRaw {
         let mut normal: [[f32; 3]; 3] = [[0.; 3]; 3];
         let model = self.get_transform();

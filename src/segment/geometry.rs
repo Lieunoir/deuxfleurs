@@ -474,29 +474,28 @@ impl FixedRenderer for SegmentFixedRenderer {
     }
 
     fn update_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, geometry: &Self::Geometry) {
-        let gpu_vertices = geometry
-            .positions
-            .iter()
-            .map(|position| SphereCenter {
-                position: *position,
-            })
-            .collect::<Vec<_>>();
-        queue.write_buffer(&self.center_buffer, 0, bytemuck::cast_slice(&gpu_vertices));
-
-        let gpu_vertices2 = geometry
-            .connections
-            .iter()
-            .map(|connection| CylinderData {
-                position_1: geometry.positions[connection[0] as usize],
-                position_2: geometry.positions[connection[1] as usize],
-            })
-            .collect::<Vec<_>>();
-
+        let offset = (size_of::<SphereCenter>() * vertex as usize) as wgpu::BufferAddress;
         queue.write_buffer(
-            &self.cylinder_buffer,
-            0,
-            bytemuck::cast_slice(&gpu_vertices2),
+            &self.center_buffer,
+            offset,
+            bytemuck::cast_slice(&[SphereCenter {
+                position: geometry.positions[vertex as usize],
+            }]),
         );
+
+        for (i, connection) in geometry.connections.iter().enumerate() {
+            if connection[0] == vertex || connection[1] == vertex {
+                let offset = (size_of::<CylinderData>() * i as usize) as wgpu::BufferAddress;
+                queue.write_buffer(
+                    &self.cylinder_buffer,
+                    offset,
+                    bytemuck::cast_slice(&[CylinderData {
+                        position_1: geometry.positions[connection[0] as usize],
+                        position_2: geometry.positions[connection[1] as usize],
+                    }]),
+                );
+            }
+        }
     }
 }
 

@@ -6,26 +6,34 @@ pub enum SurfaceIndices {
 }
 
 impl SurfaceIndices {
+    /// Number of faces
     pub fn size(&self) -> usize {
         match self {
             SurfaceIndices::Triangles(t) => t.len(),
             SurfaceIndices::Quads(q) => q.len(),
-            SurfaceIndices::Polygons(_i, s) => s.len(),
+            SurfaceIndices::Polygons(_i, s) => s.len() - 1,
         }
     }
 
+    /// Numer of triangles once each face is split in triangles
     pub fn tot_triangles(&self) -> usize {
         match self {
             SurfaceIndices::Triangles(t) => t.len(),
             SurfaceIndices::Quads(q) => 2 * q.len(),
-            SurfaceIndices::Polygons(_i, s) => {
-                s.into_iter().fold(0, |acc, size| acc + *size as usize - 2)
-            }
+            SurfaceIndices::Polygons(_i, s) => s[s.len() - 1] as usize - (2 * (s.len() - 1)),
         }
     }
+}
 
-    pub fn len(&self) -> usize {
-        self.size()
+impl std::ops::Index<usize> for SurfaceIndices {
+    type Output = [u32];
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match self {
+            SurfaceIndices::Triangles(t) => &t[index],
+            SurfaceIndices::Quads(q) => &q[index],
+            SurfaceIndices::Polygons(i, s) => &i[s[index] as usize..s[index + 1] as usize],
+        }
     }
 }
 
@@ -43,14 +51,33 @@ impl Into<SurfaceIndices> for Vec<[u32; 4]> {
 
 impl Into<SurfaceIndices> for (Vec<u32>, Vec<u32>) {
     fn into(self) -> SurfaceIndices {
-        SurfaceIndices::Polygons(self.0, self.1)
+        let mut count = 0;
+        let mut faces_indices = self
+            .1
+            .into_iter()
+            .map(|s| {
+                count += s;
+                count - s
+            })
+            .collect::<Vec<_>>();
+        faces_indices.push(count);
+        SurfaceIndices::Polygons(self.0, faces_indices)
     }
 }
 
 impl Into<SurfaceIndices> for (Vec<u32>, Vec<u8>) {
     fn into(self) -> SurfaceIndices {
-        let strides_32 = self.1.into_iter().map(|s| s as _).collect();
-        SurfaceIndices::Polygons(self.0, strides_32)
+        let mut count = 0;
+        let mut faces_indices = self
+            .1
+            .into_iter()
+            .map(|s| {
+                count += s as u32;
+                count - s as u32
+            })
+            .collect::<Vec<_>>();
+        faces_indices.push(count);
+        SurfaceIndices::Polygons(self.0, faces_indices)
     }
 }
 
@@ -59,7 +86,6 @@ impl Into<SurfaceIndices> for (Vec<u32>, Vec<u8>) {
 pub struct SurfaceIndicesIntoIterator<'a> {
     indices: &'a SurfaceIndices,
     index: usize,
-    stride_index: usize,
 }
 
 impl<'a> IntoIterator for &'a SurfaceIndices {
@@ -70,7 +96,6 @@ impl<'a> IntoIterator for &'a SurfaceIndices {
         SurfaceIndicesIntoIterator {
             indices: self,
             index: 0,
-            stride_index: 0,
         }
     }
 }
@@ -80,18 +105,40 @@ use std::borrow::Borrow;
 impl<'a> Iterator for SurfaceIndicesIntoIterator<'a> {
     type Item = &'a [u32];
 
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = match self.indices {
+            SurfaceIndices::Triangles(t) => t.len() - self.index,
+            SurfaceIndices::Quads(q) => q.len() - self.index,
+            SurfaceIndices::Polygons(_, s) => s.len() - self.index - 1,
+        };
+        (len, Some(len))
+    }
+
     fn next(&mut self) -> Option<&'a [u32]> {
         let res = match self.indices {
             SurfaceIndices::Triangles(t) => t.get(self.index).map(|a| a.borrow()),
             SurfaceIndices::Quads(q) => q.get(self.index).map(|a| a.borrow()),
-            SurfaceIndices::Polygons(i, s) => s.get(self.index).map(|size| {
-                let res = &i[self.stride_index..self.stride_index + *size as usize];
-                self.stride_index += *size as usize;
-                res
-            }),
+            SurfaceIndices::Polygons(i, s) => s
+                .get(self.index)
+                .map(|offset| {
+                    s.get(self.index + 1)
+                        .map(|offset2| i.get(*offset as usize..*offset2 as usize))
+                })
+                .flatten()
+                .flatten(),
         };
         self.index += 1;
         res
+    }
+}
+
+impl<'a> ExactSizeIterator for SurfaceIndicesIntoIterator<'a> {
+    fn len(&self) -> usize {
+        match self.indices {
+            SurfaceIndices::Triangles(t) => t.len() - self.index,
+            SurfaceIndices::Quads(q) => q.len() - self.index,
+            SurfaceIndices::Polygons(_, s) => s.len() - self.index - 1,
+        }
     }
 }
 

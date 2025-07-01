@@ -222,16 +222,17 @@ impl SurfaceData {
         &self,
         device: &wgpu::Device,
         indices: &SurfaceIndices,
-        internal_indices: &[[u32; 3]],
     ) -> wgpu::Buffer {
         match self {
             SurfaceData::Color(colors) => {
-                let mut gpu_vertices = Vec::with_capacity(3 * internal_indices.len());
-                for face in internal_indices {
-                    for index in face {
-                        gpu_vertices.push(VertexColorData {
-                            color: colors[*index as usize],
-                        });
+                let mut gpu_vertices = Vec::with_capacity(3 * indices.tot_triangles());
+                for face in indices {
+                    for i in 1..face.len() - 1 {
+                        for index in [face[0], face[i], face[i + 1]] {
+                            gpu_vertices.push(VertexColorData {
+                                color: colors[index as usize],
+                            });
+                        }
                     }
                 }
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -252,12 +253,14 @@ impl SurfaceData {
                     }
                 }
 
-                let mut gpu_vertices = Vec::with_capacity(3 * internal_indices.len());
-                for face in internal_indices {
-                    for index in face {
-                        let data = datas[*index as usize];
-                        let t = (data - min_d) / (max_d - min_d);
-                        gpu_vertices.push(VertexScalarData { scalar: t });
+                let mut gpu_vertices = Vec::with_capacity(3 * indices.tot_triangles());
+                for face in indices {
+                    for i in 1..face.len() - 1 {
+                        for index in [face[0], face[i], face[i + 1]] {
+                            let data = datas[index as usize];
+                            let t = (data - min_d) / (max_d - min_d);
+                            gpu_vertices.push(VertexScalarData { scalar: t });
+                        }
                     }
                 }
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -277,7 +280,7 @@ impl SurfaceData {
                         min_d = *data;
                     }
                 }
-                let mut gpu_vertices = Vec::with_capacity(3 * internal_indices.len());
+                let mut gpu_vertices = Vec::with_capacity(3 * indices.tot_triangles());
                 for (face, data) in indices.into_iter().zip(datas) {
                     let t = (data - min_d) / (max_d - min_d);
                     for _i in 1..face.len() - 1 {
@@ -293,12 +296,14 @@ impl SurfaceData {
                 })
             }
             SurfaceData::UVMap(uv_map, _) => {
-                let mut gpu_vertices = Vec::with_capacity(3 * internal_indices.len());
-                for face in internal_indices {
-                    for index in face {
-                        gpu_vertices.push(VertexUVData {
-                            uv: uv_map[*index as usize],
-                        });
+                let mut gpu_vertices = Vec::with_capacity(3 * indices.tot_triangles());
+                for face in indices {
+                    for i in 1..face.len() - 1 {
+                        for index in [face[0], face[i], face[i + 1]] {
+                            gpu_vertices.push(VertexUVData {
+                                uv: uv_map[index as usize],
+                            });
+                        }
                     }
                 }
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

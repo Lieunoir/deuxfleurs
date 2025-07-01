@@ -294,14 +294,14 @@ impl FixedRenderer for PointCloudFixedRenderer {
     }
 
     fn update_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, geometry: &Self::Geometry) {
-        let gpu_vertices = geometry
-            .positions
-            .iter()
-            .map(|position| SphereCenter {
-                position: *position,
-            })
-            .collect::<Vec<_>>();
-        queue.write_buffer(&self.center_buffer, 0, bytemuck::cast_slice(&gpu_vertices));
+        let offset = (size_of::<SphereCenter>() * vertex as usize) as wgpu::BufferAddress;
+        queue.write_buffer(
+            &self.center_buffer,
+            offset,
+            bytemuck::cast_slice(&[SphereCenter {
+                position: geometry.positions[vertex as usize],
+            }]),
+        );
     }
 }
 

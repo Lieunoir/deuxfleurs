@@ -9,7 +9,7 @@ use crate::util;
 use crate::window::UserEvent;
 use indexmap::IndexMap;
 use transform_gizmo_egui::GizmoOrientation;
-use transform_gizmo_egui::{Gizmo, GizmoConfig, GizmoExt, GizmoMode, enum_set, math::Transform};
+use transform_gizmo_egui::{Gizmo, GizmoConfig, GizmoExt, GizmoMode, enum_set};
 use wgpu::util::DeviceExt;
 use winit::event::*;
 

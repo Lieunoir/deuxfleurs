@@ -12,6 +12,7 @@ use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use num_traits::cast::ToPrimitive;
+use wgpu::BufferAddress;
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -94,8 +95,126 @@ impl Vertex for SurfaceVertex {
 pub struct SurfaceGeometry {
     pub vertices: Vec<[f32; 3]>,
     pub indices: SurfaceIndices,
-    pub num_elements: u32,
-    internal_indices: Vec<[u32; 3]>,
+    face_to_edge: FaceToEdge,
+    vertex_to_face: VertexToFace,
+}
+
+struct FaceToEdge {
+    indices: Vec<u32>,
+    // same strides as indices
+}
+
+struct VertexToFace {
+    indices: Vec<u32>,
+    strides: Vec<u32>,
+}
+
+impl std::ops::Index<usize> for VertexToFace {
+    type Output = [u32];
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.indices
+            [self.strides[index as usize] as usize..self.strides[index as usize + 1] as usize]
+    }
+}
+
+fn compute_edge_face_maps(
+    indices: &SurfaceIndices,
+    num_vertices: usize,
+) -> (FaceToEdge, VertexToFace) {
+    //should compute: face_to_edge
+    // vertex_to_faces
+    let len = match indices {
+        SurfaceIndices::Triangles(t) => 3 * t.len(),
+        SurfaceIndices::Quads(q) => 4 * q.len(),
+        SurfaceIndices::Polygons(i, _s) => i.len(),
+    };
+    let mut degrees = vec![0_u32; num_vertices + 1];
+    let mut vertex_to_face_deg = vec![0_u32; num_vertices + 1];
+    for face in indices {
+        for i in 0..face.len() {
+            vertex_to_face_deg[face[i] as usize] += 1;
+            let j = if i + 1 < face.len() { i + 1 } else { 0 };
+            if face[i] <= face[j] {
+                degrees[face[i] as usize] += 1;
+            } else {
+                degrees[face[j] as usize] += 1;
+            }
+        }
+    }
+    let mut offset_1 = 0;
+    let vertex_to_faces_stride: Vec<_> = vertex_to_face_deg
+        .into_iter()
+        .map(|v| {
+            let value = v as u32;
+            offset_1 += value;
+            offset_1 - value
+        })
+        .collect();
+    let mut vertex_to_face_values = vec![0_u32; offset_1 as usize];
+
+    let mut offset = 0;
+    let faces_deg: Vec<_> = degrees
+        .into_iter()
+        .map(|v| {
+            let value = v as u32;
+            offset += value;
+            offset - value
+        })
+        .collect();
+
+    let mut processed_by_vertex = vec![0_u32; num_vertices];
+    let mut face_processed_by_vertex = vec![0_u32; num_vertices];
+    let mut edges = vec![(0_u32, 0_u32); offset as usize];
+    let mut face_to_edge = vec![0_u32; len];
+    let mut cur_edge = 0_u32;
+    let mut tot_index = 0_usize;
+
+    let mut helper = |(v1, v2): (usize, usize)| {
+        let offset = faces_deg[v1] as usize;
+        let slice = &mut edges[offset..offset + processed_by_vertex[v1] as usize + 1];
+        let mut found = false;
+        for value in slice.iter() {
+            if value.0 == v2 as u32 {
+                found = true;
+                face_to_edge[tot_index] = value.1;
+            }
+        }
+        if !found {
+            face_to_edge[tot_index] = cur_edge;
+            slice[processed_by_vertex[v1] as usize] = (v2 as u32, cur_edge);
+
+            cur_edge += 1;
+            processed_by_vertex[v1] += 1;
+        }
+        tot_index += 1;
+    };
+
+    for (face_index, face) in indices.into_iter().enumerate() {
+        for i in 0..face.len() {
+            let j = if i + 1 < face.len() { i + 1 } else { 0 };
+            if face[i] <= face[j] {
+                helper((face[i] as usize, face[j] as usize));
+            } else {
+                helper((face[j] as usize, face[i] as usize));
+            }
+
+            let offset = vertex_to_faces_stride[face[i] as usize] as usize
+                + face_processed_by_vertex[face[i] as usize] as usize;
+            vertex_to_face_values[offset] = face_index as u32;
+
+            face_processed_by_vertex[face[i] as usize] += 1;
+        }
+    }
+    (
+        FaceToEdge {
+            indices: face_to_edge,
+        },
+        VertexToFace {
+            indices: vertex_to_face_values,
+            strides: vertex_to_faces_stride,
+        },
+    )
 }
 
 impl ElementGeometry for SurfaceGeometry {
@@ -103,17 +222,12 @@ impl ElementGeometry for SurfaceGeometry {
 
     fn new(args: Self::Args) -> Self {
         let (indices, vertices) = args;
-        let mut internal_indices = Vec::new();
-        for face in &indices {
-            for i in 1..face.len() - 1 {
-                internal_indices.push([face[0], face[i], face[i + 1]]);
-            }
-        }
+        let (face_to_edge, vertex_to_face) = compute_edge_face_maps(&indices, vertices.len());
         SurfaceGeometry {
-            num_elements: indices.size() as u32,
             indices,
             vertices,
-            internal_indices,
+            face_to_edge,
+            vertex_to_face,
         }
     }
 
@@ -159,8 +273,7 @@ impl DataBuffer for SurfaceDataBuffer {
 
     fn new(device: &wgpu::Device, geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self {
         //let sphere_data_buffer = data.map(|d| d.build_sphere_data_buffer(device));
-        let data_buffer = data
-            .map(|d| d.build_vertex_buffer(device, &geometry.indices, &geometry.internal_indices));
+        let data_buffer = data.map(|d| d.build_vertex_buffer(device, &geometry.indices));
         Self {
             data_buffer,
             // sphere_data_buffer,
@@ -175,7 +288,7 @@ impl FixedRenderer for SurfaceFixedRenderer {
         //let s2 = 2_f32.sqrt();
         let normals = compute_normals(&geometry.vertices, &geometry.indices);
         let face_normals = compute_face_normals(&geometry.vertices, &geometry.indices);
-        let mut gpu_vertices = Vec::with_capacity(3 * geometry.internal_indices.len());
+        let mut gpu_vertices = Vec::with_capacity(3 * geometry.get_total_elements() as usize);
         for (face, face_normal) in geometry.indices.into_iter().zip(face_normals) {
             for j in 1..face.len() - 1 {
                 for k in 0..3 {
@@ -224,20 +337,186 @@ impl FixedRenderer for SurfaceFixedRenderer {
         });
 
         Self {
-            //normals,
-            //face_normals,
             vertex_buffer,
             vertices_len,
         }
     }
 
     fn update_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, geometry: &Self::Geometry) {
-        let normals = compute_normals(&geometry.vertices, &geometry.indices);
-        let face_normals = compute_face_normals(&geometry.vertices, &geometry.indices);
-        let mut gpu_vertices = Vec::with_capacity(3 * geometry.internal_indices.len());
-        for (face, face_normal) in geometry.indices.into_iter().zip(face_normals) {
+        let mut adj_vertices = Vec::with_capacity(7);
+        let adj_faces = &geometry.vertex_to_face[vertex as usize];
+        for face_index in adj_faces {
+            for vertex in &geometry.indices[*face_index as usize] {
+                if !adj_vertices.contains(vertex) {
+                    adj_vertices.push(*vertex);
+                }
+            }
+        }
+
+        let mut two_ring = Vec::with_capacity(20);
+        for vertex in &adj_vertices {
+            for face in &geometry.vertex_to_face[*vertex as usize] {
+                if !adj_vertices.contains(face) && !two_ring.contains(face) {
+                    two_ring.push(*face);
+                }
+            }
+        }
+
+        let adj_faces_normals = adj_faces
+            .iter()
+            .map(|face| compute_face_normal(&geometry.vertices, &geometry.indices[*face as usize]))
+            .collect::<Vec<_>>();
+        let two_ring_normals = two_ring
+            .iter()
+            .map(|face| compute_face_normal(&geometry.vertices, &geometry.indices[*face as usize]))
+            .collect::<Vec<_>>();
+
+        let adj_normals = adj_vertices
+            .iter()
+            .map(|vertex| {
+                let mut normal = [0., 0., 0.];
+                for face in &geometry.vertex_to_face[*vertex as usize] {
+                    let face_normal =
+                        if let Some(position) = adj_faces.iter().position(|f| f == face) {
+                            adj_faces_normals[position]
+                        } else {
+                            let position = two_ring.iter().position(|f| f == face).unwrap();
+                            two_ring_normals[position]
+                        };
+                    for (a, b) in face_normal.into_iter().zip(&mut normal) {
+                        *b += a;
+                    }
+                }
+                let norm =
+                    (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+                if norm > 0. {
+                    normal[0] /= norm;
+                    normal[1] /= norm;
+                    normal[2] /= norm;
+                }
+                [
+                    (normal[0] * 127.).to_i8().unwrap(),
+                    (normal[1] * 127.).to_i8().unwrap(),
+                    (normal[2] * 127.).to_i8().unwrap(),
+                    0,
+                ]
+            })
+            .collect::<Vec<_>>();
+
+        let two_ring_normals = two_ring_normals
+            .into_iter()
+            .map(|mut normal| {
+                let norm =
+                    (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+                if norm > 0. {
+                    normal[0] /= norm;
+                    normal[1] /= norm;
+                    normal[2] /= norm;
+                }
+                [
+                    (normal[0] * 127.).to_i8().unwrap(),
+                    (normal[1] * 127.).to_i8().unwrap(),
+                    (normal[2] * 127.).to_i8().unwrap(),
+                    0,
+                ]
+            })
+            .collect::<Vec<_>>();
+
+        let adj_faces_normals = adj_faces_normals
+            .into_iter()
+            .map(|mut normal| {
+                let norm =
+                    (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+                if norm > 0. {
+                    normal[0] /= norm;
+                    normal[1] /= norm;
+                    normal[2] /= norm;
+                }
+                [
+                    (normal[0] * 127.).to_i8().unwrap(),
+                    (normal[1] * 127.).to_i8().unwrap(),
+                    (normal[2] * 127.).to_i8().unwrap(),
+                    0,
+                ]
+            })
+            .collect::<Vec<_>>();
+
+        for (face, face_normal) in two_ring.into_iter().zip(two_ring_normals) {
+            let face_number = match &geometry.indices {
+                SurfaceIndices::Triangles(_) => face,
+                SurfaceIndices::Quads(_) => 2 * face,
+                SurfaceIndices::Polygons(_, s) => s[face as usize] - (2 * face),
+            };
+
+            let face = &geometry.indices[face as usize];
             for j in 1..face.len() - 1 {
+                let face_indices = [face[0], face[j], face[j + 1]];
                 for k in 0..3 {
+                    let vertex_index = face_indices[k];
+                    if let Some(position) = adj_vertices.iter().position(|v| *v == vertex_index) {
+                        let barycentric_coords = if face.len() == 3 {
+                            match k {
+                                0 => 4,
+                                1 => 2,
+                                _ => 1,
+                            }
+                        } else {
+                            match j {
+                                1 => match k {
+                                    0 => 6,
+                                    1 => 2,
+                                    _ => 3,
+                                },
+                                _ if j == (face.len() - 2) => match k {
+                                    0 => 5,
+                                    1 => 3,
+                                    _ => 1,
+                                },
+                                _ => match k {
+                                    0 => 7,
+                                    1 => 3,
+                                    _ => 3,
+                                },
+                            }
+                        };
+                        let index = if k != 0 { (j - 1 + k) as usize } else { 0 };
+                        let mut normal = adj_normals[position];
+                        normal[3] = barycentric_coords;
+
+                        let offset = face_number as usize * 3 + (j - 1) * 3 + k;
+
+                        queue.write_buffer(
+                            &self.vertex_buffer,
+                            (offset * size_of::<SurfaceVertex>()) as BufferAddress,
+                            bytemuck::cast_slice(&[SurfaceVertex {
+                                position: geometry.vertices[face[index] as usize],
+                                normal,
+                                face_normal,
+                            }]),
+                        );
+                    }
+                }
+            }
+        }
+
+        for (face, face_normal) in adj_faces.into_iter().zip(adj_faces_normals) {
+            let face_number = match &geometry.indices {
+                SurfaceIndices::Triangles(_) => *face,
+                SurfaceIndices::Quads(_) => 2 * *face,
+                SurfaceIndices::Polygons(_, s) => s[*face as usize] - (2 * *face),
+            };
+
+            let face = &geometry.indices[*face as usize];
+            let mut buffer = Vec::with_capacity(3 * (face.len() - 2));
+
+            for j in 1..face.len() - 1 {
+                let face_indices = [face[0], face[j], face[j + 1]];
+                for k in 0..3 {
+                    let vertex_index = face_indices[k];
+                    let position = adj_vertices
+                        .iter()
+                        .position(|v| *v == vertex_index)
+                        .unwrap();
                     let barycentric_coords = if face.len() == 3 {
                         match k {
                             0 => 4,
@@ -264,17 +543,21 @@ impl FixedRenderer for SurfaceFixedRenderer {
                         }
                     };
                     let index = if k != 0 { (j - 1 + k) as usize } else { 0 };
-                    let mut normal = normals[face[index] as usize];
+                    let mut normal = adj_normals[position];
                     normal[3] = barycentric_coords;
-                    gpu_vertices.push(SurfaceVertex {
+                    buffer.push(SurfaceVertex {
                         position: geometry.vertices[face[index] as usize],
                         normal,
                         face_normal,
                     });
                 }
             }
+            queue.write_buffer(
+                &self.vertex_buffer,
+                (3 * face_number as usize * size_of::<SurfaceVertex>()) as BufferAddress,
+                bytemuck::cast_slice(&buffer),
+            );
         }
-        queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&gpu_vertices));
     }
 }
 
@@ -528,7 +811,8 @@ impl DisplaySurface {
                 let mut elapsed = 0;
                 let mut index = 0;
                 let mut face = [0, 0, 0];
-                for (i, size) in s.iter().enumerate() {
+                for (i, bounds) in s.windows(2).enumerate() {
+                    let size = bounds[1] - bounds[0];
                     if elapsed + size - 2 > item {
                         for j in 0..(size - 2) {
                             if elapsed + j == item {
@@ -742,6 +1026,7 @@ where
     }
 }
 
+//Can be simplified now using vertex -> face adjacency
 fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[i8; 4]> {
     let mut normals = vec![[0., 0., 0.]; vertices.len()];
     for face in indices {
@@ -788,26 +1073,32 @@ fn compute_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[i8; 
         .collect()
 }
 
+fn compute_face_normal(vertices: &[[f32; 3]], face: &[u32]) -> [f32; 3] {
+    let mut normal = [0., 0., 0.];
+    for i in 1..face.len() - 1 {
+        let i0 = face[0] as usize;
+        let i1 = face[i] as usize;
+        let i2 = face[i + 1] as usize;
+        let v0 = glam::Vec3::from_array(vertices[i0]);
+        let v1 = glam::Vec3::from_array(vertices[i1]);
+        let v2 = glam::Vec3::from_array(vertices[i2]);
+        let e1 = v1 - v0;
+        let e2 = v2 - v0;
+        let cross_p = e1.cross(e2);
+        let n = AsRef::<[f32; 3]>::as_ref(&cross_p);
+        for (a, b) in normal.iter_mut().zip(n) {
+            *a += b
+        }
+    }
+    normal
+}
+
 fn compute_face_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<[i8; 4]> {
     indices
         .into_iter()
         .map(|face| {
-            let mut normal = [0., 0., 0.];
-            for i in 1..face.len() - 1 {
-                let i0 = face[0] as usize;
-                let i1 = face[i] as usize;
-                let i2 = face[i + 1] as usize;
-                let v0 = glam::Vec3::from_array(vertices[i0]);
-                let v1 = glam::Vec3::from_array(vertices[i1]);
-                let v2 = glam::Vec3::from_array(vertices[i2]);
-                let e1 = v1 - v0;
-                let e2 = v2 - v0;
-                let cross_p = e1.cross(e2);
-                let n = AsRef::<[f32; 3]>::as_ref(&cross_p);
-                for (a, b) in normal.iter_mut().zip(n) {
-                    *a += b
-                }
-            }
+            let mut normal = compute_face_normal(vertices, face);
+
             let norm =
                 (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
             if norm > 0. {
