@@ -870,8 +870,16 @@ impl DisplaySurface {
     ) -> SurfacePicked {
         let indices = &self.geometry.indices;
         let vertices = &self.geometry.vertices;
-        let (face_index, face_indices) = match indices {
-            SurfaceIndices::Triangles(t) => (item, t[item as usize]),
+        let (face_index, face_indices, edges) = match indices {
+            SurfaceIndices::Triangles(t) => (
+                item,
+                t[item as usize],
+                [
+                    Some(self.geometry.face_to_edge.indices[item as usize * 3]),
+                    Some(self.geometry.face_to_edge.indices[item as usize * 3 + 1]),
+                    Some(self.geometry.face_to_edge.indices[item as usize * 3 + 2]),
+                ],
+            ),
             SurfaceIndices::Quads(t) => (
                 item / 2,
                 if item % 2 == 0 {
@@ -887,11 +895,25 @@ impl DisplaySurface {
                         t[item as usize / 2][3],
                     ]
                 },
+                if item % 2 == 0 {
+                    [
+                        Some(self.geometry.face_to_edge.indices[item as usize * 2]),
+                        Some(self.geometry.face_to_edge.indices[item as usize * 2 + 1]),
+                        None,
+                    ]
+                } else {
+                    [
+                        None,
+                        Some(self.geometry.face_to_edge.indices[item as usize * 2 + 2]),
+                        Some(self.geometry.face_to_edge.indices[item as usize * 2 + 3]),
+                    ]
+                },
             ),
             SurfaceIndices::Polygons(indices, s) => {
                 let mut elapsed = 0;
                 let mut index = 0;
                 let mut face = [0, 0, 0];
+                let mut edges = [None, None, None];
                 for (i, bounds) in s.windows(2).enumerate() {
                     let size = bounds[1] - bounds[0];
                     if elapsed + size - 2 > item {
@@ -903,6 +925,30 @@ impl DisplaySurface {
                                     indices[elapsed as usize + i * 2 + j as usize + 1],
                                     indices[elapsed as usize + i * 2 + j as usize + 2],
                                 ];
+                                if j == 0 {
+                                    edges[0] = Some(
+                                        self.geometry.face_to_edge.indices
+                                            [elapsed as usize + i * 2 + 0],
+                                    );
+                                    edges[1] = Some(
+                                        self.geometry.face_to_edge.indices
+                                            [elapsed as usize + i * 2 + 1],
+                                    );
+                                } else if j == (size - 3) {
+                                    edges[1] = Some(
+                                        self.geometry.face_to_edge.indices
+                                            [elapsed as usize + size as usize - 2],
+                                    );
+                                    edges[2] = Some(
+                                        self.geometry.face_to_edge.indices
+                                            [elapsed as usize + size as usize - 1],
+                                    );
+                                } else {
+                                    edges[1] = Some(
+                                        self.geometry.face_to_edge.indices
+                                            [elapsed as usize * 2 + j as usize + 1],
+                                    );
+                                }
                                 break;
                             }
                         }
@@ -911,7 +957,7 @@ impl DisplaySurface {
                         elapsed += size - 2;
                     }
                 }
-                (index, face)
+                (index, face, edges)
             }
         };
         let v1 = glam::Vec3::from_array(vertices[face_indices[0] as usize]);
@@ -939,19 +985,21 @@ impl DisplaySurface {
         let c3 = (v1 - p).cross(v2 - p).length();
         let c1 = (v2 - p).cross(v3 - p).length();
         let c2 = (v3 - p).cross(v1 - p).length();
-        let tot = c3 + c1 + c2;
-        let c1 = c1 / tot;
-        let c2 = c2 / tot;
-        let c3 = c3 / tot;
-        let c1 = c1 / w1 / (c1 / w1 + c2 / w2 + c3 / w3);
-        let c2 = c2 / w2 / (c1 / w1 + c2 / w2 + c3 / w3);
-        let c3 = c3 / w3 / (c1 / w1 + c2 / w2 + c3 / w3);
-        if c1 > 0.7 {
+        let c1p = c1 / w1 / (c1 / w1 + c2 / w2 + c3 / w3);
+        let c2p = c2 / w2 / (c1 / w1 + c2 / w2 + c3 / w3);
+        let c3p = c3 / w3 / (c1 / w1 + c2 / w2 + c3 / w3);
+        if c1p > 0.7 {
             SurfacePicked::Vertex(face_indices[0])
-        } else if c2 > 0.7 {
+        } else if c2p > 0.7 {
             SurfacePicked::Vertex(face_indices[1])
-        } else if c3 > 0.7 {
+        } else if c3p > 0.7 {
             SurfacePicked::Vertex(face_indices[2])
+        } else if c1p < 0.15 && edges[1].is_some() {
+            SurfacePicked::Edge(edges[1].unwrap())
+        } else if c2p < 0.15 && edges[2].is_some() {
+            SurfacePicked::Edge(edges[2].unwrap())
+        } else if c3p < 0.15 && edges[0].is_some() {
+            SurfacePicked::Edge(edges[0].unwrap())
         } else {
             SurfacePicked::Face(face_index)
         }

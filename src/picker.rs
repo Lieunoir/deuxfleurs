@@ -7,6 +7,7 @@ use crate::geometry::ElementGeometry;
 use crate::texture;
 use crate::util;
 use crate::window::UserEvent;
+use egui::Checkbox;
 use indexmap::IndexMap;
 use transform_gizmo_egui::GizmoOrientation;
 use transform_gizmo_egui::{Gizmo, GizmoConfig, GizmoExt, GizmoMode, enum_set};
@@ -523,14 +524,16 @@ impl Picker {
                     }
                 },
             }
-            match picked {
+            let enabled = match picked {
                 Picked::Surface(SurfacePicked::Vertex(_))
                 | Picked::PointCloud(_)
-                | Picked::Segment(SegmentPicked::Point(_)) => {
-                    ui.checkbox(&mut self.show_gizmo, "Show Edition Gizmo");
-                }
-                _ => (), //self.show_gizmo = false,
-            }
+                | Picked::Segment(SegmentPicked::Point(_)) => true,
+                _ => false, //self.show_gizmo = false,
+            };
+            ui.add_enabled(
+                enabled,
+                Checkbox::new(&mut self.show_gizmo, "Show Edition Gizmo"),
+            );
         }
     }
 
