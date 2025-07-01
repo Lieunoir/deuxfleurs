@@ -71,7 +71,14 @@ pub trait ContextHolder {
 }
 
 pub trait ContainerContextGiver<Element>: ContextHolder {
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, Element>, Self::Context<'_>);
+    fn get_container_mut(
+        &mut self,
+    ) -> (
+        &mut IndexMap<String, Element>,
+        Self::Context<'_>,
+        Option<&mut bool>,
+        Option<&mut bool>,
+    );
     fn get_container(&self) -> &IndexMap<String, Element>;
 }
 
@@ -108,7 +115,7 @@ where
         args: Self::Args,
     ) -> ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
         use crate::geometry::ElementTrait;
-        let (container, mut context) = self.get_container_mut();
+        let (container, mut context, _, _) = self.get_container_mut();
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
             element.replace(args, &mut context);
@@ -128,7 +135,7 @@ where
         name: &str,
     ) -> Option<ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>>>
     {
-        let (container, context) = self.get_container_mut();
+        let (container, context, _, _) = self.get_container_mut();
         container
             .get_mut(name)
             .map(|element| ElementMut { element, context })
@@ -169,7 +176,7 @@ where
         Self::Context<'_>,
     > {
         use crate::geometry::ElementTrait;
-        let (container, mut context) = self.get_container_mut();
+        let (container, mut context, should_resize, counters_dirty) = self.get_container_mut();
         // This could be better with Polonius
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
@@ -188,6 +195,8 @@ where
                 context.color_format,
             );
             container.insert(name.clone(), element);
+            should_resize.map(|should_resize| *should_resize = true);
+            counters_dirty.map(|counters_dirty| *counters_dirty = true);
             ElementMut {
                 element: container.get_mut(&name).unwrap(),
                 context,
@@ -204,7 +213,7 @@ where
             Self::Context<'_>,
         >,
     > {
-        let (container, context) = self.get_container_mut();
+        let (container, context, _, _) = self.get_container_mut();
         container
             .get_mut(name)
             .map(|element| ElementMut { element, context })
@@ -287,7 +296,14 @@ impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
         &self.surfaces
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, DisplaySurface>, Self::Context<'_>) {
+    fn get_container_mut(
+        &mut self,
+    ) -> (
+        &mut IndexMap<String, DisplaySurface>,
+        Self::Context<'_>,
+        Option<&mut bool>,
+        Option<&mut bool>,
+    ) {
         (
             &mut self.surfaces,
             Self::Context {
@@ -299,6 +315,8 @@ impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
                 color_format: self.config.format,
                 refresh_screen: &mut self.dirty,
             },
+            Some(&mut self.should_resize),
+            Some(&mut self.picker.counters_dirty),
         )
     }
 }
@@ -310,7 +328,12 @@ impl ContainerContextGiver<DisplayPointCloud> for InnerGraphicalState {
 
     fn get_container_mut(
         &mut self,
-    ) -> (&mut IndexMap<String, DisplayPointCloud>, Self::Context<'_>) {
+    ) -> (
+        &mut IndexMap<String, DisplayPointCloud>,
+        Self::Context<'_>,
+        Option<&mut bool>,
+        Option<&mut bool>,
+    ) {
         (
             &mut self.clouds,
             Self::Context {
@@ -322,6 +345,8 @@ impl ContainerContextGiver<DisplayPointCloud> for InnerGraphicalState {
                 color_format: self.config.format,
                 refresh_screen: &mut self.dirty,
             },
+            Some(&mut self.should_resize),
+            Some(&mut self.picker.counters_dirty),
         )
     }
 }
@@ -331,7 +356,14 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
         &self.segments
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, DisplaySegment>, Self::Context<'_>) {
+    fn get_container_mut(
+        &mut self,
+    ) -> (
+        &mut IndexMap<String, DisplaySegment>,
+        Self::Context<'_>,
+        Option<&mut bool>,
+        Option<&mut bool>,
+    ) {
         (
             &mut self.segments,
             Self::Context {
@@ -343,6 +375,8 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
                 color_format: self.config.format,
                 refresh_screen: &mut self.dirty,
             },
+            Some(&mut self.should_resize),
+            Some(&mut self.picker.counters_dirty),
         )
     }
 }
@@ -371,8 +405,15 @@ impl ContainerContextGiver<UninitedSurface> for InnerBareState {
         &self.surfaces
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSurface>, &mut Settings) {
-        (&mut self.surfaces, &mut self.settings)
+    fn get_container_mut(
+        &mut self,
+    ) -> (
+        &mut IndexMap<String, UninitedSurface>,
+        &mut Settings,
+        Option<&mut bool>,
+        Option<&mut bool>,
+    ) {
+        (&mut self.surfaces, &mut self.settings, None, None)
     }
 }
 
@@ -381,8 +422,15 @@ impl ContainerContextGiver<UninitedPointCloud> for InnerBareState {
         &self.clouds
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedPointCloud>, &mut Settings) {
-        (&mut self.clouds, &mut self.settings)
+    fn get_container_mut(
+        &mut self,
+    ) -> (
+        &mut IndexMap<String, UninitedPointCloud>,
+        &mut Settings,
+        Option<&mut bool>,
+        Option<&mut bool>,
+    ) {
+        (&mut self.clouds, &mut self.settings, None, None)
     }
 }
 
@@ -391,8 +439,15 @@ impl ContainerContextGiver<UninitedSegment> for InnerBareState {
         &self.segments
     }
 
-    fn get_container_mut(&mut self) -> (&mut IndexMap<String, UninitedSegment>, &mut Settings) {
-        (&mut self.segments, &mut self.settings)
+    fn get_container_mut(
+        &mut self,
+    ) -> (
+        &mut IndexMap<String, UninitedSegment>,
+        &mut Settings,
+        Option<&mut bool>,
+        Option<&mut bool>,
+    ) {
+        (&mut self.segments, &mut self.settings, None, None)
     }
 }
 
