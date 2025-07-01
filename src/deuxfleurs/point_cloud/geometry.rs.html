@@ -514,23 +514,27 @@
 <a href=#514 id=514 data-nosnippet>514</a>        <span class="self">self
 <a href=#515 id=515 data-nosnippet>515</a>    </span>}
 <a href=#516 id=516 data-nosnippet>516</a>
-<a href=#517 id=517 data-nosnippet>517</a>    <span class="kw">pub fn </span>add_scalar&lt;S: Scalar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, datas: S) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, Ctxt&gt; {
-<a href=#518 id=518 data-nosnippet>518</a>        <span class="kw">let </span>datas = datas.into();
-<a href=#519 id=519 data-nosnippet>519</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#520 id=520 data-nosnippet>520</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, <span class="self">self</span>.context.get_settings());
-<a href=#521 id=521 data-nosnippet>521</a>        <span class="self">self</span>.add_data(name, PointCloudData::Scalar(datas, settings))
-<a href=#522 id=522 data-nosnippet>522</a>            .convert(|data| {
-<a href=#523 id=523 data-nosnippet>523</a>                <span class="kw">if let </span>PointCloudData::Scalar(<span class="kw">_</span>, settings) = data {
-<a href=#524 id=524 data-nosnippet>524</a>                    settings
-<a href=#525 id=525 data-nosnippet>525</a>                } <span class="kw">else </span>{
-<a href=#526 id=526 data-nosnippet>526</a>                    <span class="macro">panic!</span>()
-<a href=#527 id=527 data-nosnippet>527</a>                }
-<a href=#528 id=528 data-nosnippet>528</a>            })
-<a href=#529 id=529 data-nosnippet>529</a>    }
-<a href=#530 id=530 data-nosnippet>530</a>
-<a href=#531 id=531 data-nosnippet>531</a>    <span class="kw">pub fn </span>add_colors&lt;C: Color&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: String, datas: C) {
-<a href=#532 id=532 data-nosnippet>532</a>        <span class="kw">let </span>datas = datas.into();
-<a href=#533 id=533 data-nosnippet>533</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#534 id=534 data-nosnippet>534</a>        <span class="self">self</span>.add_data(name, PointCloudData::Color(datas));
-<a href=#535 id=535 data-nosnippet>535</a>    }
-<a href=#536 id=536 data-nosnippet>536</a>}</code></pre></div></section></main></body></html>
+<a href=#517 id=517 data-nosnippet>517</a>    <span class="kw">pub fn </span>add_scalar&lt;S: Scalar&gt;(
+<a href=#518 id=518 data-nosnippet>518</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#519 id=519 data-nosnippet>519</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
+<a href=#520 id=520 data-nosnippet>520</a>        datas: S,
+<a href=#521 id=521 data-nosnippet>521</a>    ) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, Ctxt&gt; {
+<a href=#522 id=522 data-nosnippet>522</a>        <span class="kw">let </span>datas = datas.into();
+<a href=#523 id=523 data-nosnippet>523</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
+<a href=#524 id=524 data-nosnippet>524</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, <span class="self">self</span>.context.get_settings());
+<a href=#525 id=525 data-nosnippet>525</a>        <span class="self">self</span>.add_data(name.into(), PointCloudData::Scalar(datas, settings))
+<a href=#526 id=526 data-nosnippet>526</a>            .convert(|data| {
+<a href=#527 id=527 data-nosnippet>527</a>                <span class="kw">if let </span>PointCloudData::Scalar(<span class="kw">_</span>, settings) = data {
+<a href=#528 id=528 data-nosnippet>528</a>                    settings
+<a href=#529 id=529 data-nosnippet>529</a>                } <span class="kw">else </span>{
+<a href=#530 id=530 data-nosnippet>530</a>                    <span class="macro">panic!</span>()
+<a href=#531 id=531 data-nosnippet>531</a>                }
+<a href=#532 id=532 data-nosnippet>532</a>            })
+<a href=#533 id=533 data-nosnippet>533</a>    }
+<a href=#534 id=534 data-nosnippet>534</a>
+<a href=#535 id=535 data-nosnippet>535</a>    <span class="kw">pub fn </span>add_colors&lt;C: Color&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw">impl </span>Into&lt;String&gt;, datas: C) {
+<a href=#536 id=536 data-nosnippet>536</a>        <span class="kw">let </span>datas = datas.into();
+<a href=#537 id=537 data-nosnippet>537</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
+<a href=#538 id=538 data-nosnippet>538</a>        <span class="self">self</span>.add_data(name.into(), PointCloudData::Color(datas));
+<a href=#539 id=539 data-nosnippet>539</a>    }
+<a href=#540 id=540 data-nosnippet>540</a>}</code></pre></div></section></main></body></html>
