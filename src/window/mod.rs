@@ -177,10 +177,14 @@ where
     > {
         use crate::geometry::ElementTrait;
         let (container, mut context, should_resize, counters_dirty) = self.get_container_mut();
+        *context.refresh_screen = true;
         // This could be better with Polonius
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
-            element.replace(args, &mut context);
+            if !element.replace(args, &mut context) {
+                should_resize.map(|should_resize| *should_resize = true);
+                counters_dirty.map(|counters_dirty| *counters_dirty = true);
+            }
             ElementMut {
                 element,
                 context: context,

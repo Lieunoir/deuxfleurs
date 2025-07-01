@@ -406,7 +406,11 @@ pub trait ElementTrait<Ctxt: Context> {
     type Geometry: ElementGeometry;
     type Attached: AttachedGeometry<Ctxt>;
 
-    fn replace(&mut self, args: <Self::Geometry as ElementGeometry>::Args, context: &mut Ctxt);
+    fn replace(
+        &mut self,
+        args: <Self::Geometry as ElementGeometry>::Args,
+        context: &mut Ctxt,
+    ) -> bool;
 
     fn show(&mut self, show: bool, context: &mut Ctxt);
 
@@ -448,12 +452,14 @@ where
         &mut self,
         args: <Self::Geometry as ElementGeometry>::Args,
         _context: &mut &'a mut crate::Settings,
-    ) {
+    ) -> bool {
         let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
             self.geometry = new_geometry;
+            true
         } else {
-            *self = Self::new_bare_with_geometry(self.name.clone(), new_geometry)
+            *self = Self::new_bare_with_geometry(self.name.clone(), new_geometry);
+            false
         }
     }
 
@@ -518,11 +524,12 @@ where
         &mut self,
         args: <Self::Geometry as ElementGeometry>::Args,
         context: &mut GraphicalContext<'_>,
-    ) {
+    ) -> bool {
         let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
             self.renderer.fixed = Fixed::initialize(context.device, &new_geometry);
             self.geometry = new_geometry;
+            true
         } else {
             *self = Self::new_with_geometry(
                 self.name.clone(),
@@ -531,7 +538,8 @@ where
                 context.camera_light_bind_group_layout,
                 context.counter_bind_group_layout,
                 context.color_format,
-            )
+            );
+            false
         }
     }
 
