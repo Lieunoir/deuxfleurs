@@ -314,9 +314,8 @@ const WITH_EDGE_SHADER: &str = "
     let thickness = 1.5;
     let remap = smoothstep(vec3<f32>(0.), d_bary * thickness, in.barycentric_coords);
     let wire_frame = min(remap.x, min(remap.y, remap.z));
-    let edge_color = vec3<f32>(0.02, 0.02, 0.02);
 
-    data_color = mix(data_color, edge_color, 1. - wire_frame);
+    data_color = mix(data_color, 0.1 * data_color, 1. - wire_frame);
 ";
 
 pub fn get_shader(data_format: Option<&SurfaceData>, smooth: bool, show_edge: bool) -> String {
