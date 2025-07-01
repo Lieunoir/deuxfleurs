@@ -12,8 +12,8 @@ use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use num_traits::cast::ToPrimitive;
-use wgpu::BufferAddress;
 use wgpu::util::DeviceExt;
+use wgpu::{BufferAddress, BufferSize};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -280,6 +280,33 @@ impl DataBuffer for SurfaceDataBuffer {
         }
     }
 }
+fn get_barycentric_coords(j: usize, k: usize, face_len: usize) -> i8 {
+    if face_len == 3 {
+        match k {
+            0 => 4,
+            1 => 2,
+            _ => 1,
+        }
+    } else {
+        match j {
+            1 => match k {
+                0 => 6,
+                1 => 2,
+                _ => 3,
+            },
+            _ if j == (face_len - 2) => match k {
+                0 => 5,
+                1 => 3,
+                _ => 1,
+            },
+            _ => match k {
+                0 => 7,
+                1 => 3,
+                _ => 3,
+            },
+        }
+    }
+}
 
 impl FixedRenderer for SurfaceFixedRenderer {
     type Geometry = SurfaceGeometry;
@@ -356,7 +383,7 @@ impl FixedRenderer for SurfaceFixedRenderer {
         let mut two_ring = Vec::with_capacity(20);
         for vertex in &adj_vertices {
             for face in &geometry.vertex_to_face[*vertex as usize] {
-                if !adj_vertices.contains(face) && !two_ring.contains(face) {
+                if !adj_faces.contains(face) && !two_ring.contains(face) {
                     two_ring.push(*face);
                 }
             }
@@ -441,6 +468,7 @@ impl FixedRenderer for SurfaceFixedRenderer {
             })
             .collect::<Vec<_>>();
 
+        // This is the longest by far
         for (face, face_normal) in two_ring.into_iter().zip(two_ring_normals) {
             let face_number = match &geometry.indices {
                 SurfaceIndices::Triangles(_) => face,
@@ -450,51 +478,125 @@ impl FixedRenderer for SurfaceFixedRenderer {
 
             let face = &geometry.indices[face as usize];
             for j in 1..face.len() - 1 {
-                let face_indices = [face[0], face[j], face[j + 1]];
-                for k in 0..3 {
-                    let vertex_index = face_indices[k];
-                    if let Some(position) = adj_vertices.iter().position(|v| *v == vertex_index) {
-                        let barycentric_coords = if face.len() == 3 {
-                            match k {
-                                0 => 4,
-                                1 => 2,
-                                _ => 1,
-                            }
-                        } else {
-                            match j {
-                                1 => match k {
-                                    0 => 6,
-                                    1 => 2,
-                                    _ => 3,
-                                },
-                                _ if j == (face.len() - 2) => match k {
-                                    0 => 5,
-                                    1 => 3,
-                                    _ => 1,
-                                },
-                                _ => match k {
-                                    0 => 7,
-                                    1 => 3,
-                                    _ => 3,
-                                },
-                            }
-                        };
-                        let index = if k != 0 { (j - 1 + k) as usize } else { 0 };
-                        let mut normal = adj_normals[position];
-                        normal[3] = barycentric_coords;
-
-                        let offset = face_number as usize * 3 + (j - 1) * 3 + k;
-
+                let vert = [face[0], face[j], face[j + 1]];
+                let v0_contained = adj_vertices.iter().position(|v| *v == vert[0]);
+                let v1_contained = adj_vertices.iter().position(|v| *v == vert[1]);
+                let v2_contained = adj_vertices.iter().position(|v| *v == vert[2]);
+                let n_contained = v0_contained.is_some() as u8
+                    + v1_contained.is_some() as u8
+                    + v2_contained.is_some() as u8;
+                let offset = face_number as usize * 3 + (j - 1) * 3;
+                match n_contained {
+                    3 => {
+                        let buffer = [
+                            {
+                                let position = v0_contained.unwrap();
+                                let mut normal = adj_normals[position];
+                                normal[3] = get_barycentric_coords(j, 0, face.len());
+                                SurfaceVertex {
+                                    position: geometry.vertices[vert[0] as usize],
+                                    normal,
+                                    face_normal,
+                                }
+                            },
+                            {
+                                let position = v1_contained.unwrap();
+                                let mut normal = adj_normals[position];
+                                normal[3] = get_barycentric_coords(j, 1, face.len());
+                                SurfaceVertex {
+                                    position: geometry.vertices[vert[1] as usize],
+                                    normal,
+                                    face_normal,
+                                }
+                            },
+                            {
+                                let position = v2_contained.unwrap();
+                                let mut normal = adj_normals[position];
+                                normal[3] = get_barycentric_coords(j, 2, face.len());
+                                SurfaceVertex {
+                                    position: geometry.vertices[vert[2] as usize],
+                                    normal,
+                                    face_normal,
+                                }
+                            },
+                        ];
                         queue.write_buffer(
                             &self.vertex_buffer,
                             (offset * size_of::<SurfaceVertex>()) as BufferAddress,
-                            bytemuck::cast_slice(&[SurfaceVertex {
-                                position: geometry.vertices[face[index] as usize],
-                                normal,
-                                face_normal,
-                            }]),
+                            bytemuck::cast_slice(&buffer),
                         );
                     }
+                    2 => {
+                        let (pos_1, pos_2, k1, k2, adj) = if v0_contained.is_none() {
+                            (v1_contained.unwrap(), v2_contained.unwrap(), 1, 2, true)
+                        } else if v1_contained.is_none() {
+                            (v0_contained.unwrap(), v2_contained.unwrap(), 0, 2, false)
+                        } else {
+                            (v0_contained.unwrap(), v1_contained.unwrap(), 0, 1, true)
+                        };
+                        let buffer = [
+                            {
+                                let mut normal = adj_normals[pos_1];
+                                normal[3] = get_barycentric_coords(j, k1, face.len());
+                                SurfaceVertex {
+                                    position: geometry.vertices[vert[k1] as usize],
+                                    normal,
+                                    face_normal,
+                                }
+                            },
+                            {
+                                let mut normal = adj_normals[pos_2];
+                                normal[3] = get_barycentric_coords(j, k2, face.len());
+                                SurfaceVertex {
+                                    position: geometry.vertices[vert[k2] as usize],
+                                    normal,
+                                    face_normal,
+                                }
+                            },
+                        ];
+                        if adj {
+                            queue.write_buffer(
+                                &self.vertex_buffer,
+                                ((offset + k1) * size_of::<SurfaceVertex>()) as BufferAddress,
+                                bytemuck::cast_slice(&buffer),
+                            );
+                        } else {
+                            queue.write_buffer(
+                                &self.vertex_buffer,
+                                ((offset) * size_of::<SurfaceVertex>()) as BufferAddress,
+                                bytemuck::cast_slice(&buffer[..1]),
+                            );
+                            queue.write_buffer(
+                                &self.vertex_buffer,
+                                ((offset + 2) * size_of::<SurfaceVertex>()) as BufferAddress,
+                                bytemuck::cast_slice(&buffer[1..]),
+                            );
+                        }
+                    }
+                    1 => {
+                        let (pos, k) = if v0_contained.is_some() {
+                            (v0_contained.unwrap(), 0)
+                        } else if v1_contained.is_some() {
+                            (v1_contained.unwrap(), 1)
+                        } else {
+                            (v2_contained.unwrap(), 2)
+                        };
+                        let buffer = [{
+                            let mut normal = adj_normals[pos];
+                            normal[3] = get_barycentric_coords(j, k, face.len());
+                            SurfaceVertex {
+                                position: geometry.vertices[vert[k] as usize],
+                                normal,
+                                face_normal,
+                            }
+                        }];
+                        queue.write_buffer(
+                            &self.vertex_buffer,
+                            ((offset + k) * size_of::<SurfaceVertex>()) as BufferAddress,
+                            bytemuck::cast_slice(&buffer),
+                        );
+                    }
+                    _ => (),
                 }
             }
         }
@@ -517,34 +619,9 @@ impl FixedRenderer for SurfaceFixedRenderer {
                         .iter()
                         .position(|v| *v == vertex_index)
                         .unwrap();
-                    let barycentric_coords = if face.len() == 3 {
-                        match k {
-                            0 => 4,
-                            1 => 2,
-                            _ => 1,
-                        }
-                    } else {
-                        match j {
-                            1 => match k {
-                                0 => 6,
-                                1 => 2,
-                                _ => 3,
-                            },
-                            _ if j == (face.len() - 2) => match k {
-                                0 => 5,
-                                1 => 3,
-                                _ => 1,
-                            },
-                            _ => match k {
-                                0 => 7,
-                                1 => 3,
-                                _ => 3,
-                            },
-                        }
-                    };
                     let index = if k != 0 { (j - 1 + k) as usize } else { 0 };
                     let mut normal = adj_normals[position];
-                    normal[3] = barycentric_coords;
+                    normal[3] = get_barycentric_coords(j, k, face.len());
                     buffer.push(SurfaceVertex {
                         position: geometry.vertices[face[index] as usize],
                         normal,
@@ -552,11 +629,15 @@ impl FixedRenderer for SurfaceFixedRenderer {
                     });
                 }
             }
-            queue.write_buffer(
-                &self.vertex_buffer,
-                (3 * face_number as usize * size_of::<SurfaceVertex>()) as BufferAddress,
-                bytemuck::cast_slice(&buffer),
-            );
+            let mut view = queue
+                .write_buffer_with(
+                    &self.vertex_buffer,
+                    (3 * face_number as usize * size_of::<SurfaceVertex>()) as BufferAddress,
+                    BufferSize::new(buffer.len() as u64 * size_of::<SurfaceVertex>() as u64)
+                        .unwrap(),
+                )
+                .unwrap();
+            view.copy_from_slice(bytemuck::cast_slice(&buffer));
         }
     }
 }
