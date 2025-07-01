@@ -246,6 +246,13 @@ const COLORMAP: &str = "
     data_color = colormap(in.data);
 ";
 
+const EDGE_COLORMAP: &str = "
+    let min_0_2 = select(in.data[0], in.data[2], in.barycentric_coords[0] > in.barycentric_coords[2]);
+    let min_1_2 = select(in.data[1], in.data[2], in.barycentric_coords[1] > in.barycentric_coords[2]);
+    let data = select(min_0_2, min_1_2, in.barycentric_coords[0] > in.barycentric_coords[1]);
+    data_color = colormap(data);
+";
+
 const COLOR_UNIFORM: &str = "
 struct DataUniform {
     color: vec4<f32>,
@@ -317,7 +324,7 @@ pub fn get_shader(data_format: Option<&SurfaceData>, smooth: bool, show_edge: bo
         match mesh_data {
             SurfaceData::UVMap(_, _) | SurfaceData::UVCornerMap(_, _) => CHECKERBOARD_UNIFORM,
             SurfaceData::VertexScalar(_, _) => COLORMAP_ISOLINES_UNIFORM,
-            SurfaceData::FaceScalar(_, _) => COLORMAP_UNIFORM,
+            SurfaceData::FaceScalar(_, _) | SurfaceData::EdgeScalar(_, _) => COLORMAP_UNIFORM,
             _ => "",
         }
     } else {
@@ -339,6 +346,13 @@ struct DataInput {
     @location(4) data: f32,
 };",
                 "@location(3) data: f32,",
+            ),
+            SurfaceData::EdgeScalar(..) => (
+                "
+struct DataInput {
+    @location(4) data: vec3<f32>,
+};",
+                "@location(3) data: vec3<f32>,",
             ),
             SurfaceData::Color(..) => (
                 "
@@ -369,6 +383,7 @@ struct DataInput {
         Some(SurfaceData::UVMap(_, _)) | Some(SurfaceData::UVCornerMap(_, _)) => CHECKERBOARD,
         Some(SurfaceData::VertexScalar(_, _)) => COLORMAP_ISOLINES,
         Some(SurfaceData::FaceScalar(_, _)) => COLORMAP,
+        Some(SurfaceData::EdgeScalar(_, _)) => EDGE_COLORMAP,
         _ => "",
     };
     let edge_shader = if show_edge { WITH_EDGE_SHADER } else { "" };

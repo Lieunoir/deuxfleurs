@@ -81,8 +81,7 @@ pub enum SurfaceData {
     Color(Vec<[f32; 3]>),
     FaceScalar(Vec<f32>, ColorMap),
     VertexScalar(Vec<f32>, VertexScalarSettings),
-    //TODO think about edge ordering
-    //EdgeScalar(Vec<f32>),
+    EdgeScalar(Vec<f32>, ColorMap),
     UVMap(Vec<[f32; 2]>, UVMapSettings),
     UVCornerMap(Vec<[f32; 2]>, UVMapSettings),
 }
@@ -94,6 +93,9 @@ impl DataSettings for SurfaceData {
                 set1.recycle(set2)
             }
             (SurfaceData::VertexScalar(_, set1), SurfaceData::VertexScalar(_, set2)) => {
+                set1.recycle(set2)
+            }
+            (SurfaceData::EdgeScalar(_, set1), SurfaceData::EdgeScalar(_, set2)) => {
                 set1.recycle(set2)
             }
             (SurfaceData::UVMap(_, set1), SurfaceData::UVMap(_, set2)) => *set1 = set2,
@@ -108,6 +110,7 @@ impl DataUniformBuilder for SurfaceData {
         match self {
             SurfaceData::VertexScalar(_, uniform) => uniform.build_uniform(device),
             SurfaceData::FaceScalar(_, uniform) => uniform.get_value().build_uniform(device),
+            SurfaceData::EdgeScalar(_, uniform) => uniform.get_value().build_uniform(device),
             SurfaceData::UVMap(_, uniform) => uniform.build_uniform(device),
             SurfaceData::UVCornerMap(_, uniform) => uniform.build_uniform(device),
             // Maybe use empty uniform instead of none?
@@ -119,6 +122,9 @@ impl DataUniformBuilder for SurfaceData {
         match self {
             SurfaceData::VertexScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
             SurfaceData::FaceScalar(_, uniform) => {
+                uniform.get_value().refresh_buffer(queue, data_uniform)
+            }
+            SurfaceData::EdgeScalar(_, uniform) => {
                 uniform.get_value().refresh_buffer(queue, data_uniform)
             }
             SurfaceData::UVMap(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
@@ -138,7 +144,9 @@ impl UiDataElement for SurfaceData {
                 let changed = data_uniform.colormap.draw_ui(ui);
                 data_uniform.isoline.draw_ui(ui) || changed
             }
-            SurfaceData::FaceScalar(_, data_uniform) => data_uniform.draw_ui(ui),
+            SurfaceData::FaceScalar(_, data_uniform) | SurfaceData::EdgeScalar(_, data_uniform) => {
+                data_uniform.draw_ui(ui)
+            }
             _ => false,
         }
     }
@@ -154,6 +162,12 @@ struct VertexColorData {
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct VertexScalarData {
     scalar: f32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct VertexTripleScalarData {
+    scalar: [f32; 3],
 }
 
 #[repr(C)]
@@ -194,6 +208,21 @@ impl Vertex for VertexScalarData {
     }
 }
 
+impl Vertex for VertexTripleScalarData {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 4,
+                format: wgpu::VertexFormat::Float32x3,
+            }],
+        }
+    }
+}
+
 impl Vertex for VertexUVData {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
@@ -214,6 +243,7 @@ impl SurfaceData {
         match self {
             SurfaceData::Color(..) => VertexColorData::desc(),
             SurfaceData::FaceScalar(..) | SurfaceData::VertexScalar(..) => VertexScalarData::desc(),
+            SurfaceData::EdgeScalar(..) => VertexTripleScalarData::desc(),
             SurfaceData::UVMap(..) | SurfaceData::UVCornerMap(..) => VertexUVData::desc(),
         }
     }
@@ -222,6 +252,7 @@ impl SurfaceData {
         &self,
         device: &wgpu::Device,
         indices: &SurfaceIndices,
+        face_to_edge: &[u32],
     ) -> wgpu::Buffer {
         match self {
             SurfaceData::Color(colors) => {
@@ -288,6 +319,63 @@ impl SurfaceData {
                         gpu_vertices.push(VertexScalarData { scalar: t });
                         gpu_vertices.push(VertexScalarData { scalar: t });
                     }
+                }
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex Data Buffer"),
+                    contents: bytemuck::cast_slice(&gpu_vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                })
+            }
+            SurfaceData::EdgeScalar(datas, _) => {
+                let mut min_d = datas[0];
+                let mut max_d = datas[0];
+                for data in datas {
+                    if *data > max_d {
+                        max_d = *data;
+                    }
+                    if *data < min_d {
+                        min_d = *data;
+                    }
+                }
+                let mut gpu_vertices = Vec::with_capacity(3 * indices.tot_triangles());
+                let mut offset = 0;
+                for face in indices.into_iter() {
+                    if face.len() == 3 {
+                        let data_0 = datas[face_to_edge[offset + 1] as usize];
+                        let t_0 = (data_0 - min_d) / (max_d - min_d);
+                        let data_1 = datas[face_to_edge[offset + 2] as usize];
+                        let t_1 = (data_1 - min_d) / (max_d - min_d);
+                        let data_2 = datas[face_to_edge[offset] as usize];
+                        let t_2 = (data_2 - min_d) / (max_d - min_d);
+                        let values = [t_0, t_1, t_2];
+                        gpu_vertices.push(VertexTripleScalarData { scalar: values });
+                        gpu_vertices.push(VertexTripleScalarData { scalar: values });
+                        gpu_vertices.push(VertexTripleScalarData { scalar: values });
+                    } else {
+                        for j in 1..(face.len() - 1) {
+                            let values = if j == 1 {
+                                let data_0 = datas[face_to_edge[offset + 1] as usize];
+                                let t_0 = (data_0 - min_d) / (max_d - min_d);
+                                let data_2 = datas[face_to_edge[offset] as usize];
+                                let t_2 = (data_2 - min_d) / (max_d - min_d);
+                                [t_0, 0., t_2]
+                            } else if j == face.len() - 2 {
+                                let data_0 = datas[face_to_edge[offset + j] as usize];
+                                let t_0 = (data_0 - min_d) / (max_d - min_d);
+                                let data_1 = datas[face_to_edge[offset + j + 1] as usize];
+                                let t_1 = (data_1 - min_d) / (max_d - min_d);
+                                [t_0, t_1, 0.]
+                            } else {
+                                let data_0 = datas[face_to_edge[offset + j] as usize];
+                                let t_0 = (data_0 - min_d) / (max_d - min_d);
+                                [t_0, 0., 0.]
+                            };
+                            gpu_vertices.push(VertexTripleScalarData { scalar: values });
+                            gpu_vertices.push(VertexTripleScalarData { scalar: values });
+                            gpu_vertices.push(VertexTripleScalarData { scalar: values });
+                        }
+                    }
+                    offset += face.len();
                 }
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Vertex Data Buffer"),

@@ -14,6 +14,7 @@ fn main() {
 pub async fn run() {
     let mut handle = deuxfleurs::init(Settings::default());
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
+    let num_edges = spot_v.len() + spot_f.size() - 2;
     handle.register_surface("spot".into(), spot_v, spot_f);
 
     let mut last_selected = None;
@@ -36,6 +37,11 @@ pub async fn run() {
                             let mut selected = vec![0.; surface.geometry().indices.size()];
                             selected[item as usize] = 1.;
                             surface.add_face_scalar("selected face".into(), selected);
+                        }
+                        Picked::Surface(SurfacePicked::Edge(item)) => {
+                            let mut selected = vec![0.; num_edges];
+                            selected[item as usize] = 1.;
+                            surface.add_edge_scalar("selected edge".into(), selected);
                         }
                         _ => {}
                     }

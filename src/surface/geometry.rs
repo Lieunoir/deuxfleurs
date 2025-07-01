@@ -101,6 +101,7 @@ pub struct SurfaceGeometry {
 
 struct FaceToEdge {
     indices: Vec<u32>,
+    num_edges: u32,
     // same strides as indices
 }
 
@@ -173,14 +174,9 @@ fn compute_edge_face_maps(
     let mut helper = |(v1, v2): (usize, usize)| {
         let offset = faces_deg[v1] as usize;
         let slice = &mut edges[offset..offset + processed_by_vertex[v1] as usize + 1];
-        let mut found = false;
-        for value in slice.iter() {
-            if value.0 == v2 as u32 {
-                found = true;
-                face_to_edge[tot_index] = value.1;
-            }
-        }
-        if !found {
+        if let Some(position) = slice.iter().position(|value| value.0 == v2 as u32) {
+            face_to_edge[tot_index] = slice[position].1;
+        } else {
             face_to_edge[tot_index] = cur_edge;
             slice[processed_by_vertex[v1] as usize] = (v2 as u32, cur_edge);
 
@@ -209,6 +205,7 @@ fn compute_edge_face_maps(
     (
         FaceToEdge {
             indices: face_to_edge,
+            num_edges: cur_edge,
         },
         VertexToFace {
             indices: vertex_to_face_values,
@@ -273,7 +270,9 @@ impl DataBuffer for SurfaceDataBuffer {
 
     fn new(device: &wgpu::Device, geometry: &Self::Geometry, data: Option<&Self::Data>) -> Self {
         //let sphere_data_buffer = data.map(|d| d.build_sphere_data_buffer(device));
-        let data_buffer = data.map(|d| d.build_vertex_buffer(device, &geometry.indices));
+        let data_buffer = data.map(|d| {
+            d.build_vertex_buffer(device, &geometry.indices, &geometry.face_to_edge.indices)
+        });
         Self {
             data_buffer,
             // sphere_data_buffer,
@@ -897,15 +896,27 @@ impl DisplaySurface {
                 },
                 if item % 2 == 0 {
                     [
-                        Some(self.geometry.face_to_edge.indices[item as usize * 2]),
-                        Some(self.geometry.face_to_edge.indices[item as usize * 2 + 1]),
+                        Some(
+                            self.geometry.face_to_edge.indices
+                                [(item as usize - (item % 2) as usize) * 2],
+                        ),
+                        Some(
+                            self.geometry.face_to_edge.indices
+                                [(item as usize - (item % 2) as usize) * 2 + 1],
+                        ),
                         None,
                     ]
                 } else {
                     [
                         None,
-                        Some(self.geometry.face_to_edge.indices[item as usize * 2 + 2]),
-                        Some(self.geometry.face_to_edge.indices[item as usize * 2 + 3]),
+                        Some(
+                            self.geometry.face_to_edge.indices
+                                [(item as usize - (item % 2) as usize) * 2 + 2],
+                        ),
+                        Some(
+                            self.geometry.face_to_edge.indices
+                                [(item as usize - (item % 2) as usize) * 2 + 3],
+                        ),
                     ]
                 },
             ),
@@ -1042,6 +1053,20 @@ where
         self.add_data(name, SurfaceData::FaceScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::FaceScalar(_, settings) = data {
+                    settings
+                } else {
+                    panic!()
+                }
+            })
+    }
+
+    pub fn add_edge_scalar<S: Scalar>(&mut self, name: String, datas: S) -> ColorMapMut<'_, Ctxt> {
+        let datas = datas.into();
+        assert!(datas.len() == self.geometry.face_to_edge.num_edges as usize);
+        let new_settings = ColorMap::new(&datas, self.context.get_settings());
+        self.add_data(name, SurfaceData::EdgeScalar(datas, new_settings))
+            .convert(|data| {
+                if let SurfaceData::EdgeScalar(_, settings) = data {
                     settings
                 } else {
                     panic!()
