@@ -15,7 +15,7 @@ pub async fn run() {
 
     // Load the mesh and register it in state:
     let (v, f) = load_mesh("examples/assets/bunnyhead.obj").await.unwrap();
-    handle.register_surface("bunny".into(), v, f);
+    handle.register_surface("bunny", v, f);
 
     // Toggle between shown or not on button pressed
     let callback = |ui: &mut egui::Ui, state: &mut RunningState| {
@@ -26,5 +26,5 @@ pub async fn run() {
         }
     };
     // Run the app
-    handle.run(1080, 720, Some("deuxfleurs-demo".into()), callback);
+    handle.run(1080, 720, Some("deuxfleurs-demo"), callback);
 }

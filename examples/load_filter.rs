@@ -59,9 +59,9 @@ pub async fn run() {
                         vertex[i] = vertex[i] / (weight as f32);
                     }
                 }
-                state.register_surface("loaded mesh".into(), new_pos, indices);
+                state.register_surface("loaded mesh", new_pos, indices);
             }
         }
     };
-    handle.run(1080, 720, Some("deuxfleurs".into()), callback);
+    handle.run(1080, 720, Some("deuxfleurs"), callback);
 }

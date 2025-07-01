@@ -666,8 +666,9 @@ impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctx
         self
     }
 
-    pub fn set_data(&mut self, name: Option<String>) -> &mut Self {
-        self.element.set_data(name, &mut self.context);
+    pub fn set_data<S: Into<String>>(&mut self, name: Option<S>) -> &mut Self {
+        self.element
+            .set_data(name.map(Into::into), &mut self.context);
         self
     }
 

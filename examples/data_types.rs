@@ -45,22 +45,22 @@ pub async fn run() {
         let value = spot_v[spot_f[i][0] as usize][0];
         *face = value;
     }
-    let mut surface1 = handle.register_surface("spot_uv".into(), spot_uv_mesh, spot_f.clone());
+    let mut surface1 = handle.register_surface("spot_uv", spot_uv_mesh, spot_f.clone());
     surface1.show_edges(true);
     surface1
-        .add_vertex_scalar("x coord".into(), spot_data_1.clone())
+        .add_vertex_scalar("x coord", spot_data_1.clone())
         .set_isolines(10.);
-    let mut surface2 = handle.register_surface("spot".into(), spot_v.clone(), spot_f.clone());
+    let mut surface2 = handle.register_surface("spot", spot_v.clone(), spot_f.clone());
     surface2.show_edges(true);
-    surface2.add_vertex_scalar("x coord".into(), spot_data_1.clone());
+    surface2.add_vertex_scalar("x coord", spot_data_1.clone());
     surface2
-        .add_vertex_vector_field("positions".into(), spot_v.clone())
+        .add_vertex_vector_field("positions", spot_v.clone())
         .set_magnitude(0.1);
-    surface2.add_vertex_scalar("y coord".into(), spot_data_2);
-    surface2.add_uv_map("uv".into(), spot_uv_map);
-    surface2.add_corner_uv_map("corner uv".into(), spot_corner_uv_map);
-    surface2.add_face_scalar("face scalar".into(), spot_face_scalar);
-    surface2.set_data(Some("y coord".into()));
+    surface2.add_vertex_scalar("y coord", spot_data_2);
+    surface2.add_uv_map("uv", spot_uv_map);
+    surface2.add_corner_uv_map("corner uv", spot_corner_uv_map);
+    surface2.add_face_scalar("face scalar", spot_face_scalar);
+    surface2.set_data(Some("y coord"));
 
     let mut curves = Vec::new();
     for f in &spot_f {
@@ -74,14 +74,14 @@ pub async fn run() {
             curves.push([f[0], f[2]]);
         }
     }
-    let mut curve = handle.register_segment("spot_c".into(), spot_v.clone(), curves);
-    curve.add_scalar("x coord".into(), spot_data_1.clone());
-    curve.set_data(Some("x coord".into()));
+    let mut curve = handle.register_segment("spot_c", spot_v.clone(), curves);
+    curve.add_scalar("x coord", spot_data_1.clone());
+    curve.set_data(Some("x coord"));
 
-    let mut pc = handle.register_point_cloud("spot_pc".into(), spot_v.clone());
-    pc.add_scalar("x coord".into(), spot_data_1);
+    let mut pc = handle.register_point_cloud("spot_pc", spot_v.clone());
+    pc.add_scalar("x coord", spot_data_1);
     pc.set_radius(0.02);
 
     let callback = move |_ui: &mut egui::Ui, _state: &mut RunningState| {};
-    handle.run(1080, 720, Some("deuxfleurs".into()), callback);
+    handle.run(1080, 720, Some("deuxfleurs"), callback);
 }

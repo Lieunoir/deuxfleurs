@@ -15,7 +15,7 @@ pub async fn run() {
     let mut handle = deuxfleurs::init(Settings::default());
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
     let num_edges = spot_v.len() + spot_f.size() - 2;
-    handle.register_surface("spot".into(), spot_v, spot_f);
+    handle.register_surface("spot", spot_v, spot_f);
 
     let mut last_selected = None;
     let mut last_selected_geometry = "".into();
@@ -31,17 +31,17 @@ pub async fn run() {
                         Picked::Surface(SurfacePicked::Vertex(item)) => {
                             let mut selected = vec![0.; n_v];
                             selected[item as usize] = 1.;
-                            surface.add_vertex_scalar("selected vertex".into(), selected);
+                            surface.add_vertex_scalar("selected vertex", selected);
                         }
                         Picked::Surface(SurfacePicked::Face(item)) => {
                             let mut selected = vec![0.; surface.geometry().indices.size()];
                             selected[item as usize] = 1.;
-                            surface.add_face_scalar("selected face".into(), selected);
+                            surface.add_face_scalar("selected face", selected);
                         }
                         Picked::Surface(SurfacePicked::Edge(item)) => {
                             let mut selected = vec![0.; num_edges];
                             selected[item as usize] = 1.;
-                            surface.add_edge_scalar("selected edge".into(), selected);
+                            surface.add_edge_scalar("selected edge", selected);
                         }
                         _ => {}
                     }
@@ -49,5 +49,5 @@ pub async fn run() {
             }
         }
     };
-    handle.run(1080, 720, Some("deuxfleurs".into()), callback);
+    handle.run(1080, 720, Some("deuxfleurs"), callback);
 }

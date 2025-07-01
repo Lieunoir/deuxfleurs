@@ -513,11 +513,12 @@ impl<T: StateTrait> State<T> {
 
     pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         vertices: V,
         indices: I,
     ) -> SurfaceMut<T::SurfaceRenderer, T::SurfaceAttachedData, T::Context<'_>> {
-        self.0.register(name, (indices.into(), vertices.into()))
+        self.0
+            .register(name.into(), (indices.into(), vertices.into()))
     }
 
     pub fn get_surface_mut(
@@ -536,10 +537,10 @@ impl<T: StateTrait> State<T> {
 
     pub fn register_point_cloud<V: Vertices>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         positions: V,
     ) -> PointCloudMut<T::PointCloudRenderer, T::PointCloudAttachedData, T::Context<'_>> {
-        self.0.register(name, positions.into())
+        self.0.register(name.into(), positions.into())
     }
 
     pub fn get_point_cloud_mut(
@@ -564,11 +565,12 @@ impl<T: StateTrait> State<T> {
     /// * `connections`: segments denoted by extremities indices
     pub fn register_segment<V: Vertices>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         positions: V,
         connections: Vec<[u32; 2]>,
     ) -> SegmentMut<T::SegmentRenderer, T::SegmentAttachedData, T::Context<'_>> {
-        self.0.register(name, (positions.into(), connections))
+        self.0
+            .register(name.into(), (positions.into(), connections))
     }
 
     pub fn get_segment_mut(
@@ -601,14 +603,14 @@ impl InitialState {
     /// * `id`: serves as window title, or id element to attach to. If `None` used `"State"`.
     /// * `callback`: called every frame with a [`egui::Ui`] and a [`RunningState`] arguments, used to
     /// add UI elements and modify state accordingly.
-    pub fn run<T: FnMut(&mut egui::Ui, &mut RunningState)>(
+    pub fn run<S: Into<String>, T: FnMut(&mut egui::Ui, &mut RunningState)>(
         self,
         width: u32,
         height: u32,
-        id: Option<String>,
+        id: Option<S>,
         callback: T,
     ) {
-        StateWrapper::run(self, width, height, id, callback);
+        StateWrapper::run(self, width, height, id.map(Into::into), callback);
     }
 }
 

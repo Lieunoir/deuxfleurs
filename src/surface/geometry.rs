@@ -1046,11 +1046,15 @@ where
         self
     }
 
-    pub fn add_face_scalar<S: Scalar>(&mut self, name: String, datas: S) -> ColorMapMut<'_, Ctxt> {
+    pub fn add_face_scalar<S: Scalar>(
+        &mut self,
+        name: impl Into<String>,
+        datas: S,
+    ) -> ColorMapMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
         let new_settings = ColorMap::new(&datas, self.context.get_settings());
-        self.add_data(name, SurfaceData::FaceScalar(datas, new_settings))
+        self.add_data(name.into(), SurfaceData::FaceScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::FaceScalar(_, settings) = data {
                     settings
@@ -1060,11 +1064,15 @@ where
             })
     }
 
-    pub fn add_edge_scalar<S: Scalar>(&mut self, name: String, datas: S) -> ColorMapMut<'_, Ctxt> {
+    pub fn add_edge_scalar<S: Scalar>(
+        &mut self,
+        name: impl Into<String>,
+        datas: S,
+    ) -> ColorMapMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.face_to_edge.num_edges as usize);
         let new_settings = ColorMap::new(&datas, self.context.get_settings());
-        self.add_data(name, SurfaceData::EdgeScalar(datas, new_settings))
+        self.add_data(name.into(), SurfaceData::EdgeScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::EdgeScalar(_, settings) = data {
                     settings
@@ -1076,13 +1084,13 @@ where
 
     pub fn add_vertex_scalar<S: Scalar>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         datas: S,
     ) -> VertexScalarSettingsMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         let new_settings = VertexScalarSettings::new(&datas, self.context.get_settings());
-        self.add_data(name, SurfaceData::VertexScalar(datas, new_settings))
+        self.add_data(name.into(), SurfaceData::VertexScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::VertexScalar(_, settings) = data {
                     settings
@@ -1094,30 +1102,33 @@ where
 
     pub fn add_uv_map<UV: Vertices2D>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         datas: UV,
     ) -> UVMapSettingsMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        self.add_data(name, SurfaceData::UVMap(datas, UVMapSettings::default()))
-            .convert(|data| {
-                if let SurfaceData::UVMap(_, settings) = data {
-                    settings
-                } else {
-                    panic!()
-                }
-            })
+        self.add_data(
+            name.into(),
+            SurfaceData::UVMap(datas, UVMapSettings::default()),
+        )
+        .convert(|data| {
+            if let SurfaceData::UVMap(_, settings) = data {
+                settings
+            } else {
+                panic!()
+            }
+        })
     }
 
     pub fn add_corner_uv_map<UV: Vertices2D>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         datas: UV,
     ) -> UVMapSettingsMut<'_, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
         self.add_data(
-            name,
+            name.into(),
             SurfaceData::UVCornerMap(datas, UVMapSettings::default()),
         )
         .convert(|data| {
@@ -1129,27 +1140,27 @@ where
         })
     }
 
-    pub fn add_vertex_color<C: Color>(&mut self, name: String, colors: C) {
+    pub fn add_vertex_color<C: Color>(&mut self, name: impl Into<String>, colors: C) {
         let colors = colors.into();
         assert!(colors.len() == self.geometry.vertices.len());
-        self.add_data(name, SurfaceData::Color(colors));
+        self.add_data(name.into(), SurfaceData::Color(colors));
     }
 
     pub fn add_vertex_vector_field<V: Vertices>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         vectors: V,
     ) -> VectorFieldSettingsMut<'_, Ctxt> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        self.add_attached_geometry(name.clone(), (offsets, vectors).into())
+        self.add_attached_geometry(name.into(), (offsets, vectors).into())
             .convert(|attached| attached.get_settings())
     }
 
     pub fn add_face_vector_field<V: Vertices>(
         &mut self,
-        name: String,
+        name: impl Into<String>,
         vectors: V,
     ) -> VectorFieldSettingsMut<'_, Ctxt> {
         let vectors = vectors.into();
@@ -1175,7 +1186,7 @@ where
             })
             .collect();
 
-        self.add_attached_geometry(name.clone(), (offsets, vectors).into())
+        self.add_attached_geometry(name.into(), (offsets, vectors).into())
             .convert(|attached| attached.get_settings())
     }
 }
