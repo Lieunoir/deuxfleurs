@@ -78,7 +78,9 @@ pub trait ContainerContextGiver<Element>: ContextHolder {
         Self::Context<'_>,
         Option<&mut bool>,
         Option<&mut bool>,
+        Option<&mut Option<(String, Picked)>>,
     );
+
     fn get_container(&self) -> &IndexMap<String, Element>;
 }
 
@@ -115,7 +117,7 @@ where
         args: Self::Args,
     ) -> ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
         use crate::geometry::ElementTrait;
-        let (container, mut context, _, _) = self.get_container_mut();
+        let (container, mut context, _, _, _) = self.get_container_mut();
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
             element.replace(args, &mut context);
@@ -135,7 +137,7 @@ where
         name: &str,
     ) -> Option<ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>>>
     {
-        let (container, context, _, _) = self.get_container_mut();
+        let (container, context, _, _, _) = self.get_container_mut();
         container
             .get_mut(name)
             .map(|element| ElementMut { element, context })
@@ -176,7 +178,8 @@ where
         Self::Context<'_>,
     > {
         use crate::geometry::ElementTrait;
-        let (container, mut context, should_resize, counters_dirty) = self.get_container_mut();
+        let (container, mut context, should_resize, counters_dirty, picked) =
+            self.get_container_mut();
         *context.refresh_screen = true;
         // This could be better with Polonius
         if container.contains_key(&name) {
@@ -184,6 +187,12 @@ where
             if !element.replace(args, &mut context) {
                 should_resize.map(|should_resize| *should_resize = true);
                 counters_dirty.map(|counters_dirty| *counters_dirty = true);
+                let picked = picked.unwrap();
+                if let Some((picked_name, _picked)) = picked {
+                    if *picked_name == name {
+                        *picked = None;
+                    }
+                }
             }
             ElementMut {
                 element,
@@ -201,6 +210,12 @@ where
             container.insert(name.clone(), element);
             should_resize.map(|should_resize| *should_resize = true);
             counters_dirty.map(|counters_dirty| *counters_dirty = true);
+            let picked = picked.unwrap();
+            if let Some((picked_name, _picked)) = picked {
+                if *picked_name == name {
+                    *picked = None;
+                }
+            }
             ElementMut {
                 element: container.get_mut(&name).unwrap(),
                 context,
@@ -217,7 +232,7 @@ where
             Self::Context<'_>,
         >,
     > {
-        let (container, context, _, _) = self.get_container_mut();
+        let (container, context, _, _, _) = self.get_container_mut();
         container
             .get_mut(name)
             .map(|element| ElementMut { element, context })
@@ -307,6 +322,7 @@ impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
         Self::Context<'_>,
         Option<&mut bool>,
         Option<&mut bool>,
+        Option<&mut Option<(String, Picked)>>,
     ) {
         (
             &mut self.surfaces,
@@ -321,6 +337,7 @@ impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
             },
             Some(&mut self.should_resize),
             Some(&mut self.picker.counters_dirty),
+            Some(&mut self.picker.picked_item),
         )
     }
 }
@@ -337,6 +354,7 @@ impl ContainerContextGiver<DisplayPointCloud> for InnerGraphicalState {
         Self::Context<'_>,
         Option<&mut bool>,
         Option<&mut bool>,
+        Option<&mut Option<(String, Picked)>>,
     ) {
         (
             &mut self.clouds,
@@ -351,6 +369,7 @@ impl ContainerContextGiver<DisplayPointCloud> for InnerGraphicalState {
             },
             Some(&mut self.should_resize),
             Some(&mut self.picker.counters_dirty),
+            Some(&mut self.picker.picked_item),
         )
     }
 }
@@ -367,6 +386,7 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
         Self::Context<'_>,
         Option<&mut bool>,
         Option<&mut bool>,
+        Option<&mut Option<(String, Picked)>>,
     ) {
         (
             &mut self.segments,
@@ -381,6 +401,7 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
             },
             Some(&mut self.should_resize),
             Some(&mut self.picker.counters_dirty),
+            Some(&mut self.picker.picked_item),
         )
     }
 }
@@ -416,8 +437,9 @@ impl ContainerContextGiver<UninitedSurface> for InnerBareState {
         &mut Settings,
         Option<&mut bool>,
         Option<&mut bool>,
+        Option<&mut Option<(String, Picked)>>,
     ) {
-        (&mut self.surfaces, &mut self.settings, None, None)
+        (&mut self.surfaces, &mut self.settings, None, None, None)
     }
 }
 
@@ -433,8 +455,9 @@ impl ContainerContextGiver<UninitedPointCloud> for InnerBareState {
         &mut Settings,
         Option<&mut bool>,
         Option<&mut bool>,
+        Option<&mut Option<(String, Picked)>>,
     ) {
-        (&mut self.clouds, &mut self.settings, None, None)
+        (&mut self.clouds, &mut self.settings, None, None, None)
     }
 }
 
@@ -450,8 +473,9 @@ impl ContainerContextGiver<UninitedSegment> for InnerBareState {
         &mut Settings,
         Option<&mut bool>,
         Option<&mut bool>,
+        Option<&mut Option<(String, Picked)>>,
     ) {
-        (&mut self.segments, &mut self.settings, None, None)
+        (&mut self.segments, &mut self.settings, None, None, None)
     }
 }
 
