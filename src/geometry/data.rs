@@ -3,7 +3,7 @@ use crate::attachment::internal::AttachmentPosition;
 use super::{Context, DataUniformBuilder, GraphicalContext};
 
 pub struct DataMut<'a, T, Ctxt: Context> {
-    pub(crate) inner: &'a mut T,
+    pub(crate) inner: T,
     pub(crate) context: &'a mut Ctxt,
     pub(crate) uniform: Ctxt::DataUniform<'a>,
 }
@@ -12,7 +12,7 @@ pub type UninitedData<'a, 'b, T> = DataMut<'b, T, &'a mut crate::Settings>;
 pub type DisplayData<'a, 'b, T> = DataMut<'b, T, GraphicalContext<'a>>;
 
 impl<'a, T, Ctxt: Context> DataMut<'a, T, Ctxt> {
-    pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(self, f: F) -> DataMut<'a, U, Ctxt> {
+    pub(crate) fn convert<U, F: FnOnce(T) -> U>(self, f: F) -> DataMut<'a, U, Ctxt> {
         DataMut {
             inner: f(self.inner),
             uniform: self.uniform,
@@ -54,7 +54,7 @@ pub trait NewAttachedGeometry {
 
 impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
     type Args = ();
-    type Settings = ();
+    type Settings<'a> = &'a mut ();
 
     fn new(
         _name: String,
@@ -67,7 +67,7 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
         ()
     }
 
-    fn get_settings(&mut self) -> &mut Self::Settings {
+    fn get_settings(&mut self) -> Self::Settings<'_> {
         self
     }
 
@@ -96,7 +96,7 @@ impl NewAttachedGeometry for () {
 
 impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
     type Args = ();
-    type Settings = ();
+    type Settings<'a> = &'a mut ();
 
     fn new(
         _name: String,
@@ -109,7 +109,7 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
         EmptyAttached(())
     }
 
-    fn get_settings(&mut self) -> &mut Self::Settings {
+    fn get_settings(&mut self) -> Self::Settings<'_> {
         &mut self.0
     }
 
@@ -152,7 +152,9 @@ pub trait ElementGeometry {
 
 pub trait AttachedGeometry<Ctxt: Context> {
     type Args;
-    type Settings;
+    type Settings<'a>
+    where
+        Self: 'a;
 
     fn new(
         name: String,
@@ -186,7 +188,7 @@ pub trait AttachedGeometry<Ctxt: Context> {
     {
     }
 
-    fn get_settings(&mut self) -> &mut Self::Settings;
+    fn get_settings(&mut self) -> Self::Settings<'_>;
 
     fn get_attached_position(&self) -> &AttachmentPosition;
 

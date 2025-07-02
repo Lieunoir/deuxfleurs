@@ -1,5 +1,4 @@
 use crate::aabb::SBV;
-use crate::attachment::{NewPoints, NewVectorField, Points, VectorField};
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::data::internal::{DataSettings, DataUniformBuilder};
 use crate::deferred;
@@ -14,8 +13,8 @@ use crate::segment::{
     UninitedSegment,
 };
 use crate::surface::{
-    DisplaySurface, Surface, SurfaceDataBuffer, SurfaceFixedRenderer, SurfaceMut, SurfacePipeline,
-    UninitedSurface,
+    DisplaySurface, NewSurfaceAttachment, Surface, SurfaceAttachment, SurfaceDataBuffer,
+    SurfaceFixedRenderer, SurfaceMut, SurfacePipeline, UninitedSurface,
 };
 use crate::texture;
 use crate::types::SurfaceIndices;
@@ -303,8 +302,7 @@ pub struct InnerGraphicalState {
 impl ContextHolder for InnerGraphicalState {
     type Context<'a> = GraphicalContext<'a>;
     type SurfaceRenderer = Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>;
-    //type SurfaceAttachedData = VectorField;
-    type SurfaceAttachedData = Points;
+    type SurfaceAttachedData = SurfaceAttachment;
     type PointCloudRenderer =
         Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>;
     type PointCloudAttachedData = EmptyAttached;
@@ -420,8 +418,7 @@ pub struct InnerBareState {
 impl ContextHolder for InnerBareState {
     type Context<'a> = &'a mut Settings;
     type SurfaceRenderer = ();
-    //type SurfaceAttachedData = NewVectorField;
-    type SurfaceAttachedData = NewPoints;
+    type SurfaceAttachedData = NewSurfaceAttachment;
     type PointCloudRenderer = ();
     type PointCloudAttachedData = ();
     type SegmentRenderer = ();

@@ -39,7 +39,7 @@ impl VertexScalarSettings {
     }
 }
 
-pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, VertexScalarSettings, Ctxt>;
+pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VertexScalarSettings, Ctxt>;
 
 impl<'a, Ctxt: Context> VertexScalarSettingsMut<'a, Ctxt>
 where

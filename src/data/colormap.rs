@@ -570,7 +570,7 @@ impl UiDataElement for ColorMap {
     }
 }
 
-pub type ColorMapMut<'a, Ctxt> = DataMut<'a, ColorMap, Ctxt>;
+pub type ColorMapMut<'a, Ctxt> = DataMut<'a, &'a mut ColorMap, Ctxt>;
 
 impl<'a, Ctxt: Context> ColorMapMut<'a, Ctxt>
 where

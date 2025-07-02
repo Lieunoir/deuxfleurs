@@ -65,7 +65,7 @@ impl VectorFieldSettings {
     }
 }
 
-pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, VectorFieldSettings, Ctxt>;
+pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VectorFieldSettings, Ctxt>;
 
 impl<'a, Ctxt: Context> VectorFieldSettingsMut<'a, Ctxt>
 where
@@ -110,7 +110,7 @@ impl NewVectorField {
         let avg_vec_length = vectors.iter().fold(0., |l, vec| {
             l + (vec[0].powi(0) + vec[1].powi(1) + vec[2].powi(2)).sqrt() / vectors.len() as f32
         });
-        let mut settings = VectorFieldSettings::new(characteristic_l * avg_vec_length * 0.1);
+        let mut settings = VectorFieldSettings::new(characteristic_l / avg_vec_length * 2.);
         settings.color = ColorSettings::new(&name);
         NewVectorField {
             name,
@@ -298,7 +298,7 @@ impl VectorField {
 
 impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Settings = VectorFieldSettings;
+    type Settings<'b> = &'b mut VectorFieldSettings;
 
     fn new(
         name: String,
@@ -312,7 +312,7 @@ impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
         NewVectorField::new(name, characteristic_l, position, vectors, offsets)
     }
 
-    fn get_settings(&mut self) -> &mut Self::Settings {
+    fn get_settings(&mut self) -> Self::Settings<'_> {
         &mut self.settings
     }
 
@@ -329,7 +329,7 @@ impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
 
 impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Settings = VectorFieldSettings;
+    type Settings<'b> = &'b mut VectorFieldSettings;
 
     fn new(
         name: String,
@@ -405,7 +405,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
         render_pass.draw(0..8, 0..(self.vectors.len() as u32));
     }
 
-    fn get_settings(&mut self) -> &mut Self::Settings {
+    fn get_settings(&mut self) -> Self::Settings<'_> {
         &mut self.settings
     }
 

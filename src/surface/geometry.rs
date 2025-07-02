@@ -1,15 +1,13 @@
 use super::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
 use super::shader::{PICKER_SHADER, SHADOW_SHADER, get_shader};
-use crate::attachment::{NewPoints, Points};
-use crate::attachment::{
-    NewVectorField, VectorField, VectorFieldSettings, VectorFieldSettingsMut,
-    internal::AttachmentPosition,
-};
+use crate::attachment::{VectorFieldSettingsMut, internal::AttachmentPosition};
 use crate::camera::Camera;
 use crate::data::{internal::*, *};
 use crate::geometry::*;
 use crate::picker::SurfacePicked;
-use crate::point_cloud::{DisplayPointCloud, PCSettings, UninitedPointCloud};
+use crate::point_cloud::PCSettings;
+use crate::surface::attachment::{SurfaceAttachmentArgs, SurfaceAttachmentSettings};
+use crate::surface::{NewSurfaceAttachment, SurfaceAttachment};
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
 use crate::types::{SurfaceIndices, Vertices2D};
@@ -928,10 +926,8 @@ impl Render for SurfaceRenderer {
 pub type Surface<Renderer, AttachedData> =
     Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData>;
 
-//pub type UninitedSurface = Surface<(), NewVectorField>;
-//pub type DisplaySurface = Surface<SurfaceRenderer, VectorField>;
-pub type UninitedSurface = Surface<(), NewPoints>;
-pub type DisplaySurface = Surface<SurfaceRenderer, Points>;
+pub type UninitedSurface = Surface<(), NewSurfaceAttachment>;
+pub type DisplaySurface = Surface<SurfaceRenderer, SurfaceAttachment>;
 
 impl DisplaySurface {
     pub(crate) fn get_element(
@@ -1094,15 +1090,13 @@ impl DisplaySurface {
 pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
     ElementMut<'a, Surface<Renderer, AttachedData>, Context>;
 
-impl<'a, Renderer, AttachedData, Ctxt: Context> SurfaceMut<'a, Renderer, AttachedData, Ctxt>
+impl<'a, 'b, Renderer, AttachedData, Ctxt: Context> SurfaceMut<'a, Renderer, AttachedData, Ctxt>
 where
     AttachedData: AttachedGeometry<
             Ctxt,
-            //Settings = VectorFieldSettings,
-            //Args = (Vec<[f32; 3]>, Vec<[f32; 3]>),
-            Settings = PCSettings,
-            Args = (Vec<u32>, Vec<[f32; 3]>),
-        >,
+            Settings<'b> = SurfaceAttachmentSettings<'b>,
+            Args = SurfaceAttachmentArgs,
+        > + 'b,
     Surface<Renderer, AttachedData>:
         ElementTrait<Ctxt, Data = SurfaceData, Attached = AttachedData>,
 {
@@ -1123,10 +1117,10 @@ where
     }
 
     pub fn add_face_scalar<S: Scalar>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         datas: S,
-    ) -> ColorMapMut<'_, Ctxt> {
+    ) -> ColorMapMut<'b, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
         let new_settings = ColorMap::new(&datas, self.context.get_settings());
@@ -1141,10 +1135,10 @@ where
     }
 
     pub fn add_edge_scalar<S: Scalar>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         datas: S,
-    ) -> ColorMapMut<'_, Ctxt> {
+    ) -> ColorMapMut<'b, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.face_to_edge.num_edges as usize);
         let new_settings = ColorMap::new(&datas, self.context.get_settings());
@@ -1159,10 +1153,10 @@ where
     }
 
     pub fn add_vertex_scalar<S: Scalar>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         datas: S,
-    ) -> VertexScalarSettingsMut<'_, Ctxt> {
+    ) -> VertexScalarSettingsMut<'b, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         let new_settings = VertexScalarSettings::new(&datas, self.context.get_settings());
@@ -1177,10 +1171,10 @@ where
     }
 
     pub fn add_uv_map<UV: Vertices2D>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         datas: UV,
-    ) -> UVMapSettingsMut<'_, Ctxt> {
+    ) -> UVMapSettingsMut<'b, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         self.add_data(
@@ -1197,10 +1191,10 @@ where
     }
 
     pub fn add_corner_uv_map<UV: Vertices2D>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         datas: UV,
-    ) -> UVMapSettingsMut<'_, Ctxt> {
+    ) -> UVMapSettingsMut<'b, Ctxt> {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
         self.add_data(
@@ -1223,11 +1217,10 @@ where
     }
 
     pub fn add_vertex_points(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         vertices: Vec<u32>,
-    ) -> DataMut<'_, PCSettings, Ctxt> {
-        //let vectors = vectors.into();
+    ) -> DataMut<'b, &'b mut PCSettings, Ctxt> {
         if let Some(max) = vertices.iter().max() {
             assert!(*max < self.geometry.vertices.len() as u32);
         }
@@ -1235,36 +1228,35 @@ where
             .iter()
             .map(|v| self.geometry.vertices[*v as usize])
             .collect::<Vec<_>>();
-        self.add_attached_geometry(
-            name.into(),
-            (vertices, positions).into(),
-            AttachmentPosition::Vertex,
-        )
-        .convert(|attached| attached.get_settings())
+        let args = SurfaceAttachmentArgs::Points((vertices, positions).into());
+        self.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
+            .convert(|attached| match attached.get_settings() {
+                SurfaceAttachmentSettings::Points(p) => p,
+                _ => panic!(),
+            })
     }
 
-    /*
     pub fn add_vertex_vector_field<V: Vertices>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         vectors: V,
-    ) -> VectorFieldSettingsMut<'_, Ctxt> {
+    ) -> VectorFieldSettingsMut<'b, Ctxt> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        self.add_attached_geometry(
-            name.into(),
-            (offsets, vectors).into(),
-            AttachmentPosition::Vertex,
-        )
-        .convert(|attached| attached.get_settings())
+        let args = SurfaceAttachmentArgs::VectorField((offsets, vectors).into());
+        self.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
+            .convert(|attached| match attached.get_settings() {
+                SurfaceAttachmentSettings::VectorField(f) => f,
+                _ => panic!(),
+            })
     }
 
     pub fn add_face_vector_field<V: Vertices>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         vectors: V,
-    ) -> VectorFieldSettingsMut<'_, Ctxt> {
+    ) -> VectorFieldSettingsMut<'b, Ctxt> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.indices.size());
         let offsets: Vec<[f32; 3]> = self
@@ -1287,20 +1279,19 @@ where
                 [res0, res1, res2]
             })
             .collect();
-
-        self.add_attached_geometry(
-            name.into(),
-            (offsets, vectors).into(),
-            AttachmentPosition::Face,
-        )
-        .convert(|attached| attached.get_settings())
+        let args = SurfaceAttachmentArgs::VectorField((offsets, vectors).into());
+        self.add_attached_geometry(name.into(), args, AttachmentPosition::Face)
+            .convert(|attached| match attached.get_settings() {
+                SurfaceAttachmentSettings::VectorField(f) => f,
+                _ => panic!(),
+            })
     }
 
     pub fn add_edge_vector_field<V: Vertices>(
-        &mut self,
+        &'b mut self,
         name: impl Into<String>,
         vectors: V,
-    ) -> VectorFieldSettingsMut<'_, Ctxt> {
+    ) -> VectorFieldSettingsMut<'b, Ctxt> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.face_to_edge.num_edges as usize);
         let mut offsets = vec![[0., 0., 0.]; self.geometry.face_to_edge.num_edges as usize];
@@ -1320,14 +1311,13 @@ where
             offset += face.len();
         }
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        self.add_attached_geometry(
-            name.into(),
-            (offsets, vectors).into(),
-            AttachmentPosition::Edge,
-        )
-        .convert(|attached| attached.get_settings())
+        let args = SurfaceAttachmentArgs::VectorField((offsets, vectors).into());
+        self.add_attached_geometry(name.into(), args, AttachmentPosition::Edge)
+            .convert(|attached| match attached.get_settings() {
+                SurfaceAttachmentSettings::VectorField(f) => f,
+                _ => panic!(),
+            })
     }
-    */
 }
 
 //Can be simplified now using vertex -> face adjacency

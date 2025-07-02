@@ -445,7 +445,7 @@ pub trait ElementTrait<Ctxt: Context> {
         name: String,
         data: Self::Data,
         context: &'b mut Ctxt,
-    ) -> DataMut<'b, Self::Data, Ctxt>;
+    ) -> DataMut<'b, &'b mut Self::Data, Ctxt>;
 
     fn update_settings(&mut self, _context: &mut Ctxt, _rebuild_pipeline: bool) {}
 
@@ -457,7 +457,7 @@ pub trait ElementTrait<Ctxt: Context> {
         args: <Self::Attached as AttachedGeometry<Ctxt>>::Args,
         position: AttachmentPosition,
         context: &'b mut Ctxt,
-    ) -> DataMut<'b, Self::Attached, Ctxt>;
+    ) -> DataMut<'b, &'b mut Self::Attached, Ctxt>;
 }
 
 impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<&'a mut crate::Settings>
@@ -501,7 +501,7 @@ where
         name: String,
         data: Self::Data,
         context: &'b mut &'a mut crate::Settings,
-    ) -> DataMut<'b, Self::Data, &'a mut crate::Settings> {
+    ) -> DataMut<'b, &'b mut Self::Data, &'a mut crate::Settings> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -518,7 +518,7 @@ where
         args: <Self::Attached as AttachedGeometry<&'a mut crate::Settings>>::Args,
         position: AttachmentPosition,
         context: &'b mut &'a mut crate::Settings,
-    ) -> DataMut<'b, Self::Attached, &'a mut crate::Settings> {
+    ) -> DataMut<'b, &'b mut Self::Attached, &'a mut crate::Settings> {
         let geometry = AttachedG::new(
             name.clone(),
             args,
@@ -610,7 +610,7 @@ where
         name: String,
         data: Self::Data,
         context: &'b mut GraphicalContext<'a>,
-    ) -> DataMut<'b, Self::Data, GraphicalContext<'a>> {
+    ) -> DataMut<'b, &'b mut Self::Data, GraphicalContext<'a>> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_settings(old));
@@ -663,7 +663,7 @@ where
         args: <Self::Attached as AttachedGeometry<GraphicalContext<'a>>>::Args,
         position: AttachmentPosition,
         context: &'b mut GraphicalContext<'a>,
-    ) -> DataMut<'b, Self::Attached, GraphicalContext<'a>> {
+    ) -> DataMut<'b, &'b mut Self::Attached, GraphicalContext<'a>> {
         *context.refresh_screen = true;
         {
             let geometry = Self::Attached::new(
@@ -713,7 +713,7 @@ impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctx
         &mut self,
         name: String,
         data: Element::Data,
-    ) -> DataMut<'_, Element::Data, Ctxt> {
+    ) -> DataMut<'_, &mut Element::Data, Ctxt> {
         self.element.add_data(name, data, &mut self.context)
     }
 
@@ -722,7 +722,7 @@ impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctx
         name: String,
         args: <Element::Attached as AttachedGeometry<Ctxt>>::Args,
         position: AttachmentPosition,
-    ) -> DataMut<'_, Element::Attached, Ctxt> {
+    ) -> DataMut<'_, &mut Element::Attached, Ctxt> {
         self.element
             .add_attached_geometry(name, args, position, &mut self.context)
     }
