@@ -1,31 +1,36 @@
 use crate::{
     Settings,
     attachment::{
-        NewPoints, NewVectorField, Points, VectorField, VectorFieldSettings,
+        NewPoints, NewSegments, NewVectorField, Points, Segments, VectorField, VectorFieldSettings,
         internal::AttachmentPosition,
     },
     geometry::{AttachedGeometry, GraphicalContext, NewAttachedGeometry},
     point_cloud::PCSettings,
+    segment::PCSettings as SegmentSettings,
 };
 
 pub enum NewSurfaceAttachment {
     VectorField(NewVectorField),
     Points(NewPoints),
+    Segments(NewSegments),
 }
 
 pub enum SurfaceAttachmentSettings<'a> {
     VectorField(&'a mut VectorFieldSettings),
     Points(&'a mut PCSettings),
+    Segments(&'a mut SegmentSettings),
 }
 
 pub enum SurfaceAttachmentArgs {
     VectorField((Vec<[f32; 3]>, Vec<[f32; 3]>)),
     Points((Vec<u32>, Vec<[f32; 3]>)),
+    Segments((Vec<u32>, (Vec<[f32; 3]>, Vec<[u32; 2]>))),
 }
 
 pub enum SurfaceAttachment {
     VectorField(VectorField),
     Points(Points),
+    Segments(Segments),
 }
 
 impl<'a> AttachedGeometry<&'a mut Settings> for NewSurfaceAttachment {
@@ -61,6 +66,16 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewSurfaceAttachment {
                 context,
                 transform_layout,
             )),
+            SurfaceAttachmentArgs::Segments(args) => {
+                NewSurfaceAttachment::Segments(NewSegments::new(
+                    name,
+                    args,
+                    position,
+                    characteristic_l,
+                    context,
+                    transform_layout,
+                ))
+            }
         }
     }
 
@@ -68,6 +83,7 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewSurfaceAttachment {
         match self {
             NewSurfaceAttachment::VectorField(v) => v.show(show, refresh_screen),
             NewSurfaceAttachment::Points(p) => p.show(show, refresh_screen),
+            NewSurfaceAttachment::Segments(s) => s.show(show, refresh_screen),
         }
     }
 
@@ -75,6 +91,7 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewSurfaceAttachment {
         match self {
             NewSurfaceAttachment::VectorField(v) => v.shown(),
             NewSurfaceAttachment::Points(p) => p.shown(),
+            NewSurfaceAttachment::Segments(s) => s.shown(),
         }
     }
 
@@ -84,6 +101,9 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewSurfaceAttachment {
                 SurfaceAttachmentSettings::VectorField(v.get_settings())
             }
             NewSurfaceAttachment::Points(p) => SurfaceAttachmentSettings::Points(p.get_settings()),
+            NewSurfaceAttachment::Segments(s) => {
+                SurfaceAttachmentSettings::Segments(s.get_settings())
+            }
         }
     }
 
@@ -91,6 +111,7 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewSurfaceAttachment {
         match self {
             NewSurfaceAttachment::VectorField(v) => v.get_attached_position(),
             NewSurfaceAttachment::Points(p) => p.get_attached_position(),
+            NewSurfaceAttachment::Segments(s) => s.get_attached_position(),
         }
     }
 
@@ -98,6 +119,7 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewSurfaceAttachment {
         match self {
             NewSurfaceAttachment::VectorField(v) => v.move_elements(queue, indices, pos),
             NewSurfaceAttachment::Points(p) => p.move_elements(queue, indices, pos),
+            NewSurfaceAttachment::Segments(s) => s.move_elements(queue, indices, pos),
         }
     }
 }
@@ -120,6 +142,12 @@ impl NewAttachedGeometry for NewSurfaceAttachment {
                 color_format,
             )),
             NewSurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.init(
+                device,
+                camera_light_bind_group_layout,
+                transform_bind_group_layout,
+                color_format,
+            )),
+            NewSurfaceAttachment::Segments(p) => SurfaceAttachment::Segments(p.init(
                 device,
                 camera_light_bind_group_layout,
                 transform_bind_group_layout,
@@ -162,6 +190,14 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
                 context,
                 transform_layout,
             )),
+            SurfaceAttachmentArgs::Segments(args) => SurfaceAttachment::Segments(Segments::new(
+                name,
+                args,
+                position,
+                characteristic_l,
+                context,
+                transform_layout,
+            )),
         }
     }
 
@@ -169,6 +205,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
         match self {
             SurfaceAttachment::VectorField(v) => v.show(show, refresh_screen),
             SurfaceAttachment::Points(p) => p.show(show, refresh_screen),
+            SurfaceAttachment::Segments(s) => s.show(show, refresh_screen),
         }
     }
 
@@ -176,6 +213,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
         match self {
             SurfaceAttachment::VectorField(v) => v.shown(),
             SurfaceAttachment::Points(p) => p.shown(),
+            SurfaceAttachment::Segments(s) => s.shown(),
         }
     }
 
@@ -185,6 +223,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
                 SurfaceAttachmentSettings::VectorField(v.get_settings())
             }
             SurfaceAttachment::Points(p) => SurfaceAttachmentSettings::Points(p.get_settings()),
+            SurfaceAttachment::Segments(s) => SurfaceAttachmentSettings::Segments(s.get_settings()),
         }
     }
 
@@ -192,6 +231,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
         match self {
             SurfaceAttachment::VectorField(v) => v.get_attached_position(),
             SurfaceAttachment::Points(p) => p.get_attached_position(),
+            SurfaceAttachment::Segments(s) => s.get_attached_position(),
         }
     }
 
@@ -199,6 +239,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
         match self {
             SurfaceAttachment::VectorField(v) => v.move_elements(queue, indices, pos),
             SurfaceAttachment::Points(p) => p.move_elements(queue, indices, pos),
+            SurfaceAttachment::Segments(s) => s.move_elements(queue, indices, pos),
         }
     }
 
@@ -209,6 +250,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
         match self {
             SurfaceAttachment::VectorField(v) => v.render(render_pass),
             SurfaceAttachment::Points(p) => p.render(render_pass),
+            SurfaceAttachment::Segments(s) => s.render(render_pass),
         }
     }
 
@@ -231,6 +273,14 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
                 refresh_screen,
             ),
             SurfaceAttachment::Points(p) => p.draw_ui(
+                ui,
+                device,
+                queue,
+                camera_light_bind_group_layout,
+                color_format,
+                refresh_screen,
+            ),
+            SurfaceAttachment::Segments(s) => s.draw_ui(
                 ui,
                 device,
                 queue,

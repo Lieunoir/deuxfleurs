@@ -5,24 +5,24 @@ use crate::{
         AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
         ShapeSettings,
     },
-    point_cloud::{DisplayPointCloud, PCSettings, UninitedPointCloud},
+    segment::{DisplaySegment, PCSettings, UninitedSegment},
     settings::Settings,
 };
 
-pub struct NewPoints {
-    inner: UninitedPointCloud,
+pub struct NewSegments {
+    inner: UninitedSegment,
     indices: Vec<u32>,
     position: AttachmentPosition,
 }
 
-pub struct Points {
-    inner: DisplayPointCloud,
+pub struct Segments {
+    inner: DisplaySegment,
     indices: Vec<u32>,
     position: AttachmentPosition,
 }
 
-impl<'a> AttachedGeometry<&'a mut Settings> for NewPoints {
-    type Args = (Vec<u32>, Vec<[f32; 3]>);
+impl<'a> AttachedGeometry<&'a mut Settings> for NewSegments {
+    type Args = (Vec<u32>, (Vec<[f32; 3]>, Vec<[u32; 2]>));
     type Settings<'b> = &'b mut PCSettings;
 
     fn new(
@@ -33,8 +33,8 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewPoints {
         _context: &mut &'a mut Settings,
         _transform_layout: &(),
     ) -> Self {
-        let inner = UninitedPointCloud::new_bare(name, args.1, Some(3. * characteristic_l));
-        NewPoints {
+        let inner = UninitedSegment::new_bare(name, args.1, Some(characteristic_l));
+        NewSegments {
             inner,
             indices: args.0,
             position,
@@ -66,8 +66,8 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewPoints {
     }
 }
 
-impl NewAttachedGeometry for NewPoints {
-    type UpgradedAttachedGeometry = Points;
+impl NewAttachedGeometry for NewSegments {
+    type UpgradedAttachedGeometry = Segments;
 
     fn init(
         self,
@@ -82,7 +82,7 @@ impl NewAttachedGeometry for NewPoints {
             transform_bind_group_layout, //Lie
             color_format,
         );
-        Points {
+        Segments {
             inner,
             indices: self.indices,
             position: self.position,
@@ -90,8 +90,8 @@ impl NewAttachedGeometry for NewPoints {
     }
 }
 
-impl<'a> AttachedGeometry<GraphicalContext<'a>> for Points {
-    type Args = (Vec<u32>, Vec<[f32; 3]>);
+impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
+    type Args = (Vec<u32>, (Vec<[f32; 3]>, Vec<[u32; 2]>));
     type Settings<'b> = &'b mut PCSettings;
 
     fn new(
@@ -103,16 +103,16 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Points {
         _transform_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         *context.refresh_screen = true;
-        let inner = DisplayPointCloud::new(
+        let inner = DisplaySegment::new(
             name,
             args.1,
-            Some(3. * characteristic_l),
+            Some(characteristic_l),
             context.device,
             context.camera_light_bind_group_layout,
             context.counter_bind_group_layout,
             context.color_format,
         );
-        Points {
+        Segments {
             inner,
             indices: args.0,
             position,
@@ -176,4 +176,4 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Points {
     }
 }
 
-pub type PointsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut PCSettings, Ctxt>;
+pub type SegmentsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut PCSettings, Ctxt>;

@@ -57,6 +57,7 @@ pub async fn run() {
         .add_vertex_vector_field("positions", spot_v.clone())
         .set_magnitude(1.1, true);
     surface2.add_vertex_points("First 4 points", vec![0, 1, 2, 3]);
+    surface2.add_edge_segments("First 4 segments", vec![0, 1, 2, 3]);
     surface2.add_vertex_scalar("y coord", spot_data_2);
     surface2.add_uv_map("uv", spot_uv_map);
     surface2.add_corner_uv_map("corner uv", spot_corner_uv_map);

@@ -1,11 +1,11 @@
 use super::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
 use super::shader::{PICKER_SHADER, SHADOW_SHADER, get_shader};
+use crate::attachment::{PointsSettingsMut, SegmentsSettingsMut};
 use crate::attachment::{VectorFieldSettingsMut, internal::AttachmentPosition};
 use crate::camera::Camera;
 use crate::data::{internal::*, *};
 use crate::geometry::*;
 use crate::picker::SurfacePicked;
-use crate::point_cloud::PCSettings;
 use crate::surface::attachment::{SurfaceAttachmentArgs, SurfaceAttachmentSettings};
 use crate::surface::{NewSurfaceAttachment, SurfaceAttachment};
 use crate::texture;
@@ -1220,7 +1220,7 @@ where
         &'b mut self,
         name: impl Into<String>,
         vertices: Vec<u32>,
-    ) -> DataMut<'b, &'b mut PCSettings, Ctxt> {
+    ) -> PointsSettingsMut<'b, Ctxt> {
         if let Some(max) = vertices.iter().max() {
             assert!(*max < self.geometry.vertices.len() as u32);
         }
@@ -1315,6 +1315,58 @@ where
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Edge)
             .convert(|attached| match attached.get_settings() {
                 SurfaceAttachmentSettings::VectorField(f) => f,
+                _ => panic!(),
+            })
+    }
+
+    pub fn add_edge_segments(
+        &'b mut self,
+        name: impl Into<String>,
+        mut edges: Vec<u32>,
+    ) -> SegmentsSettingsMut<'b, Ctxt> {
+        if let Some(max) = edges.iter().max() {
+            assert!(*max < self.geometry.face_to_edge.num_edges);
+        }
+        //TODO maybe store the result instead?
+        edges.sort_unstable();
+        let mut offset = 0;
+        let mut vertices_indices: Vec<u32> = Vec::new();
+        let mut vertices_values = Vec::new();
+        let mut connections = Vec::new();
+        for face in &self.geometry.indices {
+            for i in 0..face.len() {
+                let j = if i + 1 < face.len() { i + 1 } else { 0 };
+                let edge = self.geometry.face_to_edge.indices[offset + i];
+                if edges.binary_search(&edge).is_ok() {
+                    let v0 = face[i];
+                    let v1 = face[j];
+                    let c0 = if let Some(position) = vertices_indices.iter().position(|v| *v == v0)
+                    {
+                        position as u32
+                    } else {
+                        vertices_indices.push(v0);
+                        vertices_values.push(self.geometry.vertices[v0 as usize]);
+                        vertices_indices.len() as u32 - 1
+                    };
+                    let c1 = if let Some(position) = vertices_indices.iter().position(|v| *v == v1)
+                    {
+                        position as u32
+                    } else {
+                        vertices_indices.push(v1);
+                        vertices_values.push(self.geometry.vertices[v1 as usize]);
+                        vertices_indices.len() as u32 - 1
+                    };
+                    connections.push([c0, c1]);
+                }
+            }
+            offset += face.len();
+        }
+
+        let args =
+            SurfaceAttachmentArgs::Segments((vertices_indices, (vertices_values, connections)));
+        self.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
+            .convert(|attached| match attached.get_settings() {
+                SurfaceAttachmentSettings::Segments(s) => s,
                 _ => panic!(),
             })
     }

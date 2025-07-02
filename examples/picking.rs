@@ -32,6 +32,7 @@ pub async fn run() {
                             let mut selected = vec![0.; n_v];
                             selected[item as usize] = 1.;
                             surface.add_vertex_scalar("selected vertex", selected);
+                            surface.add_vertex_points("selected vertex", vec![item]);
                         }
                         Picked::Surface(SurfacePicked::Face(item)) => {
                             let mut selected = vec![0.; surface.geometry().indices.size()];

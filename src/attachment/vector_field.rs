@@ -92,7 +92,6 @@ where
 }
 
 pub struct NewVectorField {
-    pub(crate) name: String,
     position: AttachmentPosition,
     vectors: Vec<[f32; 3]>,
     offsets: Vec<[f32; 3]>,
@@ -113,7 +112,6 @@ impl NewVectorField {
         let mut settings = VectorFieldSettings::new(characteristic_l / avg_vec_length * 2.);
         settings.color = ColorSettings::new(&name);
         NewVectorField {
-            name,
             position,
             vectors,
             offsets,
@@ -220,7 +218,6 @@ impl VectorField {
         transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         NewVectorField {
-            name: _,
             position,
             vectors,
             offsets,
