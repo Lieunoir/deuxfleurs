@@ -1,3 +1,4 @@
+use crate::attachment::internal::AttachmentPosition;
 use crate::data::*;
 use crate::geometry::AttachedGeometry;
 use crate::geometry::Context;
@@ -11,9 +12,11 @@ use crate::util;
 use crate::util::Vertex;
 use egui::SliderClamping;
 use egui::Widget;
+use wgpu::BufferAddress;
 use wgpu::util::DeviceExt;
 
 pub struct VectorField {
+    position: AttachmentPosition,
     pub vectors: Vec<[f32; 3]>,
     pub offsets: Vec<[f32; 3]>,
     render_pipeline: wgpu::RenderPipeline,
@@ -90,6 +93,7 @@ where
 
 pub struct NewVectorField {
     pub(crate) name: String,
+    position: AttachmentPosition,
     vectors: Vec<[f32; 3]>,
     offsets: Vec<[f32; 3]>,
     pub(crate) settings: VectorFieldSettings,
@@ -99,6 +103,7 @@ impl NewVectorField {
     pub(crate) fn new(
         name: String,
         characteristic_l: f32,
+        position: AttachmentPosition,
         vectors: Vec<[f32; 3]>,
         offsets: Vec<[f32; 3]>,
     ) -> NewVectorField {
@@ -109,6 +114,7 @@ impl NewVectorField {
         settings.color = ColorSettings::new(&name);
         NewVectorField {
             name,
+            position,
             vectors,
             offsets,
             settings,
@@ -202,7 +208,9 @@ impl VectorField {
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vector Data Buffer"),
             contents: bytemuck::cast_slice(&gpu_vertices),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST,
         })
     }
 
@@ -213,6 +221,7 @@ impl VectorField {
         color_format: wgpu::TextureFormat,
         NewVectorField {
             name: _,
+            position,
             vectors,
             offsets,
             settings,
@@ -274,6 +283,7 @@ impl VectorField {
         let vertex_buffer = Self::build_vertex_buffer(device);
         let vector_buffer = Self::build_vector_buffer(device, &vectors, &offsets);
         Self {
+            position,
             vectors,
             offsets: offsets,
             render_pipeline,
@@ -293,16 +303,27 @@ impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
     fn new(
         name: String,
         args: Self::Args,
+        position: AttachmentPosition,
         characteristic_l: f32,
         _context: &mut &'a mut crate::Settings,
         _transform_layout: &(),
     ) -> Self {
         let (vectors, offsets) = args;
-        NewVectorField::new(name, characteristic_l, vectors, offsets)
+        NewVectorField::new(name, characteristic_l, position, vectors, offsets)
     }
 
     fn get_settings(&mut self) -> &mut Self::Settings {
         &mut self.settings
+    }
+
+    fn get_attached_position(&self) -> &AttachmentPosition {
+        &self.position
+    }
+
+    fn move_elements(&mut self, _queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
+        for (index, value) in indices.iter().zip(pos) {
+            self.offsets[*index as usize] = *value;
+        }
     }
 }
 
@@ -313,13 +334,15 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
     fn new(
         name: String,
         args: Self::Args,
+        position: AttachmentPosition,
         characteristic_l: f32,
         context: &mut GraphicalContext<'a>,
         transform_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         *context.refresh_screen = true;
         let (vectors, offsets) = args;
-        let new_vector_field = NewVectorField::new(name, characteristic_l, vectors, offsets);
+        let new_vector_field =
+            NewVectorField::new(name, characteristic_l, position, vectors, offsets);
         VectorField::new(
             context.device,
             context.camera_light_bind_group_layout,
@@ -386,6 +409,24 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
 
     fn get_settings(&mut self) -> &mut Self::Settings {
         &mut self.settings
+    }
+
+    fn get_attached_position(&self) -> &AttachmentPosition {
+        &self.position
+    }
+
+    fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
+        for (index, value) in indices.iter().zip(pos) {
+            self.offsets[*index as usize] = *value;
+            queue.write_buffer(
+                &self.vector_buffer,
+                (*index as usize * size_of::<VectorData>()) as BufferAddress,
+                bytemuck::cast_slice(&[VectorData {
+                    orig_position: *value,
+                    vector: self.vectors[*index as usize],
+                }]),
+            );
+        }
     }
 }
 

@@ -251,8 +251,13 @@ impl ElementGeometry for PointCloudGeometry {
         self.positions[vertex as usize]
     }
 
-    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
+    fn move_vertex(
+        &mut self,
+        vertex: u32,
+        pos: [f32; 3],
+    ) -> ((Vec<u32>, Vec<[f32; 3]>), (Vec<u32>, Vec<[f32; 3]>)) {
         self.positions[vertex as usize] = pos;
+        ((Vec::new(), Vec::new()), (Vec::new(), Vec::new()))
     }
 
     fn get_characteristic_length(&self) -> f32 {

@@ -391,8 +391,32 @@ impl ElementGeometry for SegmentGeometry {
         self.positions[vertex as usize]
     }
 
-    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
+    fn move_vertex(
+        &mut self,
+        vertex: u32,
+        pos: [f32; 3],
+    ) -> ((Vec<u32>, Vec<[f32; 3]>), (Vec<u32>, Vec<[f32; 3]>)) {
         self.positions[vertex as usize] = pos;
+        let adj_faces = Vec::new();
+        let adj_faces_centers = Vec::new();
+        let mut adj_edges = Vec::with_capacity(7);
+        let mut adj_edges_centers = Vec::with_capacity(7);
+        for (edge_index, edge) in self.connections.iter().enumerate() {
+            if edge[0] == vertex || edge[1] == vertex {
+                let v0 = self.positions[edge[0] as usize];
+                let v1 = self.positions[edge[1] as usize];
+                adj_edges.push(edge_index as u32);
+                adj_edges_centers.push([
+                    (v0[0] + v1[0]) * 0.5,
+                    (v0[1] + v1[1]) * 0.5,
+                    (v0[2] + v1[2]) * 0.5,
+                ]);
+            }
+        }
+        (
+            (adj_faces, adj_faces_centers),
+            (adj_edges, adj_edges_centers),
+        )
     }
 
     fn get_characteristic_length(&self) -> f32 {

@@ -1,6 +1,9 @@
 use super::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
 use super::shader::{PICKER_SHADER, SHADOW_SHADER, get_shader};
-use crate::attachment::{NewVectorField, VectorField, VectorFieldSettings, VectorFieldSettingsMut};
+use crate::attachment::{
+    NewVectorField, VectorField, VectorFieldSettings, VectorFieldSettingsMut,
+    internal::AttachmentPosition,
+};
 use crate::camera::Camera;
 use crate::data::{internal::*, *};
 use crate::geometry::*;
@@ -250,8 +253,65 @@ impl ElementGeometry for SurfaceGeometry {
         self.vertices[vertex as usize]
     }
 
-    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
+    fn move_vertex(
+        &mut self,
+        vertex: u32,
+        pos: [f32; 3],
+    ) -> ((Vec<u32>, Vec<[f32; 3]>), (Vec<u32>, Vec<[f32; 3]>)) {
         self.vertices[vertex as usize] = pos;
+        let adj_faces = self.vertex_to_face[vertex as usize].to_owned();
+        let adj_faces_center = adj_faces
+            .iter()
+            .map(|f| {
+                let mut res0 = 0.;
+                let mut res1 = 0.;
+                let mut res2 = 0.;
+                let face = &self.indices[*f as usize];
+                for index in face {
+                    let vertex = self.vertices[*index as usize];
+                    res0 += vertex[0];
+                    res1 += vertex[1];
+                    res2 += vertex[2];
+                }
+                res0 = res0 / face.len() as f32;
+                res1 = res1 / face.len() as f32;
+                res2 = res2 / face.len() as f32;
+                [res0, res1, res2]
+            })
+            .collect::<Vec<_>>();
+
+        let mut adj_edges = Vec::with_capacity(adj_faces.len());
+        let mut adj_edges_positions = Vec::with_capacity(adj_faces.len());
+        for face in &adj_faces {
+            let offsets = match &self.indices {
+                SurfaceIndices::Triangles(_) => (3 * face, 3 * face + 3),
+                SurfaceIndices::Quads(_) => (4 * face, 4 * face + 4),
+                SurfaceIndices::Polygons(_, s) => (s[*face as usize], s[*face as usize + 1]),
+            };
+            let face_indices = &self.indices[*face as usize];
+            for (i, edge) in self.face_to_edge.indices[offsets.0 as usize..offsets.1 as usize]
+                .iter()
+                .enumerate()
+            {
+                let j = if i + 1 < face_indices.len() { i + 1 } else { 0 };
+                if (face_indices[i] == vertex || face_indices[j] == vertex)
+                    && !adj_edges.contains(edge)
+                {
+                    let v0 = self.vertices[face_indices[i] as usize];
+                    let v1 = self.vertices[face_indices[j] as usize];
+                    adj_edges.push(*edge);
+                    adj_edges_positions.push([
+                        (v0[0] + v1[0]) / 2.,
+                        (v0[1] + v1[1]) / 2.,
+                        (v0[2] + v1[2]) / 2.,
+                    ]);
+                }
+            }
+        }
+        (
+            (adj_faces, adj_faces_center),
+            (adj_edges, adj_edges_positions),
+        )
     }
 
     fn get_characteristic_length(&self) -> f32 {
@@ -1164,8 +1224,12 @@ where
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        self.add_attached_geometry(name.into(), (offsets, vectors).into())
-            .convert(|attached| attached.get_settings())
+        self.add_attached_geometry(
+            name.into(),
+            (offsets, vectors).into(),
+            AttachmentPosition::Vertex,
+        )
+        .convert(|attached| attached.get_settings())
     }
 
     pub fn add_face_vector_field<V: Vertices>(
@@ -1196,8 +1260,12 @@ where
             })
             .collect();
 
-        self.add_attached_geometry(name.into(), (offsets, vectors).into())
-            .convert(|attached| attached.get_settings())
+        self.add_attached_geometry(
+            name.into(),
+            (offsets, vectors).into(),
+            AttachmentPosition::Face,
+        )
+        .convert(|attached| attached.get_settings())
     }
 }
 

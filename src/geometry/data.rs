@@ -1,3 +1,5 @@
+use crate::attachment::internal::AttachmentPosition;
+
 use super::{Context, DataUniformBuilder, GraphicalContext};
 
 pub struct DataMut<'a, T, Ctxt: Context> {
@@ -57,6 +59,7 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
     fn new(
         _name: String,
         _args: Self::Args,
+        _position: AttachmentPosition,
         _characteristic_l: f32,
         _context: &mut Ctxt,
         _transform_layout: &Ctxt::TransformLayout,
@@ -67,6 +70,12 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
     fn get_settings(&mut self) -> &mut Self::Settings {
         self
     }
+
+    fn get_attached_position(&self) -> &AttachmentPosition {
+        &AttachmentPosition::Vertex
+    }
+
+    fn move_elements(&mut self, _queue: &wgpu::Queue, _indices: &[u32], _pos: &[[f32; 3]]) {}
 }
 
 pub struct EmptyAttached(());
@@ -92,6 +101,7 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
     fn new(
         _name: String,
         _args: Self::Args,
+        _position: AttachmentPosition,
         _characteristic_l: f32,
         _context: &mut Ctxt,
         _transform_layout: &Ctxt::TransformLayout,
@@ -102,6 +112,12 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
     fn get_settings(&mut self) -> &mut Self::Settings {
         &mut self.0
     }
+
+    fn get_attached_position(&self) -> &AttachmentPosition {
+        &AttachmentPosition::Vertex
+    }
+
+    fn move_elements(&mut self, _queue: &wgpu::Queue, _indices: &[u32], _pos: &[[f32; 3]]) {}
 }
 
 pub trait ShapeSettings: DataUniformBuilder {
@@ -125,7 +141,11 @@ pub trait ElementGeometry {
 
     fn get_vertex_pos(&self, vertex: u32) -> [f32; 3];
 
-    fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]);
+    fn move_vertex(
+        &mut self,
+        vertex: u32,
+        pos: [f32; 3],
+    ) -> ((Vec<u32>, Vec<[f32; 3]>), (Vec<u32>, Vec<[f32; 3]>));
 
     fn get_characteristic_length(&self) -> f32;
 }
@@ -137,6 +157,7 @@ pub trait AttachedGeometry<Ctxt: Context> {
     fn new(
         name: String,
         args: Self::Args,
+        _position: AttachmentPosition,
         characteristic_l: f32,
         context: &mut Ctxt,
         transform_layout: &Ctxt::TransformLayout,
@@ -166,4 +187,8 @@ pub trait AttachedGeometry<Ctxt: Context> {
     }
 
     fn get_settings(&mut self) -> &mut Self::Settings;
+
+    fn get_attached_position(&self) -> &AttachmentPosition;
+
+    fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]);
 }

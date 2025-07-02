@@ -1,5 +1,6 @@
 use crate::Settings;
 use crate::aabb::SBV;
+use crate::attachment::internal::AttachmentPosition;
 use crate::data::TransformSettings;
 use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
 use crate::ui::UiDataElement;
@@ -364,10 +365,22 @@ where
     }
 
     pub(crate) fn move_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, pos: [f32; 3]) {
-        self.geometry.move_vertex(vertex, pos);
+        let ((adj_faces, adj_faces_centers), (adj_edges, adj_edges_centers)) =
+            self.geometry.move_vertex(vertex, pos);
         self.renderer
             .fixed
             .update_vertex(queue, vertex, &self.geometry);
+        for attachment in self.attached_data.values_mut() {
+            match attachment.get_attached_position() {
+                AttachmentPosition::Vertex => attachment.move_elements(queue, &[vertex], &[pos]),
+                AttachmentPosition::Face => {
+                    attachment.move_elements(queue, &adj_faces, &adj_faces_centers)
+                }
+                AttachmentPosition::Edge => {
+                    attachment.move_elements(queue, &adj_edges, &adj_edges_centers)
+                }
+            }
+        }
     }
 
     pub(crate) fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -431,6 +444,7 @@ pub trait ElementTrait<Ctxt: Context> {
         &'b mut self,
         name: String,
         args: <Self::Attached as AttachedGeometry<Ctxt>>::Args,
+        position: AttachmentPosition,
         context: &'b mut Ctxt,
     ) -> DataMut<'b, Self::Attached, Ctxt>;
 }
@@ -491,11 +505,13 @@ where
         &'b mut self,
         name: String,
         args: <Self::Attached as AttachedGeometry<&'a mut crate::Settings>>::Args,
+        position: AttachmentPosition,
         context: &'b mut &'a mut crate::Settings,
     ) -> DataMut<'b, Self::Attached, &'a mut crate::Settings> {
         let geometry = AttachedG::new(
             name.clone(),
             args,
+            position,
             self.geometry().get_characteristic_length(),
             context,
             &(),
@@ -633,6 +649,7 @@ where
         &'b mut self,
         name: String,
         args: <Self::Attached as AttachedGeometry<GraphicalContext<'a>>>::Args,
+        position: AttachmentPosition,
         context: &'b mut GraphicalContext<'a>,
     ) -> DataMut<'b, Self::Attached, GraphicalContext<'a>> {
         *context.refresh_screen = true;
@@ -640,6 +657,7 @@ where
             let geometry = Self::Attached::new(
                 name.clone(),
                 args,
+                position,
                 self.geometry().get_characteristic_length(),
                 context,
                 &self.renderer.transform_uniform.bind_group_layout,
@@ -691,9 +709,10 @@ impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctx
         &mut self,
         name: String,
         args: <Element::Attached as AttachedGeometry<Ctxt>>::Args,
+        position: AttachmentPosition,
     ) -> DataMut<'_, Element::Attached, Ctxt> {
         self.element
-            .add_attached_geometry(name, args, &mut self.context)
+            .add_attached_geometry(name, args, position, &mut self.context)
     }
 
     pub(crate) fn update_settings(&mut self, rebuild_pipeline: bool) -> &mut Self {
