@@ -12,7 +12,7 @@
 </span><span class="kw">let </span><span class="kw-2">mut </span>handle = deuxfleurs::init();
 <span class="comment">// Load the mesh and register it:
 </span><span class="kw">let </span>(v, f) = load_mesh(<span class="string">"bunny.obj"</span>).<span class="kw">await</span>.unwrap();
-handle.register_surface(<span class="string">"bunny"</span>.into(), v, f);
+handle.register_surface(<span class="string">"bunny"</span>, v, f);
 
 <span class="comment">// Toggle between shown or not on button pressed
 </span><span class="kw">let </span>callback = |ui: <span class="kw-2">&amp;mut </span>egui::Ui, state: <span class="kw-2">&amp;mut </span>RunningState| {
@@ -29,7 +29,7 @@ handle.register_surface(<span class="string">"bunny"</span>.into(), v, f);
 </span>handle.run(
     <span class="number">1080</span>,
     <span class="number">720</span>,
-    <span class="prelude-val">Some</span>(<span class="string">"deuxfleurs-demo"</span>.into()),
+    <span class="prelude-val">Some</span>(<span class="string">"deuxfleurs-demo"</span>),
     Settings::default(),
     callback,
 );</code></pre></div>
