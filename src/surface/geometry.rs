@@ -1267,6 +1267,38 @@ where
         )
         .convert(|attached| attached.get_settings())
     }
+
+    pub fn add_edge_vector_field<V: Vertices>(
+        &mut self,
+        name: impl Into<String>,
+        vectors: V,
+    ) -> VectorFieldSettingsMut<'_, Ctxt> {
+        let vectors = vectors.into();
+        assert!(vectors.len() == self.geometry.face_to_edge.num_edges as usize);
+        let mut offsets = vec![[0., 0., 0.]; self.geometry.face_to_edge.num_edges as usize];
+        let mut offset = 0;
+        for face in &self.geometry.indices {
+            for i in 0..face.len() {
+                let j = if i + 1 < face.len() { i + 1 } else { 0 };
+                let v0 = self.geometry.vertices[face[i] as usize];
+                let v1 = self.geometry.vertices[face[j] as usize];
+                offsets[self.geometry.face_to_edge.indices[offset + i] as usize] = [
+                    (v0[0] + v1[0]) * 0.5,
+                    (v0[1] + v1[1]) * 0.5,
+                    (v0[2] + v1[2]) * 0.5,
+                ];
+            }
+
+            offset += face.len();
+        }
+        let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
+        self.add_attached_geometry(
+            name.into(),
+            (offsets, vectors).into(),
+            AttachmentPosition::Edge,
+        )
+        .convert(|attached| attached.get_settings())
+    }
 }
 
 //Can be simplified now using vertex -> face adjacency
