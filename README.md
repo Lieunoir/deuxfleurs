@@ -20,7 +20,7 @@ use deuxfleurs::{load_mesh, RunningState, Settings};
 let mut handle = deuxfleurs::init();
 // Load the mesh and register it:
 let (v, f) = load_mesh("bunny.obj").await.unwrap();
-handle.register_surface("bunny".into(), v, f);
+handle.register_surface("bunny", v, f);
 
 // Toggle between shown or not on button pressed
 let callback = |ui: &mut egui::Ui, state: &mut RunningState| {
@@ -37,7 +37,7 @@ let callback = |ui: &mut egui::Ui, state: &mut RunningState| {
 handle.run(
     1080,
     720,
-    Some("deuxfleurs-demo".into()),
+    Some("deuxfleurs-demo"),
     Settings::default(),
     callback,
 );
