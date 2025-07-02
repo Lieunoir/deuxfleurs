@@ -1,3 +1,4 @@
+mod attachment;
 mod data;
 pub(crate) mod geometry;
 mod shader;

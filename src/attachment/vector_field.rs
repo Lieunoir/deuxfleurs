@@ -397,14 +397,12 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
     where
         'c: 'd,
     {
-        if self.settings.show {
-            render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
-            //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
-            render_pass.draw(0..8, 0..(self.vectors.len() as u32));
-        }
+        render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
+        render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
+        //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+        render_pass.draw(0..8, 0..(self.vectors.len() as u32));
     }
 
     fn get_settings(&mut self) -> &mut Self::Settings {

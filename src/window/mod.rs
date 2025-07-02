@@ -1,5 +1,5 @@
 use crate::aabb::SBV;
-use crate::attachment::{NewVectorField, VectorField};
+use crate::attachment::{NewPoints, NewVectorField, Points, VectorField};
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::data::internal::{DataSettings, DataUniformBuilder};
 use crate::deferred;
@@ -123,7 +123,7 @@ where
             element.replace(args, &mut context);
             ElementMut { element, context }
         } else {
-            let element = Element::new_bare(name.clone(), args);
+            let element = Element::new_bare(name.clone(), args, None);
             container.insert(name.clone(), element);
             ElementMut {
                 element: container.get_mut(&name).unwrap(),
@@ -202,6 +202,7 @@ where
             let element = Element::new(
                 name.clone(),
                 args,
+                None,
                 context.device,
                 context.camera_light_bind_group_layout,
                 context.counter_bind_group_layout,
@@ -302,7 +303,8 @@ pub struct InnerGraphicalState {
 impl ContextHolder for InnerGraphicalState {
     type Context<'a> = GraphicalContext<'a>;
     type SurfaceRenderer = Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>;
-    type SurfaceAttachedData = VectorField;
+    //type SurfaceAttachedData = VectorField;
+    type SurfaceAttachedData = Points;
     type PointCloudRenderer =
         Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>;
     type PointCloudAttachedData = EmptyAttached;
@@ -418,7 +420,8 @@ pub struct InnerBareState {
 impl ContextHolder for InnerBareState {
     type Context<'a> = &'a mut Settings;
     type SurfaceRenderer = ();
-    type SurfaceAttachedData = NewVectorField;
+    //type SurfaceAttachedData = NewVectorField;
+    type SurfaceAttachedData = NewPoints;
     type PointCloudRenderer = ();
     type PointCloudAttachedData = ();
     type SegmentRenderer = ();

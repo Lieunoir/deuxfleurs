@@ -1,5 +1,6 @@
 use super::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
 use super::shader::{PICKER_SHADER, SHADOW_SHADER, get_shader};
+use crate::attachment::{NewPoints, Points};
 use crate::attachment::{
     NewVectorField, VectorField, VectorFieldSettings, VectorFieldSettingsMut,
     internal::AttachmentPosition,
@@ -8,6 +9,7 @@ use crate::camera::Camera;
 use crate::data::{internal::*, *};
 use crate::geometry::*;
 use crate::picker::SurfacePicked;
+use crate::point_cloud::{DisplayPointCloud, PCSettings, UninitedPointCloud};
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
 use crate::types::{SurfaceIndices, Vertices2D};
@@ -926,8 +928,10 @@ impl Render for SurfaceRenderer {
 pub type Surface<Renderer, AttachedData> =
     Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData>;
 
-pub type UninitedSurface = Surface<(), NewVectorField>;
-pub type DisplaySurface = Surface<SurfaceRenderer, VectorField>;
+//pub type UninitedSurface = Surface<(), NewVectorField>;
+//pub type DisplaySurface = Surface<SurfaceRenderer, VectorField>;
+pub type UninitedSurface = Surface<(), NewPoints>;
+pub type DisplaySurface = Surface<SurfaceRenderer, Points>;
 
 impl DisplaySurface {
     pub(crate) fn get_element(
@@ -1094,8 +1098,10 @@ impl<'a, Renderer, AttachedData, Ctxt: Context> SurfaceMut<'a, Renderer, Attache
 where
     AttachedData: AttachedGeometry<
             Ctxt,
-            Settings = VectorFieldSettings,
-            Args = (Vec<[f32; 3]>, Vec<[f32; 3]>),
+            //Settings = VectorFieldSettings,
+            //Args = (Vec<[f32; 3]>, Vec<[f32; 3]>),
+            Settings = PCSettings,
+            Args = (Vec<u32>, Vec<[f32; 3]>),
         >,
     Surface<Renderer, AttachedData>:
         ElementTrait<Ctxt, Data = SurfaceData, Attached = AttachedData>,
@@ -1216,6 +1222,28 @@ where
         self.add_data(name.into(), SurfaceData::Color(colors));
     }
 
+    pub fn add_vertex_points(
+        &mut self,
+        name: impl Into<String>,
+        vertices: Vec<u32>,
+    ) -> DataMut<'_, PCSettings, Ctxt> {
+        //let vectors = vectors.into();
+        if let Some(max) = vertices.iter().max() {
+            assert!(*max < self.geometry.vertices.len() as u32);
+        }
+        let positions = vertices
+            .iter()
+            .map(|v| self.geometry.vertices[*v as usize])
+            .collect::<Vec<_>>();
+        self.add_attached_geometry(
+            name.into(),
+            (vertices, positions).into(),
+            AttachmentPosition::Vertex,
+        )
+        .convert(|attached| attached.get_settings())
+    }
+
+    /*
     pub fn add_vertex_vector_field<V: Vertices>(
         &mut self,
         name: impl Into<String>,
@@ -1299,6 +1327,7 @@ where
         )
         .convert(|attached| attached.get_settings())
     }
+    */
 }
 
 //Can be simplified now using vertex -> face adjacency
@@ -1397,8 +1426,8 @@ fn compute_avg_edge_length(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> f
     for face in indices {
         for i in 0..face.len() {
             let j = if i + 1 < face.len() { i + 1 } else { 0 };
-            let v0 = vertices[i];
-            let v1 = vertices[j];
+            let v0 = vertices[face[i] as usize];
+            let v1 = vertices[face[j] as usize];
             let edge = [v0[0] - v1[0], v0[1] - v1[1], v0[2] - v1[2]];
             l += (edge[0].powi(2) + edge[1].powi(2) + edge[2].powi(2)).sqrt();
         }

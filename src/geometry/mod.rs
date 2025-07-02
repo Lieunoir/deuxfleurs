@@ -48,7 +48,7 @@ impl Context for &mut Settings {
 
 // `Renderer` can be `()` !
 pub struct Element<Geometry, Renderer, Settings, Data, AttachedGeometry> {
-    name: String,
+    pub(crate) name: String,
     pub(crate) geometry: Geometry,
     pub(crate) renderer: Renderer,
     pub(crate) show: bool,
@@ -96,14 +96,19 @@ where
     Settings: DataUniformBuilder + ShapeSettings,
     Attached: NewAttachedGeometry,
 {
-    pub(crate) fn new_bare(name: String, args: Geometry::Args) -> Self {
+    pub(crate) fn new_bare(name: String, args: Geometry::Args, char_l: Option<f32>) -> Self {
         let geometry = Geometry::new(args);
-        Self::new_bare_with_geometry(name, geometry)
+        Self::new_bare_with_geometry(name, geometry, char_l)
     }
 
-    pub(crate) fn new_bare_with_geometry(name: String, geometry: Geometry) -> Self {
+    pub(crate) fn new_bare_with_geometry(
+        name: String,
+        geometry: Geometry,
+        char_l: Option<f32>,
+    ) -> Self {
         let transform = TransformSettings::default();
-        let settings = Settings::new(&name, geometry.get_characteristic_length());
+        let char_l = char_l.unwrap_or_else(|| geometry.get_characteristic_length());
+        let settings = Settings::new(&name, char_l);
         let sbv = SBV::new(geometry.get_positions());
         Self {
             geometry,
@@ -196,6 +201,7 @@ where
     pub(crate) fn new(
         name: String,
         args: Geometry::Args,
+        char_l: Option<f32>,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
@@ -205,6 +211,7 @@ where
         Self::new_with_geometry(
             name,
             geometry,
+            char_l,
             device,
             camera_light_bind_group_layout,
             counter_bind_group_layout,
@@ -215,13 +222,15 @@ where
     pub(crate) fn new_with_geometry(
         name: String,
         geometry: Geometry,
+        char_l: Option<f32>,
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let transform = TransformSettings::default();
-        let settings = Settings::new(&name, geometry.get_characteristic_length());
+        let char_l = char_l.unwrap_or_else(|| geometry.get_characteristic_length());
+        let settings = Settings::new(&name, char_l);
         let renderer = Renderer::new(
             device,
             &geometry,
@@ -390,7 +399,9 @@ where
         if self.show {
             self.renderer.render(render_pass);
             for (_, attached) in &self.attached_data {
-                attached.render(render_pass);
+                if attached.shown() {
+                    attached.render(render_pass);
+                }
             }
         }
     }
@@ -472,7 +483,7 @@ where
             self.geometry = new_geometry;
             true
         } else {
-            *self = Self::new_bare_with_geometry(self.name.clone(), new_geometry);
+            *self = Self::new_bare_with_geometry(self.name.clone(), new_geometry, None);
             false
         }
     }
@@ -556,6 +567,7 @@ where
             *self = Self::new_with_geometry(
                 self.name.clone(),
                 new_geometry,
+                None,
                 context.device,
                 context.camera_light_bind_group_layout,
                 context.counter_bind_group_layout,
