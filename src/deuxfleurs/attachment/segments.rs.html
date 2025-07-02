@@ -1,28 +1,28 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/attachment/points.rs`."><title>points.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (71e4c005c 2025-07-01)" data-channel="nightly" data-search-js="search-179e01a3.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-340f468f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/attachment/</div>points.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/attachment/segments.rs`."><title>segments.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (71e4c005c 2025-07-01)" data-channel="nightly" data-search-js="search-179e01a3.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-340f468f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/attachment/</div>segments.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
 <a href=#2 id=2 data-nosnippet>2</a>    attachment::internal::AttachmentPosition,
 <a href=#3 id=3 data-nosnippet>3</a>    data::internal::DataUniformBuilder,
 <a href=#4 id=4 data-nosnippet>4</a>    geometry::{
 <a href=#5 id=5 data-nosnippet>5</a>        AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
 <a href=#6 id=6 data-nosnippet>6</a>        ShapeSettings,
 <a href=#7 id=7 data-nosnippet>7</a>    },
-<a href=#8 id=8 data-nosnippet>8</a>    point_cloud::{DisplayPointCloud, PCSettings, UninitedPointCloud},
+<a href=#8 id=8 data-nosnippet>8</a>    segment::{DisplaySegment, PCSettings, UninitedSegment},
 <a href=#9 id=9 data-nosnippet>9</a>    settings::Settings,
 <a href=#10 id=10 data-nosnippet>10</a>};
 <a href=#11 id=11 data-nosnippet>11</a>
-<a href=#12 id=12 data-nosnippet>12</a><span class="kw">pub struct </span>NewPoints {
-<a href=#13 id=13 data-nosnippet>13</a>    inner: UninitedPointCloud,
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">pub struct </span>NewSegments {
+<a href=#13 id=13 data-nosnippet>13</a>    inner: UninitedSegment,
 <a href=#14 id=14 data-nosnippet>14</a>    indices: Vec&lt;u32&gt;,
 <a href=#15 id=15 data-nosnippet>15</a>    position: AttachmentPosition,
 <a href=#16 id=16 data-nosnippet>16</a>}
 <a href=#17 id=17 data-nosnippet>17</a>
-<a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub struct </span>Points {
-<a href=#19 id=19 data-nosnippet>19</a>    inner: DisplayPointCloud,
+<a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub struct </span>Segments {
+<a href=#19 id=19 data-nosnippet>19</a>    inner: DisplaySegment,
 <a href=#20 id=20 data-nosnippet>20</a>    indices: Vec&lt;u32&gt;,
 <a href=#21 id=21 data-nosnippet>21</a>    position: AttachmentPosition,
 <a href=#22 id=22 data-nosnippet>22</a>}
 <a href=#23 id=23 data-nosnippet>23</a>
-<a href=#24 id=24 data-nosnippet>24</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AttachedGeometry&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Settings&gt; <span class="kw">for </span>NewPoints {
-<a href=#25 id=25 data-nosnippet>25</a>    <span class="kw">type </span>Args = (Vec&lt;u32&gt;, Vec&lt;[f32; <span class="number">3</span>]&gt;);
+<a href=#24 id=24 data-nosnippet>24</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AttachedGeometry&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Settings&gt; <span class="kw">for </span>NewSegments {
+<a href=#25 id=25 data-nosnippet>25</a>    <span class="kw">type </span>Args = (Vec&lt;u32&gt;, (Vec&lt;[f32; <span class="number">3</span>]&gt;, Vec&lt;[u32; <span class="number">2</span>]&gt;));
 <a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">type </span>Settings&lt;<span class="lifetime">'b</span>&gt; = <span class="kw-2">&amp;</span><span class="lifetime">'b </span><span class="kw-2">mut </span>PCSettings;
 <a href=#27 id=27 data-nosnippet>27</a>
 <a href=#28 id=28 data-nosnippet>28</a>    <span class="kw">fn </span>new(
@@ -33,8 +33,8 @@
 <a href=#33 id=33 data-nosnippet>33</a>        _context: <span class="kw-2">&amp;mut &amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Settings,
 <a href=#34 id=34 data-nosnippet>34</a>        _transform_layout: <span class="kw-2">&amp;</span>(),
 <a href=#35 id=35 data-nosnippet>35</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#36 id=36 data-nosnippet>36</a>        <span class="kw">let </span>inner = UninitedPointCloud::new_bare(name, args.<span class="number">1</span>, <span class="prelude-val">Some</span>(<span class="number">3. </span>* characteristic_l));
-<a href=#37 id=37 data-nosnippet>37</a>        NewPoints {
+<a href=#36 id=36 data-nosnippet>36</a>        <span class="kw">let </span>inner = UninitedSegment::new_bare(name, args.<span class="number">1</span>, <span class="prelude-val">Some</span>(characteristic_l));
+<a href=#37 id=37 data-nosnippet>37</a>        NewSegments {
 <a href=#38 id=38 data-nosnippet>38</a>            inner,
 <a href=#39 id=39 data-nosnippet>39</a>            indices: args.<span class="number">0</span>,
 <a href=#40 id=40 data-nosnippet>40</a>            position,
@@ -66,8 +66,8 @@
 <a href=#66 id=66 data-nosnippet>66</a>    }
 <a href=#67 id=67 data-nosnippet>67</a>}
 <a href=#68 id=68 data-nosnippet>68</a>
-<a href=#69 id=69 data-nosnippet>69</a><span class="kw">impl </span>NewAttachedGeometry <span class="kw">for </span>NewPoints {
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">type </span>UpgradedAttachedGeometry = Points;
+<a href=#69 id=69 data-nosnippet>69</a><span class="kw">impl </span>NewAttachedGeometry <span class="kw">for </span>NewSegments {
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">type </span>UpgradedAttachedGeometry = Segments;
 <a href=#71 id=71 data-nosnippet>71</a>
 <a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">fn </span>init(
 <a href=#73 id=73 data-nosnippet>73</a>        <span class="self">self</span>,
@@ -82,7 +82,7 @@
 <a href=#82 id=82 data-nosnippet>82</a>            transform_bind_group_layout, <span class="comment">//Lie
 <a href=#83 id=83 data-nosnippet>83</a>            </span>color_format,
 <a href=#84 id=84 data-nosnippet>84</a>        );
-<a href=#85 id=85 data-nosnippet>85</a>        Points {
+<a href=#85 id=85 data-nosnippet>85</a>        Segments {
 <a href=#86 id=86 data-nosnippet>86</a>            inner,
 <a href=#87 id=87 data-nosnippet>87</a>            indices: <span class="self">self</span>.indices,
 <a href=#88 id=88 data-nosnippet>88</a>            position: <span class="self">self</span>.position,
@@ -90,8 +90,8 @@
 <a href=#90 id=90 data-nosnippet>90</a>    }
 <a href=#91 id=91 data-nosnippet>91</a>}
 <a href=#92 id=92 data-nosnippet>92</a>
-<a href=#93 id=93 data-nosnippet>93</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AttachedGeometry&lt;GraphicalContext&lt;<span class="lifetime">'a</span>&gt;&gt; <span class="kw">for </span>Points {
-<a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">type </span>Args = (Vec&lt;u32&gt;, Vec&lt;[f32; <span class="number">3</span>]&gt;);
+<a href=#93 id=93 data-nosnippet>93</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AttachedGeometry&lt;GraphicalContext&lt;<span class="lifetime">'a</span>&gt;&gt; <span class="kw">for </span>Segments {
+<a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">type </span>Args = (Vec&lt;u32&gt;, (Vec&lt;[f32; <span class="number">3</span>]&gt;, Vec&lt;[u32; <span class="number">2</span>]&gt;));
 <a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">type </span>Settings&lt;<span class="lifetime">'b</span>&gt; = <span class="kw-2">&amp;</span><span class="lifetime">'b </span><span class="kw-2">mut </span>PCSettings;
 <a href=#96 id=96 data-nosnippet>96</a>
 <a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">fn </span>new(
@@ -103,16 +103,16 @@
 <a href=#103 id=103 data-nosnippet>103</a>        _transform_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
 <a href=#104 id=104 data-nosnippet>104</a>    ) -&gt; <span class="self">Self </span>{
 <a href=#105 id=105 data-nosnippet>105</a>        <span class="kw-2">*</span>context.refresh_screen = <span class="bool-val">true</span>;
-<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>inner = DisplayPointCloud::new(
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>inner = DisplaySegment::new(
 <a href=#107 id=107 data-nosnippet>107</a>            name,
 <a href=#108 id=108 data-nosnippet>108</a>            args.<span class="number">1</span>,
-<a href=#109 id=109 data-nosnippet>109</a>            <span class="prelude-val">Some</span>(<span class="number">3. </span>* characteristic_l),
+<a href=#109 id=109 data-nosnippet>109</a>            <span class="prelude-val">Some</span>(characteristic_l),
 <a href=#110 id=110 data-nosnippet>110</a>            context.device,
 <a href=#111 id=111 data-nosnippet>111</a>            context.camera_light_bind_group_layout,
 <a href=#112 id=112 data-nosnippet>112</a>            context.counter_bind_group_layout,
 <a href=#113 id=113 data-nosnippet>113</a>            context.color_format,
 <a href=#114 id=114 data-nosnippet>114</a>        );
-<a href=#115 id=115 data-nosnippet>115</a>        Points {
+<a href=#115 id=115 data-nosnippet>115</a>        Segments {
 <a href=#116 id=116 data-nosnippet>116</a>            inner,
 <a href=#117 id=117 data-nosnippet>117</a>            indices: args.<span class="number">0</span>,
 <a href=#118 id=118 data-nosnippet>118</a>            position,
@@ -176,4 +176,4 @@
 <a href=#176 id=176 data-nosnippet>176</a>    }
 <a href=#177 id=177 data-nosnippet>177</a>}
 <a href=#178 id=178 data-nosnippet>178</a>
-<a href=#179 id=179 data-nosnippet>179</a><span class="kw">pub type </span>PointsSettingsMut&lt;<span class="lifetime">'a</span>, Ctxt&gt; = DataMut&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>PCSettings, Ctxt&gt;;</code></pre></div></section></main></body></html>
+<a href=#179 id=179 data-nosnippet>179</a><span class="kw">pub type </span>SegmentsSettingsMut&lt;<span class="lifetime">'a</span>, Ctxt&gt; = DataMut&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>PCSettings, Ctxt&gt;;</code></pre></div></section></main></body></html>
