@@ -28,21 +28,24 @@ pub struct VectorField {
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct VectorFieldSettingsRaw {
     magnitude: f32,
-    _padding: [u32; 3],
+    l: f32,
+    _padding: [u32; 2],
     color: ColorSettings,
 }
 
 pub struct VectorFieldSettings {
     pub show: bool,
     pub magnitude: f32,
+    l: f32,
     pub color: ColorSettings,
 }
 
-impl Default for VectorFieldSettings {
-    fn default() -> VectorFieldSettings {
+impl VectorFieldSettings {
+    fn new(l: f32) -> Self {
         Self {
             show: true,
             magnitude: 1.,
+            l,
             color: ColorSettings::default(),
         }
     }
@@ -52,7 +55,8 @@ impl VectorFieldSettings {
     fn to_raw(&self) -> VectorFieldSettingsRaw {
         VectorFieldSettingsRaw {
             magnitude: self.magnitude,
-            _padding: [0; 3],
+            l: self.l,
+            _padding: [0; 2],
             color: self.color,
         }
     }
@@ -64,8 +68,12 @@ impl<'a, Ctxt: Context> VectorFieldSettingsMut<'a, Ctxt>
 where
     Self: DataMutTrait,
 {
-    pub fn set_magnitude(&mut self, magnitude: f32) {
-        self.inner.magnitude = magnitude;
+    pub fn set_magnitude(&mut self, magnitude: f32, relative: bool) {
+        if relative {
+            self.inner.magnitude = magnitude;
+        } else {
+            self.inner.magnitude = magnitude / self.inner.l;
+        }
         self.update_data_settings();
     }
 
@@ -90,10 +98,14 @@ pub struct NewVectorField {
 impl NewVectorField {
     pub(crate) fn new(
         name: String,
+        characteristic_l: f32,
         vectors: Vec<[f32; 3]>,
         offsets: Vec<[f32; 3]>,
     ) -> NewVectorField {
-        let mut settings = VectorFieldSettings::default();
+        let avg_vec_length = vectors.iter().fold(0., |l, vec| {
+            l + (vec[0].powi(0) + vec[1].powi(1) + vec[2].powi(2)).sqrt() / vectors.len() as f32
+        });
+        let mut settings = VectorFieldSettings::new(characteristic_l * avg_vec_length * 0.1);
         settings.color = ColorSettings::new(&name);
         NewVectorField {
             name,
@@ -281,11 +293,12 @@ impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
     fn new(
         name: String,
         args: Self::Args,
+        characteristic_l: f32,
         _context: &mut &'a mut crate::Settings,
         _transform_layout: &(),
     ) -> Self {
         let (vectors, offsets) = args;
-        NewVectorField::new(name, vectors, offsets)
+        NewVectorField::new(name, characteristic_l, vectors, offsets)
     }
 
     fn get_settings(&mut self) -> &mut Self::Settings {
@@ -300,12 +313,13 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
     fn new(
         name: String,
         args: Self::Args,
+        characteristic_l: f32,
         context: &mut GraphicalContext<'a>,
         transform_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         *context.refresh_screen = true;
         let (vectors, offsets) = args;
-        let new_vector_field = NewVectorField::new(name, vectors, offsets);
+        let new_vector_field = NewVectorField::new(name, characteristic_l, vectors, offsets);
         VectorField::new(
             context.device,
             context.camera_light_bind_group_layout,

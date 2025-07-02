@@ -160,16 +160,17 @@ impl SegmentData {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PCSettings {
     radius: Radius,
     color: ColorSettings,
 }
 
-impl NamedSettings for PCSettings {
-    fn set_name(mut self, name: &str) -> Self {
-        self.color = ColorSettings::new(name);
-        self
+impl ShapeSettings for PCSettings {
+    fn new(name: &str, l: f32) -> Self {
+        let radius = Radius::new(0.15 * l);
+        let color = ColorSettings::new(name);
+        PCSettings { radius, color }
     }
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, _rebuild_pipeline: &mut bool) -> bool {
@@ -352,6 +353,7 @@ impl Vertex for CylinderScalarData {
 pub struct SegmentGeometry {
     pub positions: Vec<[f32; 3]>,
     pub connections: Vec<[u32; 2]>,
+    avg_edge_length: f32,
 }
 
 impl ElementGeometry for SegmentGeometry {
@@ -359,9 +361,17 @@ impl ElementGeometry for SegmentGeometry {
 
     fn new(args: Self::Args) -> Self {
         let (positions, connections) = args;
+        let avg_edge_length = connections.iter().fold(0., |acc, [i0, i1]| {
+            let v0 = positions[*i0 as usize];
+            let v1 = positions[*i1 as usize];
+            let edge = [v0[0] - v1[0], v0[1] - v1[1], v0[2] - v1[2]];
+            acc + (edge[0].powi(2) + edge[1].powi(2) + edge[2].powi(2)).sqrt()
+                / connections.len() as f32
+        });
         SegmentGeometry {
             positions,
             connections,
+            avg_edge_length,
         }
     }
 
@@ -383,6 +393,10 @@ impl ElementGeometry for SegmentGeometry {
 
     fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
         self.positions[vertex as usize] = pos;
+    }
+
+    fn get_characteristic_length(&self) -> f32 {
+        self.avg_edge_length
     }
 }
 
@@ -779,8 +793,12 @@ impl<'a, Renderer, AttachedData, Ctxt: Context> SegmentMut<'a, Renderer, Attache
 where
     Segment<Renderer, AttachedData>: ElementTrait<Ctxt, Data = SegmentData>,
 {
-    pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.element.settings.radius.radius = radius;
+    pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
+        if relative {
+            self.element.settings.radius.set_relative(radius);
+        } else {
+            self.element.settings.radius.set_absolute(radius);
+        }
         self.update_settings(false)
     }
 

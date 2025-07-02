@@ -4,16 +4,34 @@ use egui::Widget;
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Radius {
-    pub radius: f32,
-    _padding: [u32; 3],
+    radius: f32,
+    characteristic_length: f32,
+    _padding: [u32; 2],
 }
 
-impl Default for Radius {
-    fn default() -> Self {
+impl Radius {
+    pub(crate) fn new(characteristic_length: f32) -> Self {
         Self {
-            radius: 0.01,
-            _padding: [0; 3],
+            radius: 1.,
+            characteristic_length,
+            _padding: [0; 2],
         }
+    }
+
+    pub(crate) fn get_relative(&self) -> f32 {
+        self.radius
+    }
+
+    pub(crate) fn get_absolute(&self) -> f32 {
+        self.characteristic_length * self.radius
+    }
+
+    pub(crate) fn set_relative(&mut self, l: f32) {
+        self.radius = l;
+    }
+
+    pub(crate) fn set_absolute(&mut self, l: f32) {
+        self.radius = l / self.characteristic_length;
     }
 }
 

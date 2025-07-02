@@ -23,6 +23,7 @@ struct Jitter {{
 
 struct SettingsUniform {{
     radius: f32,
+    char_len: f32,
     color: vec3<f32>,
 }}
 
@@ -76,7 +77,7 @@ fn vs_main(
 
     let view_axis = normalize((model_matrix * vec4<f32>(pos.position_1, 1.)).xyz - camera.view_pos.xyz);
     let camera_up = normalize(cross(center_vector, view_axis));
-    let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius), 1.)).xyz;
+    let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len), 1.)).xyz;
     let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     out.world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
@@ -134,7 +135,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
 	let a = in.world_pos_1;
 	let b = in.world_pos_2;
     let det = determinant(transform.normal);
-    let r = settings.radius / pow(det, 1. / 3.);
+    let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
 	let t = cylIntersect(ro, rd, a, b, r);
 
     var out: FragOutput;
@@ -229,6 +230,7 @@ struct CounterUniform {
 
 struct SettingsUniform {
     radius: f32,
+    char_len: f32,
     color: vec3<f32>,
 }
 
@@ -279,7 +281,7 @@ fn vs_main(
     let view_axis = normalize((model_matrix * vec4<f32>(pos.position_1, 1.)).xyz - camera.view_pos.xyz);
     let camera_up = normalize(cross(center_vector, view_axis));
     //let camera_up = normalize(vec3<f32>(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
-    let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius), 1.)).xyz;
+    let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len), 1.)).xyz;
     out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
     out.world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
@@ -333,7 +335,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	let a = in.world_pos_1;
 	let b = in.world_pos_2;
     let det = determinant(transform.normal);
-    let r = settings.radius / pow(det, 1. / 3.);
+    let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
 	let t = cylIntersect(ro, rd, a, b, r);
 
     var out: FragOutput;

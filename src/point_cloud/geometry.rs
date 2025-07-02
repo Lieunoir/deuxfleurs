@@ -100,16 +100,17 @@ impl PointCloudData {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PCSettings {
     radius: Radius,
     color: ColorSettings,
 }
 
-impl NamedSettings for PCSettings {
-    fn set_name(mut self, name: &str) -> Self {
-        self.color = ColorSettings::new(name);
-        self
+impl ShapeSettings for PCSettings {
+    fn new(name: &str, l: f32) -> Self {
+        let radius = Radius::new(0.1 * l);
+        let color = ColorSettings::new(name);
+        PCSettings { radius, color }
     }
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, _property_changed: &mut bool) -> bool {
@@ -204,13 +205,34 @@ impl Vertex for SphereScalarData {
 
 pub struct PointCloudGeometry {
     pub positions: Vec<[f32; 3]>,
+    avg_edge_length: f32,
 }
 
 impl ElementGeometry for PointCloudGeometry {
     type Args = Vec<[f32; 3]>;
 
     fn new(args: Self::Args) -> Self {
-        PointCloudGeometry { positions: args }
+        let mut min_x = f32::MAX;
+        let mut min_y = f32::MAX;
+        let mut min_z = f32::MAX;
+        let mut max_x = f32::MIN;
+        let mut max_y = f32::MIN;
+        let mut max_z = f32::MIN;
+        for pos in &args {
+            min_x = min_x.min(pos[0]);
+            min_y = min_y.min(pos[1]);
+            min_z = min_z.min(pos[2]);
+            max_x = max_x.max(pos[0]);
+            max_y = max_y.max(pos[1]);
+            max_z = max_z.max(pos[2]);
+        }
+        let v = [max_x - min_x, max_y - min_y, max_z - min_z];
+        let avg_edge_length =
+            (v[0].powi(2) + v[1].powi(2) + v[2].powi(2)).sqrt() / (args.len() as f32).cbrt();
+        PointCloudGeometry {
+            positions: args,
+            avg_edge_length,
+        }
     }
 
     fn get_positions(&self) -> &[[f32; 3]] {
@@ -231,6 +253,10 @@ impl ElementGeometry for PointCloudGeometry {
 
     fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
         self.positions[vertex as usize] = pos;
+    }
+
+    fn get_characteristic_length(&self) -> f32 {
+        self.avg_edge_length
     }
 }
 
@@ -502,8 +528,12 @@ impl<'a, Renderer, AttachedData, Ctxt: Context> PointCloudMut<'a, Renderer, Atta
 where
     PointCloud<Renderer, AttachedData>: ElementTrait<Ctxt, Data = PointCloudData>,
 {
-    pub fn set_radius(&mut self, radius: f32) -> &mut Self {
-        self.element.settings.radius.radius = radius;
+    pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
+        if relative {
+            self.element.settings.radius.set_relative(radius);
+        } else {
+            self.element.settings.radius.set_absolute(radius);
+        }
         self.update_settings(false);
         self
     }

@@ -38,10 +38,13 @@ impl DataUniformBuilder for SurfaceSettings {
     }
 }
 
-impl NamedSettings for SurfaceSettings {
-    fn set_name(mut self, name: &str) -> Self {
-        self.color = ColorSettings::new(name);
-        self
+impl ShapeSettings for SurfaceSettings {
+    fn new(name: &str, _l: f32) -> Self {
+        let color = ColorSettings::new(name);
+        Self {
+            color,
+            ..Default::default()
+        }
     }
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool {
@@ -97,6 +100,7 @@ pub struct SurfaceGeometry {
     pub indices: SurfaceIndices,
     face_to_edge: FaceToEdge,
     vertex_to_face: VertexToFace,
+    avg_edge_length: f32,
 }
 
 struct FaceToEdge {
@@ -220,11 +224,13 @@ impl ElementGeometry for SurfaceGeometry {
     fn new(args: Self::Args) -> Self {
         let (indices, vertices) = args;
         let (face_to_edge, vertex_to_face) = compute_edge_face_maps(&indices, vertices.len());
+        let avg_edge_length = compute_avg_edge_length(&vertices, &indices);
         SurfaceGeometry {
             indices,
             vertices,
             face_to_edge,
             vertex_to_face,
+            avg_edge_length,
         }
     }
 
@@ -246,6 +252,10 @@ impl ElementGeometry for SurfaceGeometry {
 
     fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]) {
         self.vertices[vertex as usize] = pos;
+    }
+
+    fn get_characteristic_length(&self) -> f32 {
+        self.avg_edge_length
     }
 }
 
@@ -1279,4 +1289,21 @@ fn compute_face_normals(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> Vec<
             ]
         })
         .collect()
+}
+
+fn compute_avg_edge_length(vertices: &[[f32; 3]], indices: &SurfaceIndices) -> f32 {
+    let mut num_edges = 0;
+    let mut l = 0.;
+    for face in indices {
+        for i in 0..face.len() {
+            let j = if i + 1 < face.len() { i + 1 } else { 0 };
+            let v0 = vertices[i];
+            let v1 = vertices[j];
+            let edge = [v0[0] - v1[0], v0[1] - v1[1], v0[2] - v1[2]];
+            l += (edge[0].powi(2) + edge[1].powi(2) + edge[2].powi(2)).sqrt();
+        }
+        num_edges += face.len();
+    }
+    l = l / num_edges as f32;
+    l
 }

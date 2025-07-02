@@ -16,6 +16,7 @@ struct TransformUniform {
 
 struct SettingsUniform {
     magnitude: f32,
+    char_l: f32,
     color: vec3<f32>,
 }
 
@@ -69,7 +70,7 @@ fn vs_main(
     var out: VertexOutput;
 
 	out.orig_position = world_vector_pos;
-	out.arrow = world_vector_arrow * settings.magnitude * arrow_ampl;
+	out.arrow = world_vector_arrow * settings.magnitude * settings.char_l * arrow_ampl;
 
     let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
     let arrow_axis = world_vector_arrow;
@@ -90,7 +91,7 @@ fn vs_main(
     //corrected_pos.y = corrected_pos.y * arrow_ampl;
     corrected_pos = corrected_pos * arrow_ampl;
 
-    let position = rotation_mat * corrected_pos * settings.magnitude + world_vector_pos;
+    let position = rotation_mat * corrected_pos * settings.magnitude * settings.char_l + world_vector_pos;
     out.world_pos = position;
     let clip_pos = camera.view_proj * vec4<f32>(position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
@@ -185,8 +186,8 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 
     var out: FragOutput;
 
-    let traced_1 = iCappedCone(ro, rd, pb1, pb2, in.radius * settings.magnitude, 0.);
-    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.5 * in.radius * settings.magnitude);
+    let traced_1 = iCappedCone(ro, rd, pb1, pb2, in.radius * settings.magnitude * settings.char_l, 0.);
+    let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.5 * in.radius * settings.magnitude * settings.char_l);
 	if(max(traced_1.x, traced_2.x) < 0.) {
 		discard;
 	}

@@ -23,6 +23,7 @@ struct Jitter {{
 
 struct SettingsUniform {{
     radius: f32,
+    char_len: f32,
     color: vec3<f32>,
 }}
 
@@ -78,7 +79,7 @@ fn vs_main(
 
     let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
     let camera_up = normalize(vec3<f32>(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
-    let world_position = (model_matrix * vec4<f32>(pos.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;
+    let world_position = (model_matrix * vec4<f32>(pos.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len, 1.)).xyz;
     let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     out.world_pos = world_position;
@@ -111,7 +112,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
 	let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let ce = in.center;
     let det = determinant(transform.normal);
-    let r = settings.radius / pow(det, 1. / 3.);
+    let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
     //let pa = in.orig_position;
     //let pb1 = in.orig_position + 0.5 * in.arrow * 0.1;
     //let pb2 = in.orig_position + in.arrow * 0.1;
@@ -210,6 +211,7 @@ struct CounterUniform {
 
 struct SettingsUniform {
     radius: f32,
+    char_len: f32,
     color: vec3<f32>,
 }
 
@@ -254,10 +256,10 @@ fn vs_main(
 
     let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
     let camera_up = normalize(vec3<f32>(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
-    //let world_position = (model_matrix * vec4<f32>(data.position, 1.)).xyz + normalize((model_matrix * vec4<f32>(model.position.x * camera_right + model.position.y * camera_up, 1.)).xyz) * settings.radius * sqrt(2.);
+    //let world_position = (model_matrix * vec4<f32>(data.position, 1.)).xyz + normalize((model_matrix * vec4<f32>(model.position.x * camera_right + model.position.y * camera_up, 1.)).xyz) * settings.radius * settings.char_len * sqrt(2.);
     let center = (model_matrix * vec4<f32>(data.position, 1.)).xyz;
-    //let world_position = center + (model_matrix * vec4<f32>((model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;
-    let world_position = (model_matrix * vec4<f32>(data.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius, 1.)).xyz;
+    //let world_position = center + (model_matrix * vec4<f32>((model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len, 1.)).xyz;
+    let world_position = (model_matrix * vec4<f32>(data.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len, 1.)).xyz;
     out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.world_pos = world_position;
     out.center = center;
@@ -292,7 +294,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let ce = in.center;
     let det = determinant(transform.normal);
-    let r = settings.radius / pow(det, 1. / 3.);
+    let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
 
     var out: FragOutput;
 

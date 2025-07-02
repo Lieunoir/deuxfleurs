@@ -29,8 +29,8 @@ use web_sys::Clipboard;
 use crate::Settings;
 use crate::geometry::{
     AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
-    EmptyAttached, FixedRenderer, GraphicalContext, NamedSettings, NewAttachedGeometry, Render,
-    RenderPipeline, Renderer, UninitedElement,
+    EmptyAttached, FixedRenderer, GraphicalContext, NewAttachedGeometry, Render, RenderPipeline,
+    Renderer, ShapeSettings, UninitedElement,
 };
 use egui;
 use indexmap::IndexMap;
@@ -105,7 +105,7 @@ where
     for<'a> T: ContextHolder<Context<'a> = &'a mut crate::Settings>,
     T: ContainerContextGiver<UninitedElement<Geometry, Settings, Data, Attached>>,
     Geometry: ElementGeometry,
-    Settings: DataUniformBuilder + NamedSettings,
+    Settings: DataUniformBuilder + ShapeSettings,
     Data: DataSettings,
     for<'a> Attached: AttachedGeometry<&'a mut crate::Settings> + NewAttachedGeometry,
 {
@@ -161,7 +161,7 @@ where
     for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
-    Settings: NamedSettings,
+    Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,

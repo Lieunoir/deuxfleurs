@@ -92,7 +92,7 @@ pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attach
 impl<Geometry, Settings, Data, Attached> UninitedElement<Geometry, Settings, Data, Attached>
 where
     Geometry: ElementGeometry,
-    Settings: DataUniformBuilder + NamedSettings,
+    Settings: DataUniformBuilder + ShapeSettings,
     Attached: NewAttachedGeometry,
 {
     pub(crate) fn new_bare(name: String, args: Geometry::Args) -> Self {
@@ -102,7 +102,7 @@ where
 
     pub(crate) fn new_bare_with_geometry(name: String, geometry: Geometry) -> Self {
         let transform = TransformSettings::default();
-        let settings = Settings::default().set_name(&name);
+        let settings = Settings::new(&name, geometry.get_characteristic_length());
         let sbv = SBV::new(geometry.get_positions());
         Self {
             geometry,
@@ -186,7 +186,7 @@ where
     for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
-    Settings: NamedSettings,
+    Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -220,7 +220,7 @@ where
         color_format: wgpu::TextureFormat,
     ) -> Self {
         let transform = TransformSettings::default();
-        let settings = Settings::default().set_name(&name);
+        let settings = Settings::new(&name, geometry.get_characteristic_length());
         let renderer = Renderer::new(
             device,
             &geometry,
@@ -441,7 +441,7 @@ where
     Geometry: ElementGeometry,
     AttachedG: AttachedGeometry<&'a mut crate::Settings>,
     Data: DataSettings,
-    Settings: NamedSettings,
+    Settings: ShapeSettings,
     AttachedG: NewAttachedGeometry,
 {
     type Geometry = Geometry;
@@ -493,7 +493,13 @@ where
         args: <Self::Attached as AttachedGeometry<&'a mut crate::Settings>>::Args,
         context: &'b mut &'a mut crate::Settings,
     ) -> DataMut<'b, Self::Attached, &'a mut crate::Settings> {
-        let geometry = AttachedG::new(name.clone(), args, context, &());
+        let geometry = AttachedG::new(
+            name.clone(),
+            args,
+            self.geometry().get_characteristic_length(),
+            context,
+            &(),
+        );
         self.attached_data.insert(name.clone(), geometry);
         DataMut {
             inner: self.attached_data.get_mut(&name).unwrap(),
@@ -510,7 +516,7 @@ where
     for<'b> AttachedG: AttachedGeometry<GraphicalContext<'b>>,
     Geometry: ElementGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
-    Settings: NamedSettings,
+    Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -634,6 +640,7 @@ where
             let geometry = Self::Attached::new(
                 name.clone(),
                 args,
+                self.geometry().get_characteristic_length(),
                 context,
                 &self.renderer.transform_uniform.bind_group_layout,
             );

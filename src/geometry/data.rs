@@ -57,6 +57,7 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
     fn new(
         _name: String,
         _args: Self::Args,
+        _characteristic_l: f32,
         _context: &mut Ctxt,
         _transform_layout: &Ctxt::TransformLayout,
     ) -> Self {
@@ -91,6 +92,7 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
     fn new(
         _name: String,
         _args: Self::Args,
+        _characteristic_l: f32,
         _context: &mut Ctxt,
         _transform_layout: &Ctxt::TransformLayout,
     ) -> Self {
@@ -102,8 +104,8 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
     }
 }
 
-pub trait NamedSettings: Default + DataUniformBuilder {
-    fn set_name(self, name: &str) -> Self;
+pub trait ShapeSettings: DataUniformBuilder {
+    fn new(name: &str, characteristic_length: f32) -> Self;
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool;
 }
@@ -124,6 +126,8 @@ pub trait ElementGeometry {
     fn get_vertex_pos(&self, vertex: u32) -> [f32; 3];
 
     fn move_vertex(&mut self, vertex: u32, pos: [f32; 3]);
+
+    fn get_characteristic_length(&self) -> f32;
 }
 
 pub trait AttachedGeometry<Ctxt: Context> {
@@ -133,6 +137,7 @@ pub trait AttachedGeometry<Ctxt: Context> {
     fn new(
         name: String,
         args: Self::Args,
+        characteristic_l: f32,
         context: &mut Ctxt,
         transform_layout: &Ctxt::TransformLayout,
     ) -> Self;
