@@ -3,7 +3,7 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use super</span>::{Context, DataUniformBuilder, GraphicalContext};
 <a href=#4 id=4 data-nosnippet>4</a>
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">pub struct </span>DataMut&lt;<span class="lifetime">'a</span>, T, Ctxt: Context&gt; {
-<a href=#6 id=6 data-nosnippet>6</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) inner: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>T,
+<a href=#6 id=6 data-nosnippet>6</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) inner: T,
 <a href=#7 id=7 data-nosnippet>7</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Ctxt,
 <a href=#8 id=8 data-nosnippet>8</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) uniform: Ctxt::DataUniform&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#9 id=9 data-nosnippet>9</a>}
@@ -12,7 +12,7 @@
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">pub type </span>DisplayData&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, T&gt; = DataMut&lt;<span class="lifetime">'b</span>, T, GraphicalContext&lt;<span class="lifetime">'a</span>&gt;&gt;;
 <a href=#13 id=13 data-nosnippet>13</a>
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, Ctxt: Context&gt; DataMut&lt;<span class="lifetime">'a</span>, T, Ctxt&gt; {
-<a href=#15 id=15 data-nosnippet>15</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>convert&lt;U, F: FnOnce(<span class="kw-2">&amp;mut </span>T) -&gt; <span class="kw-2">&amp;mut </span>U&gt;(<span class="self">self</span>, f: F) -&gt; DataMut&lt;<span class="lifetime">'a</span>, U, Ctxt&gt; {
+<a href=#15 id=15 data-nosnippet>15</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>convert&lt;U, F: FnOnce(T) -&gt; U&gt;(<span class="self">self</span>, f: F) -&gt; DataMut&lt;<span class="lifetime">'a</span>, U, Ctxt&gt; {
 <a href=#16 id=16 data-nosnippet>16</a>        DataMut {
 <a href=#17 id=17 data-nosnippet>17</a>            inner: f(<span class="self">self</span>.inner),
 <a href=#18 id=18 data-nosnippet>18</a>            uniform: <span class="self">self</span>.uniform,
@@ -54,7 +54,7 @@
 <a href=#54 id=54 data-nosnippet>54</a>
 <a href=#55 id=55 data-nosnippet>55</a><span class="kw">impl</span>&lt;Ctxt: Context&gt; AttachedGeometry&lt;Ctxt&gt; <span class="kw">for </span>() {
 <a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">type </span>Args = ();
-<a href=#57 id=57 data-nosnippet>57</a>    <span class="kw">type </span>Settings = ();
+<a href=#57 id=57 data-nosnippet>57</a>    <span class="kw">type </span>Settings&lt;<span class="lifetime">'a</span>&gt; = <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>();
 <a href=#58 id=58 data-nosnippet>58</a>
 <a href=#59 id=59 data-nosnippet>59</a>    <span class="kw">fn </span>new(
 <a href=#60 id=60 data-nosnippet>60</a>        _name: String,
@@ -67,7 +67,7 @@
 <a href=#67 id=67 data-nosnippet>67</a>        ()
 <a href=#68 id=68 data-nosnippet>68</a>    }
 <a href=#69 id=69 data-nosnippet>69</a>
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Settings {
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Settings&lt;<span class="lifetime">'_</span>&gt; {
 <a href=#71 id=71 data-nosnippet>71</a>        <span class="self">self
 <a href=#72 id=72 data-nosnippet>72</a>    </span>}
 <a href=#73 id=73 data-nosnippet>73</a>
@@ -96,7 +96,7 @@
 <a href=#96 id=96 data-nosnippet>96</a>
 <a href=#97 id=97 data-nosnippet>97</a><span class="kw">impl</span>&lt;Ctxt: Context&gt; AttachedGeometry&lt;Ctxt&gt; <span class="kw">for </span>EmptyAttached {
 <a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">type </span>Args = ();
-<a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">type </span>Settings = ();
+<a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">type </span>Settings&lt;<span class="lifetime">'a</span>&gt; = <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>();
 <a href=#100 id=100 data-nosnippet>100</a>
 <a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">fn </span>new(
 <a href=#102 id=102 data-nosnippet>102</a>        _name: String,
@@ -109,7 +109,7 @@
 <a href=#109 id=109 data-nosnippet>109</a>        EmptyAttached(())
 <a href=#110 id=110 data-nosnippet>110</a>    }
 <a href=#111 id=111 data-nosnippet>111</a>
-<a href=#112 id=112 data-nosnippet>112</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Settings {
+<a href=#112 id=112 data-nosnippet>112</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Settings&lt;<span class="lifetime">'_</span>&gt; {
 <a href=#113 id=113 data-nosnippet>113</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0
 <a href=#114 id=114 data-nosnippet>114</a>    </span>}
 <a href=#115 id=115 data-nosnippet>115</a>
@@ -152,43 +152,45 @@
 <a href=#152 id=152 data-nosnippet>152</a>
 <a href=#153 id=153 data-nosnippet>153</a><span class="kw">pub trait </span>AttachedGeometry&lt;Ctxt: Context&gt; {
 <a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">type </span>Args;
-<a href=#155 id=155 data-nosnippet>155</a>    <span class="kw">type </span>Settings;
-<a href=#156 id=156 data-nosnippet>156</a>
-<a href=#157 id=157 data-nosnippet>157</a>    <span class="kw">fn </span>new(
-<a href=#158 id=158 data-nosnippet>158</a>        name: String,
-<a href=#159 id=159 data-nosnippet>159</a>        args: <span class="self">Self</span>::Args,
-<a href=#160 id=160 data-nosnippet>160</a>        _position: AttachmentPosition,
-<a href=#161 id=161 data-nosnippet>161</a>        characteristic_l: f32,
-<a href=#162 id=162 data-nosnippet>162</a>        context: <span class="kw-2">&amp;mut </span>Ctxt,
-<a href=#163 id=163 data-nosnippet>163</a>        transform_layout: <span class="kw-2">&amp;</span>Ctxt::TransformLayout,
-<a href=#164 id=164 data-nosnippet>164</a>    ) -&gt; <span class="self">Self</span>;
-<a href=#165 id=165 data-nosnippet>165</a>
-<a href=#166 id=166 data-nosnippet>166</a>    <span class="kw">fn </span>shown(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-<a href=#167 id=167 data-nosnippet>167</a>        <span class="bool-val">false
-<a href=#168 id=168 data-nosnippet>168</a>    </span>}
-<a href=#169 id=169 data-nosnippet>169</a>
-<a href=#170 id=170 data-nosnippet>170</a>    <span class="kw">fn </span>show(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _show: bool, _refresh_screen: <span class="kw-2">&amp;mut </span>bool) {}
+<a href=#155 id=155 data-nosnippet>155</a>    <span class="kw">type </span>Settings&lt;<span class="lifetime">'a</span>&gt;
+<a href=#156 id=156 data-nosnippet>156</a>    <span class="kw">where
+<a href=#157 id=157 data-nosnippet>157</a>        </span><span class="self">Self</span>: <span class="lifetime">'a</span>;
+<a href=#158 id=158 data-nosnippet>158</a>
+<a href=#159 id=159 data-nosnippet>159</a>    <span class="kw">fn </span>new(
+<a href=#160 id=160 data-nosnippet>160</a>        name: String,
+<a href=#161 id=161 data-nosnippet>161</a>        args: <span class="self">Self</span>::Args,
+<a href=#162 id=162 data-nosnippet>162</a>        _position: AttachmentPosition,
+<a href=#163 id=163 data-nosnippet>163</a>        characteristic_l: f32,
+<a href=#164 id=164 data-nosnippet>164</a>        context: <span class="kw-2">&amp;mut </span>Ctxt,
+<a href=#165 id=165 data-nosnippet>165</a>        transform_layout: <span class="kw-2">&amp;</span>Ctxt::TransformLayout,
+<a href=#166 id=166 data-nosnippet>166</a>    ) -&gt; <span class="self">Self</span>;
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">fn </span>shown(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#169 id=169 data-nosnippet>169</a>        <span class="bool-val">false
+<a href=#170 id=170 data-nosnippet>170</a>    </span>}
 <a href=#171 id=171 data-nosnippet>171</a>
-<a href=#172 id=172 data-nosnippet>172</a>    <span class="kw">fn </span>draw_ui(
-<a href=#173 id=173 data-nosnippet>173</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#174 id=174 data-nosnippet>174</a>        _ui: <span class="kw-2">&amp;mut </span>egui::Ui,
-<a href=#175 id=175 data-nosnippet>175</a>        _device: <span class="kw-2">&amp;</span>wgpu::Device,
-<a href=#176 id=176 data-nosnippet>176</a>        _queue: <span class="kw-2">&amp;</span>wgpu::Queue,
-<a href=#177 id=177 data-nosnippet>177</a>        _camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
-<a href=#178 id=178 data-nosnippet>178</a>        _color_format: wgpu::TextureFormat,
-<a href=#179 id=179 data-nosnippet>179</a>        _refresh_screen: <span class="kw-2">&amp;mut </span>bool,
-<a href=#180 id=180 data-nosnippet>180</a>    ) {
-<a href=#181 id=181 data-nosnippet>181</a>    }
-<a href=#182 id=182 data-nosnippet>182</a>
-<a href=#183 id=183 data-nosnippet>183</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'c</span>, <span class="lifetime">'d</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="self">self</span>, _render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'d</span>&gt;)
-<a href=#184 id=184 data-nosnippet>184</a>    <span class="kw">where
-<a href=#185 id=185 data-nosnippet>185</a>        </span><span class="lifetime">'c</span>: <span class="lifetime">'d</span>,
-<a href=#186 id=186 data-nosnippet>186</a>    {
-<a href=#187 id=187 data-nosnippet>187</a>    }
-<a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Settings;
+<a href=#172 id=172 data-nosnippet>172</a>    <span class="kw">fn </span>show(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _show: bool, _refresh_screen: <span class="kw-2">&amp;mut </span>bool) {}
+<a href=#173 id=173 data-nosnippet>173</a>
+<a href=#174 id=174 data-nosnippet>174</a>    <span class="kw">fn </span>draw_ui(
+<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#176 id=176 data-nosnippet>176</a>        _ui: <span class="kw-2">&amp;mut </span>egui::Ui,
+<a href=#177 id=177 data-nosnippet>177</a>        _device: <span class="kw-2">&amp;</span>wgpu::Device,
+<a href=#178 id=178 data-nosnippet>178</a>        _queue: <span class="kw-2">&amp;</span>wgpu::Queue,
+<a href=#179 id=179 data-nosnippet>179</a>        _camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#180 id=180 data-nosnippet>180</a>        _color_format: wgpu::TextureFormat,
+<a href=#181 id=181 data-nosnippet>181</a>        _refresh_screen: <span class="kw-2">&amp;mut </span>bool,
+<a href=#182 id=182 data-nosnippet>182</a>    ) {
+<a href=#183 id=183 data-nosnippet>183</a>    }
+<a href=#184 id=184 data-nosnippet>184</a>
+<a href=#185 id=185 data-nosnippet>185</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'c</span>, <span class="lifetime">'d</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="self">self</span>, _render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'d</span>&gt;)
+<a href=#186 id=186 data-nosnippet>186</a>    <span class="kw">where
+<a href=#187 id=187 data-nosnippet>187</a>        </span><span class="lifetime">'c</span>: <span class="lifetime">'d</span>,
+<a href=#188 id=188 data-nosnippet>188</a>    {
+<a href=#189 id=189 data-nosnippet>189</a>    }
 <a href=#190 id=190 data-nosnippet>190</a>
-<a href=#191 id=191 data-nosnippet>191</a>    <span class="kw">fn </span>get_attached_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AttachmentPosition;
+<a href=#191 id=191 data-nosnippet>191</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Settings&lt;<span class="lifetime">'_</span>&gt;;
 <a href=#192 id=192 data-nosnippet>192</a>
-<a href=#193 id=193 data-nosnippet>193</a>    <span class="kw">fn </span>move_elements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, queue: <span class="kw-2">&amp;</span>wgpu::Queue, indices: <span class="kw-2">&amp;</span>[u32], pos: <span class="kw-2">&amp;</span>[[f32; <span class="number">3</span>]]);
-<a href=#194 id=194 data-nosnippet>194</a>}</code></pre></div></section></main></body></html>
+<a href=#193 id=193 data-nosnippet>193</a>    <span class="kw">fn </span>get_attached_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AttachmentPosition;
+<a href=#194 id=194 data-nosnippet>194</a>
+<a href=#195 id=195 data-nosnippet>195</a>    <span class="kw">fn </span>move_elements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, queue: <span class="kw-2">&amp;</span>wgpu::Queue, indices: <span class="kw-2">&amp;</span>[u32], pos: <span class="kw-2">&amp;</span>[[f32; <span class="number">3</span>]]);
+<a href=#196 id=196 data-nosnippet>196</a>}</code></pre></div></section></main></body></html>

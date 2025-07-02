@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["VectorFieldSettingsMut"]};
+window.SIDEBAR_ITEMS = {"type":["PointsSettingsMut","VectorFieldSettingsMut"]};

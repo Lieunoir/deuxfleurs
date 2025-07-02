@@ -65,7 +65,7 @@
 <a href=#65 id=65 data-nosnippet>65</a>    }
 <a href=#66 id=66 data-nosnippet>66</a>}
 <a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a><span class="kw">pub type </span>VectorFieldSettingsMut&lt;<span class="lifetime">'a</span>, Ctxt&gt; = DataMut&lt;<span class="lifetime">'a</span>, VectorFieldSettings, Ctxt&gt;;
+<a href=#68 id=68 data-nosnippet>68</a><span class="kw">pub type </span>VectorFieldSettingsMut&lt;<span class="lifetime">'a</span>, Ctxt&gt; = DataMut&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>VectorFieldSettings, Ctxt&gt;;
 <a href=#69 id=69 data-nosnippet>69</a>
 <a href=#70 id=70 data-nosnippet>70</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, Ctxt: Context&gt; VectorFieldSettingsMut&lt;<span class="lifetime">'a</span>, Ctxt&gt;
 <a href=#71 id=71 data-nosnippet>71</a><span class="kw">where
@@ -110,7 +110,7 @@
 <a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>avg_vec_length = vectors.iter().fold(<span class="number">0.</span>, |l, vec| {
 <a href=#111 id=111 data-nosnippet>111</a>            l + (vec[<span class="number">0</span>].powi(<span class="number">0</span>) + vec[<span class="number">1</span>].powi(<span class="number">1</span>) + vec[<span class="number">2</span>].powi(<span class="number">2</span>)).sqrt() / vectors.len() <span class="kw">as </span>f32
 <a href=#112 id=112 data-nosnippet>112</a>        });
-<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span><span class="kw-2">mut </span>settings = VectorFieldSettings::new(characteristic_l * avg_vec_length * <span class="number">0.1</span>);
+<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span><span class="kw-2">mut </span>settings = VectorFieldSettings::new(characteristic_l / avg_vec_length * <span class="number">2.</span>);
 <a href=#114 id=114 data-nosnippet>114</a>        settings.color = ColorSettings::new(<span class="kw-2">&amp;</span>name);
 <a href=#115 id=115 data-nosnippet>115</a>        NewVectorField {
 <a href=#116 id=116 data-nosnippet>116</a>            name,
@@ -298,7 +298,7 @@
 <a href=#298 id=298 data-nosnippet>298</a>
 <a href=#299 id=299 data-nosnippet>299</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AttachedGeometry&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span><span class="kw">crate</span>::Settings&gt; <span class="kw">for </span>NewVectorField {
 <a href=#300 id=300 data-nosnippet>300</a>    <span class="kw">type </span>Args = (Vec&lt;[f32; <span class="number">3</span>]&gt;, Vec&lt;[f32; <span class="number">3</span>]&gt;);
-<a href=#301 id=301 data-nosnippet>301</a>    <span class="kw">type </span>Settings = VectorFieldSettings;
+<a href=#301 id=301 data-nosnippet>301</a>    <span class="kw">type </span>Settings&lt;<span class="lifetime">'b</span>&gt; = <span class="kw-2">&amp;</span><span class="lifetime">'b </span><span class="kw-2">mut </span>VectorFieldSettings;
 <a href=#302 id=302 data-nosnippet>302</a>
 <a href=#303 id=303 data-nosnippet>303</a>    <span class="kw">fn </span>new(
 <a href=#304 id=304 data-nosnippet>304</a>        name: String,
@@ -312,7 +312,7 @@
 <a href=#312 id=312 data-nosnippet>312</a>        NewVectorField::new(name, characteristic_l, position, vectors, offsets)
 <a href=#313 id=313 data-nosnippet>313</a>    }
 <a href=#314 id=314 data-nosnippet>314</a>
-<a href=#315 id=315 data-nosnippet>315</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Settings {
+<a href=#315 id=315 data-nosnippet>315</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Settings&lt;<span class="lifetime">'_</span>&gt; {
 <a href=#316 id=316 data-nosnippet>316</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.settings
 <a href=#317 id=317 data-nosnippet>317</a>    }
 <a href=#318 id=318 data-nosnippet>318</a>
@@ -329,7 +329,7 @@
 <a href=#329 id=329 data-nosnippet>329</a>
 <a href=#330 id=330 data-nosnippet>330</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AttachedGeometry&lt;GraphicalContext&lt;<span class="lifetime">'a</span>&gt;&gt; <span class="kw">for </span>VectorField {
 <a href=#331 id=331 data-nosnippet>331</a>    <span class="kw">type </span>Args = (Vec&lt;[f32; <span class="number">3</span>]&gt;, Vec&lt;[f32; <span class="number">3</span>]&gt;);
-<a href=#332 id=332 data-nosnippet>332</a>    <span class="kw">type </span>Settings = VectorFieldSettings;
+<a href=#332 id=332 data-nosnippet>332</a>    <span class="kw">type </span>Settings&lt;<span class="lifetime">'b</span>&gt; = <span class="kw-2">&amp;</span><span class="lifetime">'b </span><span class="kw-2">mut </span>VectorFieldSettings;
 <a href=#333 id=333 data-nosnippet>333</a>
 <a href=#334 id=334 data-nosnippet>334</a>    <span class="kw">fn </span>new(
 <a href=#335 id=335 data-nosnippet>335</a>        name: String,
@@ -397,55 +397,53 @@
 <a href=#397 id=397 data-nosnippet>397</a>    <span class="kw">where
 <a href=#398 id=398 data-nosnippet>398</a>        </span><span class="lifetime">'c</span>: <span class="lifetime">'d</span>,
 <a href=#399 id=399 data-nosnippet>399</a>    {
-<a href=#400 id=400 data-nosnippet>400</a>        <span class="kw">if </span><span class="self">self</span>.settings.show {
-<a href=#401 id=401 data-nosnippet>401</a>            render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#402 id=402 data-nosnippet>402</a>            render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.render_pipeline);
-<a href=#403 id=403 data-nosnippet>403</a>            render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.vertex_buffer.slice(..));
-<a href=#404 id=404 data-nosnippet>404</a>            render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.vector_buffer.slice(..));
-<a href=#405 id=405 data-nosnippet>405</a>            <span class="comment">//render_pass.draw(0..18, 0..(self.vectors.len() as u32));
-<a href=#406 id=406 data-nosnippet>406</a>            </span>render_pass.draw(<span class="number">0</span>..<span class="number">8</span>, <span class="number">0</span>..(<span class="self">self</span>.vectors.len() <span class="kw">as </span>u32));
-<a href=#407 id=407 data-nosnippet>407</a>        }
-<a href=#408 id=408 data-nosnippet>408</a>    }
-<a href=#409 id=409 data-nosnippet>409</a>
-<a href=#410 id=410 data-nosnippet>410</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Settings {
-<a href=#411 id=411 data-nosnippet>411</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.settings
-<a href=#412 id=412 data-nosnippet>412</a>    }
-<a href=#413 id=413 data-nosnippet>413</a>
-<a href=#414 id=414 data-nosnippet>414</a>    <span class="kw">fn </span>get_attached_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AttachmentPosition {
-<a href=#415 id=415 data-nosnippet>415</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.position
-<a href=#416 id=416 data-nosnippet>416</a>    }
-<a href=#417 id=417 data-nosnippet>417</a>
-<a href=#418 id=418 data-nosnippet>418</a>    <span class="kw">fn </span>move_elements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, queue: <span class="kw-2">&amp;</span>wgpu::Queue, indices: <span class="kw-2">&amp;</span>[u32], pos: <span class="kw-2">&amp;</span>[[f32; <span class="number">3</span>]]) {
-<a href=#419 id=419 data-nosnippet>419</a>        <span class="kw">for </span>(index, value) <span class="kw">in </span>indices.iter().zip(pos) {
-<a href=#420 id=420 data-nosnippet>420</a>            <span class="self">self</span>.offsets[<span class="kw-2">*</span>index <span class="kw">as </span>usize] = <span class="kw-2">*</span>value;
-<a href=#421 id=421 data-nosnippet>421</a>            queue.write_buffer(
-<a href=#422 id=422 data-nosnippet>422</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.vector_buffer,
-<a href=#423 id=423 data-nosnippet>423</a>                (<span class="kw-2">*</span>index <span class="kw">as </span>usize * size_of::&lt;VectorData&gt;()) <span class="kw">as </span>BufferAddress,
-<a href=#424 id=424 data-nosnippet>424</a>                bytemuck::cast_slice(<span class="kw-2">&amp;</span>[VectorData {
-<a href=#425 id=425 data-nosnippet>425</a>                    orig_position: <span class="kw-2">*</span>value,
-<a href=#426 id=426 data-nosnippet>426</a>                    vector: <span class="self">self</span>.vectors[<span class="kw-2">*</span>index <span class="kw">as </span>usize],
-<a href=#427 id=427 data-nosnippet>427</a>                }]),
-<a href=#428 id=428 data-nosnippet>428</a>            );
-<a href=#429 id=429 data-nosnippet>429</a>        }
-<a href=#430 id=430 data-nosnippet>430</a>    }
-<a href=#431 id=431 data-nosnippet>431</a>}
-<a href=#432 id=432 data-nosnippet>432</a>
-<a href=#433 id=433 data-nosnippet>433</a><span class="kw">impl </span>NewAttachedGeometry <span class="kw">for </span>NewVectorField {
-<a href=#434 id=434 data-nosnippet>434</a>    <span class="kw">type </span>UpgradedAttachedGeometry = VectorField;
-<a href=#435 id=435 data-nosnippet>435</a>
-<a href=#436 id=436 data-nosnippet>436</a>    <span class="kw">fn </span>init(
-<a href=#437 id=437 data-nosnippet>437</a>        <span class="self">self</span>,
-<a href=#438 id=438 data-nosnippet>438</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
-<a href=#439 id=439 data-nosnippet>439</a>        camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
-<a href=#440 id=440 data-nosnippet>440</a>        transform_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
-<a href=#441 id=441 data-nosnippet>441</a>        color_format: wgpu::TextureFormat,
-<a href=#442 id=442 data-nosnippet>442</a>    ) -&gt; <span class="self">Self</span>::UpgradedAttachedGeometry {
-<a href=#443 id=443 data-nosnippet>443</a>        VectorField::new(
-<a href=#444 id=444 data-nosnippet>444</a>            device,
-<a href=#445 id=445 data-nosnippet>445</a>            camera_light_bind_group_layout,
-<a href=#446 id=446 data-nosnippet>446</a>            transform_bind_group_layout,
-<a href=#447 id=447 data-nosnippet>447</a>            color_format,
-<a href=#448 id=448 data-nosnippet>448</a>            <span class="self">self</span>,
-<a href=#449 id=449 data-nosnippet>449</a>        )
-<a href=#450 id=450 data-nosnippet>450</a>    }
-<a href=#451 id=451 data-nosnippet>451</a>}</code></pre></div></section></main></body></html>
+<a href=#400 id=400 data-nosnippet>400</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#401 id=401 data-nosnippet>401</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.render_pipeline);
+<a href=#402 id=402 data-nosnippet>402</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.vertex_buffer.slice(..));
+<a href=#403 id=403 data-nosnippet>403</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.vector_buffer.slice(..));
+<a href=#404 id=404 data-nosnippet>404</a>        <span class="comment">//render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+<a href=#405 id=405 data-nosnippet>405</a>        </span>render_pass.draw(<span class="number">0</span>..<span class="number">8</span>, <span class="number">0</span>..(<span class="self">self</span>.vectors.len() <span class="kw">as </span>u32));
+<a href=#406 id=406 data-nosnippet>406</a>    }
+<a href=#407 id=407 data-nosnippet>407</a>
+<a href=#408 id=408 data-nosnippet>408</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Settings&lt;<span class="lifetime">'_</span>&gt; {
+<a href=#409 id=409 data-nosnippet>409</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.settings
+<a href=#410 id=410 data-nosnippet>410</a>    }
+<a href=#411 id=411 data-nosnippet>411</a>
+<a href=#412 id=412 data-nosnippet>412</a>    <span class="kw">fn </span>get_attached_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AttachmentPosition {
+<a href=#413 id=413 data-nosnippet>413</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.position
+<a href=#414 id=414 data-nosnippet>414</a>    }
+<a href=#415 id=415 data-nosnippet>415</a>
+<a href=#416 id=416 data-nosnippet>416</a>    <span class="kw">fn </span>move_elements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, queue: <span class="kw-2">&amp;</span>wgpu::Queue, indices: <span class="kw-2">&amp;</span>[u32], pos: <span class="kw-2">&amp;</span>[[f32; <span class="number">3</span>]]) {
+<a href=#417 id=417 data-nosnippet>417</a>        <span class="kw">for </span>(index, value) <span class="kw">in </span>indices.iter().zip(pos) {
+<a href=#418 id=418 data-nosnippet>418</a>            <span class="self">self</span>.offsets[<span class="kw-2">*</span>index <span class="kw">as </span>usize] = <span class="kw-2">*</span>value;
+<a href=#419 id=419 data-nosnippet>419</a>            queue.write_buffer(
+<a href=#420 id=420 data-nosnippet>420</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.vector_buffer,
+<a href=#421 id=421 data-nosnippet>421</a>                (<span class="kw-2">*</span>index <span class="kw">as </span>usize * size_of::&lt;VectorData&gt;()) <span class="kw">as </span>BufferAddress,
+<a href=#422 id=422 data-nosnippet>422</a>                bytemuck::cast_slice(<span class="kw-2">&amp;</span>[VectorData {
+<a href=#423 id=423 data-nosnippet>423</a>                    orig_position: <span class="kw-2">*</span>value,
+<a href=#424 id=424 data-nosnippet>424</a>                    vector: <span class="self">self</span>.vectors[<span class="kw-2">*</span>index <span class="kw">as </span>usize],
+<a href=#425 id=425 data-nosnippet>425</a>                }]),
+<a href=#426 id=426 data-nosnippet>426</a>            );
+<a href=#427 id=427 data-nosnippet>427</a>        }
+<a href=#428 id=428 data-nosnippet>428</a>    }
+<a href=#429 id=429 data-nosnippet>429</a>}
+<a href=#430 id=430 data-nosnippet>430</a>
+<a href=#431 id=431 data-nosnippet>431</a><span class="kw">impl </span>NewAttachedGeometry <span class="kw">for </span>NewVectorField {
+<a href=#432 id=432 data-nosnippet>432</a>    <span class="kw">type </span>UpgradedAttachedGeometry = VectorField;
+<a href=#433 id=433 data-nosnippet>433</a>
+<a href=#434 id=434 data-nosnippet>434</a>    <span class="kw">fn </span>init(
+<a href=#435 id=435 data-nosnippet>435</a>        <span class="self">self</span>,
+<a href=#436 id=436 data-nosnippet>436</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
+<a href=#437 id=437 data-nosnippet>437</a>        camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#438 id=438 data-nosnippet>438</a>        transform_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#439 id=439 data-nosnippet>439</a>        color_format: wgpu::TextureFormat,
+<a href=#440 id=440 data-nosnippet>440</a>    ) -&gt; <span class="self">Self</span>::UpgradedAttachedGeometry {
+<a href=#441 id=441 data-nosnippet>441</a>        VectorField::new(
+<a href=#442 id=442 data-nosnippet>442</a>            device,
+<a href=#443 id=443 data-nosnippet>443</a>            camera_light_bind_group_layout,
+<a href=#444 id=444 data-nosnippet>444</a>            transform_bind_group_layout,
+<a href=#445 id=445 data-nosnippet>445</a>            color_format,
+<a href=#446 id=446 data-nosnippet>446</a>            <span class="self">self</span>,
+<a href=#447 id=447 data-nosnippet>447</a>        )
+<a href=#448 id=448 data-nosnippet>448</a>    }
+<a href=#449 id=449 data-nosnippet>449</a>}</code></pre></div></section></main></body></html>
