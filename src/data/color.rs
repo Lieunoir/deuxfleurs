@@ -1,3 +1,7 @@
+use std::f32::consts::PI;
+
+use egui::Color32;
+
 use crate::ui::UiDataElement;
 
 #[repr(C)]
@@ -6,40 +10,39 @@ pub struct ColorSettings {
     pub color: [f32; 4],
 }
 
-const RED: ColorSettings = ColorSettings {
-    color: [0.55, 0.1, 0.1, 1.],
-};
-const YELLOW: ColorSettings = ColorSettings {
-    color: [0.63, 0.63, 0.09, 1.],
-};
-const WHITE: ColorSettings = ColorSettings {
-    color: [0.9, 0.9, 0.9, 1.],
-};
-const GREEN: ColorSettings = ColorSettings {
-    color: [0.1, 0.50, 0.20, 1.],
-};
-const PINK: ColorSettings = ColorSettings {
-    color: [0.50, 0.1, 0.52, 1.],
-};
-const BLUE: ColorSettings = ColorSettings {
-    color: [0.22, 0.22, 0.75, 1.],
-};
+fn hash(string: &str) -> u8 {
+    let mut res = 0_u32;
+    for char in string.as_bytes() {
+        res = (res << 5) - res + *char as u32;
+    }
+    (res % 255) as u8
+}
+
+pub fn oklch_to_linear(l: f32, c: f32, h: f32, alpha: f32) -> [f32; 4] {
+    let a = c * h.cos();
+    let b = c * h.sin();
+
+    let l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    let m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    let s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+
+    let l = l_ * l_ * l_;
+    let m = m_ * m_ * m_;
+    let s = s_ * s_ * s_;
+
+    [
+        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+        alpha,
+    ]
+}
 
 impl ColorSettings {
     pub fn new(name: &str) -> Self {
-        let mut value = 0_u8;
-        for &x in name.as_bytes() {
-            value = value.wrapping_add(x);
-        }
-        value = value % 6;
-        match value {
-            0 => BLUE,
-            1 => YELLOW,
-            2 => WHITE,
-            3 => GREEN,
-            4 => PINK,
-            5 => RED,
-            _ => BLUE,
+        let hash = hash(name);
+        Self {
+            color: oklch_to_linear(0.6459, 0.1413, (hash as f32) / 256. * 2. * PI, 1.),
         }
     }
 }
