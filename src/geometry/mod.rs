@@ -76,6 +76,11 @@ impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
         self.show
     }
 
+    /// This stamp increases each time the geometry of the shape is modified.
+    pub fn get_modification_stamp(&self) -> u32 {
+        self.modification_stamp
+    }
+
     pub fn get_data(&self, name: &str) -> Option<&Data> {
         self.data.get(name)
     }
@@ -445,8 +450,6 @@ pub trait ElementTrait<Ctxt: Context> {
 
     fn set_data(&mut self, name: Option<String>, context: &mut Ctxt);
 
-    fn get_modification_stamp(&self) -> u32;
-
     fn add_data<'b>(
         &'b mut self,
         name: String,
@@ -516,10 +519,6 @@ where
 
     fn remove_attached_shape(&mut self, name: String, _context: &mut &'a mut crate::Settings) {
         self.attached_data.shift_remove(&name);
-    }
-
-    fn get_modification_stamp(&self) -> u32 {
-        self.modification_stamp
     }
 
     fn add_data<'b>(
@@ -645,10 +644,6 @@ where
         }
     }
 
-    fn get_modification_stamp(&self) -> u32 {
-        self.modification_stamp
-    }
-
     fn add_data<'b>(
         &'b mut self,
         name: String,
@@ -760,11 +755,6 @@ impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctx
     pub fn remove_attached_shape<S: Into<String>>(&mut self, name: S) {
         self.element
             .remove_attached_shape(name.into(), &mut self.context);
-    }
-
-    /// This stamp increases each time the geometry of the shape is modified.
-    pub fn get_modification_stamp(&self) -> u32 {
-        self.element.get_modification_stamp()
     }
 
     pub(crate) fn add_data(
