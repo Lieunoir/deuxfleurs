@@ -1,16 +1,19 @@
 use super::{
-    InitialState, InnerBareState, InnerGraphicalState, JitterUniform, LightUniform, RunningState,
-    StateWrapper, UserEvent,
+    InnerGraphicalState, JitterUniform, LightUniform, RunningState, StateWrapper, UserEvent,
 };
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
-use crate::deferred;
+use crate::{Settings, deferred};
 
 use crate::picker::{self, Picked};
+use crate::point_cloud::UninitedPointCloud;
 use crate::screenshot;
+use crate::segment::UninitedSegment;
+use crate::surface::UninitedSurface;
 use crate::texture;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
+use indexmap::IndexMap;
 use pollster::FutureExt;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -34,16 +37,13 @@ use winit::{
 impl InnerGraphicalState {
     // Initialize the state
     pub(crate) async fn new(
-        initial: InitialState,
+        surfaces: IndexMap<String, UninitedSurface>,
+        clouds: IndexMap<String, UninitedPointCloud>,
+        segments: IndexMap<String, UninitedSegment>,
+        settings: Settings,
         window: Window,
         proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
-        let InnerBareState {
-            surfaces,
-            clouds,
-            segments,
-            settings,
-        } = initial.0;
         let size = window.inner_size();
         let window = Arc::new(window);
         // The instance is a handle to our GPU
@@ -942,7 +942,18 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             }
 
             let init = self.init_state.take().unwrap();
-            self.state = Some(RunningState::new(init, window, self.proxy.clone()).block_on());
+            self.callback = Some(init.0.callback);
+            self.state = Some(
+                RunningState::new(
+                    init.0.surfaces,
+                    init.0.clouds,
+                    init.0.segments,
+                    init.0.settings,
+                    window,
+                    self.proxy.clone(),
+                )
+                .block_on(),
+            );
             self.ui = Some(crate::ui::UI::new(
                 &self.state.as_ref().unwrap().device,
                 event_loop,
@@ -1114,7 +1125,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             state.0.config.format,
                             &mut state.0.dirty,
                         );
-                        ui.draw_callback(state, &mut self.callback);
+                        ui.draw_callback(state, &mut self.callback.as_mut().unwrap());
                         let scene_changed = state.update();
                         //actual rendering
                         match state.render(&self.proxy, ui, scene_changed) {

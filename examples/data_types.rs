@@ -1,5 +1,5 @@
 use deuxfleurs::types::SurfaceIndices;
-use deuxfleurs::{RunningState, Settings, load_mesh};
+use deuxfleurs::{Settings, load_mesh};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -83,6 +83,5 @@ pub async fn run() {
     let mut pc = handle.register_point_cloud("spot_pc", spot_v.clone());
     pc.add_scalar("x coord", spot_data_1);
 
-    let callback = move |_ui: &mut egui::Ui, _state: &mut RunningState| {};
-    handle.run(1080, 720, Some("deuxfleurs"), callback);
+    handle.run(1080, 720, Some("deuxfleurs"));
 }

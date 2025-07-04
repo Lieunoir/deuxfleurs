@@ -46,11 +46,12 @@ pub mod internal {
 /// Arguments:
 /// * `settings`: global app [`Settings`]
 #[must_use]
-pub fn init(settings: Settings) -> InitialState {
+pub fn init(settings: Settings) -> InitialState<impl FnMut(&mut egui::Ui, &mut RunningState)> {
     State::new_inner(InnerBareState {
         surfaces: IndexMap::new(),
         clouds: IndexMap::new(),
         segments: IndexMap::new(),
         settings,
+        callback: |_, _| {},
     })
 }

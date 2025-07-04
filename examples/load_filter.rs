@@ -1,6 +1,6 @@
+use deuxfleurs::Settings;
 use deuxfleurs::types::SurfaceIndices;
 use deuxfleurs::ui::LoadObjButton;
-use deuxfleurs::{RunningState, Settings};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -13,7 +13,7 @@ fn main() {
 pub async fn run() {
     let handle = deuxfleurs::init(Settings::default());
 
-    let callback = move |ui: &mut egui::Ui, state: &mut RunningState| {
+    let handle = handle.with_callback(|ui, state| {
         ui.label("User defined stuff here : ");
         ui.add(LoadObjButton::new("Load obj", "loaded mesh", state));
         if ui
@@ -62,6 +62,7 @@ pub async fn run() {
                 state.register_surface("loaded mesh", new_pos, indices);
             }
         }
-    };
-    handle.run(1080, 720, Some("deuxfleurs"), callback);
+    });
+
+    handle.run(1080, 720, Some("deuxfleurs"));
 }

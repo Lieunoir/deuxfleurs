@@ -1,7 +1,5 @@
 use std::f32::consts::PI;
 
-use egui::Color32;
-
 use crate::ui::UiDataElement;
 
 #[repr(C)]

@@ -434,14 +434,15 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
 
 impl StateTrait for InnerGraphicalState {}
 
-pub struct InnerBareState {
+pub struct InnerBareState<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     pub(crate) surfaces: IndexMap<String, UninitedSurface>,
     pub(crate) clouds: IndexMap<String, UninitedPointCloud>,
     pub(crate) segments: IndexMap<String, UninitedSegment>,
     pub settings: Settings,
+    pub(crate) callback: T,
 }
 
-impl ContextHolder for InnerBareState {
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContextHolder for InnerBareState<T> {
     type Context<'a> = &'a mut Settings;
     type SurfaceRenderer = ();
     type SurfaceAttachedData = NewSurfaceAttachment;
@@ -451,7 +452,9 @@ impl ContextHolder for InnerBareState {
     type SegmentAttachedData = ();
 }
 
-impl ContainerContextGiver<UninitedSurface> for InnerBareState {
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContainerContextGiver<UninitedSurface>
+    for InnerBareState<T>
+{
     fn get_container(&self) -> &IndexMap<String, UninitedSurface> {
         &self.surfaces
     }
@@ -469,7 +472,9 @@ impl ContainerContextGiver<UninitedSurface> for InnerBareState {
     }
 }
 
-impl ContainerContextGiver<UninitedPointCloud> for InnerBareState {
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContainerContextGiver<UninitedPointCloud>
+    for InnerBareState<T>
+{
     fn get_container(&self) -> &IndexMap<String, UninitedPointCloud> {
         &self.clouds
     }
@@ -487,7 +492,9 @@ impl ContainerContextGiver<UninitedPointCloud> for InnerBareState {
     }
 }
 
-impl ContainerContextGiver<UninitedSegment> for InnerBareState {
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContainerContextGiver<UninitedSegment>
+    for InnerBareState<T>
+{
     fn get_container(&self) -> &IndexMap<String, UninitedSegment> {
         &self.segments
     }
@@ -505,7 +512,7 @@ impl ContainerContextGiver<UninitedSegment> for InnerBareState {
     }
 }
 
-impl StateTrait for InnerBareState {}
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateTrait for InnerBareState<T> {}
 
 pub trait StateTrait:
     GeometryHolder<
@@ -636,9 +643,9 @@ impl<T: StateTrait> State<T> {
 }
 
 /// Starting point to build the app.
-pub type InitialState = State<InnerBareState>;
+pub type InitialState<T: FnMut(&mut egui::Ui, &mut RunningState)> = State<InnerBareState<T>>;
 
-impl InitialState {
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     /// Show the window and start the app.
     ///
     /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
@@ -650,14 +657,30 @@ impl InitialState {
     /// * `id`: serves as window title, or id shape to attach to. If `None` used `"State"`.
     /// * `callback`: called every frame with a [`egui::Ui`] and a [`RunningState`] arguments, used to
     /// add UI elements and modify state accordingly.
-    pub fn run<S: Into<String>, T: FnMut(&mut egui::Ui, &mut RunningState)>(
+    pub fn run<S: Into<String>>(self, width: u32, height: u32, id: Option<S>) {
+        StateWrapper::run(self, width, height, id.map(Into::into));
+    }
+
+    /// Specify a callback that will be called once every frame.
+    pub fn with_callback<U: FnMut(&mut egui::Ui, &mut RunningState)>(
         self,
-        width: u32,
-        height: u32,
-        id: Option<S>,
-        callback: T,
-    ) {
-        StateWrapper::run(self, width, height, id.map(Into::into), callback);
+        callback: U,
+    ) -> InitialState<U> {
+        let InnerBareState {
+            surfaces,
+            clouds,
+            segments,
+            settings,
+            ..
+        } = self.0;
+        let inner = InnerBareState {
+            surfaces,
+            clouds,
+            segments,
+            settings,
+            callback,
+        };
+        InitialState::new_inner(inner)
     }
 }
 
@@ -665,15 +688,15 @@ impl InitialState {
 pub type RunningState = State<InnerGraphicalState>;
 
 struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
-    init_state: Option<InitialState>,
+    init_state: Option<InitialState<T>>,
     state: Option<RunningState>,
     ui: Option<crate::ui::UI>,
     clipboard: Option<Clipboard>,
+    callback: Option<T>,
     id: String,
     width: u32,
     height: u32,
     proxy: EventLoopProxy<UserEvent>,
-    callback: T,
 }
 
 pub(crate) enum UserEvent {
@@ -698,8 +721,16 @@ impl DerefMut for RunningState {
 }
 
 impl RunningState {
-    async fn new(initial: InitialState, window: Window, proxy: EventLoopProxy<UserEvent>) -> Self {
-        let inner = InnerGraphicalState::new(initial, window, proxy).await;
+    async fn new(
+        surfaces: IndexMap<String, UninitedSurface>,
+        clouds: IndexMap<String, UninitedPointCloud>,
+        segments: IndexMap<String, UninitedSegment>,
+        settings: Settings,
+        window: Window,
+        proxy: EventLoopProxy<UserEvent>,
+    ) -> Self {
+        let inner =
+            InnerGraphicalState::new(surfaces, clouds, segments, settings, window, proxy).await;
         Self::new_inner(inner)
     }
 
@@ -725,7 +756,7 @@ impl RunningState {
 }
 
 impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
-    fn run(init_state: InitialState, width: u32, height: u32, id: Option<String>, callback: T) {
+    fn run(init_state: InitialState<T>, width: u32, height: u32, id: Option<String>) {
         let id = id.unwrap_or("deuxfleurs".into());
         #[cfg(target_arch = "wasm32")]
         {
@@ -746,12 +777,12 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
             init_state: Some(init_state),
             state: None,
             clipboard: None,
+            callback: None,
             ui: None,
             id,
             width,
             height,
             proxy,
-            callback,
         };
         event_loop.run_app(&mut app).unwrap();
     }
