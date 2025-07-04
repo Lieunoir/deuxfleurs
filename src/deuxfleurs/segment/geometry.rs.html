@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/segment/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-aa0817cf.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (da58c0513 2025-07-03)" data-channel="nightly" data-search-js="search-179e01a3.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-673ee1e0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/segment/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::data::{internal::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
-<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">crate</span>::geometry::<span class="kw-2">*</span>;
-<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::picker::SegmentPicked;
-<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::segment::sphere_shader::SPHERE_PICKER_SHADER;
+<a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">crate</span>::picker::SegmentPicked;
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::segment::sphere_shader::SPHERE_PICKER_SHADER;
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::shape::<span class="kw-2">*</span>;
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::texture;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span><span class="kw">crate</span>::types::{Color, Scalar};
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::ui::UiDataElement;
@@ -356,7 +356,7 @@
 <a href=#356 id=356 data-nosnippet>356</a>    avg_edge_length: f32,
 <a href=#357 id=357 data-nosnippet>357</a>}
 <a href=#358 id=358 data-nosnippet>358</a>
-<a href=#359 id=359 data-nosnippet>359</a><span class="kw">impl </span>ElementGeometry <span class="kw">for </span>SegmentGeometry {
+<a href=#359 id=359 data-nosnippet>359</a><span class="kw">impl </span>ShapeGeometry <span class="kw">for </span>SegmentGeometry {
 <a href=#360 id=360 data-nosnippet>360</a>    <span class="kw">type </span>Args = (Vec&lt;[f32; <span class="number">3</span>]&gt;, Vec&lt;[u32; <span class="number">2</span>]&gt;);
 <a href=#361 id=361 data-nosnippet>361</a>
 <a href=#362 id=362 data-nosnippet>362</a>    <span class="kw">fn </span>new(args: <span class="self">Self</span>::Args) -&gt; <span class="self">Self </span>{
@@ -832,29 +832,29 @@
 <a href=#832 id=832 data-nosnippet>832</a>}
 <a href=#833 id=833 data-nosnippet>833</a>
 <a href=#834 id=834 data-nosnippet>834</a><span class="kw">pub type </span>Segment&lt;Renderer, AttachedData&gt; =
-<a href=#835 id=835 data-nosnippet>835</a>    Element&lt;SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData&gt;;
+<a href=#835 id=835 data-nosnippet>835</a>    Shape&lt;SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData&gt;;
 <a href=#836 id=836 data-nosnippet>836</a>
 <a href=#837 id=837 data-nosnippet>837</a><span class="kw">pub type </span>UninitedSegment = Segment&lt;(), ()&gt;;
 <a href=#838 id=838 data-nosnippet>838</a><span class="kw">pub type </span>DisplaySegment = Segment&lt;SegmentRenderer, EmptyAttached&gt;;
 <a href=#839 id=839 data-nosnippet>839</a>
 <a href=#840 id=840 data-nosnippet>840</a><span class="kw">pub type </span>SegmentMut&lt;<span class="lifetime">'a</span>, Renderer, AttachedData, Context&gt; =
-<a href=#841 id=841 data-nosnippet>841</a>    ElementMut&lt;<span class="lifetime">'a</span>, Segment&lt;Renderer, AttachedData&gt;, Context&gt;;
+<a href=#841 id=841 data-nosnippet>841</a>    ShapeMut&lt;<span class="lifetime">'a</span>, Segment&lt;Renderer, AttachedData&gt;, Context&gt;;
 <a href=#842 id=842 data-nosnippet>842</a>
 <a href=#843 id=843 data-nosnippet>843</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, Renderer, AttachedData, Ctxt: Context&gt; SegmentMut&lt;<span class="lifetime">'a</span>, Renderer, AttachedData, Ctxt&gt;
 <a href=#844 id=844 data-nosnippet>844</a><span class="kw">where
-<a href=#845 id=845 data-nosnippet>845</a>    </span>Segment&lt;Renderer, AttachedData&gt;: ElementTrait&lt;Ctxt, Data = SegmentData&gt;,
+<a href=#845 id=845 data-nosnippet>845</a>    </span>Segment&lt;Renderer, AttachedData&gt;: ShapeTrait&lt;Ctxt, Data = SegmentData&gt;,
 <a href=#846 id=846 data-nosnippet>846</a>{
 <a href=#847 id=847 data-nosnippet>847</a>    <span class="kw">pub fn </span>set_radius(<span class="kw-2">&amp;mut </span><span class="self">self</span>, radius: f32, relative: bool) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
 <a href=#848 id=848 data-nosnippet>848</a>        <span class="kw">if </span>relative {
-<a href=#849 id=849 data-nosnippet>849</a>            <span class="self">self</span>.element.settings.radius.set_relative(radius);
+<a href=#849 id=849 data-nosnippet>849</a>            <span class="self">self</span>.inner.settings.radius.set_relative(radius);
 <a href=#850 id=850 data-nosnippet>850</a>        } <span class="kw">else </span>{
-<a href=#851 id=851 data-nosnippet>851</a>            <span class="self">self</span>.element.settings.radius.set_absolute(radius);
+<a href=#851 id=851 data-nosnippet>851</a>            <span class="self">self</span>.inner.settings.radius.set_absolute(radius);
 <a href=#852 id=852 data-nosnippet>852</a>        }
 <a href=#853 id=853 data-nosnippet>853</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
 <a href=#854 id=854 data-nosnippet>854</a>    }
 <a href=#855 id=855 data-nosnippet>855</a>
 <a href=#856 id=856 data-nosnippet>856</a>    <span class="kw">pub fn </span>set_color(<span class="kw-2">&amp;mut </span><span class="self">self</span>, color: [f32; <span class="number">4</span>]) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
-<a href=#857 id=857 data-nosnippet>857</a>        <span class="self">self</span>.element.settings.color.color = color;
+<a href=#857 id=857 data-nosnippet>857</a>        <span class="self">self</span>.inner.settings.color.color = color;
 <a href=#858 id=858 data-nosnippet>858</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>);
 <a href=#859 id=859 data-nosnippet>859</a>        <span class="self">self
 <a href=#860 id=860 data-nosnippet>860</a>    </span>}
