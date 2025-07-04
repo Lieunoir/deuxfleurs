@@ -328,7 +328,7 @@ impl InnerGraphicalState {
     }
 
     fn set_floor(&mut self) {
-        use crate::geometry::ShapeGeometry;
+        use crate::shape::ShapeGeometry;
         let mut min_y = 0.;
         for surface in self.surfaces.values() {
             if surface.shown() {

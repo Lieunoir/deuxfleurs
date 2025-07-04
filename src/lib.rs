@@ -5,7 +5,6 @@ pub mod attachment;
 mod camera;
 pub mod data;
 mod deferred;
-mod geometry;
 mod obj_load;
 pub mod picker;
 pub mod point_cloud;
@@ -14,6 +13,7 @@ mod screenshot;
 pub mod segment;
 mod settings;
 mod shader;
+mod shape;
 pub mod surface;
 mod texture;
 /// General types for genericity in functions parameters.
@@ -35,7 +35,7 @@ use window::{InnerBareState, State};
 
 /// Re exported types for visibility
 pub mod internal {
-    pub use crate::geometry::{Shape, ShapeMut};
+    pub use crate::shape::{Shape, ShapeMut};
     pub use crate::window::State;
 }
 

@@ -1,11 +1,11 @@
 use crate::attachment::internal::AttachmentPosition;
 use crate::data::*;
-use crate::geometry::AttachedGeometry;
-use crate::geometry::Context;
-use crate::geometry::{DataMut, DataMutTrait};
+use crate::shape::AttachedGeometry;
+use crate::shape::Context;
+use crate::shape::{DataMut, DataMutTrait};
 
-use crate::geometry::GraphicalContext;
-use crate::geometry::NewAttachedGeometry;
+use crate::shape::GraphicalContext;
+use crate::shape::NewAttachedGeometry;
 use crate::texture;
 use crate::ui::UiDataElement;
 use crate::util;

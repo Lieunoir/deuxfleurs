@@ -1,7 +1,7 @@
 use crate::data::{internal::*, *};
-use crate::geometry::*;
 use crate::picker::SegmentPicked;
 use crate::segment::sphere_shader::SPHERE_PICKER_SHADER;
+use crate::shape::*;
 use crate::texture;
 use crate::types::{Color, Scalar};
 use crate::ui::UiDataElement;

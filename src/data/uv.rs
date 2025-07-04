@@ -1,4 +1,4 @@
-use crate::geometry::{Context, DataMut, DataMutTrait};
+use crate::shape::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
 use egui::Widget;
 

@@ -1,12 +1,12 @@
 use crate::{
     attachment::internal::AttachmentPosition,
     data::internal::DataUniformBuilder,
-    geometry::{
+    segment::{DisplaySegment, PCSettings, UninitedSegment},
+    settings::Settings,
+    shape::{
         AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
         ShapeGeometry, ShapeSettings,
     },
-    segment::{DisplaySegment, PCSettings, UninitedSegment},
-    settings::Settings,
 };
 
 pub struct NewSegments {

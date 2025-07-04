@@ -4,9 +4,9 @@ use crate::{
         NewPoints, NewSegments, NewVectorField, Points, Segments, VectorField, VectorFieldSettings,
         internal::AttachmentPosition,
     },
-    geometry::{AttachedGeometry, GraphicalContext, NewAttachedGeometry},
     point_cloud::PCSettings,
     segment::PCSettings as SegmentSettings,
+    shape::{AttachedGeometry, GraphicalContext, NewAttachedGeometry},
 };
 
 pub enum NewSurfaceAttachment {

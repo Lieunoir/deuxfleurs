@@ -26,7 +26,7 @@ use egui_winit::clipboard::Clipboard;
 use web_sys::Clipboard;
 
 use crate::Settings;
-use crate::geometry::{
+use crate::shape::{
     AttachedGeometry, DataBuffer, DisplayShape, EmptyAttached, FixedRenderer, GraphicalContext,
     NewAttachedGeometry, Render, RenderPipeline, Renderer, Shape, ShapeGeometry, ShapeMut,
     ShapeSettings, UninitedShape,
@@ -114,7 +114,7 @@ where
         name: String,
         args: Self::Args,
     ) -> ShapeMut<UninitedShape<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
-        use crate::geometry::ShapeTrait;
+        use crate::shape::ShapeTrait;
         let (container, mut context, _, _, _) = self.get_container_mut();
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
@@ -179,7 +179,7 @@ where
         DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
         Self::Context<'_>,
     > {
-        use crate::geometry::ShapeTrait;
+        use crate::shape::ShapeTrait;
         let (container, mut context, should_resize, counters_dirty, picked) =
             self.get_container_mut();
         *context.refresh_screen = true;

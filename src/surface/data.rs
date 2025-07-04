@@ -1,9 +1,9 @@
 use crate::Settings;
 use crate::data::Colors;
 use crate::data::{internal::*, *};
-use crate::geometry::Context;
-use crate::geometry::DataMut;
-use crate::geometry::DataMutTrait;
+use crate::shape::Context;
+use crate::shape::DataMut;
+use crate::shape::DataMutTrait;
 use crate::types::SurfaceIndices;
 use crate::ui::UiDataElement;
 use wgpu::util::DeviceExt;

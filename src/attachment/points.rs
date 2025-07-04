@@ -1,12 +1,12 @@
 use crate::{
     attachment::internal::AttachmentPosition,
     data::internal::DataUniformBuilder,
-    geometry::{
+    point_cloud::{DisplayPointCloud, PCSettings, UninitedPointCloud},
+    settings::Settings,
+    shape::{
         AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
         ShapeGeometry, ShapeSettings,
     },
-    point_cloud::{DisplayPointCloud, PCSettings, UninitedPointCloud},
-    settings::Settings,
 };
 
 pub struct NewPoints {
