@@ -69,32 +69,34 @@ pub trait ContextHolder {
     type SegmentAttachedData;
 }
 
-pub trait ContainerContextGiver<Element>: ContextHolder {
+pub trait ContainerContextGiver<Shape>: ContextHolder {
     fn get_container_mut(
         &mut self,
     ) -> (
-        &mut IndexMap<String, Element>,
+        &mut IndexMap<String, Shape>,
         Self::Context<'_>,
         Option<&mut bool>,
         Option<&mut bool>,
         Option<&mut Option<(String, Picked)>>,
     );
 
-    fn get_container(&self) -> &IndexMap<String, Element>;
+    fn get_container(&self) -> &IndexMap<String, Shape>;
 }
 
-pub trait GeometryHolder<Element>: ContainerContextGiver<Element> {
+pub trait GeometryHolder<Shape>: ContainerContextGiver<Shape> {
     type Args;
 
     fn register(
         &mut self,
         name: String,
         args: Self::Args,
-    ) -> ShapeMut<'_, Element, Self::Context<'_>>;
+    ) -> ShapeMut<'_, Shape, Self::Context<'_>>;
 
-    fn get_element_mut(&mut self, name: &str) -> Option<ShapeMut<'_, Element, Self::Context<'_>>>;
+    fn get_shape_mut(&mut self, name: &str) -> Option<ShapeMut<'_, Shape, Self::Context<'_>>>;
 
-    fn get_element(&self, name: &str) -> Option<&'_ Element>;
+    fn get_shape(&self, name: &str) -> Option<&'_ Shape>;
+
+    fn remove_shape(&mut self, name: &str);
 }
 
 impl<Geometry, Settings, Data, Attached, T>
@@ -117,15 +119,15 @@ where
         use crate::shape::ShapeTrait;
         let (container, mut context, _, _, _) = self.get_container_mut();
         if container.contains_key(&name) {
-            let element = container.get_mut(&name).unwrap();
-            element.replace(args, &mut context);
+            let shape = container.get_mut(&name).unwrap();
+            shape.replace(args, &mut context);
             ShapeMut {
-                inner: element,
+                inner: shape,
                 context,
             }
         } else {
-            let element = Shape::new_bare(name.clone(), args, None);
-            container.insert(name.clone(), element);
+            let shape = Shape::new_bare(name.clone(), args, None);
+            container.insert(name.clone(), shape);
             ShapeMut {
                 inner: container.get_mut(&name).unwrap(),
                 context,
@@ -133,23 +135,29 @@ where
         }
     }
 
-    fn get_element_mut(
+    fn get_shape_mut(
         &mut self,
         name: &str,
     ) -> Option<ShapeMut<UninitedShape<Geometry, Settings, Data, Attached>, Self::Context<'_>>>
     {
         let (container, context, _, _, _) = self.get_container_mut();
-        container.get_mut(name).map(|element| ShapeMut {
-            inner: element,
+        container.get_mut(name).map(|shape| ShapeMut {
+            inner: shape,
             context,
         })
     }
 
-    fn get_element(
+    fn get_shape(
         &self,
         name: &str,
     ) -> Option<&'_ UninitedShape<Geometry, Settings, Data, Attached>> {
         self.get_container().get(name)
+    }
+
+    fn remove_shape(&mut self, name: &str) {
+        let (container, _context, _should_resize, _counters_dirty, _picked) =
+            self.get_container_mut();
+        container.shift_remove(name);
     }
 }
 
@@ -185,8 +193,8 @@ where
         *context.refresh_screen = true;
         // This could be better with Polonius
         if container.contains_key(&name) {
-            let element = container.get_mut(&name).unwrap();
-            if !element.replace(args, &mut context) {
+            let shape = container.get_mut(&name).unwrap();
+            if !shape.replace(args, &mut context) {
                 should_resize.map(|should_resize| *should_resize = true);
                 counters_dirty.map(|counters_dirty| *counters_dirty = true);
                 let picked = picked.unwrap();
@@ -197,11 +205,11 @@ where
                 }
             }
             ShapeMut {
-                inner: element,
+                inner: shape,
                 context: context,
             }
         } else {
-            let element = Shape::new(
+            let shape = Shape::new(
                 name.clone(),
                 args,
                 None,
@@ -210,7 +218,7 @@ where
                 context.counter_bind_group_layout,
                 context.color_format,
             );
-            container.insert(name.clone(), element);
+            container.insert(name.clone(), shape);
             should_resize.map(|should_resize| *should_resize = true);
             counters_dirty.map(|counters_dirty| *counters_dirty = true);
             let picked = picked.unwrap();
@@ -226,7 +234,7 @@ where
         }
     }
 
-    fn get_element_mut(
+    fn get_shape_mut(
         &mut self,
         name: &str,
     ) -> Option<
@@ -236,17 +244,31 @@ where
         >,
     > {
         let (container, context, _, _, _) = self.get_container_mut();
-        container.get_mut(name).map(|element| ShapeMut {
-            inner: element,
+        container.get_mut(name).map(|shape| ShapeMut {
+            inner: shape,
             context,
         })
     }
 
-    fn get_element(
+    fn get_shape(
         &self,
         name: &str,
     ) -> Option<&DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>> {
         self.get_container().get(name)
+    }
+
+    fn remove_shape(&mut self, name: &str) {
+        let (container, context, _should_resize, counters_dirty, picked) = self.get_container_mut();
+        if let Some(shape) = container.shift_remove(name) {
+            let picked = picked.unwrap();
+            if let Some((picked_name, _picked)) = picked {
+                if *picked_name == name {
+                    *picked = None;
+                }
+            }
+            *context.refresh_screen |= shape.show;
+            *counters_dirty.unwrap() = true;
+        }
     }
 }
 
@@ -529,14 +551,21 @@ impl<T: StateTrait> State<T> {
         &mut self,
         name: &str,
     ) -> Option<SurfaceMut<T::SurfaceRenderer, T::SurfaceAttachedData, T::Context<'_>>> {
-        self.0.get_element_mut(name)
+        self.0.get_shape_mut(name)
     }
 
     pub fn get_surface(
         &self,
         name: &str,
     ) -> Option<&Surface<T::SurfaceRenderer, T::SurfaceAttachedData>> {
-        self.0.get_element(name)
+        self.0.get_shape(name)
+    }
+
+    pub fn remove_surface(&mut self, name: &str) {
+        <T as GeometryHolder<Surface<T::SurfaceRenderer, T::SurfaceAttachedData>>>::remove_shape(
+            &mut self.0,
+            name,
+        );
     }
 
     pub fn register_point_cloud<V: Vertices>(
@@ -552,14 +581,21 @@ impl<T: StateTrait> State<T> {
         name: &str,
     ) -> Option<PointCloudMut<T::PointCloudRenderer, T::PointCloudAttachedData, T::Context<'_>>>
     {
-        self.0.get_element_mut(name)
+        self.0.get_shape_mut(name)
     }
 
     pub fn get_point_cloud(
         &self,
         name: &str,
     ) -> Option<&PointCloud<T::PointCloudRenderer, T::PointCloudAttachedData>> {
-        self.0.get_element(name)
+        self.0.get_shape(name)
+    }
+
+    pub fn remove_point_cloud(&mut self, name: &str) {
+        <T as GeometryHolder<PointCloud<T::PointCloudRenderer, T::PointCloudAttachedData>>>::remove_shape(
+                &mut self.0,
+                name,
+            );
     }
 
     /// Register list of segments
@@ -581,14 +617,21 @@ impl<T: StateTrait> State<T> {
         &mut self,
         name: &str,
     ) -> Option<SegmentMut<T::SegmentRenderer, T::SegmentAttachedData, T::Context<'_>>> {
-        self.0.get_element_mut(name)
+        self.0.get_shape_mut(name)
     }
 
     pub fn get_segment(
         &self,
         name: &str,
     ) -> Option<&Segment<T::SegmentRenderer, T::SegmentAttachedData>> {
-        self.0.get_element(name)
+        self.0.get_shape(name)
+    }
+
+    pub fn remove_segment(&mut self, name: &str) {
+        <T as GeometryHolder<Segment<T::SegmentRenderer, T::SegmentAttachedData>>>::remove_shape(
+            &mut self.0,
+            name,
+        );
     }
 }
 
@@ -604,7 +647,7 @@ impl InitialState {
     /// Arguments:
     /// * `width`: requested width of the app (no effect in wasm)
     /// * `height`: requested height of the app (no effect in wasm)
-    /// * `id`: serves as window title, or id element to attach to. If `None` used `"State"`.
+    /// * `id`: serves as window title, or id shape to attach to. If `None` used `"State"`.
     /// * `callback`: called every frame with a [`egui::Ui`] and a [`RunningState`] arguments, used to
     /// add UI elements and modify state accordingly.
     pub fn run<S: Into<String>, T: FnMut(&mut egui::Ui, &mut RunningState)>(
@@ -660,7 +703,7 @@ impl RunningState {
         Self::new_inner(inner)
     }
 
-    /// Fit camera and ground to match the visible elements
+    /// Fit camera and ground to match the visible shapes
     pub fn resize_scene(&mut self) {
         self.0.resize_scene();
     }
