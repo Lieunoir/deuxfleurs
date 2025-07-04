@@ -894,268 +894,267 @@
 <a href=#894 id=894 data-nosnippet>894</a>                <span class="kw">let </span>file = file.<span class="kw">await</span>;
 <a href=#895 id=895 data-nosnippet>895</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(file_handle) = file {
 <a href=#896 id=896 data-nosnippet>896</a>                    <span class="kw">let </span>data = file_handle.read().<span class="kw">await</span>;
-<a href=#897 id=897 data-nosnippet>897</a>                    <span class="kw">if let </span><span class="prelude-val">Ok</span>((mesh_v, mesh_f)) = <span class="kw">crate</span>::resources::parse_preloaded_mesh(data).<span class="kw">await
-<a href=#898 id=898 data-nosnippet>898</a>                    </span>{
-<a href=#899 id=899 data-nosnippet>899</a>                        event_loop_proxy
-<a href=#900 id=900 data-nosnippet>900</a>                            .send_event(<span class="kw">crate</span>::UserEvent::LoadMesh(mesh_v, mesh_f, name))
-<a href=#901 id=901 data-nosnippet>901</a>                            .ok();
-<a href=#902 id=902 data-nosnippet>902</a>                    }
-<a href=#903 id=903 data-nosnippet>903</a>                }
-<a href=#904 id=904 data-nosnippet>904</a>            };
-<a href=#905 id=905 data-nosnippet>905</a>            wasm_bindgen_futures::spawn_local(f);
-<a href=#906 id=906 data-nosnippet>906</a>        }
-<a href=#907 id=907 data-nosnippet>907</a>    }
-<a href=#908 id=908 data-nosnippet>908</a>}
-<a href=#909 id=909 data-nosnippet>909</a>
-<a href=#910 id=910 data-nosnippet>910</a><span class="kw">impl</span>&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; ApplicationHandler&lt;UserEvent&gt; <span class="kw">for </span>StateWrapper&lt;T&gt; {
-<a href=#911 id=911 data-nosnippet>911</a>    <span class="kw">fn </span>resumed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, event_loop: <span class="kw-2">&amp;</span>ActiveEventLoop) {
-<a href=#912 id=912 data-nosnippet>912</a>        <span class="kw">if </span><span class="self">self</span>.state.is_none() {
-<a href=#913 id=913 data-nosnippet>913</a>            <span class="kw">let </span>window_attributes = WindowAttributes::default()
-<a href=#914 id=914 data-nosnippet>914</a>                .with_title(<span class="kw-2">&amp;</span><span class="self">self</span>.id)
-<a href=#915 id=915 data-nosnippet>915</a>                .with_inner_size(PhysicalSize::new(<span class="self">self</span>.width, <span class="self">self</span>.height));
-<a href=#916 id=916 data-nosnippet>916</a>            <span class="kw">let </span>window = event_loop.create_window(window_attributes).unwrap();
-<a href=#917 id=917 data-nosnippet>917</a>
-<a href=#918 id=918 data-nosnippet>918</a>            <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
-<a href=#919 id=919 data-nosnippet>919</a>            </span>{
-<a href=#920 id=920 data-nosnippet>920</a>                <span class="kw">use </span>winit::platform::web::WindowExtWebSys;
-<a href=#921 id=921 data-nosnippet>921</a>                web_sys::window()
-<a href=#922 id=922 data-nosnippet>922</a>                    .and_then(|win| {
-<a href=#923 id=923 data-nosnippet>923</a>                        <span class="self">self</span>.clipboard = <span class="prelude-val">Some</span>(win.navigator().clipboard());
-<a href=#924 id=924 data-nosnippet>924</a>                        win.document()
-<a href=#925 id=925 data-nosnippet>925</a>                    })
-<a href=#926 id=926 data-nosnippet>926</a>                    .and_then(|doc| {
-<a href=#927 id=927 data-nosnippet>927</a>                        <span class="kw">let </span>dst = doc.get_element_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>.id)<span class="question-mark">?</span>;
-<a href=#928 id=928 data-nosnippet>928</a>                        <span class="kw">let </span>canvas = window.canvas()<span class="question-mark">?</span>;
-<a href=#929 id=929 data-nosnippet>929</a>                        <span class="comment">// disable right click
-<a href=#930 id=930 data-nosnippet>930</a>                        </span><span class="kw">let </span>empty_func = js_sys::Function::new_no_args(<span class="string">"return false;"</span>);
-<a href=#931 id=931 data-nosnippet>931</a>                        canvas.set_oncontextmenu(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>empty_func));
-<a href=#932 id=932 data-nosnippet>932</a>                        dst.append_child(<span class="kw-2">&amp;</span>canvas).ok()<span class="question-mark">?</span>;
-<a href=#933 id=933 data-nosnippet>933</a>                        <span class="prelude-val">Some</span>(())
-<a href=#934 id=934 data-nosnippet>934</a>                    })
-<a href=#935 id=935 data-nosnippet>935</a>                    .expect(<span class="string">"Couldn't append canvas to document body."</span>);
-<a href=#936 id=936 data-nosnippet>936</a>            }
-<a href=#937 id=937 data-nosnippet>937</a>            <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
-<a href=#938 id=938 data-nosnippet>938</a>            </span>{
-<a href=#939 id=939 data-nosnippet>939</a>                <span class="self">self</span>.clipboard = <span class="prelude-val">Some</span>(Clipboard::new(
-<a href=#940 id=940 data-nosnippet>940</a>                    window.display_handle().ok().map(|handle| handle.as_raw()),
-<a href=#941 id=941 data-nosnippet>941</a>                ));
-<a href=#942 id=942 data-nosnippet>942</a>            }
-<a href=#943 id=943 data-nosnippet>943</a>
-<a href=#944 id=944 data-nosnippet>944</a>            <span class="kw">let </span>init = <span class="self">self</span>.init_state.take().unwrap();
-<a href=#945 id=945 data-nosnippet>945</a>            <span class="self">self</span>.callback = <span class="prelude-val">Some</span>(init.<span class="number">0</span>.callback);
-<a href=#946 id=946 data-nosnippet>946</a>            <span class="self">self</span>.state = <span class="prelude-val">Some</span>(
-<a href=#947 id=947 data-nosnippet>947</a>                RunningState::new(
-<a href=#948 id=948 data-nosnippet>948</a>                    init.<span class="number">0</span>.surfaces,
-<a href=#949 id=949 data-nosnippet>949</a>                    init.<span class="number">0</span>.clouds,
-<a href=#950 id=950 data-nosnippet>950</a>                    init.<span class="number">0</span>.segments,
-<a href=#951 id=951 data-nosnippet>951</a>                    init.<span class="number">0</span>.settings,
-<a href=#952 id=952 data-nosnippet>952</a>                    window,
-<a href=#953 id=953 data-nosnippet>953</a>                    <span class="self">self</span>.proxy.clone(),
-<a href=#954 id=954 data-nosnippet>954</a>                )
-<a href=#955 id=955 data-nosnippet>955</a>                .block_on(),
-<a href=#956 id=956 data-nosnippet>956</a>            );
-<a href=#957 id=957 data-nosnippet>957</a>            <span class="self">self</span>.ui = <span class="prelude-val">Some</span>(<span class="kw">crate</span>::ui::UI::new(
-<a href=#958 id=958 data-nosnippet>958</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.state.as_ref().unwrap().device,
-<a href=#959 id=959 data-nosnippet>959</a>                event_loop,
-<a href=#960 id=960 data-nosnippet>960</a>                <span class="self">self</span>.state.as_ref().unwrap().config.format,
-<a href=#961 id=961 data-nosnippet>961</a>                <span class="self">self</span>.state.as_ref().unwrap().window.scale_factor(),
-<a href=#962 id=962 data-nosnippet>962</a>            ));
-<a href=#963 id=963 data-nosnippet>963</a>        }
-<a href=#964 id=964 data-nosnippet>964</a>    }
-<a href=#965 id=965 data-nosnippet>965</a>
-<a href=#966 id=966 data-nosnippet>966</a>    <span class="kw">fn </span>user_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _event_loop: <span class="kw-2">&amp;</span>ActiveEventLoop, event: UserEvent) {
-<a href=#967 id=967 data-nosnippet>967</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
-<a href=#968 id=968 data-nosnippet>968</a>            <span class="kw">match </span>event {
-<a href=#969 id=969 data-nosnippet>969</a>                <span class="attr">#[cfg(feature = <span class="string">"obj_button"</span>)]
-<a href=#970 id=970 data-nosnippet>970</a>                </span>UserEvent::LoadMesh(mesh_v, mesh_f, name) =&gt; {
-<a href=#971 id=971 data-nosnippet>971</a>                    state.register_surface(name, mesh_v, mesh_f);
-<a href=#972 id=972 data-nosnippet>972</a>                }
-<a href=#973 id=973 data-nosnippet>973</a>                UserEvent::Paste(cam) =&gt; {
-<a href=#974 id=974 data-nosnippet>974</a>                    state.camera.set(cam);
-<a href=#975 id=975 data-nosnippet>975</a>                    state.dirty = <span class="bool-val">true</span>;
-<a href=#976 id=976 data-nosnippet>976</a>                }
-<a href=#977 id=977 data-nosnippet>977</a>                UserEvent::Pick =&gt; {
-<a href=#978 id=978 data-nosnippet>978</a>                    state.<span class="number">0</span>.picker.pick(
-<a href=#979 id=979 data-nosnippet>979</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.surfaces,
-<a href=#980 id=980 data-nosnippet>980</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.clouds,
-<a href=#981 id=981 data-nosnippet>981</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.segments,
-<a href=#982 id=982 data-nosnippet>982</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.camera,
-<a href=#983 id=983 data-nosnippet>983</a>                    );
-<a href=#984 id=984 data-nosnippet>984</a>                }
-<a href=#985 id=985 data-nosnippet>985</a>            }
-<a href=#986 id=986 data-nosnippet>986</a>        }
-<a href=#987 id=987 data-nosnippet>987</a>    }
-<a href=#988 id=988 data-nosnippet>988</a>
-<a href=#989 id=989 data-nosnippet>989</a>    <span class="kw">fn </span>window_event(
-<a href=#990 id=990 data-nosnippet>990</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#991 id=991 data-nosnippet>991</a>        event_loop: <span class="kw-2">&amp;</span>ActiveEventLoop,
-<a href=#992 id=992 data-nosnippet>992</a>        window_id: winit::window::WindowId,
-<a href=#993 id=993 data-nosnippet>993</a>        event: WindowEvent,
-<a href=#994 id=994 data-nosnippet>994</a>    ) {
-<a href=#995 id=995 data-nosnippet>995</a>        <span class="comment">//TODO the `if let` stuff is hacky and messy
-<a href=#996 id=996 data-nosnippet>996</a>        </span><span class="kw">let </span>(processed, ui_hovered) =
-<a href=#997 id=997 data-nosnippet>997</a>            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(ui), <span class="prelude-val">Some</span>(state)) = (<span class="self">self</span>.ui.as_mut(), <span class="self">self</span>.state.as_mut()) {
-<a href=#998 id=998 data-nosnippet>998</a>                <span class="kw">if </span>window_id == state.window.id() {
-<a href=#999 id=999 data-nosnippet>999</a>                    (ui.process_event(<span class="kw-2">&amp;*</span>state.window, <span class="kw-2">&amp;</span>event), ui.hovered)
-<a href=#1000 id=1000 data-nosnippet>1000</a>                } <span class="kw">else </span>{
-<a href=#1001 id=1001 data-nosnippet>1001</a>                    <span class="kw">return</span>;
-<a href=#1002 id=1002 data-nosnippet>1002</a>                }
-<a href=#1003 id=1003 data-nosnippet>1003</a>            } <span class="kw">else </span>{
-<a href=#1004 id=1004 data-nosnippet>1004</a>                <span class="kw">return</span>;
-<a href=#1005 id=1005 data-nosnippet>1005</a>            };
-<a href=#1006 id=1006 data-nosnippet>1006</a>
-<a href=#1007 id=1007 data-nosnippet>1007</a>        <span class="kw">let </span>input = <span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
-<a href=#1008 id=1008 data-nosnippet>1008</a>            state.input(<span class="kw-2">&amp;</span>event, ui_hovered)
-<a href=#1009 id=1009 data-nosnippet>1009</a>        } <span class="kw">else </span>{
-<a href=#1010 id=1010 data-nosnippet>1010</a>            <span class="bool-val">false
-<a href=#1011 id=1011 data-nosnippet>1011</a>        </span>};
-<a href=#1012 id=1012 data-nosnippet>1012</a>
-<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="kw">if </span>processed.repaint {
-<a href=#1014 id=1014 data-nosnippet>1014</a>            <span class="comment">// Attempt to make egui finish animations
-<a href=#1015 id=1015 data-nosnippet>1015</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
-<a href=#1016 id=1016 data-nosnippet>1016</a>                <span class="kw">match </span>event {
-<a href=#1017 id=1017 data-nosnippet>1017</a>                    WindowEvent::RedrawRequested =&gt; {
-<a href=#1018 id=1018 data-nosnippet>1018</a>                        <span class="kw">if </span>state.egui_dirty {
-<a href=#1019 id=1019 data-nosnippet>1019</a>                            state.window.request_redraw();
-<a href=#1020 id=1020 data-nosnippet>1020</a>                            state.egui_dirty = <span class="bool-val">false</span>;
-<a href=#1021 id=1021 data-nosnippet>1021</a>                        } <span class="kw">else </span>{
-<a href=#1022 id=1022 data-nosnippet>1022</a>                            state.egui_dirty = <span class="bool-val">true</span>;
-<a href=#1023 id=1023 data-nosnippet>1023</a>                        }
-<a href=#1024 id=1024 data-nosnippet>1024</a>                    }
-<a href=#1025 id=1025 data-nosnippet>1025</a>                    <span class="kw">_ </span>=&gt; state.window.request_redraw(),
-<a href=#1026 id=1026 data-nosnippet>1026</a>                }
-<a href=#1027 id=1027 data-nosnippet>1027</a>            }
-<a href=#1028 id=1028 data-nosnippet>1028</a>        }
-<a href=#1029 id=1029 data-nosnippet>1029</a>        <span class="kw">if </span>!processed.consumed &amp;&amp; !input {
-<a href=#1030 id=1030 data-nosnippet>1030</a>            <span class="comment">// Handle window events (like resizing, or key inputs)
-<a href=#1031 id=1031 data-nosnippet>1031</a>            // This is stuff from `winit` -- see their docs for more info
-<a href=#1032 id=1032 data-nosnippet>1032</a>            </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(state), <span class="prelude-val">Some</span>(ui)) = (<span class="self">self</span>.state.as_mut(), <span class="self">self</span>.ui.as_mut()) {
-<a href=#1033 id=1033 data-nosnippet>1033</a>                <span class="kw">match </span>event {
-<a href=#1034 id=1034 data-nosnippet>1034</a>                    WindowEvent::CloseRequested =&gt; event_loop.exit(),
-<a href=#1035 id=1035 data-nosnippet>1035</a>                    WindowEvent::Resized(physical_size) =&gt; {
-<a href=#1036 id=1036 data-nosnippet>1036</a>                        state.resize(physical_size);
-<a href=#1037 id=1037 data-nosnippet>1037</a>                        state.dirty = <span class="bool-val">true</span>;
-<a href=#1038 id=1038 data-nosnippet>1038</a>                        state.window.request_redraw();
-<a href=#1039 id=1039 data-nosnippet>1039</a>                    }
-<a href=#1040 id=1040 data-nosnippet>1040</a>                    WindowEvent::KeyboardInput {
-<a href=#1041 id=1041 data-nosnippet>1041</a>                        event:
-<a href=#1042 id=1042 data-nosnippet>1042</a>                            KeyEvent {
-<a href=#1043 id=1043 data-nosnippet>1043</a>                                logical_key,
-<a href=#1044 id=1044 data-nosnippet>1044</a>                                <span class="comment">//state: ElementState::Pressed,
-<a href=#1045 id=1045 data-nosnippet>1045</a>                                </span>state: key_state,
-<a href=#1046 id=1046 data-nosnippet>1046</a>                                ..
-<a href=#1047 id=1047 data-nosnippet>1047</a>                            },
-<a href=#1048 id=1048 data-nosnippet>1048</a>                        ..
-<a href=#1049 id=1049 data-nosnippet>1049</a>                    } =&gt; {
-<a href=#1050 id=1050 data-nosnippet>1050</a>                        <span class="kw">if </span>logical_key == Key::Named(NamedKey::Control) {
-<a href=#1051 id=1051 data-nosnippet>1051</a>                            <span class="kw">if </span>key_state == ElementState::Pressed {
-<a href=#1052 id=1052 data-nosnippet>1052</a>                                state.ctrl_pressed = <span class="bool-val">true</span>;
-<a href=#1053 id=1053 data-nosnippet>1053</a>                            } <span class="kw">else if </span>key_state == ElementState::Released {
-<a href=#1054 id=1054 data-nosnippet>1054</a>                                state.ctrl_pressed = <span class="bool-val">false</span>;
-<a href=#1055 id=1055 data-nosnippet>1055</a>                            }
-<a href=#1056 id=1056 data-nosnippet>1056</a>                        }
-<a href=#1057 id=1057 data-nosnippet>1057</a>                        <span class="kw">if </span>state.ctrl_pressed
-<a href=#1058 id=1058 data-nosnippet>1058</a>                            &amp;&amp; logical_key == Key::Character(SmolStr::new_inline(<span class="string">"c"</span>))
-<a href=#1059 id=1059 data-nosnippet>1059</a>                            &amp;&amp; key_state == ElementState::Pressed
-<a href=#1060 id=1060 data-nosnippet>1060</a>                        {
-<a href=#1061 id=1061 data-nosnippet>1061</a>                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(cam) = state.camera.copy() {
-<a href=#1062 id=1062 data-nosnippet>1062</a>                                <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
-<a href=#1063 id=1063 data-nosnippet>1063</a>                                </span>{
-<a href=#1064 id=1064 data-nosnippet>1064</a>                                    <span class="kw">let </span>clipboard = <span class="self">self</span>.clipboard.as_mut().unwrap();
-<a href=#1065 id=1065 data-nosnippet>1065</a>                                    clipboard.set_text(cam);
-<a href=#1066 id=1066 data-nosnippet>1066</a>                                }
-<a href=#1067 id=1067 data-nosnippet>1067</a>                                <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
-<a href=#1068 id=1068 data-nosnippet>1068</a>                                </span>{
-<a href=#1069 id=1069 data-nosnippet>1069</a>                                    <span class="kw">let </span>promise = <span class="self">self</span>.clipboard.as_mut().unwrap().write_text(<span class="kw-2">&amp;</span>cam);
-<a href=#1070 id=1070 data-nosnippet>1070</a>                                    <span class="kw">let </span>f = <span class="kw">async move </span>{
-<a href=#1071 id=1071 data-nosnippet>1071</a>                                        wasm_bindgen_futures::JsFuture::from(promise).<span class="kw">await</span>;
-<a href=#1072 id=1072 data-nosnippet>1072</a>                                    };
-<a href=#1073 id=1073 data-nosnippet>1073</a>                                    wasm_bindgen_futures::spawn_local(f);
-<a href=#1074 id=1074 data-nosnippet>1074</a>                                }
-<a href=#1075 id=1075 data-nosnippet>1075</a>                            }
-<a href=#1076 id=1076 data-nosnippet>1076</a>                        } <span class="kw">else if </span>state.ctrl_pressed
-<a href=#1077 id=1077 data-nosnippet>1077</a>                            &amp;&amp; logical_key == Key::Character(SmolStr::new_inline(<span class="string">"v"</span>))
-<a href=#1078 id=1078 data-nosnippet>1078</a>                            &amp;&amp; key_state == ElementState::Pressed
-<a href=#1079 id=1079 data-nosnippet>1079</a>                        {
-<a href=#1080 id=1080 data-nosnippet>1080</a>                            <span class="kw">let </span>clipboard = <span class="self">self</span>.clipboard.as_mut().unwrap();
-<a href=#1081 id=1081 data-nosnippet>1081</a>                            <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
-<a href=#1082 id=1082 data-nosnippet>1082</a>                            </span>{
-<a href=#1083 id=1083 data-nosnippet>1083</a>                                <span class="kw">if let </span><span class="prelude-val">Some</span>(cam) = clipboard.get() {
-<a href=#1084 id=1084 data-nosnippet>1084</a>                                    state
-<a href=#1085 id=1085 data-nosnippet>1085</a>                                        .proxy
-<a href=#1086 id=1086 data-nosnippet>1086</a>                                        .send_event(<span class="kw">crate</span>::window::UserEvent::Paste(cam))
-<a href=#1087 id=1087 data-nosnippet>1087</a>                                        .ok();
-<a href=#1088 id=1088 data-nosnippet>1088</a>                                    <span class="comment">//state.camera.set(cam);
-<a href=#1089 id=1089 data-nosnippet>1089</a>                                    //state.dirty = true;
-<a href=#1090 id=1090 data-nosnippet>1090</a>                                </span>};
-<a href=#1091 id=1091 data-nosnippet>1091</a>                            }
-<a href=#1092 id=1092 data-nosnippet>1092</a>                            <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
-<a href=#1093 id=1093 data-nosnippet>1093</a>                            </span>{
-<a href=#1094 id=1094 data-nosnippet>1094</a>                                <span class="kw">let </span>promise = <span class="self">self</span>.clipboard.as_mut().unwrap().read_text();
-<a href=#1095 id=1095 data-nosnippet>1095</a>                                <span class="kw">let </span>event_loop_proxy = state.proxy.clone();
-<a href=#1096 id=1096 data-nosnippet>1096</a>                                <span class="kw">let </span>f = <span class="kw">async move </span>{
-<a href=#1097 id=1097 data-nosnippet>1097</a>                                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(res) =
-<a href=#1098 id=1098 data-nosnippet>1098</a>                                        wasm_bindgen_futures::JsFuture::from(promise).<span class="kw">await
-<a href=#1099 id=1099 data-nosnippet>1099</a>                                    </span>{
-<a href=#1100 id=1100 data-nosnippet>1100</a>                                        <span class="kw">if let </span><span class="prelude-val">Some</span>(cam) = res.as_string() {
-<a href=#1101 id=1101 data-nosnippet>1101</a>                                            event_loop_proxy
-<a href=#1102 id=1102 data-nosnippet>1102</a>                                                .send_event(<span class="kw">crate</span>::UserEvent::Paste(cam))
-<a href=#1103 id=1103 data-nosnippet>1103</a>                                                .ok();
-<a href=#1104 id=1104 data-nosnippet>1104</a>                                        }
-<a href=#1105 id=1105 data-nosnippet>1105</a>                                    }
-<a href=#1106 id=1106 data-nosnippet>1106</a>                                };
-<a href=#1107 id=1107 data-nosnippet>1107</a>                                wasm_bindgen_futures::spawn_local(f);
-<a href=#1108 id=1108 data-nosnippet>1108</a>                            }
-<a href=#1109 id=1109 data-nosnippet>1109</a>                        }
-<a href=#1110 id=1110 data-nosnippet>1110</a>                    }
-<a href=#1111 id=1111 data-nosnippet>1111</a>                    WindowEvent::RedrawRequested =&gt; {
-<a href=#1112 id=1112 data-nosnippet>1112</a>                        <span class="comment">//draw ui
-<a href=#1113 id=1113 data-nosnippet>1113</a>                        //let mut refresh_screen = state.state.dirty;
-<a href=#1114 id=1114 data-nosnippet>1114</a>                        </span>ui.draw_models(
-<a href=#1115 id=1115 data-nosnippet>1115</a>                            <span class="kw-2">&amp;*</span>state.<span class="number">0</span>.window,
-<a href=#1116 id=1116 data-nosnippet>1116</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.surfaces,
-<a href=#1117 id=1117 data-nosnippet>1117</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.clouds,
-<a href=#1118 id=1118 data-nosnippet>1118</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.segments,
-<a href=#1119 id=1119 data-nosnippet>1119</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.picker,
-<a href=#1120 id=1120 data-nosnippet>1120</a>                            state.<span class="number">0</span>.camera.build_view(),
-<a href=#1121 id=1121 data-nosnippet>1121</a>                            state.<span class="number">0</span>.camera.build_proj(),
-<a href=#1122 id=1122 data-nosnippet>1122</a>                            <span class="kw-2">&amp;</span>state.<span class="number">0</span>.device,
-<a href=#1123 id=1123 data-nosnippet>1123</a>                            <span class="kw-2">&amp;</span>state.<span class="number">0</span>.queue,
-<a href=#1124 id=1124 data-nosnippet>1124</a>                            <span class="kw-2">&amp;</span>state.<span class="number">0</span>.camera_light_bind_group_layout,
-<a href=#1125 id=1125 data-nosnippet>1125</a>                            state.<span class="number">0</span>.config.format,
-<a href=#1126 id=1126 data-nosnippet>1126</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.dirty,
-<a href=#1127 id=1127 data-nosnippet>1127</a>                        );
-<a href=#1128 id=1128 data-nosnippet>1128</a>                        ui.draw_callback(state, <span class="kw-2">&amp;mut </span><span class="self">self</span>.callback.as_mut().unwrap());
-<a href=#1129 id=1129 data-nosnippet>1129</a>                        <span class="kw">let </span>scene_changed = state.update();
-<a href=#1130 id=1130 data-nosnippet>1130</a>                        <span class="comment">//actual rendering
-<a href=#1131 id=1131 data-nosnippet>1131</a>                        </span><span class="kw">match </span>state.render(<span class="kw-2">&amp;</span><span class="self">self</span>.proxy, ui, scene_changed) {
-<a href=#1132 id=1132 data-nosnippet>1132</a>                            <span class="prelude-val">Ok</span>(request_redraw) =&gt; {
-<a href=#1133 id=1133 data-nosnippet>1133</a>                                <span class="kw">if </span>request_redraw {
-<a href=#1134 id=1134 data-nosnippet>1134</a>                                    state.window.request_redraw();
-<a href=#1135 id=1135 data-nosnippet>1135</a>                                }
-<a href=#1136 id=1136 data-nosnippet>1136</a>                                ui.handle_platform_output(<span class="kw-2">&amp;*</span>state.window)}
-<a href=#1137 id=1137 data-nosnippet>1137</a>                            ,
-<a href=#1138 id=1138 data-nosnippet>1138</a>                            <span class="comment">// Reconfigure the surface if it's lost or outdated
-<a href=#1139 id=1139 data-nosnippet>1139</a>                            </span><span class="prelude-val">Err</span>(
-<a href=#1140 id=1140 data-nosnippet>1140</a>                                wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
-<a href=#1141 id=1141 data-nosnippet>1141</a>                            ) =&gt; {
-<a href=#1142 id=1142 data-nosnippet>1142</a>                                state.<span class="number">0</span>.resize(state.<span class="number">0</span>.size)
-<a href=#1143 id=1143 data-nosnippet>1143</a>                            },
-<a href=#1144 id=1144 data-nosnippet>1144</a>                            <span class="comment">// The system is out of memory, we should probably quit
-<a href=#1145 id=1145 data-nosnippet>1145</a>                            </span><span class="prelude-val">Err</span>(wgpu::SurfaceError::OutOfMemory) | <span class="prelude-val">Err</span>(wgpu::SurfaceError::Other) =&gt; event_loop.exit(),
-<a href=#1146 id=1146 data-nosnippet>1146</a>
-<a href=#1147 id=1147 data-nosnippet>1147</a>                            <span class="prelude-val">Err</span>(wgpu::SurfaceError::Timeout) =&gt; {
-<a href=#1148 id=1148 data-nosnippet>1148</a>                                <span class="macro">log::warn!</span>(<span class="string">"Surface timeout"</span>)
-<a href=#1149 id=1149 data-nosnippet>1149</a>                            }
-<a href=#1150 id=1150 data-nosnippet>1150</a>                        }
-<a href=#1151 id=1151 data-nosnippet>1151</a>                    }
-<a href=#1152 id=1152 data-nosnippet>1152</a>                    <span class="kw">_ </span>=&gt; {}
-<a href=#1153 id=1153 data-nosnippet>1153</a>                }
-<a href=#1154 id=1154 data-nosnippet>1154</a>            }
-<a href=#1155 id=1155 data-nosnippet>1155</a>        } <span class="kw">else </span>{
-<a href=#1156 id=1156 data-nosnippet>1156</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
-<a href=#1157 id=1157 data-nosnippet>1157</a>                state.window.request_redraw();
-<a href=#1158 id=1158 data-nosnippet>1158</a>            }
-<a href=#1159 id=1159 data-nosnippet>1159</a>        }
-<a href=#1160 id=1160 data-nosnippet>1160</a>    }
-<a href=#1161 id=1161 data-nosnippet>1161</a>}</code></pre></div></section></main></body></html>
+<a href=#897 id=897 data-nosnippet>897</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>((mesh_v, mesh_f)) =
+<a href=#898 id=898 data-nosnippet>898</a>                        <span class="kw">crate</span>::resources::parse_preloaded_mesh(data).<span class="kw">await
+<a href=#899 id=899 data-nosnippet>899</a>                    </span>{
+<a href=#900 id=900 data-nosnippet>900</a>                        event_loop_proxy
+<a href=#901 id=901 data-nosnippet>901</a>                            .send_event(UserEvent::LoadMesh(mesh_v, mesh_f, name))
+<a href=#902 id=902 data-nosnippet>902</a>                            .ok();
+<a href=#903 id=903 data-nosnippet>903</a>                    }
+<a href=#904 id=904 data-nosnippet>904</a>                }
+<a href=#905 id=905 data-nosnippet>905</a>            };
+<a href=#906 id=906 data-nosnippet>906</a>            wasm_bindgen_futures::spawn_local(f);
+<a href=#907 id=907 data-nosnippet>907</a>        }
+<a href=#908 id=908 data-nosnippet>908</a>    }
+<a href=#909 id=909 data-nosnippet>909</a>}
+<a href=#910 id=910 data-nosnippet>910</a>
+<a href=#911 id=911 data-nosnippet>911</a><span class="kw">impl</span>&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; ApplicationHandler&lt;UserEvent&gt; <span class="kw">for </span>StateWrapper&lt;T&gt; {
+<a href=#912 id=912 data-nosnippet>912</a>    <span class="kw">fn </span>resumed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, event_loop: <span class="kw-2">&amp;</span>ActiveEventLoop) {
+<a href=#913 id=913 data-nosnippet>913</a>        <span class="kw">if </span><span class="self">self</span>.state.is_none() {
+<a href=#914 id=914 data-nosnippet>914</a>            <span class="kw">let </span>window_attributes = WindowAttributes::default()
+<a href=#915 id=915 data-nosnippet>915</a>                .with_title(<span class="kw-2">&amp;</span><span class="self">self</span>.id)
+<a href=#916 id=916 data-nosnippet>916</a>                .with_inner_size(PhysicalSize::new(<span class="self">self</span>.width, <span class="self">self</span>.height));
+<a href=#917 id=917 data-nosnippet>917</a>            <span class="kw">let </span>window = event_loop.create_window(window_attributes).unwrap();
+<a href=#918 id=918 data-nosnippet>918</a>
+<a href=#919 id=919 data-nosnippet>919</a>            <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
+<a href=#920 id=920 data-nosnippet>920</a>            </span>{
+<a href=#921 id=921 data-nosnippet>921</a>                <span class="kw">use </span>winit::platform::web::WindowExtWebSys;
+<a href=#922 id=922 data-nosnippet>922</a>                web_sys::window()
+<a href=#923 id=923 data-nosnippet>923</a>                    .and_then(|win| {
+<a href=#924 id=924 data-nosnippet>924</a>                        <span class="self">self</span>.clipboard = <span class="prelude-val">Some</span>(win.navigator().clipboard());
+<a href=#925 id=925 data-nosnippet>925</a>                        win.document()
+<a href=#926 id=926 data-nosnippet>926</a>                    })
+<a href=#927 id=927 data-nosnippet>927</a>                    .and_then(|doc| {
+<a href=#928 id=928 data-nosnippet>928</a>                        <span class="kw">let </span>dst = doc.get_element_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>.id)<span class="question-mark">?</span>;
+<a href=#929 id=929 data-nosnippet>929</a>                        <span class="kw">let </span>canvas = window.canvas()<span class="question-mark">?</span>;
+<a href=#930 id=930 data-nosnippet>930</a>                        <span class="comment">// disable right click
+<a href=#931 id=931 data-nosnippet>931</a>                        </span><span class="kw">let </span>empty_func = js_sys::Function::new_no_args(<span class="string">"return false;"</span>);
+<a href=#932 id=932 data-nosnippet>932</a>                        canvas.set_oncontextmenu(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>empty_func));
+<a href=#933 id=933 data-nosnippet>933</a>                        dst.append_child(<span class="kw-2">&amp;</span>canvas).ok()<span class="question-mark">?</span>;
+<a href=#934 id=934 data-nosnippet>934</a>                        <span class="prelude-val">Some</span>(())
+<a href=#935 id=935 data-nosnippet>935</a>                    })
+<a href=#936 id=936 data-nosnippet>936</a>                    .expect(<span class="string">"Couldn't append canvas to document body."</span>);
+<a href=#937 id=937 data-nosnippet>937</a>            }
+<a href=#938 id=938 data-nosnippet>938</a>            <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+<a href=#939 id=939 data-nosnippet>939</a>            </span>{
+<a href=#940 id=940 data-nosnippet>940</a>                <span class="self">self</span>.clipboard = <span class="prelude-val">Some</span>(Clipboard::new(
+<a href=#941 id=941 data-nosnippet>941</a>                    window.display_handle().ok().map(|handle| handle.as_raw()),
+<a href=#942 id=942 data-nosnippet>942</a>                ));
+<a href=#943 id=943 data-nosnippet>943</a>            }
+<a href=#944 id=944 data-nosnippet>944</a>
+<a href=#945 id=945 data-nosnippet>945</a>            <span class="kw">let </span>init = <span class="self">self</span>.init_state.take().unwrap();
+<a href=#946 id=946 data-nosnippet>946</a>            <span class="self">self</span>.callback = <span class="prelude-val">Some</span>(init.<span class="number">0</span>.callback);
+<a href=#947 id=947 data-nosnippet>947</a>            <span class="self">self</span>.state = <span class="prelude-val">Some</span>(
+<a href=#948 id=948 data-nosnippet>948</a>                RunningState::new(
+<a href=#949 id=949 data-nosnippet>949</a>                    init.<span class="number">0</span>.surfaces,
+<a href=#950 id=950 data-nosnippet>950</a>                    init.<span class="number">0</span>.clouds,
+<a href=#951 id=951 data-nosnippet>951</a>                    init.<span class="number">0</span>.segments,
+<a href=#952 id=952 data-nosnippet>952</a>                    init.<span class="number">0</span>.settings,
+<a href=#953 id=953 data-nosnippet>953</a>                    window,
+<a href=#954 id=954 data-nosnippet>954</a>                    <span class="self">self</span>.proxy.clone(),
+<a href=#955 id=955 data-nosnippet>955</a>                )
+<a href=#956 id=956 data-nosnippet>956</a>                .block_on(),
+<a href=#957 id=957 data-nosnippet>957</a>            );
+<a href=#958 id=958 data-nosnippet>958</a>            <span class="self">self</span>.ui = <span class="prelude-val">Some</span>(<span class="kw">crate</span>::ui::UI::new(
+<a href=#959 id=959 data-nosnippet>959</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.state.as_ref().unwrap().device,
+<a href=#960 id=960 data-nosnippet>960</a>                event_loop,
+<a href=#961 id=961 data-nosnippet>961</a>                <span class="self">self</span>.state.as_ref().unwrap().config.format,
+<a href=#962 id=962 data-nosnippet>962</a>                <span class="self">self</span>.state.as_ref().unwrap().window.scale_factor(),
+<a href=#963 id=963 data-nosnippet>963</a>            ));
+<a href=#964 id=964 data-nosnippet>964</a>        }
+<a href=#965 id=965 data-nosnippet>965</a>    }
+<a href=#966 id=966 data-nosnippet>966</a>
+<a href=#967 id=967 data-nosnippet>967</a>    <span class="kw">fn </span>user_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _event_loop: <span class="kw-2">&amp;</span>ActiveEventLoop, event: UserEvent) {
+<a href=#968 id=968 data-nosnippet>968</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
+<a href=#969 id=969 data-nosnippet>969</a>            <span class="kw">match </span>event {
+<a href=#970 id=970 data-nosnippet>970</a>                <span class="attr">#[cfg(feature = <span class="string">"obj_button"</span>)]
+<a href=#971 id=971 data-nosnippet>971</a>                </span>UserEvent::LoadMesh(mesh_v, mesh_f, name) =&gt; {
+<a href=#972 id=972 data-nosnippet>972</a>                    state.register_surface(name, mesh_v, mesh_f);
+<a href=#973 id=973 data-nosnippet>973</a>                }
+<a href=#974 id=974 data-nosnippet>974</a>                UserEvent::Paste(cam) =&gt; {
+<a href=#975 id=975 data-nosnippet>975</a>                    state.camera.set(cam);
+<a href=#976 id=976 data-nosnippet>976</a>                    state.dirty = <span class="bool-val">true</span>;
+<a href=#977 id=977 data-nosnippet>977</a>                }
+<a href=#978 id=978 data-nosnippet>978</a>                UserEvent::Pick =&gt; {
+<a href=#979 id=979 data-nosnippet>979</a>                    state.<span class="number">0</span>.picker.pick(
+<a href=#980 id=980 data-nosnippet>980</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.surfaces,
+<a href=#981 id=981 data-nosnippet>981</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.clouds,
+<a href=#982 id=982 data-nosnippet>982</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.segments,
+<a href=#983 id=983 data-nosnippet>983</a>                        <span class="kw-2">&amp;</span>state.<span class="number">0</span>.camera,
+<a href=#984 id=984 data-nosnippet>984</a>                    );
+<a href=#985 id=985 data-nosnippet>985</a>                }
+<a href=#986 id=986 data-nosnippet>986</a>            }
+<a href=#987 id=987 data-nosnippet>987</a>        }
+<a href=#988 id=988 data-nosnippet>988</a>    }
+<a href=#989 id=989 data-nosnippet>989</a>
+<a href=#990 id=990 data-nosnippet>990</a>    <span class="kw">fn </span>window_event(
+<a href=#991 id=991 data-nosnippet>991</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#992 id=992 data-nosnippet>992</a>        event_loop: <span class="kw-2">&amp;</span>ActiveEventLoop,
+<a href=#993 id=993 data-nosnippet>993</a>        window_id: winit::window::WindowId,
+<a href=#994 id=994 data-nosnippet>994</a>        event: WindowEvent,
+<a href=#995 id=995 data-nosnippet>995</a>    ) {
+<a href=#996 id=996 data-nosnippet>996</a>        <span class="comment">//TODO the `if let` stuff is hacky and messy
+<a href=#997 id=997 data-nosnippet>997</a>        </span><span class="kw">let </span>(processed, ui_hovered) =
+<a href=#998 id=998 data-nosnippet>998</a>            <span class="kw">if let </span>(<span class="prelude-val">Some</span>(ui), <span class="prelude-val">Some</span>(state)) = (<span class="self">self</span>.ui.as_mut(), <span class="self">self</span>.state.as_mut()) {
+<a href=#999 id=999 data-nosnippet>999</a>                <span class="kw">if </span>window_id == state.window.id() {
+<a href=#1000 id=1000 data-nosnippet>1000</a>                    (ui.process_event(<span class="kw-2">&amp;*</span>state.window, <span class="kw-2">&amp;</span>event), ui.hovered)
+<a href=#1001 id=1001 data-nosnippet>1001</a>                } <span class="kw">else </span>{
+<a href=#1002 id=1002 data-nosnippet>1002</a>                    <span class="kw">return</span>;
+<a href=#1003 id=1003 data-nosnippet>1003</a>                }
+<a href=#1004 id=1004 data-nosnippet>1004</a>            } <span class="kw">else </span>{
+<a href=#1005 id=1005 data-nosnippet>1005</a>                <span class="kw">return</span>;
+<a href=#1006 id=1006 data-nosnippet>1006</a>            };
+<a href=#1007 id=1007 data-nosnippet>1007</a>
+<a href=#1008 id=1008 data-nosnippet>1008</a>        <span class="kw">let </span>input = <span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
+<a href=#1009 id=1009 data-nosnippet>1009</a>            state.input(<span class="kw-2">&amp;</span>event, ui_hovered)
+<a href=#1010 id=1010 data-nosnippet>1010</a>        } <span class="kw">else </span>{
+<a href=#1011 id=1011 data-nosnippet>1011</a>            <span class="bool-val">false
+<a href=#1012 id=1012 data-nosnippet>1012</a>        </span>};
+<a href=#1013 id=1013 data-nosnippet>1013</a>
+<a href=#1014 id=1014 data-nosnippet>1014</a>        <span class="kw">if </span>processed.repaint {
+<a href=#1015 id=1015 data-nosnippet>1015</a>            <span class="comment">// Attempt to make egui finish animations
+<a href=#1016 id=1016 data-nosnippet>1016</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
+<a href=#1017 id=1017 data-nosnippet>1017</a>                <span class="kw">match </span>event {
+<a href=#1018 id=1018 data-nosnippet>1018</a>                    WindowEvent::RedrawRequested =&gt; {
+<a href=#1019 id=1019 data-nosnippet>1019</a>                        <span class="kw">if </span>state.egui_dirty {
+<a href=#1020 id=1020 data-nosnippet>1020</a>                            state.window.request_redraw();
+<a href=#1021 id=1021 data-nosnippet>1021</a>                            state.egui_dirty = <span class="bool-val">false</span>;
+<a href=#1022 id=1022 data-nosnippet>1022</a>                        } <span class="kw">else </span>{
+<a href=#1023 id=1023 data-nosnippet>1023</a>                            state.egui_dirty = <span class="bool-val">true</span>;
+<a href=#1024 id=1024 data-nosnippet>1024</a>                        }
+<a href=#1025 id=1025 data-nosnippet>1025</a>                    }
+<a href=#1026 id=1026 data-nosnippet>1026</a>                    <span class="kw">_ </span>=&gt; state.window.request_redraw(),
+<a href=#1027 id=1027 data-nosnippet>1027</a>                }
+<a href=#1028 id=1028 data-nosnippet>1028</a>            }
+<a href=#1029 id=1029 data-nosnippet>1029</a>        }
+<a href=#1030 id=1030 data-nosnippet>1030</a>        <span class="kw">if </span>!processed.consumed &amp;&amp; !input {
+<a href=#1031 id=1031 data-nosnippet>1031</a>            <span class="comment">// Handle window events (like resizing, or key inputs)
+<a href=#1032 id=1032 data-nosnippet>1032</a>            // This is stuff from `winit` -- see their docs for more info
+<a href=#1033 id=1033 data-nosnippet>1033</a>            </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(state), <span class="prelude-val">Some</span>(ui)) = (<span class="self">self</span>.state.as_mut(), <span class="self">self</span>.ui.as_mut()) {
+<a href=#1034 id=1034 data-nosnippet>1034</a>                <span class="kw">match </span>event {
+<a href=#1035 id=1035 data-nosnippet>1035</a>                    WindowEvent::CloseRequested =&gt; event_loop.exit(),
+<a href=#1036 id=1036 data-nosnippet>1036</a>                    WindowEvent::Resized(physical_size) =&gt; {
+<a href=#1037 id=1037 data-nosnippet>1037</a>                        state.resize(physical_size);
+<a href=#1038 id=1038 data-nosnippet>1038</a>                        state.dirty = <span class="bool-val">true</span>;
+<a href=#1039 id=1039 data-nosnippet>1039</a>                        state.window.request_redraw();
+<a href=#1040 id=1040 data-nosnippet>1040</a>                    }
+<a href=#1041 id=1041 data-nosnippet>1041</a>                    WindowEvent::KeyboardInput {
+<a href=#1042 id=1042 data-nosnippet>1042</a>                        event:
+<a href=#1043 id=1043 data-nosnippet>1043</a>                            KeyEvent {
+<a href=#1044 id=1044 data-nosnippet>1044</a>                                logical_key,
+<a href=#1045 id=1045 data-nosnippet>1045</a>                                <span class="comment">//state: ElementState::Pressed,
+<a href=#1046 id=1046 data-nosnippet>1046</a>                                </span>state: key_state,
+<a href=#1047 id=1047 data-nosnippet>1047</a>                                ..
+<a href=#1048 id=1048 data-nosnippet>1048</a>                            },
+<a href=#1049 id=1049 data-nosnippet>1049</a>                        ..
+<a href=#1050 id=1050 data-nosnippet>1050</a>                    } =&gt; {
+<a href=#1051 id=1051 data-nosnippet>1051</a>                        <span class="kw">if </span>logical_key == Key::Named(NamedKey::Control) {
+<a href=#1052 id=1052 data-nosnippet>1052</a>                            <span class="kw">if </span>key_state == ElementState::Pressed {
+<a href=#1053 id=1053 data-nosnippet>1053</a>                                state.ctrl_pressed = <span class="bool-val">true</span>;
+<a href=#1054 id=1054 data-nosnippet>1054</a>                            } <span class="kw">else if </span>key_state == ElementState::Released {
+<a href=#1055 id=1055 data-nosnippet>1055</a>                                state.ctrl_pressed = <span class="bool-val">false</span>;
+<a href=#1056 id=1056 data-nosnippet>1056</a>                            }
+<a href=#1057 id=1057 data-nosnippet>1057</a>                        }
+<a href=#1058 id=1058 data-nosnippet>1058</a>                        <span class="kw">if </span>state.ctrl_pressed
+<a href=#1059 id=1059 data-nosnippet>1059</a>                            &amp;&amp; logical_key == Key::Character(SmolStr::new_inline(<span class="string">"c"</span>))
+<a href=#1060 id=1060 data-nosnippet>1060</a>                            &amp;&amp; key_state == ElementState::Pressed
+<a href=#1061 id=1061 data-nosnippet>1061</a>                        {
+<a href=#1062 id=1062 data-nosnippet>1062</a>                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(cam) = state.camera.copy() {
+<a href=#1063 id=1063 data-nosnippet>1063</a>                                <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+<a href=#1064 id=1064 data-nosnippet>1064</a>                                </span>{
+<a href=#1065 id=1065 data-nosnippet>1065</a>                                    <span class="kw">let </span>clipboard = <span class="self">self</span>.clipboard.as_mut().unwrap();
+<a href=#1066 id=1066 data-nosnippet>1066</a>                                    clipboard.set_text(cam);
+<a href=#1067 id=1067 data-nosnippet>1067</a>                                }
+<a href=#1068 id=1068 data-nosnippet>1068</a>                                <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
+<a href=#1069 id=1069 data-nosnippet>1069</a>                                </span>{
+<a href=#1070 id=1070 data-nosnippet>1070</a>                                    <span class="kw">let </span>promise = <span class="self">self</span>.clipboard.as_mut().unwrap().write_text(<span class="kw-2">&amp;</span>cam);
+<a href=#1071 id=1071 data-nosnippet>1071</a>                                    <span class="kw">let </span>f = <span class="kw">async move </span>{
+<a href=#1072 id=1072 data-nosnippet>1072</a>                                        wasm_bindgen_futures::JsFuture::from(promise).<span class="kw">await</span>;
+<a href=#1073 id=1073 data-nosnippet>1073</a>                                    };
+<a href=#1074 id=1074 data-nosnippet>1074</a>                                    wasm_bindgen_futures::spawn_local(f);
+<a href=#1075 id=1075 data-nosnippet>1075</a>                                }
+<a href=#1076 id=1076 data-nosnippet>1076</a>                            }
+<a href=#1077 id=1077 data-nosnippet>1077</a>                        } <span class="kw">else if </span>state.ctrl_pressed
+<a href=#1078 id=1078 data-nosnippet>1078</a>                            &amp;&amp; logical_key == Key::Character(SmolStr::new_inline(<span class="string">"v"</span>))
+<a href=#1079 id=1079 data-nosnippet>1079</a>                            &amp;&amp; key_state == ElementState::Pressed
+<a href=#1080 id=1080 data-nosnippet>1080</a>                        {
+<a href=#1081 id=1081 data-nosnippet>1081</a>                            <span class="kw">let </span>clipboard = <span class="self">self</span>.clipboard.as_mut().unwrap();
+<a href=#1082 id=1082 data-nosnippet>1082</a>                            <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+<a href=#1083 id=1083 data-nosnippet>1083</a>                            </span>{
+<a href=#1084 id=1084 data-nosnippet>1084</a>                                <span class="kw">if let </span><span class="prelude-val">Some</span>(cam) = clipboard.get() {
+<a href=#1085 id=1085 data-nosnippet>1085</a>                                    state
+<a href=#1086 id=1086 data-nosnippet>1086</a>                                        .proxy
+<a href=#1087 id=1087 data-nosnippet>1087</a>                                        .send_event(<span class="kw">crate</span>::window::UserEvent::Paste(cam))
+<a href=#1088 id=1088 data-nosnippet>1088</a>                                        .ok();
+<a href=#1089 id=1089 data-nosnippet>1089</a>                                    <span class="comment">//state.camera.set(cam);
+<a href=#1090 id=1090 data-nosnippet>1090</a>                                    //state.dirty = true;
+<a href=#1091 id=1091 data-nosnippet>1091</a>                                </span>};
+<a href=#1092 id=1092 data-nosnippet>1092</a>                            }
+<a href=#1093 id=1093 data-nosnippet>1093</a>                            <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
+<a href=#1094 id=1094 data-nosnippet>1094</a>                            </span>{
+<a href=#1095 id=1095 data-nosnippet>1095</a>                                <span class="kw">let </span>promise = <span class="self">self</span>.clipboard.as_mut().unwrap().read_text();
+<a href=#1096 id=1096 data-nosnippet>1096</a>                                <span class="kw">let </span>event_loop_proxy = state.proxy.clone();
+<a href=#1097 id=1097 data-nosnippet>1097</a>                                <span class="kw">let </span>f = <span class="kw">async move </span>{
+<a href=#1098 id=1098 data-nosnippet>1098</a>                                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(res) =
+<a href=#1099 id=1099 data-nosnippet>1099</a>                                        wasm_bindgen_futures::JsFuture::from(promise).<span class="kw">await
+<a href=#1100 id=1100 data-nosnippet>1100</a>                                    </span>{
+<a href=#1101 id=1101 data-nosnippet>1101</a>                                        <span class="kw">if let </span><span class="prelude-val">Some</span>(cam) = res.as_string() {
+<a href=#1102 id=1102 data-nosnippet>1102</a>                                            event_loop_proxy.send_event(UserEvent::Paste(cam)).ok();
+<a href=#1103 id=1103 data-nosnippet>1103</a>                                        }
+<a href=#1104 id=1104 data-nosnippet>1104</a>                                    }
+<a href=#1105 id=1105 data-nosnippet>1105</a>                                };
+<a href=#1106 id=1106 data-nosnippet>1106</a>                                wasm_bindgen_futures::spawn_local(f);
+<a href=#1107 id=1107 data-nosnippet>1107</a>                            }
+<a href=#1108 id=1108 data-nosnippet>1108</a>                        }
+<a href=#1109 id=1109 data-nosnippet>1109</a>                    }
+<a href=#1110 id=1110 data-nosnippet>1110</a>                    WindowEvent::RedrawRequested =&gt; {
+<a href=#1111 id=1111 data-nosnippet>1111</a>                        <span class="comment">//draw ui
+<a href=#1112 id=1112 data-nosnippet>1112</a>                        //let mut refresh_screen = state.state.dirty;
+<a href=#1113 id=1113 data-nosnippet>1113</a>                        </span>ui.draw_models(
+<a href=#1114 id=1114 data-nosnippet>1114</a>                            <span class="kw-2">&amp;*</span>state.<span class="number">0</span>.window,
+<a href=#1115 id=1115 data-nosnippet>1115</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.surfaces,
+<a href=#1116 id=1116 data-nosnippet>1116</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.clouds,
+<a href=#1117 id=1117 data-nosnippet>1117</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.segments,
+<a href=#1118 id=1118 data-nosnippet>1118</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.picker,
+<a href=#1119 id=1119 data-nosnippet>1119</a>                            state.<span class="number">0</span>.camera.build_view(),
+<a href=#1120 id=1120 data-nosnippet>1120</a>                            state.<span class="number">0</span>.camera.build_proj(),
+<a href=#1121 id=1121 data-nosnippet>1121</a>                            <span class="kw-2">&amp;</span>state.<span class="number">0</span>.device,
+<a href=#1122 id=1122 data-nosnippet>1122</a>                            <span class="kw-2">&amp;</span>state.<span class="number">0</span>.queue,
+<a href=#1123 id=1123 data-nosnippet>1123</a>                            <span class="kw-2">&amp;</span>state.<span class="number">0</span>.camera_light_bind_group_layout,
+<a href=#1124 id=1124 data-nosnippet>1124</a>                            state.<span class="number">0</span>.config.format,
+<a href=#1125 id=1125 data-nosnippet>1125</a>                            <span class="kw-2">&amp;mut </span>state.<span class="number">0</span>.dirty,
+<a href=#1126 id=1126 data-nosnippet>1126</a>                        );
+<a href=#1127 id=1127 data-nosnippet>1127</a>                        ui.draw_callback(state, <span class="kw-2">&amp;mut </span><span class="self">self</span>.callback.as_mut().unwrap());
+<a href=#1128 id=1128 data-nosnippet>1128</a>                        <span class="kw">let </span>scene_changed = state.update();
+<a href=#1129 id=1129 data-nosnippet>1129</a>                        <span class="comment">//actual rendering
+<a href=#1130 id=1130 data-nosnippet>1130</a>                        </span><span class="kw">match </span>state.render(<span class="kw-2">&amp;</span><span class="self">self</span>.proxy, ui, scene_changed) {
+<a href=#1131 id=1131 data-nosnippet>1131</a>                            <span class="prelude-val">Ok</span>(request_redraw) =&gt; {
+<a href=#1132 id=1132 data-nosnippet>1132</a>                                <span class="kw">if </span>request_redraw {
+<a href=#1133 id=1133 data-nosnippet>1133</a>                                    state.window.request_redraw();
+<a href=#1134 id=1134 data-nosnippet>1134</a>                                }
+<a href=#1135 id=1135 data-nosnippet>1135</a>                                ui.handle_platform_output(<span class="kw-2">&amp;*</span>state.window)}
+<a href=#1136 id=1136 data-nosnippet>1136</a>                            ,
+<a href=#1137 id=1137 data-nosnippet>1137</a>                            <span class="comment">// Reconfigure the surface if it's lost or outdated
+<a href=#1138 id=1138 data-nosnippet>1138</a>                            </span><span class="prelude-val">Err</span>(
+<a href=#1139 id=1139 data-nosnippet>1139</a>                                wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
+<a href=#1140 id=1140 data-nosnippet>1140</a>                            ) =&gt; {
+<a href=#1141 id=1141 data-nosnippet>1141</a>                                state.<span class="number">0</span>.resize(state.<span class="number">0</span>.size)
+<a href=#1142 id=1142 data-nosnippet>1142</a>                            },
+<a href=#1143 id=1143 data-nosnippet>1143</a>                            <span class="comment">// The system is out of memory, we should probably quit
+<a href=#1144 id=1144 data-nosnippet>1144</a>                            </span><span class="prelude-val">Err</span>(wgpu::SurfaceError::OutOfMemory) | <span class="prelude-val">Err</span>(wgpu::SurfaceError::Other) =&gt; event_loop.exit(),
+<a href=#1145 id=1145 data-nosnippet>1145</a>
+<a href=#1146 id=1146 data-nosnippet>1146</a>                            <span class="prelude-val">Err</span>(wgpu::SurfaceError::Timeout) =&gt; {
+<a href=#1147 id=1147 data-nosnippet>1147</a>                                <span class="macro">log::warn!</span>(<span class="string">"Surface timeout"</span>)
+<a href=#1148 id=1148 data-nosnippet>1148</a>                            }
+<a href=#1149 id=1149 data-nosnippet>1149</a>                        }
+<a href=#1150 id=1150 data-nosnippet>1150</a>                    }
+<a href=#1151 id=1151 data-nosnippet>1151</a>                    <span class="kw">_ </span>=&gt; {}
+<a href=#1152 id=1152 data-nosnippet>1152</a>                }
+<a href=#1153 id=1153 data-nosnippet>1153</a>            }
+<a href=#1154 id=1154 data-nosnippet>1154</a>        } <span class="kw">else </span>{
+<a href=#1155 id=1155 data-nosnippet>1155</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(state) = <span class="self">self</span>.state.as_mut() {
+<a href=#1156 id=1156 data-nosnippet>1156</a>                state.window.request_redraw();
+<a href=#1157 id=1157 data-nosnippet>1157</a>            }
+<a href=#1158 id=1158 data-nosnippet>1158</a>        }
+<a href=#1159 id=1159 data-nosnippet>1159</a>    }
+<a href=#1160 id=1160 data-nosnippet>1160</a>}</code></pre></div></section></main></body></html>
