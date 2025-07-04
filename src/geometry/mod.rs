@@ -58,6 +58,7 @@ pub struct Element<Geometry, Renderer, Settings, Data, AttachedGeometry> {
     attached_data: IndexMap<String, AttachedGeometry>,
     shown_data: Option<String>,
     pub(crate) sbv: SBV,
+    modification_stamp: u32,
 }
 
 impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
@@ -121,6 +122,7 @@ where
             name,
             show: true,
             sbv,
+            modification_stamp: 0,
         }
     }
 
@@ -182,6 +184,7 @@ where
             renderer,
             shown_data: self.shown_data,
             sbv: self.sbv,
+            modification_stamp: self.modification_stamp,
         }
     }
 }
@@ -253,6 +256,7 @@ where
             name,
             show: true,
             sbv,
+            modification_stamp: 0,
         }
     }
 
@@ -374,6 +378,7 @@ where
     }
 
     pub(crate) fn move_vertex(&mut self, queue: &wgpu::Queue, vertex: u32, pos: [f32; 3]) {
+        self.modification_stamp += 1;
         let ((adj_faces, adj_faces_centers), (adj_edges, adj_edges_centers)) =
             self.geometry.move_vertex(vertex, pos);
         self.renderer
@@ -440,12 +445,18 @@ pub trait ElementTrait<Ctxt: Context> {
 
     fn set_data(&mut self, name: Option<String>, context: &mut Ctxt);
 
+    fn get_modification_stamp(&self) -> u32;
+
     fn add_data<'b>(
         &'b mut self,
         name: String,
         data: Self::Data,
         context: &'b mut Ctxt,
     ) -> DataMut<'b, &'b mut Self::Data, Ctxt>;
+
+    fn remove_data(&mut self, name: String, context: &mut Ctxt);
+
+    fn remove_attached_shape(&mut self, name: String, context: &mut Ctxt);
 
     fn update_settings(&mut self, _context: &mut Ctxt, _rebuild_pipeline: bool) {}
 
@@ -494,6 +505,21 @@ where
 
     fn set_data(&mut self, name: Option<String>, _context: &mut &'a mut crate::Settings) {
         self.shown_data = name;
+    }
+
+    fn remove_data(&mut self, name: String, _context: &mut &'a mut crate::Settings) {
+        self.data.shift_remove(&name);
+        if self.shown_data == Some(name) {
+            self.shown_data = None;
+        }
+    }
+
+    fn remove_attached_shape(&mut self, name: String, _context: &mut &'a mut crate::Settings) {
+        self.attached_data.shift_remove(&name);
+    }
+
+    fn get_modification_stamp(&self) -> u32 {
+        self.modification_stamp
     }
 
     fn add_data<'b>(
@@ -584,6 +610,20 @@ where
         }
     }
 
+    fn remove_data(&mut self, name: String, context: &mut GraphicalContext<'_>) {
+        self.data.shift_remove(&name);
+        if self.shown_data == Some(name) {
+            self.shown_data = None;
+            *context.refresh_screen = self.show;
+        }
+    }
+
+    fn remove_attached_shape(&mut self, name: String, context: &mut GraphicalContext<'_>) {
+        if let Some(data) = self.attached_data.shift_remove(&name) {
+            *context.refresh_screen = data.shown() && self.show
+        }
+    }
+
     fn set_data(&mut self, name: Option<String>, context: &mut GraphicalContext<'_>) {
         if self.shown_data != name {
             self.shown_data = name;
@@ -601,8 +641,12 @@ where
                 context.camera_light_bind_group_layout,
                 context.color_format,
             );
-            *context.refresh_screen = true;
+            *context.refresh_screen = self.show;
         }
+    }
+
+    fn get_modification_stamp(&self) -> u32 {
+        self.modification_stamp
     }
 
     fn add_data<'b>(
@@ -627,7 +671,7 @@ where
                 context.camera_light_bind_group_layout,
                 context.color_format,
             );
-            *context.refresh_screen = true;
+            *context.refresh_screen = self.show;
         }
         DataMut {
             inner: data,
@@ -707,6 +751,20 @@ impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctx
         self.element
             .set_data(name.map(Into::into), &mut self.context);
         self
+    }
+
+    pub fn remove_data<S: Into<String>>(&mut self, name: S) {
+        self.element.remove_data(name.into(), &mut self.context);
+    }
+
+    pub fn remove_attached_shape<S: Into<String>>(&mut self, name: S) {
+        self.element
+            .remove_attached_shape(name.into(), &mut self.context);
+    }
+
+    /// This stamp increases each time the geometry of the shape is modified.
+    pub fn get_modification_stamp(&self) -> u32 {
+        self.element.get_modification_stamp()
     }
 
     pub(crate) fn add_data(
