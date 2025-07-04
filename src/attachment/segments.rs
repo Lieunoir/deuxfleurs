@@ -2,8 +2,8 @@ use crate::{
     attachment::internal::AttachmentPosition,
     data::internal::DataUniformBuilder,
     geometry::{
-        AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
-        ShapeSettings,
+        AttachedGeometry, DataMut, ElementGeometry, FixedRenderer, GraphicalContext,
+        NewAttachedGeometry, ShapeSettings,
     },
     segment::{DisplaySegment, PCSettings, UninitedSegment},
     settings::Settings,
@@ -155,7 +155,9 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
     where
         'c: 'd,
     {
-        self.inner.renderer.render_attached(render_pass);
+        if self.inner.geometry().get_total_elements() > 0 {
+            self.inner.renderer.render_attached(render_pass);
+        }
     }
 
     fn draw_ui(

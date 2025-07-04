@@ -406,7 +406,7 @@ where
     where
         'a: 'b,
     {
-        if self.show {
+        if self.show && self.geometry().get_total_elements() > 0 {
             self.renderer.render(render_pass);
             for (_, attached) in &self.attached_data {
                 if attached.shown() {
@@ -420,7 +420,7 @@ where
     where
         'a: 'b,
     {
-        if self.show {
+        if self.show && self.geometry().get_total_elements() > 0 {
             self.renderer.render_shadow(render_pass);
         }
     }
@@ -429,7 +429,7 @@ where
     where
         'a: 'b,
     {
-        if self.show {
+        if self.show && self.geometry().get_total_elements() > 0 {
             self.renderer.render_picker(render_pass);
         }
     }
