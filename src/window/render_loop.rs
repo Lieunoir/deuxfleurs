@@ -894,10 +894,11 @@ impl InnerGraphicalState {
                 let file = file.await;
                 if let Some(file_handle) = file {
                     let data = file_handle.read().await;
-                    if let Ok((mesh_v, mesh_f)) = crate::resources::parse_preloaded_mesh(data).await
+                    if let Some((mesh_v, mesh_f)) =
+                        crate::resources::parse_preloaded_mesh(data).await
                     {
                         event_loop_proxy
-                            .send_event(crate::UserEvent::LoadMesh(mesh_v, mesh_f, name))
+                            .send_event(UserEvent::LoadMesh(mesh_v, mesh_f, name))
                             .ok();
                     }
                 }
@@ -1098,9 +1099,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                                         wasm_bindgen_futures::JsFuture::from(promise).await
                                     {
                                         if let Some(cam) = res.as_string() {
-                                            event_loop_proxy
-                                                .send_event(crate::UserEvent::Paste(cam))
-                                                .ok();
+                                            event_loop_proxy.send_event(UserEvent::Paste(cam)).ok();
                                         }
                                     }
                                 };

@@ -60,6 +60,7 @@ required-features = ["obj_button"]
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 console_log = "0.2.0"
+getrandom = { version = "0.2", features = ["js"] }
 wgpu = { version = "=24", default-features = false, features = ["webgl"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
