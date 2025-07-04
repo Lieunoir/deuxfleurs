@@ -27,9 +27,9 @@ use web_sys::Clipboard;
 
 use crate::Settings;
 use crate::geometry::{
-    AttachedGeometry, DataBuffer, DisplayElement, Element, ElementGeometry, ElementMut,
-    EmptyAttached, FixedRenderer, GraphicalContext, NewAttachedGeometry, Render, RenderPipeline,
-    Renderer, ShapeSettings, UninitedElement,
+    AttachedGeometry, DataBuffer, DisplayShape, EmptyAttached, FixedRenderer, GraphicalContext,
+    NewAttachedGeometry, Render, RenderPipeline, Renderer, Shape, ShapeGeometry, ShapeMut,
+    ShapeSettings, UninitedShape,
 };
 use egui;
 use indexmap::IndexMap;
@@ -90,20 +90,19 @@ pub trait GeometryHolder<Element>: ContainerContextGiver<Element> {
         &mut self,
         name: String,
         args: Self::Args,
-    ) -> ElementMut<'_, Element, Self::Context<'_>>;
+    ) -> ShapeMut<'_, Element, Self::Context<'_>>;
 
-    fn get_element_mut(&mut self, name: &str)
-    -> Option<ElementMut<'_, Element, Self::Context<'_>>>;
+    fn get_element_mut(&mut self, name: &str) -> Option<ShapeMut<'_, Element, Self::Context<'_>>>;
 
     fn get_element(&self, name: &str) -> Option<&'_ Element>;
 }
 
 impl<Geometry, Settings, Data, Attached, T>
-    GeometryHolder<UninitedElement<Geometry, Settings, Data, Attached>> for T
+    GeometryHolder<UninitedShape<Geometry, Settings, Data, Attached>> for T
 where
     for<'a> T: ContextHolder<Context<'a> = &'a mut crate::Settings>,
-    T: ContainerContextGiver<UninitedElement<Geometry, Settings, Data, Attached>>,
-    Geometry: ElementGeometry,
+    T: ContainerContextGiver<UninitedShape<Geometry, Settings, Data, Attached>>,
+    Geometry: ShapeGeometry,
     Settings: DataUniformBuilder + ShapeSettings,
     Data: DataSettings,
     for<'a> Attached: AttachedGeometry<&'a mut crate::Settings> + NewAttachedGeometry,
@@ -114,18 +113,21 @@ where
         &mut self,
         name: String,
         args: Self::Args,
-    ) -> ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
-        use crate::geometry::ElementTrait;
+    ) -> ShapeMut<UninitedShape<Geometry, Settings, Data, Attached>, Self::Context<'_>> {
+        use crate::geometry::ShapeTrait;
         let (container, mut context, _, _, _) = self.get_container_mut();
         if container.contains_key(&name) {
             let element = container.get_mut(&name).unwrap();
             element.replace(args, &mut context);
-            ElementMut { element, context }
+            ShapeMut {
+                inner: element,
+                context,
+            }
         } else {
-            let element = Element::new_bare(name.clone(), args, None);
+            let element = Shape::new_bare(name.clone(), args, None);
             container.insert(name.clone(), element);
-            ElementMut {
-                element: container.get_mut(&name).unwrap(),
+            ShapeMut {
+                inner: container.get_mut(&name).unwrap(),
                 context,
             }
         }
@@ -134,31 +136,32 @@ where
     fn get_element_mut(
         &mut self,
         name: &str,
-    ) -> Option<ElementMut<UninitedElement<Geometry, Settings, Data, Attached>, Self::Context<'_>>>
+    ) -> Option<ShapeMut<UninitedShape<Geometry, Settings, Data, Attached>, Self::Context<'_>>>
     {
         let (container, context, _, _, _) = self.get_container_mut();
-        container
-            .get_mut(name)
-            .map(|element| ElementMut { element, context })
+        container.get_mut(name).map(|element| ShapeMut {
+            inner: element,
+            context,
+        })
     }
 
     fn get_element(
         &self,
         name: &str,
-    ) -> Option<&'_ UninitedElement<Geometry, Settings, Data, Attached>> {
+    ) -> Option<&'_ UninitedShape<Geometry, Settings, Data, Attached>> {
         self.get_container().get(name)
     }
 }
 
 impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached, T>
-    GeometryHolder<DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>> for T
+    GeometryHolder<DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>> for T
 where
     for<'a> T: ContextHolder<Context<'a> = GraphicalContext<'a>>,
     T: ContainerContextGiver<
-        DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
+        DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
     >,
     for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
-    Geometry: ElementGeometry,
+    Geometry: ShapeGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
@@ -172,11 +175,11 @@ where
         &mut self,
         name: String,
         args: Self::Args,
-    ) -> ElementMut<
-        DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
+    ) -> ShapeMut<
+        DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
         Self::Context<'_>,
     > {
-        use crate::geometry::ElementTrait;
+        use crate::geometry::ShapeTrait;
         let (container, mut context, should_resize, counters_dirty, picked) =
             self.get_container_mut();
         *context.refresh_screen = true;
@@ -193,12 +196,12 @@ where
                     }
                 }
             }
-            ElementMut {
-                element,
+            ShapeMut {
+                inner: element,
                 context: context,
             }
         } else {
-            let element = Element::new(
+            let element = Shape::new(
                 name.clone(),
                 args,
                 None,
@@ -216,8 +219,8 @@ where
                     *picked = None;
                 }
             }
-            ElementMut {
-                element: container.get_mut(&name).unwrap(),
+            ShapeMut {
+                inner: container.get_mut(&name).unwrap(),
                 context,
             }
         }
@@ -227,21 +230,22 @@ where
         &mut self,
         name: &str,
     ) -> Option<
-        ElementMut<
-            DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
+        ShapeMut<
+            DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
             Self::Context<'_>,
         >,
     > {
         let (container, context, _, _, _) = self.get_container_mut();
-        container
-            .get_mut(name)
-            .map(|element| ElementMut { element, context })
+        container.get_mut(name).map(|element| ShapeMut {
+            inner: element,
+            context,
+        })
     }
 
     fn get_element(
         &self,
         name: &str,
-    ) -> Option<&DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>> {
+    ) -> Option<&DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>> {
         self.get_container().get(name)
     }
 }

@@ -221,7 +221,7 @@ fn compute_edge_face_maps(
     )
 }
 
-impl ElementGeometry for SurfaceGeometry {
+impl ShapeGeometry for SurfaceGeometry {
     type Args = (SurfaceIndices, Vec<[f32; 3]>);
 
     fn new(args: Self::Args) -> Self {
@@ -924,7 +924,7 @@ impl Render for SurfaceRenderer {
 }
 
 pub type Surface<Renderer, AttachedData> =
-    Element<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData>;
+    Shape<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData>;
 
 pub type UninitedSurface = Surface<(), NewSurfaceAttachment>;
 pub type DisplaySurface = Surface<SurfaceRenderer, SurfaceAttachment>;
@@ -1088,7 +1088,7 @@ impl DisplaySurface {
 }
 
 pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
-    ElementMut<'a, Surface<Renderer, AttachedData>, Context>;
+    ShapeMut<'a, Surface<Renderer, AttachedData>, Context>;
 
 impl<'a, 'b, Renderer, AttachedData, Ctxt: Context> SurfaceMut<'a, Renderer, AttachedData, Ctxt>
 where
@@ -1097,20 +1097,19 @@ where
             Settings<'b> = SurfaceAttachmentSettings<'b>,
             Args = SurfaceAttachmentArgs,
         > + 'b,
-    Surface<Renderer, AttachedData>:
-        ElementTrait<Ctxt, Data = SurfaceData, Attached = AttachedData>,
+    Surface<Renderer, AttachedData>: ShapeTrait<Ctxt, Data = SurfaceData, Attached = AttachedData>,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
-        if self.element.settings.show_edges != show_edges {
-            self.element.settings.show_edges = show_edges;
+        if self.inner.settings.show_edges != show_edges {
+            self.inner.settings.show_edges = show_edges;
             self.update_settings(true);
         }
         self
     }
 
     pub fn set_smooth(&mut self, smooth: bool) -> &mut Self {
-        if self.element.settings.smooth != smooth {
-            self.element.settings.smooth = smooth;
+        if self.inner.settings.smooth != smooth {
+            self.inner.settings.smooth = smooth;
             self.update_settings(true);
         }
         self

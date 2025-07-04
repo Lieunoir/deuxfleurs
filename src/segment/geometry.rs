@@ -356,7 +356,7 @@ pub struct SegmentGeometry {
     avg_edge_length: f32,
 }
 
-impl ElementGeometry for SegmentGeometry {
+impl ShapeGeometry for SegmentGeometry {
     type Args = (Vec<[f32; 3]>, Vec<[u32; 2]>);
 
     fn new(args: Self::Args) -> Self {
@@ -832,29 +832,29 @@ impl Render for SegmentRenderer {
 }
 
 pub type Segment<Renderer, AttachedData> =
-    Element<SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData>;
+    Shape<SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData>;
 
 pub type UninitedSegment = Segment<(), ()>;
 pub type DisplaySegment = Segment<SegmentRenderer, EmptyAttached>;
 
 pub type SegmentMut<'a, Renderer, AttachedData, Context> =
-    ElementMut<'a, Segment<Renderer, AttachedData>, Context>;
+    ShapeMut<'a, Segment<Renderer, AttachedData>, Context>;
 
 impl<'a, Renderer, AttachedData, Ctxt: Context> SegmentMut<'a, Renderer, AttachedData, Ctxt>
 where
-    Segment<Renderer, AttachedData>: ElementTrait<Ctxt, Data = SegmentData>,
+    Segment<Renderer, AttachedData>: ShapeTrait<Ctxt, Data = SegmentData>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {
-            self.element.settings.radius.set_relative(radius);
+            self.inner.settings.radius.set_relative(radius);
         } else {
-            self.element.settings.radius.set_absolute(radius);
+            self.inner.settings.radius.set_absolute(radius);
         }
         self.update_settings(false)
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.element.settings.color.color = color;
+        self.inner.settings.color.color = color;
         self.update_settings(false);
         self
     }

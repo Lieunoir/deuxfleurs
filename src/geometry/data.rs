@@ -126,7 +126,7 @@ pub trait ShapeSettings: DataUniformBuilder {
     fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool;
 }
 
-pub trait ElementGeometry {
+pub trait ShapeGeometry {
     type Args;
 
     fn new(args: Self::Args) -> Self;

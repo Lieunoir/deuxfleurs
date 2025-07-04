@@ -208,7 +208,7 @@ pub struct PointCloudGeometry {
     avg_edge_length: f32,
 }
 
-impl ElementGeometry for PointCloudGeometry {
+impl ShapeGeometry for PointCloudGeometry {
     type Args = Vec<[f32; 3]>;
 
     fn new(args: Self::Args) -> Self {
@@ -541,30 +541,30 @@ impl Render for PointCloudRenderer {
 }
 
 pub type PointCloud<Renderer, AttachedData> =
-    Element<PointCloudGeometry, Renderer, PCSettings, PointCloudData, AttachedData>;
+    Shape<PointCloudGeometry, Renderer, PCSettings, PointCloudData, AttachedData>;
 
 pub type UninitedPointCloud = PointCloud<(), ()>;
 pub type DisplayPointCloud = PointCloud<PointCloudRenderer, EmptyAttached>;
 
 pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
-    ElementMut<'a, PointCloud<Renderer, AttachedData>, Context>;
+    ShapeMut<'a, PointCloud<Renderer, AttachedData>, Context>;
 
 impl<'a, Renderer, AttachedData, Ctxt: Context> PointCloudMut<'a, Renderer, AttachedData, Ctxt>
 where
-    PointCloud<Renderer, AttachedData>: ElementTrait<Ctxt, Data = PointCloudData>,
+    PointCloud<Renderer, AttachedData>: ShapeTrait<Ctxt, Data = PointCloudData>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {
-            self.element.settings.radius.set_relative(radius);
+            self.inner.settings.radius.set_relative(radius);
         } else {
-            self.element.settings.radius.set_absolute(radius);
+            self.inner.settings.radius.set_absolute(radius);
         }
         self.update_settings(false);
         self
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
-        self.element.settings.color.color = color;
+        self.inner.settings.color.color = color;
         self.update_settings(false);
         self
     }

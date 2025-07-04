@@ -35,7 +35,7 @@ use window::{InnerBareState, State};
 
 /// Re exported types for visibility
 pub mod internal {
-    pub use crate::geometry::{Element, ElementMut};
+    pub use crate::geometry::{Shape, ShapeMut};
     pub use crate::window::State;
 }
 

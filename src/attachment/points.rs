@@ -2,8 +2,8 @@ use crate::{
     attachment::internal::AttachmentPosition,
     data::internal::DataUniformBuilder,
     geometry::{
-        AttachedGeometry, DataMut, ElementGeometry, FixedRenderer, GraphicalContext,
-        NewAttachedGeometry, ShapeSettings,
+        AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
+        ShapeGeometry, ShapeSettings,
     },
     point_cloud::{DisplayPointCloud, PCSettings, UninitedPointCloud},
     settings::Settings,

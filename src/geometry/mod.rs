@@ -47,7 +47,7 @@ impl Context for &mut Settings {
 }
 
 // `Renderer` can be `()` !
-pub struct Element<Geometry, Renderer, Settings, Data, AttachedGeometry> {
+pub struct Shape<Geometry, Renderer, Settings, Data, AttachedGeometry> {
     pub(crate) name: String,
     pub(crate) geometry: Geometry,
     pub(crate) renderer: Renderer,
@@ -62,7 +62,7 @@ pub struct Element<Geometry, Renderer, Settings, Data, AttachedGeometry> {
 }
 
 impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
-    Element<Geometry, Renderer, Settings, Data, AttachedGeometry>
+    Shape<Geometry, Renderer, Settings, Data, AttachedGeometry>
 {
     pub fn name(&self) -> &str {
         &self.name
@@ -85,20 +85,20 @@ impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
         self.data.get(name)
     }
 
-    pub fn get_attached_geometry(&self, name: &str) -> Option<&AttachedGeometry> {
+    pub fn get_attached_shape(&self, name: &str) -> Option<&AttachedGeometry> {
         self.attached_data.get(name)
     }
 }
 
-pub type UninitedElement<Geometry, Settings, Data, AttachedGeometry> =
-    Element<Geometry, (), Settings, Data, AttachedGeometry>;
+pub type UninitedShape<Geometry, Settings, Data, AttachedGeometry> =
+    Shape<Geometry, (), Settings, Data, AttachedGeometry>;
 
-pub type DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> =
-    Element<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>;
+pub type DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedGeometry> =
+    Shape<Geometry, Renderer<Fixed, DataB, Pipeline>, Settings, Data, AttachedGeometry>;
 
-impl<Geometry, Settings, Data, Attached> UninitedElement<Geometry, Settings, Data, Attached>
+impl<Geometry, Settings, Data, Attached> UninitedShape<Geometry, Settings, Data, Attached>
 where
-    Geometry: ElementGeometry,
+    Geometry: ShapeGeometry,
     Settings: DataUniformBuilder + ShapeSettings,
     Attached: NewAttachedGeometry,
 {
@@ -137,7 +137,7 @@ where
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
-    ) -> Element<
+    ) -> Shape<
         Geometry,
         Renderer<Fixed, DataB, Pipeline>,
         Settings,
@@ -178,7 +178,7 @@ where
             })
             .collect();
 
-        Element {
+        Shape {
             name: self.name,
             geometry: self.geometry,
             show: self.show,
@@ -195,10 +195,10 @@ where
 }
 
 impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
-    DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
+    DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
 where
     for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
-    Geometry: ElementGeometry,
+    Geometry: ShapeGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
@@ -435,14 +435,14 @@ where
     }
 }
 
-pub trait ElementTrait<Ctxt: Context> {
+pub trait ShapeTrait<Ctxt: Context> {
     type Data;
-    type Geometry: ElementGeometry;
+    type Geometry: ShapeGeometry;
     type Attached: AttachedGeometry<Ctxt>;
 
     fn replace(
         &mut self,
-        args: <Self::Geometry as ElementGeometry>::Args,
+        args: <Self::Geometry as ShapeGeometry>::Args,
         context: &mut Ctxt,
     ) -> bool;
 
@@ -474,10 +474,10 @@ pub trait ElementTrait<Ctxt: Context> {
     ) -> DataMut<'b, &'b mut Self::Attached, Ctxt>;
 }
 
-impl<'a, Geometry, Settings, Data, AttachedG> ElementTrait<&'a mut crate::Settings>
-    for UninitedElement<Geometry, Settings, Data, AttachedG>
+impl<'a, Geometry, Settings, Data, AttachedG> ShapeTrait<&'a mut crate::Settings>
+    for UninitedShape<Geometry, Settings, Data, AttachedG>
 where
-    Geometry: ElementGeometry,
+    Geometry: ShapeGeometry,
     AttachedG: AttachedGeometry<&'a mut crate::Settings>,
     Data: DataSettings,
     Settings: ShapeSettings,
@@ -489,10 +489,10 @@ where
 
     fn replace(
         &mut self,
-        args: <Self::Geometry as ElementGeometry>::Args,
+        args: <Self::Geometry as ShapeGeometry>::Args,
         _context: &mut &'a mut crate::Settings,
     ) -> bool {
-        let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
+        let new_geometry = <Self::Geometry as ShapeGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
             self.geometry = new_geometry;
             true
@@ -562,11 +562,11 @@ where
 }
 
 impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
-    ElementTrait<GraphicalContext<'a>>
-    for DisplayElement<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
+    ShapeTrait<GraphicalContext<'a>>
+    for DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
 where
     for<'b> AttachedG: AttachedGeometry<GraphicalContext<'b>>,
-    Geometry: ElementGeometry,
+    Geometry: ShapeGeometry,
     Data: DataUniformBuilder + DataSettings + UiDataElement,
     Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
@@ -580,10 +580,10 @@ where
 
     fn replace(
         &mut self,
-        args: <Self::Geometry as ElementGeometry>::Args,
+        args: <Self::Geometry as ShapeGeometry>::Args,
         context: &mut GraphicalContext<'_>,
     ) -> bool {
-        let new_geometry = <Self::Geometry as ElementGeometry>::new(args);
+        let new_geometry = <Self::Geometry as ShapeGeometry>::new(args);
         if self.geometry().can_be_replaced_by(&new_geometry) {
             self.renderer.fixed = Fixed::initialize(context.device, &new_geometry);
             self.geometry = new_geometry;
@@ -723,60 +723,59 @@ where
     }
 }
 
-pub struct ElementMut<'a, Element, Context> {
-    pub(crate) element: &'a mut Element,
+pub struct ShapeMut<'a, Shape, Context> {
+    pub(crate) inner: &'a mut Shape,
     pub(crate) context: Context,
 }
 
-impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> Deref for ElementMut<'a, Element, Ctxt> {
-    type Target = Element;
+impl<'a, Shape: ShapeTrait<Ctxt>, Ctxt: Context> Deref for ShapeMut<'a, Shape, Ctxt> {
+    type Target = Shape;
 
     fn deref(&self) -> &Self::Target {
-        self.element
+        self.inner
     }
 }
 
-impl<'a, Element: ElementTrait<Ctxt>, Ctxt: Context> ElementMut<'a, Element, Ctxt> {
+impl<'a, Shape: ShapeTrait<Ctxt>, Ctxt: Context> ShapeMut<'a, Shape, Ctxt> {
     pub fn show(&mut self, show: bool) -> &mut Self {
-        self.element.show(show, &mut self.context);
+        self.inner.show(show, &mut self.context);
         self
     }
 
     pub fn set_data<S: Into<String>>(&mut self, name: Option<S>) -> &mut Self {
-        self.element
-            .set_data(name.map(Into::into), &mut self.context);
+        self.inner.set_data(name.map(Into::into), &mut self.context);
         self
     }
 
     pub fn remove_data<S: Into<String>>(&mut self, name: S) {
-        self.element.remove_data(name.into(), &mut self.context);
+        self.inner.remove_data(name.into(), &mut self.context);
     }
 
     pub fn remove_attached_shape<S: Into<String>>(&mut self, name: S) {
-        self.element
+        self.inner
             .remove_attached_shape(name.into(), &mut self.context);
     }
 
     pub(crate) fn add_data(
         &mut self,
         name: String,
-        data: Element::Data,
-    ) -> DataMut<'_, &mut Element::Data, Ctxt> {
-        self.element.add_data(name, data, &mut self.context)
+        data: Shape::Data,
+    ) -> DataMut<'_, &mut Shape::Data, Ctxt> {
+        self.inner.add_data(name, data, &mut self.context)
     }
 
     pub(crate) fn add_attached_geometry(
         &mut self,
         name: String,
-        args: <Element::Attached as AttachedGeometry<Ctxt>>::Args,
+        args: <Shape::Attached as AttachedGeometry<Ctxt>>::Args,
         position: AttachmentPosition,
-    ) -> DataMut<'_, &mut Element::Attached, Ctxt> {
-        self.element
+    ) -> DataMut<'_, &mut Shape::Attached, Ctxt> {
+        self.inner
             .add_attached_geometry(name, args, position, &mut self.context)
     }
 
     pub(crate) fn update_settings(&mut self, rebuild_pipeline: bool) -> &mut Self {
-        self.element
+        self.inner
             .update_settings(&mut self.context, rebuild_pipeline);
         self
     }
