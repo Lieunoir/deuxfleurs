@@ -1,8 +1,7 @@
-use std::num::NonZeroU8;
-
-use wgpu::Color;
-
 use crate::data::Colors;
+use egui::{DragValue, Slider, WidgetInfo};
+use std::num::NonZeroU8;
+use wgpu::Color;
 
 /// Global rendering settings
 #[derive(Clone)]
@@ -47,5 +46,38 @@ impl Default for Settings {
 }
 
 impl Settings {
-    pub fn ui(&mut self, _ui: &mut egui::Ui) {}
+    pub fn draw_ui(&mut self, ui: &mut egui::Ui, refresh_screen: &mut bool) {
+        ui.collapsing("Settings", |ui| {
+            ui.horizontal(|ui| {
+                let mut value = self.taa.map(|v| v.get()).unwrap_or(0) as f32;
+                ui.add(
+                    DragValue::new(&mut value)
+                        .range(0..=64)
+                        .prefix("TAA frames: "),
+                );
+                let value = NonZeroU8::new(value as u8);
+                if self.taa != value {
+                    self.taa = value;
+                    *refresh_screen = true;
+                }
+            });
+            *refresh_screen |= ui.checkbox(&mut self.shadow, "Ground shadow").clicked();
+            ui.horizontal(|ui| {
+                ui.add(
+                    DragValue::new(&mut self.mouse_sensitivity)
+                        .range(0. ..=100.)
+                        .speed(0.02)
+                        .prefix("Mouse sensitivity: "),
+                );
+            });
+            ui.horizontal(|ui| {
+                ui.add(
+                    DragValue::new(&mut self.zoom_sensitivity)
+                        .range(0. ..=100.)
+                        .speed(0.02)
+                        .prefix("Zoom sensitivity: "),
+                );
+            });
+        });
+    }
 }

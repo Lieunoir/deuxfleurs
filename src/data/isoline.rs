@@ -19,10 +19,13 @@ impl Default for IsolineSettings {
 
 impl UiDataElement for IsolineSettings {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
-        egui::Slider::new(&mut self.isoline_number, 0.0..=100.0)
-            .text("Isolines")
-            .clamping(egui::SliderClamping::Never)
-            .ui(ui)
-            .changed()
+        let mut changed = false;
+        ui.horizontal(|ui| {
+            changed = egui::DragValue::new(&mut self.isoline_number)
+                .prefix("Isolines: ")
+                .ui(ui)
+                .changed();
+        });
+        changed
     }
 }

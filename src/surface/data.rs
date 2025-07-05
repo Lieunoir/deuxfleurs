@@ -141,8 +141,12 @@ impl UiDataElement for SurfaceData {
                 data_uniform.draw_ui(ui)
             }
             SurfaceData::VertexScalar(_, data_uniform) => {
-                let changed = data_uniform.colormap.draw_ui(ui);
-                data_uniform.isoline.draw_ui(ui) || changed
+                let mut changed = false;
+                ui.horizontal_wrapped(|ui| {
+                    changed |= data_uniform.isoline.draw_ui(ui);
+                    changed |= data_uniform.colormap.draw_ui(ui);
+                });
+                changed
             }
             SurfaceData::FaceScalar(_, data_uniform) | SurfaceData::EdgeScalar(_, data_uniform) => {
                 data_uniform.draw_ui(ui)

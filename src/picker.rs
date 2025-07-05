@@ -498,29 +498,31 @@ impl Picker {
 
     pub(crate) fn draw_ui(&mut self, ui: &mut egui::Ui) {
         if let Some((picked_name, picked)) = self.picked_item.as_ref() {
-            ui.label(format!("Picked {}", picked_name));
+            ui.separator();
+            ui.heading("Selection");
+            ui.label(format!("Shape: {}", picked_name));
 
             match picked {
                 Picked::Surface(picked) => match picked {
                     SurfacePicked::Vertex(picked) => {
-                        ui.label(format!("Picked vertex number {}", picked));
+                        ui.label(format!("Vertex number {}", picked));
                     }
                     SurfacePicked::Face(picked) => {
-                        ui.label(format!("Picked face number {}", picked));
+                        ui.label(format!("Face number {}", picked));
                     }
                     SurfacePicked::Edge(picked) => {
-                        ui.label(format!("Picked edge number {}", picked));
+                        ui.label(format!("Edge number {}", picked));
                     }
                 },
                 Picked::PointCloud(picked) => {
-                    ui.label(format!("Picked point number {}", picked));
+                    ui.label(format!("Point number {}", picked));
                 }
                 Picked::Segment(picked) => match picked {
                     SegmentPicked::Point(picked) => {
-                        ui.label(format!("Picked point number {}", picked));
+                        ui.label(format!("Point number {}", picked));
                     }
                     SegmentPicked::Edge(picked) => {
-                        ui.label(format!("Picked edge number {}", picked));
+                        ui.label(format!("Edge number {}", picked));
                     }
                 },
             }
@@ -532,7 +534,7 @@ impl Picker {
             };
             ui.add_enabled(
                 enabled,
-                Checkbox::new(&mut self.show_gizmo, "Show Edition Gizmo"),
+                Checkbox::new(&mut self.show_gizmo, "Edition Gizmo"),
             );
         }
     }

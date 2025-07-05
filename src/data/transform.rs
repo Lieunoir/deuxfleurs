@@ -40,19 +40,14 @@ impl TransformSettings {
             normal: normal.to_cols_array_2d(),
         }
     }
+
     pub fn draw_transform(&mut self, ui: &mut egui::Ui, positions: &[[f32; 3]]) -> bool {
         let mut changed = false;
         ui.horizontal(|ui| {
-            ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
+            ui.checkbox(&mut self.show_gizmo, "Transform Gizmo");
         });
         ui.horizontal(|ui| {
-            if ui.add(egui::Button::new("Reset")).clicked() {
-                self.translation = DVec3::ZERO;
-                self.scale = DVec3::ONE;
-                self.rotation = DQuat::IDENTITY;
-                changed = true;
-            }
-            if ui.add(egui::Button::new("Center")).clicked() {
+            if ui.button("Center").clicked() {
                 let mut min_x = std::f32::MAX;
                 let mut min_y = std::f32::MAX;
                 let mut min_z = std::f32::MAX;
@@ -94,7 +89,7 @@ impl TransformSettings {
                 self.translation += DVec3::from_array([-x as f64, -y as f64, -z as f64]);
                 changed = true;
             }
-            if ui.add(egui::Button::new("Unit Scale")).clicked() {
+            if ui.button("Unit Scale").clicked() {
                 let mut min_x = std::f32::MAX;
                 let mut min_y = std::f32::MAX;
                 let mut min_z = std::f32::MAX;
@@ -144,6 +139,12 @@ impl TransformSettings {
                     -((1. - scale) * (box_center_y + model_center.y)) as f64,
                     -((1. - scale) * (box_center_z + model_center.z)) as f64,
                 ]);
+                changed = true;
+            }
+            if ui.button("Reset").clicked() {
+                self.translation = DVec3::ZERO;
+                self.scale = DVec3::ONE;
+                self.rotation = DQuat::IDENTITY;
                 changed = true;
             }
         });
@@ -253,10 +254,10 @@ impl UiDataElement for TransformSettings {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         ui.horizontal(|ui| {
-            ui.checkbox(&mut self.show_gizmo, "Show Gizmo");
+            ui.checkbox(&mut self.show_gizmo, "Transform Gizmo");
         });
         ui.horizontal(|ui| {
-            if ui.add(egui::Button::new("Reset")).clicked() {
+            if ui.add(egui::Button::new("Reset Transform")).clicked() {
                 self.translation = DVec3::ZERO;
                 self.scale = DVec3::ONE;
                 self.rotation = DQuat::IDENTITY;

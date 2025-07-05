@@ -307,9 +307,7 @@ where
             egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false)
                 .show_header(ui, |ui| {
                     ui.horizontal(|ui| {
-                        let mut prev_active = active;
-                        ui.checkbox(&mut prev_active, name.clone());
-                        if prev_active != active {
+                        if ui.selectable_label(active, name.clone()).clicked() {
                             let data = if !active {
                                 self.shown_data = Some(name.clone());
                                 Some(&*data)

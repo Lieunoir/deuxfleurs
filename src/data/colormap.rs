@@ -1,10 +1,10 @@
 use crate::Settings;
 use crate::shape::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
-use egui::Shape::Path;
+use egui::Shape::{self, Path};
 use egui::{Color32, Pos2, Stroke};
 use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};
-use epaint::PathShape;
+use epaint::{PathShape, RectShape};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -44,23 +44,29 @@ pub struct ColorMap {
     max: f64,
 }
 
-fn get_bars(values: &[f32], n_bars: usize) -> Vec<Bar> {
+const N_BARS: usize = 120;
+
+fn get_bars(values: &[f32]) -> Vec<Bar> {
     let (min, max) = values
         .iter()
         .fold((f32::MAX, f32::MIN), |(min, max), value| {
             (min.min(*value), max.max(*value))
         });
-    let mut histogram = vec![0; n_bars];
+    let mut histogram = vec![0; N_BARS];
     for v in values {
         let clamped = (v - min) / (max - min);
-        let clamped = (clamped * (n_bars as f32)) as usize;
-        histogram[clamped.min(n_bars - 1)] += 1;
+        let clamped = (clamped * (N_BARS as f32)) as usize;
+        histogram[clamped.min(N_BARS - 1).max(0)] += 1;
     }
     histogram
         .into_iter()
         .enumerate()
         .map(|(i, s)| {
-            Bar::new((min + (max - min) * i as f32) as f64, s as f64).width((max - min) as f64)
+            Bar::new(
+                (min + (max - min) * (i as f32 / N_BARS as f32)) as f64,
+                s as f64,
+            )
+            .width((max - min) as f64 / N_BARS as f64)
         })
         .collect()
 }
@@ -68,7 +74,7 @@ fn get_bars(values: &[f32], n_bars: usize) -> Vec<Bar> {
 impl ColorMap {
     pub(crate) fn new(values: &[f32], settings: &Settings) -> Self {
         let mut res = Self {
-            bars: get_bars(values, 120),
+            bars: get_bars(values),
             colors: settings.default_color_map,
             min: 0.,
             max: 1.,
@@ -414,16 +420,27 @@ pub fn windowing_ui(
     lb: &mut f64,
     ub: &mut f64,
 ) -> egui::Response {
-    let desired_size = egui::vec2(*width as f32, *height as f32 / 10.0);
+    let radius = *height as f32 / 20.;
+    let desired_size = egui::vec2(*width as f32, radius * 2.);
     let (rect, mut response) = ui.allocate_exact_size(desired_size, egui::Sense::drag());
     let range = max - min;
     if ui.is_rect_visible(rect) {
         let visuals = ui.style().interact(&response);
-        let bar_line = vec![rect.left_center(), rect.right_center()];
-        ui.painter().add(Path(PathShape::line(
-            bar_line,
-            Stroke::new(*height as f32 / 20.0, visuals.bg_fill),
+        let background_rect = egui::Rect::from_min_max(
+            rect.left_center() + egui::vec2(0., -radius / 2.),
+            rect.right_center() + egui::vec2(0., radius / 2.),
+        );
+        ui.painter().add(Shape::Rect(RectShape::new(
+            background_rect,
+            1.,
+            visuals.bg_fill,
+            egui::Stroke::NONE,
+            egui::StrokeKind::Inside,
         )));
+        //ui.painter().add(Path(PathShape::line(
+        //    bar_line,
+        //    Stroke::new(*height as f32 / 20.0, visuals.bg_fill),
+        //)));
         let mut bounds_i = [0.0; 2];
         bounds_i[0] = *lb / range * width;
         bounds_i[1] = *ub / range * width;
@@ -462,24 +479,39 @@ pub fn windowing_ui(
         bounds_i[1] = ub_pos.x as f64 - rect.left_center().x as f64;
         *ub = bounds_i[1] / width * range;
 
-        let bar_line = vec![lb_pos, ub_pos];
-        ui.painter().add(Path(PathShape::line(
-            bar_line,
-            Stroke::new(*height as f32 / 20.0, visuals.fg_stroke.color),
+        let foreground_rect = egui::Rect::from_min_max(
+            lb_pos + egui::vec2(0., -radius / 2.),
+            ub_pos + egui::vec2(0., radius / 2.),
+        );
+        let left_side_knob = egui::Rect::from_min_max(
+            lb_pos + egui::vec2(-1., -radius),
+            lb_pos + egui::vec2(1., radius),
+        );
+        let right_side_knob = egui::Rect::from_min_max(
+            ub_pos + egui::vec2(-1., -radius),
+            ub_pos + egui::vec2(1., radius),
+        );
+        ui.painter().add(Shape::Rect(RectShape::new(
+            foreground_rect,
+            0.,
+            visuals.fg_stroke.color,
+            egui::Stroke::NONE,
+            egui::StrokeKind::Inside,
         )));
-        let radius = *width as f32 / 20.;
-        ui.painter().add(epaint::CircleShape {
-            center: lb_pos,
-            radius,
-            fill: visuals.bg_fill,
-            stroke: visuals.fg_stroke,
-        });
-        ui.painter().add(epaint::CircleShape {
-            center: ub_pos,
-            radius,
-            fill: visuals.bg_fill,
-            stroke: visuals.fg_stroke,
-        });
+        ui.painter().add(Shape::Rect(RectShape::new(
+            left_side_knob,
+            1.,
+            visuals.fg_stroke.color,
+            egui::Stroke::NONE,
+            egui::StrokeKind::Inside,
+        )));
+        ui.painter().add(Shape::Rect(RectShape::new(
+            right_side_knob,
+            1.,
+            visuals.fg_stroke.color,
+            egui::Stroke::NONE,
+            egui::StrokeKind::Inside,
+        )));
     }
     response
 }
@@ -487,7 +519,7 @@ pub fn windowing_ui(
 impl UiDataElement for ColorMap {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
-        egui::ComboBox::from_label("ColorMap")
+        egui::ComboBox::from_id_salt("ColorMap")
             .selected_text(self.colors.get_name())
             .show_ui(ui, |ui| {
                 changed |= ui
@@ -538,6 +570,10 @@ impl UiDataElement for ColorMap {
             self.apply_bar_colors();
         }
 
+        let min_x = self.bars[0].argument;
+        let max_x = self.bars[N_BARS - 1].argument;
+
+        ui.end_row();
         Plot::new("plot")
             .label_formatter(|_, _| "".to_owned())
             .width(200.)
@@ -551,21 +587,20 @@ impl UiDataElement for ColorMap {
             .show_axes(false)
             .show_grid(false)
             .show_background(false)
+            .default_x_bounds(min_x, max_x + (max_x - min_x) / N_BARS as f64)
             .view_aspect(4.)
             .coordinates_formatter(
                 egui_plot::Corner::LeftTop,
                 CoordinatesFormatter::new(|c, _| format!("{:.4}", c.x)),
             )
             .show(ui, |ui| {
-                ui.bar_chart(BarChart::new(self.bars.clone()).allow_hover(false));
+                ui.bar_chart(BarChart::new("scalars", self.bars.clone()).allow_hover(false));
             });
-        ui.horizontal(|ui| {
-            if windowing_ui(ui, &100., &100., 0., 1., &mut self.min, &mut self.max).changed() {
-                changed = true;
-                self.apply_bar_colors();
-            }
-            ui.label("Range");
-        });
+        ui.end_row();
+        if windowing_ui(ui, &200., &100., 0., 1., &mut self.min, &mut self.max).changed() {
+            changed = true;
+            self.apply_bar_colors();
+        }
         changed
     }
 }

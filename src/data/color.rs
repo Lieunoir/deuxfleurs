@@ -69,7 +69,6 @@ impl UiDataElement for ColorSettings {
                 egui::widgets::color_picker::Alpha::Opaque,
             )
             .changed();
-            ui.label("Color");
         });
         self.color = mesh_color.to_array();
         changed

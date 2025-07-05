@@ -67,14 +67,6 @@ fn vs_main(
     {}
 ) -> VertexOutput {{
     let model_matrix = transform.model;
-
-    //let world_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
-    //// Do we want to scale a vector field if we scale its attached mesh?
-    //let world_vector_arrow_t = (model_matrix * vec4<f32>(vector_i.orig_position + vector_i.arrow, 1.)).xyz - world_vector_pos;
-    //let arrow_ampl = length(world_vector_arrow_t);
-    //let world_vector_arrow = normalize(world_vector_arrow_t);
-
-    //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
     let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
@@ -256,9 +248,7 @@ fn vs_main(
 
     let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
     let camera_up = normalize(vec3<f32>(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
-    //let world_position = (model_matrix * vec4<f32>(data.position, 1.)).xyz + normalize((model_matrix * vec4<f32>(model.position.x * camera_right + model.position.y * camera_up, 1.)).xyz) * settings.radius * settings.char_len * sqrt(2.);
     let center = (model_matrix * vec4<f32>(data.position, 1.)).xyz;
-    //let world_position = center + (model_matrix * vec4<f32>((model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len, 1.)).xyz;
     let world_position = (model_matrix * vec4<f32>(data.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len, 1.)).xyz;
     out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.world_pos = world_position;

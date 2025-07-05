@@ -174,8 +174,12 @@ impl ShapeSettings for PCSettings {
     }
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, _rebuild_pipeline: &mut bool) -> bool {
-        let changed = self.radius.draw_ui(ui);
-        self.color.draw_ui(ui) || changed
+        let mut changed = false;
+        ui.horizontal(|ui| {
+            changed |= self.color.draw_ui(ui);
+            changed |= self.radius.draw_ui(ui);
+        });
+        changed
     }
 }
 

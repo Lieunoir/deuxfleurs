@@ -369,17 +369,15 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
     ) {
         let mut settings_changed = false;
         //TODO move this
-        if egui::Slider::new(&mut self.settings.magnitude, 0.1..=100.0)
-            .text("Magnitude")
-            .clamping(SliderClamping::Never)
-            .logarithmic(true)
-            .ui(ui)
-            .changed()
-        {
-            settings_changed = true;
-        }
 
-        settings_changed |= self.settings.color.draw_ui(ui);
+        ui.horizontal(|ui| {
+            settings_changed |= self.settings.color.draw_ui(ui);
+            settings_changed |= egui::DragValue::new(&mut self.settings.magnitude)
+                .prefix("Magnitude: ")
+                .speed(0.1)
+                .ui(ui)
+                .changed();
+        });
         if settings_changed {
             *refresh_screen = true;
             queue.write_buffer(

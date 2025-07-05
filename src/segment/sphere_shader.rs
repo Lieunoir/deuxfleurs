@@ -68,12 +68,6 @@ fn vs_main(
 ) -> VertexOutput {{
     let model_matrix = transform.model;
 
-    //let world_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
-    //// Do we want to scale a vector field if we scale its attached mesh?
-    //let world_vector_arrow_t = (model_matrix * vec4<f32>(vector_i.orig_position + vector_i.arrow, 1.)).xyz - world_vector_pos;
-    //let arrow_ampl = length(world_vector_arrow_t);
-    //let world_vector_arrow = normalize(world_vector_arrow_t);
-
     //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
@@ -294,7 +288,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 	let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let ce = in.center;
     let det = determinant(transform.normal);
-    let r = settings.radius / pow(det, 1. / 3.);
+    let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
 
     var out: FragOutput;
 

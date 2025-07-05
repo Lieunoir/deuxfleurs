@@ -26,11 +26,6 @@ impl UiDataElement for UVMapSettings {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         //ui.add(egui::Slider::new(&mut self.frequency, 0.0..=100.0).text("Period"));
-        changed |= egui::Slider::new(&mut self.frequency, 0.0..=100.0)
-            .text("Frequency")
-            .clamping(egui::SliderClamping::Never)
-            .ui(ui)
-            .changed();
         let mut color_1 = egui::Rgba::from_rgba_unmultiplied(
             self.color_1[0],
             self.color_1[1],
@@ -49,17 +44,19 @@ impl UiDataElement for UVMapSettings {
                 &mut color_1,
                 egui::widgets::color_picker::Alpha::Opaque,
             )
+            .on_hover_text("Checkerboard color 1")
             .changed();
-            ui.label("Checkerboard color 1");
-        });
-        ui.horizontal(|ui| {
             changed |= egui::widgets::color_picker::color_edit_button_rgba(
                 ui,
                 &mut color_2,
                 egui::widgets::color_picker::Alpha::Opaque,
             )
+            .on_hover_text("Checkerboard color 2")
             .changed();
-            ui.label("Checkerboard color 2");
+            changed |= egui::DragValue::new(&mut self.frequency)
+                .prefix("Frequency: ")
+                .ui(ui)
+                .changed();
         });
         self.color_1 = color_1.to_array();
         self.color_2 = color_2.to_array();

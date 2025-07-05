@@ -13,7 +13,7 @@ egui = "0.31"
 transform-gizmo-egui = "0.6"
 egui-wgpu = { version = "0.31", features = ["winit"] }
 egui-winit = { version = "0.31", default-features = false }
-egui_plot = "0.31"
+egui_plot = "0.32"
 epaint = "0.31"
 env_logger = { version = "0.9.1", optional = true }
 image = { version = "0.24.4", default-features = false, features = ["png"] }

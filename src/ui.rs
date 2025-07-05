@@ -1,7 +1,12 @@
 use crate::picker::Picker;
 use crate::window::RunningState;
+use crate::{Settings, settings};
 use egui::style::{WidgetVisuals, Widgets};
-use egui::{Color32, Shadow, Stroke};
+use egui::text::LayoutJob;
+use egui::{
+    Align, Color32, CornerRadius, FontId, FontSelection, RichText, Shadow, Stroke, TextFormat,
+    TextWrapMode,
+};
 #[cfg(feature = "obj_button")]
 use egui::{Response, Widget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
@@ -57,54 +62,102 @@ pub(crate) struct UI {
     pub(crate) hovered: bool,
 }
 
+pub fn oklch_to_linear(l: f32, c: f32, h: f32, alpha: f32) -> egui::Rgba {
+    let a = c * h.cos();
+    let b = c * h.sin();
+
+    let l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    let m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    let s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+
+    let l = l_ * l_ * l_;
+    let m = m_ * m_ * m_;
+    let s = s_ * s_ * s_;
+
+    egui::Rgba::from_rgba_premultiplied(
+        (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s) - 1. + alpha,
+        (-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s) - 1. + alpha,
+        (-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s) - 1. + alpha,
+        alpha,
+    )
+}
+
 fn blue_visuals() -> egui::Visuals {
+    let base_extreme_color =
+        oklch_to_linear(0.35, 0.035, 302. / 360. * 2. * std::f32::consts::PI, 0.95);
+    let base_color = oklch_to_linear(0.39, 0.035, 302. / 360. * 2. * std::f32::consts::PI, 0.95);
+    let base_color_2 = oklch_to_linear(0.41, 0.035, 302. / 360. * 2. * std::f32::consts::PI, 0.95);
+    let brighter_color = oklch_to_linear(0.57, 0.03, 302. / 360. * 2. * std::f32::consts::PI, 0.9);
+    let brighter_color_2 = oklch_to_linear(0.6, 0.04, 302. / 360. * 2. * std::f32::consts::PI, 0.9);
+    let even_brighter_color =
+        oklch_to_linear(0.62, 0.03, 302. / 360. * 2. * std::f32::consts::PI, 0.9);
+    let even_brighter_color_2 =
+        oklch_to_linear(0.63, 0.04, 302. / 360. * 2. * std::f32::consts::PI, 0.9);
+    let darker_color = oklch_to_linear(0.5, 0.03, 302. / 360. * 2. * std::f32::consts::PI, 0.9);
+    let darker_color_2 = oklch_to_linear(0.53, 0.04, 302. / 360. * 2. * std::f32::consts::PI, 0.9);
+    let window_stroke = oklch_to_linear(0.55, 0.04, 302. / 360. * 2. * std::f32::consts::PI, 0.9);
+
+    let selection_color = oklch_to_linear(0.65, 0.035, 62. / 360. * 2. * std::f32::consts::PI, 0.9);
+    let corner_radius: CornerRadius = CornerRadiusF32::same(2.).into();
     egui::Visuals {
-        window_fill: egui::Color32::from_rgba_premultiplied(12, 0, 70, 220),
-        window_stroke: egui::Stroke::NONE,
-        extreme_bg_color: egui::Color32::from_rgba_premultiplied(10, 0, 50, 240),
-        faint_bg_color: egui::Color32::from_rgba_premultiplied(10, 0, 50, 200),
-        window_corner_radius: CornerRadiusF32::same(1.0).into(),
+        window_fill: base_color.into(),
+        //window_stroke: egui::Stroke::NONE,
+        window_stroke: egui::Stroke::new(1.0, Color32::from(window_stroke)),
+        extreme_bg_color: base_extreme_color.into(),
+        faint_bg_color: base_color_2.into(),
+        window_corner_radius: CornerRadiusF32::same(2.0).into(),
         window_highlight_topmost: false,
         window_shadow: Shadow::NONE,
+        popup_shadow: Shadow::NONE,
+        handle_shape: egui::style::HandleShape::Rect { aspect_ratio: 0.4 },
+        collapsing_header_frame: true,
+        selection: egui::style::Selection {
+            bg_fill: selection_color.into(),
+            stroke: Stroke {
+                width: 1.,
+                color: Color32::WHITE,
+            },
+        },
+
         widgets: Widgets {
             noninteractive: WidgetVisuals {
-                weak_bg_fill: Color32::from_gray(27),
-                bg_fill: Color32::from_gray(27),
-                bg_stroke: Stroke::new(1.0, egui::Color32::from_black_alpha(200)), // separators, indentation lines
-                fg_stroke: Stroke::new(1.0, Color32::from_gray(240)), // normal text color
-                corner_radius: CornerRadiusF32::same(2.0).into(),
+                weak_bg_fill: egui::Color32::from_rgba_unmultiplied(180, 180, 180, 160),
+                bg_fill: egui::Color32::from_rgba_premultiplied(50, 30, 70, 195),
+                bg_stroke: Stroke::new(1.0, Color32::from(darker_color_2)), // separators, indentation lines
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(255)),       // normal text color
+                corner_radius,
                 expansion: 0.0,
             },
             inactive: WidgetVisuals {
-                weak_bg_fill: egui::Color32::from_black_alpha(160), // button background
-                bg_fill: egui::Color32::from_black_alpha(160),      // checkbox background
-                bg_stroke: Default::default(),
-                fg_stroke: Stroke::new(1.0, Color32::from_gray(240)), // button text
-                corner_radius: CornerRadiusF32::same(2.0).into(),
+                weak_bg_fill: brighter_color_2.into(),
+                bg_fill: brighter_color.into(),
+                bg_stroke: Stroke::new(0.0, Color32::from(base_color)),
+                fg_stroke: Stroke::new(1.0, Color32::from_gray(220)), // button text
+                corner_radius,
                 expansion: 0.0,
             },
             hovered: WidgetVisuals {
-                weak_bg_fill: egui::Color32::from_black_alpha(180), // button background
-                bg_fill: egui::Color32::from_black_alpha(180),      // checkbox background
-                bg_stroke: Stroke::new(1.0, Color32::from_gray(250)), // e.g. hover over window edge or button
-                fg_stroke: Stroke::new(1.5, Color32::from_gray(250)),
-                corner_radius: CornerRadiusF32::same(3.0).into(),
+                weak_bg_fill: even_brighter_color_2.into(),
+                bg_fill: even_brighter_color.into(),
+                bg_stroke: Stroke::new(1.0, Color32::from_gray(230)), // e.g. hover over window edge or button
+                fg_stroke: Stroke::new(1.5, Color32::WHITE),
+                corner_radius: CornerRadiusF32::same(corner_radius.average() + 1.).into(),
                 expansion: 1.0,
             },
             active: WidgetVisuals {
-                weak_bg_fill: egui::Color32::from_black_alpha(150),
-                bg_fill: egui::Color32::from_black_alpha(150),
+                weak_bg_fill: darker_color_2.into(),
+                bg_fill: darker_color.into(),
                 bg_stroke: Stroke::new(1.0, Color32::WHITE),
                 fg_stroke: Stroke::new(2.0, Color32::WHITE),
-                corner_radius: CornerRadiusF32::same(2.0).into(),
+                corner_radius: CornerRadiusF32::same(corner_radius.average() + 1.).into(),
                 expansion: 1.0,
             },
             open: WidgetVisuals {
-                weak_bg_fill: Color32::from_gray(45),
-                bg_fill: Color32::from_gray(27),
+                weak_bg_fill: base_color.into(),
+                bg_fill: base_color.into(),
                 bg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
                 fg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
-                corner_radius: CornerRadiusF32::same(2.0).into(),
+                corner_radius,
                 expansion: 0.0,
             },
         },
@@ -112,60 +165,15 @@ fn blue_visuals() -> egui::Visuals {
     }
 }
 
-fn transparent_visuals() -> egui::Visuals {
-    egui::Visuals {
-        window_fill: egui::Color32::from_black_alpha(220),
-        window_stroke: egui::Stroke::NONE,
-        extreme_bg_color: egui::Color32::from_black_alpha(220),
-        faint_bg_color: egui::Color32::from_black_alpha(100),
-        window_corner_radius: CornerRadiusF32::same(1.0).into(),
-
-        window_highlight_topmost: false,
-        window_shadow: Shadow::NONE,
-        widgets: Widgets {
-            noninteractive: WidgetVisuals {
-                weak_bg_fill: Color32::from_gray(27),
-                bg_fill: Color32::from_gray(27),
-                bg_stroke: Stroke::new(1.0, egui::Color32::from_black_alpha(80)), // separators, indentation lines
-                fg_stroke: Stroke::new(1.0, Color32::from_gray(180)), // normal text color
-                corner_radius: CornerRadiusF32::same(2.0).into(),
-                expansion: 0.0,
-            },
-            inactive: WidgetVisuals {
-                weak_bg_fill: egui::Color32::from_black_alpha(100), // button background
-                bg_fill: egui::Color32::from_black_alpha(100),      // checkbox background
-                bg_stroke: Default::default(),
-                fg_stroke: Stroke::new(1.0, Color32::from_gray(200)), // button text
-                corner_radius: CornerRadiusF32::same(2.0).into(),
-                expansion: 0.0,
-            },
-            hovered: WidgetVisuals {
-                weak_bg_fill: egui::Color32::from_black_alpha(110), // button background
-                bg_fill: egui::Color32::from_black_alpha(110),      // checkbox background
-                bg_stroke: Stroke::new(1.0, Color32::from_gray(200)), // e.g. hover over window edge or button
-                fg_stroke: Stroke::new(1.5, Color32::from_gray(220)),
-                corner_radius: CornerRadiusF32::same(3.0).into(),
-                expansion: 1.0,
-            },
-            active: WidgetVisuals {
-                weak_bg_fill: egui::Color32::from_black_alpha(95),
-                bg_fill: egui::Color32::from_black_alpha(95),
-                bg_stroke: Stroke::new(1.0, Color32::WHITE),
-                fg_stroke: Stroke::new(2.0, Color32::WHITE),
-                corner_radius: CornerRadiusF32::same(2.0).into(),
-                expansion: 1.0,
-            },
-            open: WidgetVisuals {
-                weak_bg_fill: Color32::from_gray(45),
-                bg_fill: Color32::from_gray(27),
-                bg_stroke: Stroke::new(1.0, Color32::from_gray(60)),
-                fg_stroke: Stroke::new(1.0, Color32::from_gray(210)),
-                corner_radius: CornerRadiusF32::same(2.0).into(),
-                expansion: 0.0,
-            },
-        },
-        ..Default::default()
-    }
+fn format_header(ui: &mut egui::Ui, name: &str, infos: String) -> LayoutJob {
+    let mut job = LayoutJob::default();
+    RichText::new(name).append_to(&mut job, &ui.style(), FontSelection::Default, Align::Center);
+    job.append("", 10., TextFormat::default());
+    RichText::new(infos)
+        .size(10.)
+        .color(ui.style().visuals.weak_text_color())
+        .append_to(&mut job, &ui.style(), FontSelection::Default, Align::BOTTOM);
+    job
 }
 
 impl UI {
@@ -181,14 +189,14 @@ impl UI {
         let visuals = blue_visuals();
         ctx.set_style(egui::Style {
             animation_time: 0.,
+            wrap_mode: Some(TextWrapMode::Wrap),
+            interaction: egui::style::Interaction {
+                tooltip_delay: 0.,
+                ..Default::default()
+            },
             ..Default::default()
         });
         ctx.set_visuals(visuals);
-        /*
-        let mut style: egui::Style = (*ctx.style()).clone();
-        style.override_font_id = Some(egui::FontId::proportional(20.));
-        ctx.set_style(style);
-        */
         let state = State::new(
             ctx.clone(),
             egui::viewport::ViewportId::ROOT,
@@ -233,107 +241,130 @@ impl UI {
         self.ctx.begin_pass(input);
         self.hovered = false;
 
-        if let Some(response) = egui::Window::new("Models")
+        let screen_height = self.ctx.screen_rect().height();
+        let factor = self.ctx.pixels_per_point();
+
+        let space_between_section = 9.;
+
+        egui::Window::new("Shapes")
             .anchor(egui::Align2::LEFT_TOP, [5., 5.])
             .resizable(false)
-            .vscroll(true)
             .default_width(270.)
-            .min_height(650.)
             .show(&self.ctx, |ui| {
-                for (name, surface) in surfaces.iter_mut() {
-                    let label = format!(
-                        "{}: {} vertices, {} faces",
-                        name,
-                        surface.geometry().vertices.len(),
-                        surface.geometry().indices.size(),
-                    );
-                    let id = ui.make_persistent_id(label.clone());
-                    egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        id,
-                        true,
-                    )
-                    .show_header(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            if ui.checkbox(&mut surface.show, label).changed() {
-                                *refresh_screen = true;
-                            }
-                        })
-                    })
-                    .body(|ui| {
-                        surface.draw_ui(
-                            ui,
-                            device,
-                            queue,
-                            camera_light_bind_group_layout,
-                            color_format,
-                            refresh_screen,
-                        );
-                    });
-                }
+                egui::ScrollArea::new([true, true])
+                    .min_scrolled_height(screen_height - 60.)
+                    .show(ui, |ui| {
+                        ui.set_min_height(650. / factor);
+                        ui.set_min_width(270.);
+                        for (name, surface) in surfaces.iter_mut() {
+                            let header = format_header(
+                                ui,
+                                name,
+                                format!(
+                                    "{} vertices, {} faces",
+                                    surface.geometry().vertices.len(),
+                                    surface.geometry().indices.size(),
+                                ),
+                            );
+                            let id = ui.make_persistent_id(header.text.clone());
+                            egui::collapsing_header::CollapsingState::load_with_default_open(
+                                ui.ctx(),
+                                id,
+                                true,
+                            )
+                            .show_header(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    if ui.checkbox(&mut surface.show, header).changed() {
+                                        *refresh_screen = true;
+                                    }
+                                })
+                            })
+                            .body(|ui| {
+                                surface.draw_ui(
+                                    ui,
+                                    device,
+                                    queue,
+                                    camera_light_bind_group_layout,
+                                    color_format,
+                                    refresh_screen,
+                                );
+                            });
+                            ui.add_space(space_between_section);
+                        }
 
-                for (name, cloud) in clouds.iter_mut() {
-                    let label = format!("{} : {} points", name, cloud.geometry().positions.len(),);
-                    let id = ui.make_persistent_id(label.clone());
-                    egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        id,
-                        true,
-                    )
-                    .show_header(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            if ui.checkbox(&mut cloud.show, label).changed() {
-                                *refresh_screen = true;
-                            }
-                        })
-                    })
-                    .body(|ui| {
-                        cloud.draw_ui(
-                            ui,
-                            device,
-                            queue,
-                            camera_light_bind_group_layout,
-                            color_format,
-                            refresh_screen,
-                        );
-                    });
-                }
+                        for (name, cloud) in clouds.iter_mut() {
+                            let header = format_header(
+                                ui,
+                                name,
+                                format!("{} points", cloud.geometry().positions.len(),),
+                            );
+                            let id = ui.make_persistent_id(header.text.clone());
+                            egui::collapsing_header::CollapsingState::load_with_default_open(
+                                ui.ctx(),
+                                id,
+                                true,
+                            )
+                            .show_header(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    if ui.checkbox(&mut cloud.show, header).changed() {
+                                        *refresh_screen = true;
+                                    }
+                                })
+                            })
+                            .body(|ui| {
+                                cloud.draw_ui(
+                                    ui,
+                                    device,
+                                    queue,
+                                    camera_light_bind_group_layout,
+                                    color_format,
+                                    refresh_screen,
+                                );
+                            });
+                            ui.add_space(space_between_section);
+                        }
 
-                for (name, curve) in curves.iter_mut() {
-                    let label = format!(
-                        "{} : {} points, {} edges",
-                        name,
-                        curve.geometry().positions.len(),
-                        curve.geometry().connections.len(),
-                    );
-                    let id = ui.make_persistent_id(label.clone());
-                    egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        id,
-                        true,
-                    )
-                    .show_header(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            if ui.checkbox(&mut curve.show, label).changed() {
-                                *refresh_screen = true;
-                            }
-                        })
+                        for (name, curve) in curves.iter_mut() {
+                            let header = format_header(
+                                ui,
+                                name,
+                                format!(
+                                    "{} points, {} edges",
+                                    curve.geometry().positions.len(),
+                                    curve.geometry().connections.len()
+                                ),
+                            );
+                            let id = ui.make_persistent_id(header.text.clone());
+                            egui::collapsing_header::CollapsingState::load_with_default_open(
+                                ui.ctx(),
+                                id,
+                                true,
+                            )
+                            .show_header(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    if ui.checkbox(&mut curve.show, header).changed() {
+                                        *refresh_screen = true;
+                                    }
+                                })
+                            })
+                            .body(|ui| {
+                                curve.draw_ui(
+                                    ui,
+                                    device,
+                                    queue,
+                                    camera_light_bind_group_layout,
+                                    color_format,
+                                    refresh_screen,
+                                );
+                            });
+                            ui.add_space(space_between_section);
+                        }
                     })
-                    .body(|ui| {
-                        curve.draw_ui(
-                            ui,
-                            device,
-                            queue,
-                            camera_light_bind_group_layout,
-                            color_format,
-                            refresh_screen,
-                        );
-                    });
-                }
             })
-        {
-            self.hovered |= response.response.contains_pointer();
-        }
+            .map(|response| {
+                self.hovered |= response.response.contains_pointer();
+            });
+
         egui::Area::new("Viewport".into())
             .fixed_pos((0.0, 0.0))
             .show(&self.ctx, |ui| {
@@ -364,23 +395,34 @@ impl UI {
         state: &mut RunningState,
         callback: &mut T,
     ) {
-        if let Some(response) = egui::Window::new("Interactions")
+        let screen_height = self.ctx.screen_rect().height();
+        //let factor = self.ctx.pixels_per_point();
+        egui::Window::new("Interact")
             .anchor(egui::Align2::RIGHT_TOP, [-5., 5.])
             .resizable(false)
+            //.scroll([false, true])
+            .default_width(230.)
             .show(&self.ctx, |ui| {
-                if ui.add(egui::Button::new("Fit camera")).clicked() {
-                    state.resize_scene();
-                }
-                if ui.add(egui::Button::new("Screenshot")).clicked() {
-                    state.screenshot();
-                }
-                state.picker.draw_ui(ui);
+                egui::ScrollArea::new([true, true])
+                    .min_scrolled_height(screen_height - 60.)
+                    .show(ui, |ui| {
+                        ui.set_min_width(230.);
+                        ui.horizontal(|ui| {
+                            if ui.add(egui::Button::new("Fit camera")).clicked() {
+                                state.resize_scene();
+                            }
+                            if ui.add(egui::Button::new("Screenshot")).clicked() {
+                                state.screenshot();
+                            }
+                        });
+                        state.0.settings.draw_ui(ui, &mut state.0.dirty);
+                        state.picker.draw_ui(ui);
+                        ui.separator();
 
-                callback(ui, state)
+                        callback(ui, state)
+                    })
             })
-        {
-            self.hovered |= response.response.contains_pointer()
-        }
+            .map(|response| self.hovered |= response.response.contains_pointer());
     }
 
     // not sure about returning a tuple here

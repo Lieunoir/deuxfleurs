@@ -277,7 +277,7 @@ pub struct InnerGraphicalState {
     surfaces: IndexMap<String, DisplaySurface>,
     clouds: IndexMap<String, DisplayPointCloud>,
     segments: IndexMap<String, DisplaySegment>,
-    settings: Settings,
+    pub(crate) settings: Settings,
 
     window: Arc<Window>,
     proxy: EventLoopProxy<UserEvent>,
@@ -310,7 +310,7 @@ pub struct InnerGraphicalState {
     // egui
     //ui: ui::UI,
     //time: std::time::Instant,
-    dirty: bool,
+    pub(crate) dirty: bool,
     egui_dirty: bool,
     should_resize: bool,
 
@@ -537,7 +537,7 @@ pub trait StateTrait:
 {
 }
 
-pub struct State<T>(T);
+pub struct State<T>(pub(crate) T);
 
 impl<T: StateTrait> State<T> {
     pub(crate) fn new_inner(inner: T) -> Self {

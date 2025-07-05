@@ -37,11 +37,14 @@ impl Radius {
 
 impl UiDataElement for Radius {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
-        egui::Slider::new(&mut self.radius, 0.1..=100.0)
-            .text("Radius")
-            .clamping(egui::SliderClamping::Never)
-            .logarithmic(true)
-            .ui(ui)
-            .changed()
+        let mut changed = false;
+        ui.horizontal(|ui| {
+            changed = egui::DragValue::new(&mut self.radius)
+                .prefix("Radius: ")
+                .speed(0.1)
+                .ui(ui)
+                .changed();
+        });
+        changed
     }
 }
