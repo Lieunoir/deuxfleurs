@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LoadObjButton"]};
+window.SIDEBAR_ITEMS = {"fn":["oklch_to_linear"],"struct":["LoadObjButton"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/attachment/vector_field.rs`."><title>vector_field.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-aa0817cf.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (da58c0513 2025-07-03)" data-channel="nightly" data-search-js="search-179e01a3.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-673ee1e0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/attachment/</div>vector_field.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::attachment::internal::AttachmentPosition;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/attachment/vector_field.rs`."><title>vector_field.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-aa0817cf.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (5adb489a8 2025-07-05)" data-channel="nightly" data-search-js="search-179e01a3.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-673ee1e0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/attachment/</div>vector_field.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::attachment::internal::AttachmentPosition;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">crate</span>::data::<span class="kw-2">*</span>;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::shape::AttachedGeometry;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::shape::Context;
@@ -369,78 +369,76 @@
 <a href=#369 id=369 data-nosnippet>369</a>    ) {
 <a href=#370 id=370 data-nosnippet>370</a>        <span class="kw">let </span><span class="kw-2">mut </span>settings_changed = <span class="bool-val">false</span>;
 <a href=#371 id=371 data-nosnippet>371</a>        <span class="comment">//TODO move this
-<a href=#372 id=372 data-nosnippet>372</a>        </span><span class="kw">if </span>egui::Slider::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.settings.magnitude, <span class="number">0.1</span>..=<span class="number">100.0</span>)
-<a href=#373 id=373 data-nosnippet>373</a>            .text(<span class="string">"Magnitude"</span>)
-<a href=#374 id=374 data-nosnippet>374</a>            .clamping(SliderClamping::Never)
-<a href=#375 id=375 data-nosnippet>375</a>            .logarithmic(<span class="bool-val">true</span>)
-<a href=#376 id=376 data-nosnippet>376</a>            .ui(ui)
-<a href=#377 id=377 data-nosnippet>377</a>            .changed()
-<a href=#378 id=378 data-nosnippet>378</a>        {
-<a href=#379 id=379 data-nosnippet>379</a>            settings_changed = <span class="bool-val">true</span>;
-<a href=#380 id=380 data-nosnippet>380</a>        }
-<a href=#381 id=381 data-nosnippet>381</a>
-<a href=#382 id=382 data-nosnippet>382</a>        settings_changed |= <span class="self">self</span>.settings.color.draw_ui(ui);
-<a href=#383 id=383 data-nosnippet>383</a>        <span class="kw">if </span>settings_changed {
-<a href=#384 id=384 data-nosnippet>384</a>            <span class="kw-2">*</span>refresh_screen = <span class="bool-val">true</span>;
-<a href=#385 id=385 data-nosnippet>385</a>            queue.write_buffer(
-<a href=#386 id=386 data-nosnippet>386</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.settings_buffer,
-<a href=#387 id=387 data-nosnippet>387</a>                <span class="number">0</span>,
-<a href=#388 id=388 data-nosnippet>388</a>                bytemuck::cast_slice(<span class="kw-2">&amp;</span>[<span class="self">self</span>.settings.to_raw()]),
-<a href=#389 id=389 data-nosnippet>389</a>            );
-<a href=#390 id=390 data-nosnippet>390</a>        }
-<a href=#391 id=391 data-nosnippet>391</a>    }
-<a href=#392 id=392 data-nosnippet>392</a>
-<a href=#393 id=393 data-nosnippet>393</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'c</span>, <span class="lifetime">'d</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'d</span>&gt;)
-<a href=#394 id=394 data-nosnippet>394</a>    <span class="kw">where
-<a href=#395 id=395 data-nosnippet>395</a>        </span><span class="lifetime">'c</span>: <span class="lifetime">'d</span>,
-<a href=#396 id=396 data-nosnippet>396</a>    {
-<a href=#397 id=397 data-nosnippet>397</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#398 id=398 data-nosnippet>398</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.render_pipeline);
-<a href=#399 id=399 data-nosnippet>399</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.vertex_buffer.slice(..));
-<a href=#400 id=400 data-nosnippet>400</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.vector_buffer.slice(..));
-<a href=#401 id=401 data-nosnippet>401</a>        <span class="comment">//render_pass.draw(0..18, 0..(self.vectors.len() as u32));
-<a href=#402 id=402 data-nosnippet>402</a>        </span>render_pass.draw(<span class="number">0</span>..<span class="number">8</span>, <span class="number">0</span>..(<span class="self">self</span>.vectors.len() <span class="kw">as </span>u32));
-<a href=#403 id=403 data-nosnippet>403</a>    }
-<a href=#404 id=404 data-nosnippet>404</a>
-<a href=#405 id=405 data-nosnippet>405</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Settings&lt;<span class="lifetime">'_</span>&gt; {
-<a href=#406 id=406 data-nosnippet>406</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.settings
-<a href=#407 id=407 data-nosnippet>407</a>    }
-<a href=#408 id=408 data-nosnippet>408</a>
-<a href=#409 id=409 data-nosnippet>409</a>    <span class="kw">fn </span>get_attached_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AttachmentPosition {
-<a href=#410 id=410 data-nosnippet>410</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.position
-<a href=#411 id=411 data-nosnippet>411</a>    }
-<a href=#412 id=412 data-nosnippet>412</a>
-<a href=#413 id=413 data-nosnippet>413</a>    <span class="kw">fn </span>move_elements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, queue: <span class="kw-2">&amp;</span>wgpu::Queue, indices: <span class="kw-2">&amp;</span>[u32], pos: <span class="kw-2">&amp;</span>[[f32; <span class="number">3</span>]]) {
-<a href=#414 id=414 data-nosnippet>414</a>        <span class="kw">for </span>(index, value) <span class="kw">in </span>indices.iter().zip(pos) {
-<a href=#415 id=415 data-nosnippet>415</a>            <span class="self">self</span>.offsets[<span class="kw-2">*</span>index <span class="kw">as </span>usize] = <span class="kw-2">*</span>value;
-<a href=#416 id=416 data-nosnippet>416</a>            queue.write_buffer(
-<a href=#417 id=417 data-nosnippet>417</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.vector_buffer,
-<a href=#418 id=418 data-nosnippet>418</a>                (<span class="kw-2">*</span>index <span class="kw">as </span>usize * size_of::&lt;VectorData&gt;()) <span class="kw">as </span>BufferAddress,
-<a href=#419 id=419 data-nosnippet>419</a>                bytemuck::cast_slice(<span class="kw-2">&amp;</span>[VectorData {
-<a href=#420 id=420 data-nosnippet>420</a>                    orig_position: <span class="kw-2">*</span>value,
-<a href=#421 id=421 data-nosnippet>421</a>                    vector: <span class="self">self</span>.vectors[<span class="kw-2">*</span>index <span class="kw">as </span>usize],
-<a href=#422 id=422 data-nosnippet>422</a>                }]),
-<a href=#423 id=423 data-nosnippet>423</a>            );
-<a href=#424 id=424 data-nosnippet>424</a>        }
-<a href=#425 id=425 data-nosnippet>425</a>    }
-<a href=#426 id=426 data-nosnippet>426</a>}
-<a href=#427 id=427 data-nosnippet>427</a>
-<a href=#428 id=428 data-nosnippet>428</a><span class="kw">impl </span>NewAttachedGeometry <span class="kw">for </span>NewVectorField {
-<a href=#429 id=429 data-nosnippet>429</a>    <span class="kw">type </span>UpgradedAttachedGeometry = VectorField;
-<a href=#430 id=430 data-nosnippet>430</a>
-<a href=#431 id=431 data-nosnippet>431</a>    <span class="kw">fn </span>init(
-<a href=#432 id=432 data-nosnippet>432</a>        <span class="self">self</span>,
-<a href=#433 id=433 data-nosnippet>433</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
-<a href=#434 id=434 data-nosnippet>434</a>        camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
-<a href=#435 id=435 data-nosnippet>435</a>        transform_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
-<a href=#436 id=436 data-nosnippet>436</a>        color_format: wgpu::TextureFormat,
-<a href=#437 id=437 data-nosnippet>437</a>    ) -&gt; <span class="self">Self</span>::UpgradedAttachedGeometry {
-<a href=#438 id=438 data-nosnippet>438</a>        VectorField::new(
-<a href=#439 id=439 data-nosnippet>439</a>            device,
-<a href=#440 id=440 data-nosnippet>440</a>            camera_light_bind_group_layout,
-<a href=#441 id=441 data-nosnippet>441</a>            transform_bind_group_layout,
-<a href=#442 id=442 data-nosnippet>442</a>            color_format,
-<a href=#443 id=443 data-nosnippet>443</a>            <span class="self">self</span>,
-<a href=#444 id=444 data-nosnippet>444</a>        )
-<a href=#445 id=445 data-nosnippet>445</a>    }
-<a href=#446 id=446 data-nosnippet>446</a>}</code></pre></div></section></main></body></html>
+<a href=#372 id=372 data-nosnippet>372</a>
+<a href=#373 id=373 data-nosnippet>373</a>        </span>ui.horizontal(|ui| {
+<a href=#374 id=374 data-nosnippet>374</a>            settings_changed |= <span class="self">self</span>.settings.color.draw_ui(ui);
+<a href=#375 id=375 data-nosnippet>375</a>            settings_changed |= egui::DragValue::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.settings.magnitude)
+<a href=#376 id=376 data-nosnippet>376</a>                .prefix(<span class="string">"Magnitude: "</span>)
+<a href=#377 id=377 data-nosnippet>377</a>                .speed(<span class="number">0.1</span>)
+<a href=#378 id=378 data-nosnippet>378</a>                .ui(ui)
+<a href=#379 id=379 data-nosnippet>379</a>                .changed();
+<a href=#380 id=380 data-nosnippet>380</a>        });
+<a href=#381 id=381 data-nosnippet>381</a>        <span class="kw">if </span>settings_changed {
+<a href=#382 id=382 data-nosnippet>382</a>            <span class="kw-2">*</span>refresh_screen = <span class="bool-val">true</span>;
+<a href=#383 id=383 data-nosnippet>383</a>            queue.write_buffer(
+<a href=#384 id=384 data-nosnippet>384</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.settings_buffer,
+<a href=#385 id=385 data-nosnippet>385</a>                <span class="number">0</span>,
+<a href=#386 id=386 data-nosnippet>386</a>                bytemuck::cast_slice(<span class="kw-2">&amp;</span>[<span class="self">self</span>.settings.to_raw()]),
+<a href=#387 id=387 data-nosnippet>387</a>            );
+<a href=#388 id=388 data-nosnippet>388</a>        }
+<a href=#389 id=389 data-nosnippet>389</a>    }
+<a href=#390 id=390 data-nosnippet>390</a>
+<a href=#391 id=391 data-nosnippet>391</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'c</span>, <span class="lifetime">'d</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'d</span>&gt;)
+<a href=#392 id=392 data-nosnippet>392</a>    <span class="kw">where
+<a href=#393 id=393 data-nosnippet>393</a>        </span><span class="lifetime">'c</span>: <span class="lifetime">'d</span>,
+<a href=#394 id=394 data-nosnippet>394</a>    {
+<a href=#395 id=395 data-nosnippet>395</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#396 id=396 data-nosnippet>396</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.render_pipeline);
+<a href=#397 id=397 data-nosnippet>397</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.vertex_buffer.slice(..));
+<a href=#398 id=398 data-nosnippet>398</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.vector_buffer.slice(..));
+<a href=#399 id=399 data-nosnippet>399</a>        <span class="comment">//render_pass.draw(0..18, 0..(self.vectors.len() as u32));
+<a href=#400 id=400 data-nosnippet>400</a>        </span>render_pass.draw(<span class="number">0</span>..<span class="number">8</span>, <span class="number">0</span>..(<span class="self">self</span>.vectors.len() <span class="kw">as </span>u32));
+<a href=#401 id=401 data-nosnippet>401</a>    }
+<a href=#402 id=402 data-nosnippet>402</a>
+<a href=#403 id=403 data-nosnippet>403</a>    <span class="kw">fn </span>get_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Settings&lt;<span class="lifetime">'_</span>&gt; {
+<a href=#404 id=404 data-nosnippet>404</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.settings
+<a href=#405 id=405 data-nosnippet>405</a>    }
+<a href=#406 id=406 data-nosnippet>406</a>
+<a href=#407 id=407 data-nosnippet>407</a>    <span class="kw">fn </span>get_attached_position(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AttachmentPosition {
+<a href=#408 id=408 data-nosnippet>408</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.position
+<a href=#409 id=409 data-nosnippet>409</a>    }
+<a href=#410 id=410 data-nosnippet>410</a>
+<a href=#411 id=411 data-nosnippet>411</a>    <span class="kw">fn </span>move_elements(<span class="kw-2">&amp;mut </span><span class="self">self</span>, queue: <span class="kw-2">&amp;</span>wgpu::Queue, indices: <span class="kw-2">&amp;</span>[u32], pos: <span class="kw-2">&amp;</span>[[f32; <span class="number">3</span>]]) {
+<a href=#412 id=412 data-nosnippet>412</a>        <span class="kw">for </span>(index, value) <span class="kw">in </span>indices.iter().zip(pos) {
+<a href=#413 id=413 data-nosnippet>413</a>            <span class="self">self</span>.offsets[<span class="kw-2">*</span>index <span class="kw">as </span>usize] = <span class="kw-2">*</span>value;
+<a href=#414 id=414 data-nosnippet>414</a>            queue.write_buffer(
+<a href=#415 id=415 data-nosnippet>415</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.vector_buffer,
+<a href=#416 id=416 data-nosnippet>416</a>                (<span class="kw-2">*</span>index <span class="kw">as </span>usize * size_of::&lt;VectorData&gt;()) <span class="kw">as </span>BufferAddress,
+<a href=#417 id=417 data-nosnippet>417</a>                bytemuck::cast_slice(<span class="kw-2">&amp;</span>[VectorData {
+<a href=#418 id=418 data-nosnippet>418</a>                    orig_position: <span class="kw-2">*</span>value,
+<a href=#419 id=419 data-nosnippet>419</a>                    vector: <span class="self">self</span>.vectors[<span class="kw-2">*</span>index <span class="kw">as </span>usize],
+<a href=#420 id=420 data-nosnippet>420</a>                }]),
+<a href=#421 id=421 data-nosnippet>421</a>            );
+<a href=#422 id=422 data-nosnippet>422</a>        }
+<a href=#423 id=423 data-nosnippet>423</a>    }
+<a href=#424 id=424 data-nosnippet>424</a>}
+<a href=#425 id=425 data-nosnippet>425</a>
+<a href=#426 id=426 data-nosnippet>426</a><span class="kw">impl </span>NewAttachedGeometry <span class="kw">for </span>NewVectorField {
+<a href=#427 id=427 data-nosnippet>427</a>    <span class="kw">type </span>UpgradedAttachedGeometry = VectorField;
+<a href=#428 id=428 data-nosnippet>428</a>
+<a href=#429 id=429 data-nosnippet>429</a>    <span class="kw">fn </span>init(
+<a href=#430 id=430 data-nosnippet>430</a>        <span class="self">self</span>,
+<a href=#431 id=431 data-nosnippet>431</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
+<a href=#432 id=432 data-nosnippet>432</a>        camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#433 id=433 data-nosnippet>433</a>        transform_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#434 id=434 data-nosnippet>434</a>        color_format: wgpu::TextureFormat,
+<a href=#435 id=435 data-nosnippet>435</a>    ) -&gt; <span class="self">Self</span>::UpgradedAttachedGeometry {
+<a href=#436 id=436 data-nosnippet>436</a>        VectorField::new(
+<a href=#437 id=437 data-nosnippet>437</a>            device,
+<a href=#438 id=438 data-nosnippet>438</a>            camera_light_bind_group_layout,
+<a href=#439 id=439 data-nosnippet>439</a>            transform_bind_group_layout,
+<a href=#440 id=440 data-nosnippet>440</a>            color_format,
+<a href=#441 id=441 data-nosnippet>441</a>            <span class="self">self</span>,
+<a href=#442 id=442 data-nosnippet>442</a>        )
+<a href=#443 id=443 data-nosnippet>443</a>    }
+<a href=#444 id=444 data-nosnippet>444</a>}</code></pre></div></section></main></body></html>
