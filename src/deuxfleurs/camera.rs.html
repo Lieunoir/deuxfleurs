@@ -254,7 +254,7 @@
 <a href=#254 id=254 data-nosnippet>254</a>                TouchPhase::Moved =&gt; {
 <a href=#255 id=255 data-nosnippet>255</a>                    <span class="kw">if </span><span class="self">self</span>.is_mouse_right_pressed {
 <a href=#256 id=256 data-nosnippet>256</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(prev) = <span class="self">self</span>.prev_mouse {
-<a href=#257 id=257 data-nosnippet>257</a>                            <span class="self">self</span>.wheel_delta = <span class="prelude-val">Some</span>((touch_event.location.y - prev.y) <span class="kw">as </span>f32);
+<a href=#257 id=257 data-nosnippet>257</a>                            <span class="self">self</span>.wheel_delta = <span class="prelude-val">Some</span>(<span class="number">0.1 </span>* (touch_event.location.y - prev.y) <span class="kw">as </span>f32);
 <a href=#258 id=258 data-nosnippet>258</a>                        }
 <a href=#259 id=259 data-nosnippet>259</a>                    } <span class="kw">else </span>{
 <a href=#260 id=260 data-nosnippet>260</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(prev) = <span class="self">self</span>.prev_mouse {
