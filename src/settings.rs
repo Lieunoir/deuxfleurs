@@ -66,7 +66,7 @@ impl Settings {
                 ui.add(
                     DragValue::new(&mut self.mouse_sensitivity)
                         .range(0. ..=100.)
-                        .speed(0.02)
+                        .speed(0.01)
                         .prefix("Mouse sensitivity: "),
                 );
             });
@@ -74,7 +74,7 @@ impl Settings {
                 ui.add(
                     DragValue::new(&mut self.zoom_sensitivity)
                         .range(0. ..=100.)
-                        .speed(0.02)
+                        .speed(0.01)
                         .prefix("Zoom sensitivity: "),
                 );
             });

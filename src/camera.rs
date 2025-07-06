@@ -254,7 +254,7 @@ impl CameraController {
                 TouchPhase::Moved => {
                     if self.is_mouse_right_pressed {
                         if let Some(prev) = self.prev_mouse {
-                            self.wheel_delta = Some((touch_event.location.y - prev.y) as f32);
+                            self.wheel_delta = Some(0.1 * (touch_event.location.y - prev.y) as f32);
                         }
                     } else {
                         if let Some(prev) = self.prev_mouse {
