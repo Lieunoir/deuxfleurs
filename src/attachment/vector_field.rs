@@ -10,7 +10,6 @@ use crate::texture;
 use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
-use egui::SliderClamping;
 use egui::Widget;
 use wgpu::BufferAddress;
 use wgpu::util::DeviceExt;

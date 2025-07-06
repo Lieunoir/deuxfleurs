@@ -1,10 +1,10 @@
 use crate::Settings;
 use crate::shape::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
-use egui::Shape::{self, Path};
-use egui::{Color32, Pos2, Stroke};
+use egui::Shape;
+use egui::{Color32, Pos2};
 use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};
-use epaint::{PathShape, RectShape};
+use epaint::RectShape;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

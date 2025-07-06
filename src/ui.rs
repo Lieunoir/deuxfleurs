@@ -1,11 +1,9 @@
 use crate::picker::Picker;
 use crate::window::RunningState;
-use crate::{Settings, settings};
 use egui::style::{WidgetVisuals, Widgets};
 use egui::text::LayoutJob;
 use egui::{
-    Align, Color32, CornerRadius, FontId, FontSelection, RichText, Shadow, Stroke, TextFormat,
-    TextWrapMode,
+    Align, Color32, CornerRadius, FontSelection, RichText, Shadow, Stroke, TextFormat, TextWrapMode,
 };
 #[cfg(feature = "obj_button")]
 use egui::{Response, Widget};

@@ -1,5 +1,5 @@
 use crate::data::Colors;
-use egui::{DragValue, Slider, WidgetInfo};
+use egui::DragValue;
 use std::num::NonZeroU8;
 use wgpu::Color;
 

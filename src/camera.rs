@@ -1,4 +1,4 @@
-use crate::{aabb::SBV, Settings};
+use crate::{Settings, aabb::SBV};
 
 use serde::{Deserialize, Serialize};
 use winit::event::*;
@@ -232,6 +232,42 @@ impl CameraController {
 
     pub fn process_events(&mut self, event: &WindowEvent, ui_hovered: bool) -> bool {
         match event {
+            WindowEvent::Touch(touch_event) => match touch_event.phase {
+                TouchPhase::Started => {
+                    if self.is_mouse_left_pressed {
+                        self.is_mouse_right_pressed = true;
+                    } else {
+                        self.is_mouse_left_pressed = true;
+                    }
+                    true
+                }
+                TouchPhase::Ended | TouchPhase::Cancelled => {
+                    if self.is_mouse_right_pressed {
+                        self.is_mouse_right_pressed = false;
+                        self.prev_mouse = None;
+                    } else {
+                        self.is_mouse_left_pressed = false;
+                        self.prev_mouse = None;
+                    }
+                    true
+                }
+                TouchPhase::Moved => {
+                    if self.is_mouse_right_pressed {
+                        if let Some(prev) = self.prev_mouse {
+                            self.wheel_delta = Some((touch_event.location.y - prev.y) as f32);
+                        }
+                    } else {
+                        if let Some(prev) = self.prev_mouse {
+                            self.pan_delta = Some((
+                                (touch_event.location.x - prev.x) as f32,
+                                (touch_event.location.y - prev.y) as f32,
+                            ));
+                        }
+                    }
+                    self.prev_mouse = Some(touch_event.location);
+                    true
+                }
+            },
             WindowEvent::CursorMoved { position, .. } if self.prev_mouse.is_none() => {
                 self.prev_mouse = Some(*position);
                 true
