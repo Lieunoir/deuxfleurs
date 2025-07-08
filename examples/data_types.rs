@@ -11,10 +11,7 @@ fn main() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-    let mut handle = deuxfleurs::init(Settings {
-        rerender: true,
-        ..Default::default()
-    });
+    let mut handle = deuxfleurs::init(Settings::default());
     let spot_f = match spot_f {
         SurfaceIndices::Triangles(t) => t,
         _ => panic!(),
