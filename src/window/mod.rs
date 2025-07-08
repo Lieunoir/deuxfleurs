@@ -22,6 +22,7 @@ use crate::types::*;
 use crate::ui::UiDataElement;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
+use pollster::FutureExt;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
 
@@ -279,10 +280,10 @@ pub struct InnerGraphicalState {
     segments: IndexMap<String, DisplaySegment>,
     pub(crate) settings: Settings,
 
-    window: Arc<Window>,
-    proxy: EventLoopProxy<UserEvent>,
+    window: Option<Arc<Window>>,
+    proxy: Option<EventLoopProxy<UserEvent>>,
     // Graphic context
-    surface: wgpu::Surface<'static>,
+    surface: Option<wgpu::Surface<'static>>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -661,6 +662,19 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
         StateWrapper::run(self, width, height, id.map(Into::into));
     }
 
+    pub fn run_headless(self) -> RunningState {
+        let inner = InnerGraphicalState::new(
+            self.0.surfaces,
+            self.0.clouds,
+            self.0.segments,
+            self.0.settings,
+            None,
+            None,
+        )
+        .block_on();
+        RunningState::new_inner(inner)
+    }
+
     /// Specify a callback that will be called once every frame.
     pub fn with_callback<U: FnMut(&mut egui::Ui, &mut RunningState)>(
         self,
@@ -729,8 +743,15 @@ impl RunningState {
         window: Window,
         proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
-        let inner =
-            InnerGraphicalState::new(surfaces, clouds, segments, settings, window, proxy).await;
+        let inner = InnerGraphicalState::new(
+            surfaces,
+            clouds,
+            segments,
+            settings,
+            Some(window),
+            Some(proxy),
+        )
+        .await;
         Self::new_inner(inner)
     }
 

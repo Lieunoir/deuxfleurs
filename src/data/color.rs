@@ -11,7 +11,9 @@ pub struct ColorSettings {
 fn hash(string: &str) -> u8 {
     let mut res = 0_u32;
     for char in string.as_bytes() {
-        res = (res << 5) - res + *char as u32;
+        res = (res.overflowing_shl(5).0.overflowing_sub(res).0)
+            .overflowing_add(*char as u32)
+            .0;
     }
     (res % 255) as u8
 }

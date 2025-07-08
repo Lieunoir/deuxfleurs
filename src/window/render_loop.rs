@@ -23,6 +23,7 @@ use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
+use wgpu::CompositeAlphaMode;
 use wgpu::rwh::HasDisplayHandle;
 use wgpu::util::DeviceExt;
 use winit::application::ApplicationHandler;
@@ -41,11 +42,17 @@ impl InnerGraphicalState {
         clouds: IndexMap<String, UninitedPointCloud>,
         segments: IndexMap<String, UninitedSegment>,
         settings: Settings,
-        window: Window,
-        proxy: EventLoopProxy<UserEvent>,
+        window: Option<Window>,
+        proxy: Option<EventLoopProxy<UserEvent>>,
     ) -> Self {
-        let size = window.inner_size();
-        let window = Arc::new(window);
+        let size = match window.as_ref() {
+            Some(window) => window.inner_size(),
+            None => PhysicalSize {
+                width: 1920,
+                height: 1080,
+            },
+        };
+        let window = window.map(Arc::new);
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
@@ -55,11 +62,13 @@ impl InnerGraphicalState {
             backends: wgpu::Backends::GL,
             ..Default::default()
         });
-        let surface = instance.create_surface(Arc::clone(&window)).unwrap();
+        let surface = window
+            .as_ref()
+            .map(|window| instance.create_surface(Arc::clone(&window)).unwrap());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::None,
-                compatible_surface: Some(&surface),
+                compatible_surface: surface.as_ref(),
                 force_fallback_adapter: false,
             })
             .await
@@ -90,13 +99,24 @@ impl InnerGraphicalState {
             .await
             .unwrap();
 
-        let surface_caps = surface.get_capabilities(&adapter);
-        let surface_format = surface_caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| f.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
+        let (surface_format, alpha_mode) = match surface.as_ref() {
+            Some(surface) => {
+                let surface_caps = surface.get_capabilities(&adapter);
+                (
+                    surface_caps
+                        .formats
+                        .iter()
+                        .copied()
+                        .find(|f| f.is_srgb())
+                        .unwrap_or(surface_caps.formats[0]),
+                    surface_caps.alpha_modes[0],
+                )
+            }
+            None => (
+                wgpu::TextureFormat::Rgba8UnormSrgb,
+                CompositeAlphaMode::Auto,
+            ),
+        };
 
         // Config for surface
         let config = wgpu::SurfaceConfiguration {
@@ -106,11 +126,13 @@ impl InnerGraphicalState {
             height: size.height.max(1),
             //present_mode: surface_caps.present_modes[0],
             present_mode: wgpu::PresentMode::AutoVsync,
-            alpha_mode: surface_caps.alpha_modes[0],
+            alpha_mode,
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-        surface.configure(&device, &config);
+        surface
+            .as_ref()
+            .map(|surface| surface.configure(&device, &config));
 
         //window.request_inner_size(PhysicalSize::new(width, height));
 
@@ -334,8 +356,7 @@ impl InnerGraphicalState {
             if surface.shown() {
                 for p in surface.geometry().get_positions() {
                     let p = glam::Mat4::from_cols_array_2d(&surface.transform.get_transform())
-                        * glam::Vec3::from_array(*p).extend(1.);
-                    let p = p / p[3];
+                        .project_point3((*p).into());
                     if p[1] < min_y {
                         min_y = p[1];
                     }
@@ -346,8 +367,7 @@ impl InnerGraphicalState {
             if cloud.shown() {
                 for p in cloud.geometry().get_positions() {
                     let p = glam::Mat4::from_cols_array_2d(&cloud.transform.get_transform())
-                        * glam::Vec3::from_array(*p).extend(1.);
-                    let p = p / p[3];
+                        .project_point3((*p).into());
                     if p[1] < min_y {
                         min_y = p[1];
                     }
@@ -358,8 +378,7 @@ impl InnerGraphicalState {
             if segment.shown() {
                 for p in segment.geometry().get_positions() {
                     let p = glam::Mat4::from_cols_array_2d(&segment.transform.get_transform())
-                        * glam::Vec3::from_array(*p).extend(1.);
-                    let p = p / p[3];
+                        .project_point3((*p).into());
                     if p[1] < min_y {
                         min_y = p[1];
                     }
@@ -430,7 +449,9 @@ impl InnerGraphicalState {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
-            self.surface.configure(&self.device, &self.config);
+            self.surface
+                .as_mut()
+                .map(|surface| surface.configure(&self.device, &self.config));
             // Make sure to current window size to depth texture - required for calc
             self.depth_texture =
                 texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
@@ -529,14 +550,10 @@ impl InnerGraphicalState {
     // Primary render flow
     pub(crate) fn render(
         &mut self,
-        event_loop_proxy: &winit::event_loop::EventLoopProxy<crate::window::UserEvent>,
-        ui: &mut crate::ui::UI,
+        event_loop_proxy: Option<&winit::event_loop::EventLoopProxy<crate::window::UserEvent>>,
+        mut ui: Option<&mut crate::ui::UI>,
         scene_changed: bool,
     ) -> Result<bool, wgpu::SurfaceError> {
-        //println!("{}", self.time.elapsed().as_millis());
-        //println!("{}", 1000. / (self.time.elapsed().as_millis()) as f32);
-        //self.time = std::time::Instant::now();
-
         let mut request_redraw = false;
         let mut encoder = self
             .device
@@ -544,13 +561,26 @@ impl InnerGraphicalState {
                 label: Some("Render Encoder"),
             });
 
-        let (user_cmd_bufs, clipped_primitives, screen_descriptor) = ui.render_deltas(
-            &self.device,
-            &self.queue,
-            &mut encoder,
-            self.size.width,
-            self.size.height,
-        );
+        let deltas = ui.as_mut().map(|ui| {
+            let deltas = ui.render_deltas(
+                &self.device,
+                &self.queue,
+                &mut encoder,
+                self.size.width,
+                self.size.height,
+            );
+
+            self.egui_dirty |= self.picker.render(
+                &self.device,
+                &mut encoder,
+                &self.depth_texture.view,
+                &self.camera_light_bind_group,
+                &self.surfaces,
+                &self.clouds,
+                &self.segments,
+            );
+            deltas
+        });
 
         self.egui_dirty |= self.picker.render(
             &self.device,
@@ -562,96 +592,195 @@ impl InnerGraphicalState {
             &self.segments,
         );
 
-        let output = if !self.screenshot {
-            Some(self.surface.get_current_texture()?)
+        let output = if let Some(surface) = self.surface.as_ref()
+            && !self.screenshot
+        {
+            Some(surface.get_current_texture()?)
         } else {
             None
         };
 
-        {
-            let view = output.as_ref().map(|o| {
-                o.texture
-                    .create_view(&wgpu::TextureViewDescriptor::default())
+        let view = output.as_ref().map(|o| {
+            o.texture
+                .create_view(&wgpu::TextureViewDescriptor::default())
+        });
+
+        let mut render = self.settings.rerender;
+        let mut render_copy = false;
+        let jitter;
+        if scene_changed || !self.settings.taa.is_some() {
+            // We rerender the scene from scratch
+            request_redraw = self.settings.taa.is_some() && !self.settings.rerender;
+            render = true;
+            self.taa_counter = 0;
+            jitter = JitterUniform {
+                x: 0.,
+                y: 0.,
+                _padding: [0; 2],
+            };
+        } else {
+            if let Some(taa_frames) = self.settings.taa {
+                if self.taa_counter < taa_frames.get() {
+                    // The scene hasn't changed but we need more copies for taa
+                    render = true;
+                    render_copy = true;
+                    request_redraw = true;
+                }
+            }
+
+            let ampli = 1.;
+            jitter = JitterUniform {
+                x: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.width as f32,
+                y: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.height as f32,
+                _padding: [0; 2],
+            };
+        };
+        self.queue
+            .write_buffer(&self.jitter_buffer, 0, bytemuck::cast_slice(&[jitter]));
+
+        if render || self.screenshot {
+            let view_ref = if self.screenshot {
+                self.copy.get_view()
+            } else if render_copy {
+                self.taa_counter += 1;
+                self.copy.get_view()
+            } else {
+                &view.as_ref().unwrap()
+            };
+
+            let mut material_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Material Render Pass"),
+                color_attachments: &[
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: self.pbr_renderer.get_albedo_view(),
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 0.0,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    }),
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: self.pbr_renderer.get_normals_view(),
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 0.0,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    }),
+                ],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
             });
 
-            let mut render = self.settings.rerender;
-            let mut render_copy = false;
-            let jitter;
-            if scene_changed || !self.settings.taa.is_some() {
-                // We rerender the scene from scratch
-                request_redraw = self.settings.taa.is_some() && !self.settings.rerender;
-                render = true;
-                self.taa_counter = 0;
-                jitter = JitterUniform {
-                    x: 0.,
-                    y: 0.,
-                    _padding: [0; 2],
-                };
+            material_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+
+            //order matters!
+            //cloud discard so no depth test
+            //segment only change deph sometimes, could use conservative depth
+            //surface fully uses depth buffer(except attachments)
+            for cloud in self.clouds.values() {
+                cloud.render(&mut material_render_pass);
+            }
+            for segment in self.segments.values() {
+                segment.render(&mut material_render_pass);
+            }
+            for surface in self.surfaces.values() {
+                surface.render(&mut material_render_pass);
+            }
+            drop(material_render_pass);
+
+            let color = if !self.screenshot && !render_copy {
+                self.settings.background_color
             } else {
-                if let Some(taa_frames) = self.settings.taa {
-                    if self.taa_counter < taa_frames.get() {
-                        // The scene hasn't changed but we need more copies for taa
-                        render = true;
-                        render_copy = true;
-                        request_redraw = true;
-                    }
+                wgpu::Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                }
+            };
+
+            let mut pbr_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("PBR Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: view_ref,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(color),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+
+            pbr_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+            self.pbr_renderer.render(&mut pbr_render_pass);
+            drop(pbr_render_pass);
+            if self.settings.shadow {
+                let mut shadow_render_pass =
+                    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Shadow Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: self.ground.get_texture_view(),
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color {
+                                    r: 0.,
+                                    g: 0.,
+                                    b: 0.,
+                                    a: 0.,
+                                }),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
+                shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                for surface in self.surfaces.values() {
+                    surface.render_shadow(&mut shadow_render_pass);
                 }
 
-                let ampli = 1.;
-                jitter = JitterUniform {
-                    x: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.width as f32,
-                    y: ampli * 2. * (self.rng.random::<f32>() - 0.5) / self.size.height as f32,
-                    _padding: [0; 2],
-                };
-            };
-            self.queue
-                .write_buffer(&self.jitter_buffer, 0, bytemuck::cast_slice(&[jitter]));
-
-            if render || self.screenshot {
-                let view_ref = if self.screenshot {
-                    self.copy.get_view()
-                } else if render_copy {
-                    self.taa_counter += 1;
-                    self.copy.get_view()
-                } else {
-                    &view.as_ref().unwrap()
-                };
-
-                let mut material_render_pass =
+                drop(shadow_render_pass);
+                self.ground
+                    .blur(&mut encoder, &self.camera_light_bind_group);
+                let mut ground_render_pass =
                     encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("Material Render Pass"),
-                        color_attachments: &[
-                            Some(wgpu::RenderPassColorAttachment {
-                                view: self.pbr_renderer.get_albedo_view(),
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                                        r: 0.0,
-                                        g: 0.0,
-                                        b: 0.0,
-                                        a: 0.0,
-                                    }),
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            }),
-                            Some(wgpu::RenderPassColorAttachment {
-                                view: self.pbr_renderer.get_normals_view(),
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                                        r: 0.0,
-                                        g: 0.0,
-                                        b: 0.0,
-                                        a: 0.0,
-                                    }),
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            }),
-                        ],
+                        label: Some("Shadow Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: view_ref,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        // Create a depth stencil buffer using the depth texture
                         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                             view: &self.depth_texture.view,
                             depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
+                                load: wgpu::LoadOp::Load,
                                 store: wgpu::StoreOp::Store,
                             }),
                             stencil_ops: None,
@@ -659,188 +788,101 @@ impl InnerGraphicalState {
                         occlusion_query_set: None,
                         timestamp_writes: None,
                     });
+                ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                self.ground.render(&mut ground_render_pass);
+                drop(ground_render_pass);
+            }
 
-                material_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+            // Draw the gui
+            if let Some(ui) = ui.as_mut()
+                && !self.screenshot
+                && !render_copy
+                && let Some((_user_cmd_bufs, clipped_primitives, screen_descriptor)) =
+                    deltas.as_ref()
+            {
+                let ui_render_pass = encoder
+                    .begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Ui Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: view_ref,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        // Create a depth stencil buffer using the depth texture
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    })
+                    .forget_lifetime();
+                ui.render(ui_render_pass, &clipped_primitives, &screen_descriptor);
+            }
+        }
 
-                //order matters!
-                //cloud discard so no depth test
-                //segment only change deph sometimes, could use conservative depth
-                //surface fully uses depth buffer(except attachments)
-                for cloud in self.clouds.values() {
-                    cloud.render(&mut material_render_pass);
-                }
-                for segment in self.segments.values() {
-                    segment.render(&mut material_render_pass);
-                }
-                for surface in self.surfaces.values() {
-                    surface.render(&mut material_render_pass);
-                }
-                drop(material_render_pass);
+        //do blending with previous frame
+        if render_copy {
+            let factor = (self.taa_counter as f64 - 1.) / (self.taa_counter as f64);
+            self.copy.blend(&mut encoder, factor, self.taa_counter == 1);
+        } else if self.screenshot {
+            if self.taa_counter > 0 {
+                self.copy.blend(&mut encoder, 1., false);
+            } else {
+                self.copy.blend(&mut encoder, 0., true);
+            }
+        }
 
-                let color = if !self.screenshot && !render_copy {
-                    self.settings.background_color
-                } else {
+        if self.screenshot || (!render || render_copy) {
+            let (view_ref, color) = if self.screenshot {
+                (
+                    self.screenshoter.get_view(),
                     wgpu::Color {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                        a: 0.0,
-                    }
-                };
-
-                let mut pbr_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("PBR Render Pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: view_ref,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(color),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-
-                pbr_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                self.pbr_renderer.render(&mut pbr_render_pass);
-                drop(pbr_render_pass);
-                if self.settings.shadow {
-                    let mut shadow_render_pass =
-                        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("Shadow Render Pass"),
-                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: self.ground.get_texture_view(),
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                                        r: 0.,
-                                        g: 0.,
-                                        b: 0.,
-                                        a: 0.,
-                                    }),
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            })],
-                            depth_stencil_attachment: None,
-                            occlusion_query_set: None,
-                            timestamp_writes: None,
-                        });
-                    shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                    for surface in self.surfaces.values() {
-                        surface.render_shadow(&mut shadow_render_pass);
-                    }
-
-                    drop(shadow_render_pass);
-                    self.ground
-                        .blur(&mut encoder, &self.camera_light_bind_group);
-                    let mut ground_render_pass =
-                        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("Shadow Render Pass"),
-                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: view_ref,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Load,
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            })],
-                            // Create a depth stencil buffer using the depth texture
-                            depth_stencil_attachment: Some(
-                                wgpu::RenderPassDepthStencilAttachment {
-                                    view: &self.depth_texture.view,
-                                    depth_ops: Some(wgpu::Operations {
-                                        load: wgpu::LoadOp::Load,
-                                        store: wgpu::StoreOp::Store,
-                                    }),
-                                    stencil_ops: None,
-                                },
-                            ),
-                            occlusion_query_set: None,
-                            timestamp_writes: None,
-                        });
-                    ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
-                    self.ground.render(&mut ground_render_pass);
-                    drop(ground_render_pass);
-                }
-
-                // Draw the gui
-                if !self.screenshot && !render_copy {
-                    let ui_render_pass = encoder
-                        .begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("Ui Render Pass"),
-                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                view: view_ref,
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Load,
-                                    store: wgpu::StoreOp::Store,
-                                },
-                            })],
-                            // Create a depth stencil buffer using the depth texture
-                            depth_stencil_attachment: None,
-                            occlusion_query_set: None,
-                            timestamp_writes: None,
-                        })
-                        .forget_lifetime();
-                    ui.render(ui_render_pass, &clipped_primitives, &screen_descriptor);
-                }
-            }
-
-            //do blending with previous frame
-            if render_copy {
-                let factor = (self.taa_counter as f64 - 1.) / (self.taa_counter as f64);
-                self.copy.blend(&mut encoder, factor, self.taa_counter == 1);
-            }
-
-            if self.screenshot || (!render || render_copy) {
-                let (view_ref, color) = if self.screenshot {
-                    (
-                        self.screenshoter.get_view(),
-                        wgpu::Color {
-                            r: 0.,
-                            g: 0.,
-                            b: 0.,
-                            a: 0.,
-                        },
-                    )
-                } else {
-                    (view.as_ref().unwrap(), self.settings.background_color)
-                };
-                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Copy Pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: view_ref,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(color),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                if self.screenshot {
-                    self.copy.screenshot(&mut render_pass);
-                } else {
-                    self.copy.copy(&mut render_pass);
-                }
-
+                        r: 0.,
+                        g: 0.,
+                        b: 0.,
+                        a: 0.,
+                    },
+                )
+            } else {
+                (view.as_ref().unwrap(), self.settings.background_color)
+            };
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Copy Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: view_ref,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(color),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            if self.screenshot {
+                self.copy.screenshot(&mut render_pass);
+                drop(render_pass);
+                self.screenshoter.copy_texture_to_buffer(&mut encoder);
+            } else {
+                self.copy.copy(&mut render_pass);
                 let render_pass = render_pass.forget_lifetime();
-                if !self.screenshot {
+                if let Some(ui) = ui.as_mut()
+                    && let Some((_user_cmd_bufs, clipped_primitives, screen_descriptor)) =
+                        deltas.as_ref()
+                {
                     ui.render(render_pass, &clipped_primitives, &screen_descriptor);
                 }
             }
         }
 
         if self.screenshot {
-            self.screenshoter.copy_texture_to_buffer(&mut encoder);
             let index = self.queue.submit(iter::once(encoder.finish()));
             self.screenshoter.create_png(&self.device, index);
             self.screenshot = false;
         } else {
+            let (user_cmd_bufs, _clipped_primitives, _screen_descriptor) = deltas.unwrap();
             self.queue.submit(
                 user_cmd_bufs
                     .into_iter()
@@ -849,7 +891,9 @@ impl InnerGraphicalState {
             output.unwrap().present();
         }
 
-        self.picker.post_render(event_loop_proxy);
+        event_loop_proxy.map(|proxy| {
+            self.picker.post_render(proxy);
+        });
         if self.picker.pick_locked || !self.settings.lazy_draw {
             request_redraw = true;
         }
@@ -858,6 +902,15 @@ impl InnerGraphicalState {
 
     pub(crate) fn screenshot(&mut self) {
         self.screenshot = true;
+        if self.surface.is_none() {
+            //self.resize(PhysicalSize {
+            //    width: 1920,
+            //    height: 1080,
+            //});
+            self.resize_scene();
+            self.update();
+            self.render(None, None, true).unwrap();
+        }
     }
 
     pub(crate) fn get_picked(&self) -> &Option<(String, Picked)> {
@@ -959,7 +1012,13 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                 &self.state.as_ref().unwrap().device,
                 event_loop,
                 self.state.as_ref().unwrap().config.format,
-                self.state.as_ref().unwrap().window.scale_factor(),
+                self.state
+                    .as_ref()
+                    .unwrap()
+                    .window
+                    .as_ref()
+                    .unwrap()
+                    .scale_factor(),
             ));
         }
     }
@@ -996,8 +1055,11 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
         //TODO the `if let` stuff is hacky and messy
         let (processed, ui_hovered) =
             if let (Some(ui), Some(state)) = (self.ui.as_mut(), self.state.as_mut()) {
-                if window_id == state.window.id() {
-                    (ui.process_event(&*state.window, &event), ui.hovered)
+                if window_id == state.window.as_ref().unwrap().id() {
+                    (
+                        ui.process_event(&*state.window.as_ref().unwrap(), &event),
+                        ui.hovered,
+                    )
                 } else {
                     return;
                 }
@@ -1017,13 +1079,13 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                 match event {
                     WindowEvent::RedrawRequested => {
                         if state.egui_dirty {
-                            state.window.request_redraw();
+                            state.window.as_ref().unwrap().request_redraw();
                             state.egui_dirty = false;
                         } else {
                             state.egui_dirty = true;
                         }
                     }
-                    _ => state.window.request_redraw(),
+                    _ => state.window.as_ref().unwrap().request_redraw(),
                 }
             }
         }
@@ -1036,7 +1098,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     WindowEvent::Resized(physical_size) => {
                         state.resize(physical_size);
                         state.dirty = true;
-                        state.window.request_redraw();
+                        state.window.as_ref().unwrap().request_redraw();
                     }
                     WindowEvent::KeyboardInput {
                         event:
@@ -1084,6 +1146,8 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                                 if let Some(cam) = clipboard.get() {
                                     state
                                         .proxy
+                                        .as_mut()
+                                        .unwrap()
                                         .send_event(crate::window::UserEvent::Paste(cam))
                                         .ok();
                                     //state.camera.set(cam);
@@ -1111,7 +1175,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                         //draw ui
                         //let mut refresh_screen = state.state.dirty;
                         ui.draw_models(
-                            &*state.0.window,
+                            &*state.0.window.as_ref().unwrap(),
                             &mut state.0.surfaces,
                             &mut state.0.clouds,
                             &mut state.0.segments,
@@ -1127,12 +1191,12 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                         ui.draw_callback(state, &mut self.callback.as_mut().unwrap());
                         let scene_changed = state.update();
                         //actual rendering
-                        match state.render(&self.proxy, ui, scene_changed) {
+                        match state.render(Some(&self.proxy), Some(ui), scene_changed) {
                             Ok(request_redraw) => {
                                 if request_redraw {
-                                    state.window.request_redraw();
+                                    state.window.as_ref().unwrap().request_redraw();
                                 }
-                                ui.handle_platform_output(&*state.window)}
+                                ui.handle_platform_output(&*state.window.as_ref().unwrap())}
                             ,
                             // Reconfigure the surface if it's lost or outdated
                             Err(
@@ -1153,7 +1217,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             }
         } else {
             if let Some(state) = self.state.as_mut() {
-                state.window.request_redraw();
+                state.window.as_ref().unwrap().request_redraw();
             }
         }
     }

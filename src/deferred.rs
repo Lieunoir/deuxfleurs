@@ -189,7 +189,7 @@ impl TextureCopy {
         let screenshot_pipeline = util::create_copy_quad_pipeline(
             device,
             &copy_pipeline_layout,
-            wgpu::TextureFormat::Rgba8UnormSrgb,
+            crate::screenshot::SCREENSHOT_FORMAT,
             None,
             &[SquareVertex::desc()],
             Some(wgpu::BlendState::REPLACE),

@@ -1,6 +1,6 @@
 use crate::util::BufferDimensions;
 
-const SCREENSHOT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+pub(crate) const SCREENSHOT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

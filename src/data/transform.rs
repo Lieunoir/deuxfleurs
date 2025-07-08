@@ -59,10 +59,7 @@ impl TransformSettings {
 
                 let transfo_matrix = glam::Mat4::from_cols_array_2d(&model);
                 for position in positions {
-                    let threed_point = glam::Vec3::from_array(*position);
-
-                    let position = transfo_matrix * threed_point.extend(1.);
-                    let position = position.xyz() / position.w;
+                    let position = transfo_matrix.project_point3((*position).into());
                     if position[0] < min_x {
                         min_x = position[0];
                     }
@@ -101,9 +98,7 @@ impl TransformSettings {
 
                 let transfo_matrix = glam::Mat4::from_cols_array_2d(&model);
                 for vertex in positions {
-                    let threed_point = glam::Vec3::from_array(*vertex);
-                    let position = transfo_matrix * threed_point.extend(1.);
-                    let position = position.xyz() / position.w;
+                    let position = transfo_matrix.project_point3((*vertex).into());
 
                     if position[0] < min_x {
                         min_x = position[0];
