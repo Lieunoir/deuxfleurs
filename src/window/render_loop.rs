@@ -324,7 +324,6 @@ impl InnerGraphicalState {
             size,
             depth_texture,
             screenshoter,
-            screenshot: false,
             ctrl_pressed: false,
             camera,
             camera_controller,
@@ -554,7 +553,6 @@ impl InnerGraphicalState {
         mut ui: Option<&mut crate::ui::UI>,
         scene_changed: bool,
     ) -> Result<bool, wgpu::SurfaceError> {
-        let mut request_redraw = false;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -593,17 +591,18 @@ impl InnerGraphicalState {
                 .create_view(&wgpu::TextureViewDescriptor::default())
         });
 
+        let mut request_redraw = !self.settings.lazy_draw;
         // Render, as opposed as simply getting the last stored frame
-        let mut render = false;
+        let mut render = self.settings.rerender;
         let mut store_render = self.surface.is_none();
         // ^ Three possibilities:
         // *  (true, false): continuously rendering
         // *  (true, true): scene hasn't changed, rendering more for TAA
         // *  (false, false): scene hasn't changed, just copy the last stored frame
         let jitter;
-        if scene_changed {
+        if scene_changed || self.settings.rerender {
             // We rerender the scene from scratch
-            request_redraw = self.settings.taa.is_some() && !self.settings.rerender;
+            request_redraw |= scene_changed;
             render = true;
             self.taa_counter = 0;
             jitter = JitterUniform {
@@ -627,9 +626,11 @@ impl InnerGraphicalState {
                     _padding: [0; 2],
                 };
             } else {
-                render = true;
-                store_render = true;
-                self.taa_counter = 1;
+                if self.taa_counter == 0 {
+                    render = true;
+                    store_render = true;
+                    self.taa_counter = 1;
+                }
                 jitter = JitterUniform {
                     x: 0.,
                     y: 0.,

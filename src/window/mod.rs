@@ -293,7 +293,6 @@ pub struct InnerGraphicalState {
     depth_texture: texture::Texture,
     // Screenshots
     screenshoter: screenshot::Screenshoter,
-    screenshot: bool,
 
     // Keyboard
     ctrl_pressed: bool,
