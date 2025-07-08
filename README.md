@@ -16,7 +16,9 @@ Here's a quick example that loads a mesh and uses a button to show/hide it:
 ```rust
 use deuxfleurs::{load_mesh, Settings};
 // Init the app
-let mut handle = deuxfleurs::init();
+let mut handle = deuxfleurs::init(
+    Settings::default(),
+);
 // Load the mesh and register it:
 let (v, f) = load_mesh("bunny.obj").await.unwrap();
 handle.register_surface("bunny", v, f);
@@ -38,7 +40,6 @@ handle.run(
     1080,
     720,
     Some("deuxfleurs-demo"),
-    Settings::default(),
 );
 ```
 

@@ -654,13 +654,46 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     /// Arguments:
     /// * `width`: requested width of the app (no effect in wasm)
     /// * `height`: requested height of the app (no effect in wasm)
-    /// * `id`: serves as window title, or id shape to attach to. If `None` used `"State"`.
-    /// * `callback`: called every frame with a [`egui::Ui`] and a [`RunningState`] arguments, used to
-    /// add UI elements and modify state accordingly.
+    /// * `id`: serves as window title, or id shape to attach to. If `None` uses `"State"`.
+    ///
+    /// ```
+    /// use deuxfleurs::{Settings, load_mesh};
+    ///
+    /// # fn main() {
+    /// #     pollster::block_on(run());
+    /// # }
+    /// # pub async fn run() {
+    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
+    /// let mut handle = deuxfleurs::init(Settings::default());
+    /// handle.register_surface("Spot", spot_v, spot_f);
+    /// let mut handle = handle.run(1920, 1080, Some("deuxfleurs"));
+    /// # }
+    /// ```
     pub fn run<S: Into<String>>(self, width: u32, height: u32, id: Option<S>) {
         StateWrapper::run(self, width, height, id.map(Into::into));
     }
 
+    /// Run the app without a window. Allows running the app in environment where no
+    /// display is available and taking screenshots automatically.
+    ///
+    /// Currently only available on non wasm targets, as webGL requires a context.
+    ///
+    /// ```
+    /// use deuxfleurs::{Settings, load_mesh};
+    ///
+    /// # fn main() {
+    /// #     pollster::block_on(run());
+    /// # }
+    /// # pub async fn run() {
+    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
+    /// let mut handle = deuxfleurs::init(Settings::default());
+    /// handle.register_surface("Spot", spot_v, spot_f);
+    /// let mut handle = handle.run_headless();
+    /// handle.screenshot();
+    /// # }
+    /// ```
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(docsrs, doc(cfg(not(target_arch = "wasm32"))))]
     pub fn run_headless(self) -> RunningState {
         let inner = InnerGraphicalState::new(
             self.0.surfaces,
@@ -675,6 +708,9 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     }
 
     /// Specify a callback that will be called once every frame.
+    ///
+    /// Passes an [`egui::Ui`] and a [`RunningState`] arguments which can be
+    /// used to add UI elements and modify state accordingly.
     pub fn with_callback<U: FnMut(&mut egui::Ui, &mut RunningState)>(
         self,
         callback: U,
@@ -759,7 +795,7 @@ impl RunningState {
         self.0.resize_scene();
     }
 
-    /// Take a screenshot at the next frame
+    /// Take a screenshot of the scene.
     pub fn screenshot(&mut self) {
         self.0.screenshot();
     }

@@ -2,15 +2,7 @@ use deuxfleurs::Settings;
 use deuxfleurs::types::SurfaceIndices;
 use deuxfleurs::ui::LoadObjButton;
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
-
 fn main() {
-    pollster::block_on(run());
-}
-
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-pub async fn run() {
     let handle = deuxfleurs::init(Settings::default());
 
     let handle = handle.with_callback(|ui, state| {

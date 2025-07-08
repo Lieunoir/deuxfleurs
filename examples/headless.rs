@@ -1,4 +1,3 @@
-use deuxfleurs::types::SurfaceIndices;
 use deuxfleurs::{Settings, load_mesh};
 
 #[cfg(target_arch = "wasm32")]
@@ -12,77 +11,7 @@ fn main() {
 pub async fn run() {
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
     let mut handle = deuxfleurs::init(Settings::default());
-    let spot_f = match spot_f {
-        SurfaceIndices::Triangles(t) => t,
-        _ => panic!(),
-    };
-    let mut spot_data_1 = vec![0.; spot_v.len()];
-    let mut spot_data_2 = vec![0.; spot_v.len()];
-    for (data, vertex) in spot_data_1.iter_mut().zip(&spot_v) {
-        *data = vertex[0];
-    }
-    for (data, vertex) in spot_data_2.iter_mut().zip(&spot_v) {
-        *data = vertex[1];
-    }
-    let mut spot_uv_map = vec![[0., 0.]; spot_v.len()];
-    for (data, vertex) in spot_uv_map.iter_mut().zip(&spot_v) {
-        *data = [vertex[0] * 0.1, vertex[1] * 0.1];
-    }
-    let mut spot_uv_mesh = vec![[0., 0., 0.]; spot_v.len()];
-    for (data, vertex) in spot_uv_mesh.iter_mut().zip(&spot_v) {
-        *data = [vertex[0], vertex[1], 0.];
-    }
-
-    let mut spot_corner_uv_map = vec![[0., 0.]; 3 * spot_f.len()];
-    for (datas, face) in spot_corner_uv_map.chunks_exact_mut(3).zip(&spot_f) {
-        datas[0] = [spot_v[face[0] as usize][0], spot_v[face[0] as usize][1]];
-        datas[1] = [spot_v[face[1] as usize][0], spot_v[face[1] as usize][1]];
-        datas[2] = [spot_v[face[2] as usize][0], spot_v[face[2] as usize][1]];
-    }
-
-    let mut spot_face_scalar = vec![0.; spot_f.len()];
-    for (i, face) in spot_face_scalar.iter_mut().enumerate() {
-        let value = spot_v[spot_f[i][0] as usize][0];
-        *face = value;
-    }
-    let mut surface1 = handle.register_surface("spot_uv", spot_uv_mesh, spot_f.clone());
-    surface1.show_edges(true);
-    surface1
-        .add_vertex_scalar("x coord", spot_data_1.clone())
-        .set_isolines(10.);
-    let mut surface2 = handle.register_surface("spot", spot_v.clone(), spot_f.clone());
-    surface2.show_edges(true);
-    surface2.add_vertex_scalar("x coord", spot_data_1.clone());
-    surface2
-        .add_vertex_vector_field("positions", spot_v.clone())
-        .set_magnitude(1.1, true);
-    surface2.add_vertex_points("First 4 points", vec![0, 1, 2, 3]);
-    surface2.add_edge_segments("First 4 segments", vec![0, 1, 2, 3]);
-    surface2.add_vertex_scalar("y coord", spot_data_2);
-    surface2.add_uv_map("uv", spot_uv_map);
-    surface2.add_corner_uv_map("corner uv", spot_corner_uv_map);
-    surface2.add_face_scalar("face scalar", spot_face_scalar);
-    surface2.set_data(Some("y coord"));
-
-    let mut curves = Vec::new();
-    for f in &spot_f {
-        if !curves.contains(&[f[0], f[1]]) && !curves.contains(&[f[1], f[0]]) {
-            curves.push([f[0], f[1]]);
-        }
-        if !curves.contains(&[f[2], f[1]]) && !curves.contains(&[f[1], f[2]]) {
-            curves.push([f[2], f[1]]);
-        }
-        if !curves.contains(&[f[0], f[2]]) && !curves.contains(&[f[2], f[0]]) {
-            curves.push([f[0], f[2]]);
-        }
-    }
-    let mut curve = handle.register_segment("spot_c", spot_v.clone(), curves);
-    curve.add_scalar("x coord", spot_data_1.clone());
-    curve.set_data(Some("x coord"));
-
-    let mut pc = handle.register_point_cloud("spot_pc", spot_v.clone());
-    pc.add_scalar("x coord", spot_data_1);
-
+    handle.register_surface("Spot", spot_v, spot_f);
     let mut handle = handle.run_headless();
     handle.screenshot();
 }

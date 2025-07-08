@@ -60,7 +60,7 @@ pub(crate) struct UI {
     pub(crate) hovered: bool,
 }
 
-pub fn oklch_to_linear(l: f32, c: f32, h: f32, alpha: f32) -> egui::Rgba {
+fn oklch_to_linear(l: f32, c: f32, h: f32, alpha: f32) -> egui::Rgba {
     let a = c * h.cos();
     let b = c * h.sin();
 
