@@ -7,6 +7,7 @@ use crate::ui::UiDataElement;
 pub(crate) use data::*;
 use indexmap::IndexMap;
 pub(crate) use renderer::*;
+use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 mod data;
 mod renderer;
@@ -47,6 +48,7 @@ impl Context for &mut Settings {
 }
 
 // `Renderer` can be `()` !
+#[derive(Serialize, Deserialize)]
 pub struct Shape<Geometry, Renderer, Settings, Data, AttachedGeometry> {
     pub(crate) name: String,
     pub(crate) geometry: Geometry,
@@ -198,9 +200,9 @@ impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
     DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
 where
     for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
-    Geometry: ShapeGeometry,
-    Data: DataUniformBuilder + DataSettings + UiDataElement,
-    Settings: ShapeSettings,
+    Geometry: ShapeGeometry + Clone,
+    Data: DataUniformBuilder + DataSettings + UiDataElement + Clone,
+    Settings: ShapeSettings + Clone,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -262,6 +264,32 @@ where
             show: true,
             sbv,
             modification_stamp: 0,
+        }
+    }
+
+    pub(crate) fn downgrade<OldAttachedGeometry>(
+        &self,
+    ) -> UninitedShape<Geometry, Settings, Data, OldAttachedGeometry>
+    where
+        OldAttachedGeometry: NewAttachedGeometry<UpgradedAttachedGeometry = Attached>,
+    {
+        let attached_data = self
+            .attached_data
+            .iter()
+            .map(|(k, v)| (k.clone(), OldAttachedGeometry::downgrade(&v)))
+            .collect();
+        UninitedShape::<Geometry, Settings, Data, OldAttachedGeometry> {
+            name: self.name.clone(),
+            geometry: self.geometry.clone(),
+            data: self.data.clone(),
+            show: self.show,
+            sbv: self.sbv.clone(),
+            transform: self.transform.clone(),
+            settings: self.settings.clone(),
+            shown_data: self.shown_data.clone(),
+            renderer: (),
+            attached_data,
+            modification_stamp: self.modification_stamp,
         }
     }
 
@@ -564,9 +592,9 @@ impl<'a, Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
     for DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG>
 where
     for<'b> AttachedG: AttachedGeometry<GraphicalContext<'b>>,
-    Geometry: ShapeGeometry,
-    Data: DataUniformBuilder + DataSettings + UiDataElement,
-    Settings: ShapeSettings,
+    Geometry: ShapeGeometry + Clone,
+    Data: DataUniformBuilder + DataSettings + UiDataElement + Clone,
+    Settings: ShapeSettings + Clone,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,

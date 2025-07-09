@@ -1,11 +1,13 @@
 use crate::ui::UiDataElement;
 use egui::Widget;
+use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
 pub struct Radius {
     radius: f32,
     characteristic_length: f32,
+    #[serde(skip)]
     _padding: [u32; 2],
 }
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use winit::event::*;
 
 // Camera informations for easier updating
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Camera {
     eye: glam::Vec3,
     target: glam::Vec3,
@@ -69,11 +69,15 @@ impl Camera {
         serde_json::to_string(self).map_err(|_e| ())
     }
 
+    pub fn set_from_camera(&mut self, new_camera: Camera) {
+        self.eye = new_camera.eye;
+        self.target = new_camera.target;
+        self.up = new_camera.up;
+    }
+
     pub fn set(&mut self, new_camera: String) {
         if let Ok(new_c) = serde_json::from_str::<Camera>(&new_camera) {
-            self.eye = new_c.eye;
-            self.target = new_c.target;
-            self.up = new_c.up;
+            self.set_from_camera(new_c);
         }
     }
 }

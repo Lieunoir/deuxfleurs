@@ -1,4 +1,4 @@
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum SurfaceIndices {
     Triangles(Vec<[u32; 3]>),
     Quads(Vec<[u32; 4]>),
@@ -101,6 +101,8 @@ impl<'a> IntoIterator for &'a SurfaceIndices {
 }
 
 use std::borrow::Borrow;
+
+use serde::{Deserialize, Serialize};
 
 impl<'a> Iterator for SurfaceIndicesIntoIterator<'a> {
     type Item = &'a [u32];

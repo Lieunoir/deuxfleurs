@@ -23,6 +23,7 @@ use crate::ui::UiDataElement;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use pollster::FutureExt;
+use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
 
@@ -170,9 +171,9 @@ where
         DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
     >,
     for<'a> Attached: AttachedGeometry<GraphicalContext<'a>>,
-    Geometry: ShapeGeometry,
-    Data: DataUniformBuilder + DataSettings + UiDataElement,
-    Settings: ShapeSettings,
+    Geometry: ShapeGeometry + Clone,
+    Data: DataUniformBuilder + DataSettings + UiDataElement + Clone,
+    Settings: ShapeSettings + Clone,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
@@ -439,7 +440,17 @@ pub struct InnerBareState<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     pub(crate) clouds: IndexMap<String, UninitedPointCloud>,
     pub(crate) segments: IndexMap<String, UninitedSegment>,
     pub settings: Settings,
+    pub camera: Camera,
     pub(crate) callback: T,
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct InnerBareStateSerde {
+    pub(crate) surfaces: IndexMap<String, UninitedSurface>,
+    pub(crate) clouds: IndexMap<String, UninitedPointCloud>,
+    pub(crate) segments: IndexMap<String, UninitedSegment>,
+    pub settings: Settings,
+    pub camera: Camera,
 }
 
 impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContextHolder for InnerBareState<T> {
@@ -700,6 +711,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
             self.0.clouds,
             self.0.segments,
             self.0.settings,
+            self.0.camera,
             None,
             None,
         )
@@ -720,6 +732,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
             clouds,
             segments,
             settings,
+            camera,
             ..
         } = self.0;
         let inner = InnerBareState {
@@ -728,6 +741,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
             segments,
             settings,
             callback,
+            camera,
         };
         InitialState::new_inner(inner)
     }
@@ -774,6 +788,7 @@ impl RunningState {
         surfaces: IndexMap<String, UninitedSurface>,
         clouds: IndexMap<String, UninitedPointCloud>,
         segments: IndexMap<String, UninitedSegment>,
+        camera: Camera,
         settings: Settings,
         window: Window,
         proxy: EventLoopProxy<UserEvent>,
@@ -783,6 +798,7 @@ impl RunningState {
             clouds,
             segments,
             settings,
+            camera,
             Some(window),
             Some(proxy),
         )

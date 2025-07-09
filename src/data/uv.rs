@@ -1,13 +1,15 @@
 use crate::shape::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
 use egui::Widget;
+use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
 pub struct UVMapSettings {
     color_1: [f32; 4],
     color_2: [f32; 4],
     frequency: f32,
+    #[serde(skip)]
     _padding: [f32; 3],
 }
 

@@ -1,10 +1,12 @@
 use crate::ui::UiDataElement;
 use egui::Widget;
+use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
 pub struct IsolineSettings {
     pub isoline_number: f32,
+    #[serde(skip)]
     _padding: [f32; 3],
 }
 

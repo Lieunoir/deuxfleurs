@@ -406,11 +406,19 @@ impl UI {
                     .show(ui, |ui| {
                         ui.set_min_width(230.);
                         ui.horizontal(|ui| {
-                            if ui.add(egui::Button::new("Fit camera")).clicked() {
+                            if ui.button("Fit camera").clicked() {
                                 state.resize_scene();
                             }
-                            if ui.add(egui::Button::new("Screenshot")).clicked() {
+                            if ui.button("Screenshot").clicked() {
                                 state.screenshot();
+                            }
+                        });
+                        ui.horizontal(|ui| {
+                            if ui.button("Save state").clicked() {
+                                state.save();
+                            }
+                            if ui.button("Load state").clicked() {
+                                state.load();
                             }
                         });
                         state.0.settings.draw_ui(ui, &mut state.0.dirty);

@@ -11,6 +11,8 @@ use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use egui::Widget;
+use serde::Deserialize;
+use serde::Serialize;
 use wgpu::BufferAddress;
 use wgpu::util::DeviceExt;
 
@@ -35,6 +37,7 @@ struct VectorFieldSettingsRaw {
     color: ColorSettings,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct VectorFieldSettings {
     pub show: bool,
     pub magnitude: f32,
@@ -90,6 +93,7 @@ where
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct NewVectorField {
     position: AttachmentPosition,
     vectors: Vec<[f32; 3]>,
@@ -439,5 +443,14 @@ impl NewAttachedGeometry for NewVectorField {
             color_format,
             self,
         )
+    }
+
+    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
+        Self {
+            position: upgraded.position.clone(),
+            settings: upgraded.settings.clone(),
+            vectors: upgraded.vectors.clone(),
+            offsets: upgraded.offsets.clone(),
+        }
     }
 }

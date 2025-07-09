@@ -6,6 +6,7 @@ use crate::shape::DataMut;
 use crate::shape::DataMutTrait;
 use crate::types::SurfaceIndices;
 use crate::ui::UiDataElement;
+use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
 
 #[repr(C)]
@@ -15,7 +16,7 @@ struct VertexScalarSettingsBuffer {
     colormap: ColorMapValues,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct VertexScalarSettings {
     isoline: IsolineSettings,
     colormap: ColorMap,
@@ -77,6 +78,7 @@ impl DataUniformBuilder for VertexScalarSettings {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub enum SurfaceData {
     Color(Vec<[f32; 3]>),
     FaceScalar(Vec<f32>, ColorMap),

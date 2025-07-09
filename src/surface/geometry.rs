@@ -15,6 +15,7 @@ use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use num_traits::cast::ToPrimitive;
+use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
 use wgpu::{BufferAddress, BufferSize};
 
@@ -24,7 +25,7 @@ struct SurfaceSettingsValue {
     color: ColorSettings,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct SurfaceSettings {
     color: ColorSettings,
     smooth: bool,
@@ -98,6 +99,7 @@ impl Vertex for SurfaceVertex {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SurfaceGeometry {
     pub vertices: Vec<[f32; 3]>,
     pub indices: SurfaceIndices,
@@ -106,12 +108,14 @@ pub struct SurfaceGeometry {
     avg_edge_length: f32,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 struct FaceToEdge {
     indices: Vec<u32>,
     num_edges: u32,
     // same strides as indices
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 struct VertexToFace {
     indices: Vec<u32>,
     strides: Vec<u32>,

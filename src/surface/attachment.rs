@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     Settings,
     attachment::{
@@ -9,6 +11,7 @@ use crate::{
     shape::{AttachedGeometry, GraphicalContext, NewAttachedGeometry},
 };
 
+#[derive(Serialize, Deserialize)]
 pub enum NewSurfaceAttachment {
     VectorField(NewVectorField),
     Points(NewPoints),
@@ -153,6 +156,18 @@ impl NewAttachedGeometry for NewSurfaceAttachment {
                 transform_bind_group_layout,
                 color_format,
             )),
+        }
+    }
+
+    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
+        match upgraded {
+            SurfaceAttachment::VectorField(v) => {
+                NewSurfaceAttachment::VectorField(NewVectorField::downgrade(v))
+            }
+            SurfaceAttachment::Points(p) => NewSurfaceAttachment::Points(NewPoints::downgrade(p)),
+            SurfaceAttachment::Segments(s) => {
+                NewSurfaceAttachment::Segments(NewSegments::downgrade(s))
+            }
         }
     }
 }

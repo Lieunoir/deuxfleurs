@@ -5,10 +5,12 @@ use crate::types::{Color, Scalar};
 use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
+use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
 
 use super::shader::get_shader;
 
+#[derive(Clone, Serialize, Deserialize)]
 pub enum PointCloudData {
     Scalar(Vec<f32>, ColorMap),
     Color(Vec<[f32; 3]>),
@@ -100,7 +102,7 @@ impl PointCloudData {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
 pub struct PCSettings {
     radius: Radius,
     color: ColorSettings,
@@ -207,6 +209,7 @@ impl Vertex for SphereScalarData {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PointCloudGeometry {
     pub positions: Vec<[f32; 3]>,
     avg_edge_length: f32,

@@ -1,4 +1,6 @@
-#[derive(Default, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct SBV {
     pub center: [f32; 3],
     pub radius: f32,

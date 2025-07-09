@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     attachment::internal::AttachmentPosition,
     data::internal::DataUniformBuilder,
@@ -9,6 +11,7 @@ use crate::{
     },
 };
 
+#[derive(Serialize, Deserialize)]
 pub struct NewSegments {
     inner: UninitedSegment,
     indices: Vec<u32>,
@@ -86,6 +89,15 @@ impl NewAttachedGeometry for NewSegments {
             inner,
             indices: self.indices,
             position: self.position,
+        }
+    }
+
+    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
+        let inner = upgraded.inner.downgrade();
+        Self {
+            inner,
+            indices: upgraded.indices.clone(),
+            position: upgraded.position.clone(),
         }
     }
 }

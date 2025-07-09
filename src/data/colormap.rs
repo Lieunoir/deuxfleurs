@@ -5,9 +5,10 @@ use egui::Shape;
 use egui::{Color32, Pos2};
 use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};
 use epaint::RectShape;
+use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
 pub struct ColorsValues {
     pub red: [f32; 8],
     pub green: [f32; 8],
@@ -15,7 +16,7 @@ pub struct ColorsValues {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
 pub struct ColorMapValues {
     colors: ColorsValues,
     min: f32,
@@ -23,7 +24,7 @@ pub struct ColorMapValues {
     _pad: [u32; 2],
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Colors {
     Turbo,
     Viridis,
@@ -36,12 +37,63 @@ pub enum Colors {
     RdBU,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[serde(from = "ColorMapSerde", into = "ColorMapSerde")]
 pub struct ColorMap {
     pub colors: Colors,
     bars: Vec<Bar>,
     min: f64,
     max: f64,
+}
+
+#[derive(Deserialize, Serialize)]
+struct ColorMapSerde {
+    colors: Colors,
+    bars: Vec<f32>,
+    bar_min: f32,
+    bar_max: f32,
+    min: f32,
+    max: f32,
+}
+
+impl From<ColorMap> for ColorMapSerde {
+    fn from(value: ColorMap) -> Self {
+        let bar_min = value.bars[0].value as f32;
+        let bar_max = value.bars[N_BARS - 1].value as f32 * N_BARS as f32 / (N_BARS - 1) as f32;
+        let bars = value.bars.into_iter().map(|b| b.value as f32).collect();
+        ColorMapSerde {
+            colors: value.colors,
+            min: value.min as f32,
+            max: value.max as f32,
+            bars,
+            bar_min,
+            bar_max,
+        }
+    }
+}
+
+impl From<ColorMapSerde> for ColorMap {
+    fn from(value: ColorMapSerde) -> Self {
+        let bars = value
+            .bars
+            .into_iter()
+            .enumerate()
+            .map(|(i, s)| {
+                Bar::new(
+                    (value.bar_min + (value.bar_max - value.bar_min) * (i as f32 / N_BARS as f32))
+                        as f64,
+                    s as f64,
+                )
+                .width((value.bar_max - value.bar_min) as f64 / N_BARS as f64)
+            })
+            .collect();
+        ColorMap {
+            colors: value.colors,
+            min: value.min as f64,
+            max: value.max as f64,
+            bars,
+        }
+    }
 }
 
 const N_BARS: usize = 120;

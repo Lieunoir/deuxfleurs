@@ -1,9 +1,9 @@
+use crate::ui::UiDataElement;
+use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
-use crate::ui::UiDataElement;
-
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
 pub struct ColorSettings {
     pub color: [f32; 4],
 }

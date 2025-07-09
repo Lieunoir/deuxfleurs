@@ -1,10 +1,11 @@
 use crate::data::Colors;
 use egui::DragValue;
+use serde::{Deserialize, Serialize};
 use std::num::NonZeroU8;
 use wgpu::Color;
 
 /// Global rendering settings
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Settings {
     //vsync: bool,
     //show_fps: bool,

@@ -22,9 +22,9 @@ pub mod types;
 pub mod ui;
 mod util;
 mod window;
-use crate::point_cloud::DisplayPointCloud;
 use crate::segment::DisplaySegment;
 use crate::surface::geometry::DisplaySurface;
+use crate::{camera::Camera, point_cloud::DisplayPointCloud};
 pub use egui;
 use indexmap::IndexMap;
 pub use resources::{load_mesh, load_mesh_blocking};
@@ -53,5 +53,6 @@ pub fn init(settings: Settings) -> InitialState<impl FnMut(&mut egui::Ui, &mut R
         segments: IndexMap::new(),
         settings,
         callback: |_, _| {},
+        camera: Camera::new(1.),
     })
 }

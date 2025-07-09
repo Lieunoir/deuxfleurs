@@ -3,6 +3,7 @@ use super::{
 };
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
+use crate::window::{InnerBareState, InnerBareStateSerde};
 use crate::{Settings, deferred};
 
 use crate::picker::{self, Picked};
@@ -42,6 +43,7 @@ impl InnerGraphicalState {
         clouds: IndexMap<String, UninitedPointCloud>,
         segments: IndexMap<String, UninitedSegment>,
         settings: Settings,
+        camera: Camera,
         window: Option<Window>,
         proxy: Option<EventLoopProxy<UserEvent>>,
     ) -> Self {
@@ -137,7 +139,9 @@ impl InnerGraphicalState {
         //window.request_inner_size(PhysicalSize::new(width, height));
 
         // Bind the camera to the shaders
-        let camera = Camera::new(config.width as f32 / config.height as f32);
+        let mut new_camera = Camera::new(config.width as f32 / config.height as f32);
+        new_camera.set_from_camera(camera);
+        let camera = new_camera;
         let camera_controller = CameraController::new();
 
         let mut camera_uniform = CameraUniform::new();
@@ -915,12 +919,14 @@ impl InnerGraphicalState {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let file = rfd::FileDialog::new()
+                .set_parent(&*self.window.as_ref().unwrap())
                 .add_filter("obj", &["obj"])
                 .pick_file();
             if let Some(file_handle) = file {
                 let data = file_handle;
                 if let Some((mesh_v, mesh_f)) = crate::resources::load_mesh_blocking(data.into()) {
                     event_loop_proxy
+                        .unwrap()
                         .send_event(UserEvent::LoadMesh(mesh_v, mesh_f, name))
                         .ok();
                 }
@@ -945,6 +951,111 @@ impl InnerGraphicalState {
                 }
             };
             wasm_bindgen_futures::spawn_local(f);
+        }
+    }
+
+    pub(crate) fn save(&self) {
+        let surfaces = self
+            .surfaces
+            .iter()
+            .map(|(name, field)| (name.clone(), field.downgrade()))
+            .collect();
+        let clouds = self
+            .clouds
+            .iter()
+            .map(|(name, field)| (name.clone(), field.downgrade()))
+            .collect();
+        let segments = self
+            .segments
+            .iter()
+            .map(|(name, field)| (name.clone(), field.downgrade()))
+            .collect();
+        let bared = InnerBareStateSerde {
+            settings: self.settings.clone(),
+            camera: self.camera.clone(),
+            surfaces,
+            clouds,
+            segments,
+        };
+        if let Some(pathbuf) = rfd::FileDialog::new()
+            .set_file_name("deuxfleurs.cbor")
+            .set_parent(&*self.window.as_ref().unwrap())
+            .save_file()
+        {
+            if let Ok(file) = std::fs::File::options()
+                .write(true)
+                .create(true)
+                .open(pathbuf)
+            {
+                let buf_writer = std::io::BufWriter::new(file);
+                let _ = serde_cbor::to_writer(buf_writer, &bared);
+            }
+        }
+    }
+
+    pub(crate) fn load(&mut self) {
+        if let Some(pathbuf) = rfd::FileDialog::new()
+            .set_file_name("deuxfleurs.cbor")
+            .set_parent(&*self.window.as_ref().unwrap())
+            .pick_file()
+        {
+            if let Ok(file) = std::fs::File::options().read(true).open(pathbuf) {
+                let buf_reader = std::io::BufReader::new(file);
+                if let Ok(bared) = serde_cbor::from_reader::<
+                    InnerBareStateSerde,
+                    std::io::BufReader<std::fs::File>,
+                >(buf_reader)
+                {
+                    self.surfaces = bared
+                        .surfaces
+                        .into_iter()
+                        .map(|(name, field)| {
+                            (
+                                name,
+                                field.upgrade(
+                                    &self.device,
+                                    &self.camera_light_bind_group_layout,
+                                    &self.picker.bind_group_layout,
+                                    self.config.format,
+                                ),
+                            )
+                        })
+                        .collect();
+                    self.clouds = bared
+                        .clouds
+                        .into_iter()
+                        .map(|(name, field)| {
+                            (
+                                name,
+                                field.upgrade(
+                                    &self.device,
+                                    &self.camera_light_bind_group_layout,
+                                    &self.picker.bind_group_layout,
+                                    self.config.format,
+                                ),
+                            )
+                        })
+                        .collect();
+                    self.segments = bared
+                        .segments
+                        .into_iter()
+                        .map(|(name, field)| {
+                            (
+                                name,
+                                field.upgrade(
+                                    &self.device,
+                                    &self.camera_light_bind_group_layout,
+                                    &self.picker.bind_group_layout,
+                                    self.config.format,
+                                ),
+                            )
+                        })
+                        .collect();
+                    self.camera.set_from_camera(bared.camera);
+                    self.settings = bared.settings;
+                    self.dirty = true;
+                }
+            }
         }
     }
 }
@@ -990,6 +1101,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     init.0.surfaces,
                     init.0.clouds,
                     init.0.segments,
+                    init.0.camera,
                     init.0.settings,
                     window,
                     self.proxy.clone(),

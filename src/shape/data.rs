@@ -50,6 +50,8 @@ pub trait NewAttachedGeometry {
         transform_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry;
+
+    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self;
 }
 
 impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
@@ -91,6 +93,10 @@ impl NewAttachedGeometry for () {
         _color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry {
         EmptyAttached(())
+    }
+
+    fn downgrade(_upgraded: &Self::UpgradedAttachedGeometry) -> Self {
+        ()
     }
 }
 

@@ -11,6 +11,9 @@ pub use vector_field::VectorFieldSettingsMut;
 pub(crate) use vector_field::{NewVectorField, VectorField, VectorFieldSettings};
 
 pub(crate) mod internal {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Clone, Serialize, Deserialize)]
     pub enum AttachmentPosition {
         Vertex,
         Edge,
