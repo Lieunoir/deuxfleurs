@@ -676,6 +676,11 @@ impl<T: StateTrait> State<T> {
         Self(inner)
     }
 
+    /// Register a new surface. If an existing one with same number of vertices
+    /// and same faces exists, previous settings and data are recovered.
+    ///
+    /// See [`Surface`] and [`SurfaceMut`] for how to add data to the created
+    /// shape.
     pub fn register_surface<V: Vertices, I: Into<SurfaceIndices>>(
         &mut self,
         name: impl Into<String>,
@@ -707,6 +712,11 @@ impl<T: StateTrait> State<T> {
         );
     }
 
+    /// Register a new point cloud. If an existing one with same number of points
+    /// exists, previous settings and data are recovered.
+    ///
+    /// See [`PointCloud`] and [`PointCloudMut`] for how to add data to the created
+    /// shape.
     pub fn register_point_cloud<V: Vertices>(
         &mut self,
         name: impl Into<String>,
@@ -737,7 +747,11 @@ impl<T: StateTrait> State<T> {
             );
     }
 
-    /// Register list of segments
+    /// Register a list of segments. If an existing one with same number of points
+    /// and same connextions exists, previous settings and data are recovered.
+    ///
+    /// See [`Segment`] and [`SegmentMut`] for how to add data to the created
+    /// shape.
     ///
     /// Arguments :
     /// * `positions`: segments extremities

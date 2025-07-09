@@ -1,19 +1,39 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
+//! # Controls
+//! Currently touch constrols are only barely working.
+//!
+//! * Left click: rotate shape
+//! * Right click: pan shape
+//! * Mouse wheel: zoom/dezoom
+//! * `Ctrl`+`+`: zoom UI
+//! * `Ctrl`+`-`: dezoom UI
+//! * `Ctrl`+`C`: save current camera state to clipboard
+//! * `Ctrl`+`V`: load camera state from clipboard
+
 mod aabb;
+/// Data associated to a shape which have their own renderer.
+/// Wether they are shown or not does not affect other data.
 pub mod attachment;
 mod camera;
+/// Data rendered directly onto the associated shape. Only
+/// one can be displayed at a time on the corresponding
+/// shape.
 pub mod data;
 mod deferred;
 mod obj_load;
+/// Picked element types
 pub mod picker;
+/// Point clouds structs and associated data/settings
 pub mod point_cloud;
 mod resources;
 mod screenshot;
+/// Segment lists structs and associated data/settings
 pub mod segment;
 mod settings;
 mod shader;
 mod shape;
+/// Triangular surfaces structs and associated data/settings
 pub mod surface;
 mod texture;
 /// General types for genericity in functions parameters.
@@ -40,8 +60,8 @@ pub mod internal {
 }
 
 /// First initialization of the app. The resulting [`InitialState`]
-/// can then be used to register geometries and data. It the has to
-/// be ran.
+/// can then be used to register geometries and data. It then has
+/// to be ran to be displayed.
 ///
 /// Settings can also be parameterized by modifying [`get_settings_mut`]
 #[must_use]

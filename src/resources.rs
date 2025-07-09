@@ -43,6 +43,7 @@ async fn load_string(file_name: &str) -> Option<String> {
     }
 }
 
+/// Helper to load a mesh from an obj file
 pub async fn load_mesh(file_name: &str) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
     let obj_text = load_string(file_name).await?;
     let obj_cursor = Cursor::new(obj_text);
@@ -50,6 +51,7 @@ pub async fn load_mesh(file_name: &str) -> Option<(Vec<[f32; 3]>, SurfaceIndices
     Some(crate::obj_load::load_obj_buf(&mut obj_reader))
 }
 
+/// Helper to load a mesh from an obj file
 pub fn load_mesh_blocking(file_name: PathBuf) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
     Some(crate::obj_load::load_obj(file_name))
 }

@@ -137,9 +137,7 @@ pub trait ShapeGeometry {
 
     fn new(args: Self::Args) -> Self;
 
-    fn can_be_replaced_by(&self, _other: &Self) -> bool {
-        false
-    }
+    fn can_be_replaced_by(&self, _other: &Self) -> bool;
 
     fn get_positions(&self) -> &[[f32; 3]];
 
