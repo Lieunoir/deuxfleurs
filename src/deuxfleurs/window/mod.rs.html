@@ -676,379 +676,393 @@
 <a href=#676 id=676 data-nosnippet>676</a>        <span class="self">Self</span>(inner)
 <a href=#677 id=677 data-nosnippet>677</a>    }
 <a href=#678 id=678 data-nosnippet>678</a>
-<a href=#679 id=679 data-nosnippet>679</a>    <span class="kw">pub fn </span>register_surface&lt;V: Vertices, I: Into&lt;SurfaceIndices&gt;&gt;(
-<a href=#680 id=680 data-nosnippet>680</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#681 id=681 data-nosnippet>681</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
-<a href=#682 id=682 data-nosnippet>682</a>        vertices: V,
-<a href=#683 id=683 data-nosnippet>683</a>        indices: I,
-<a href=#684 id=684 data-nosnippet>684</a>    ) -&gt; SurfaceMut&lt;T::SurfaceRenderer, T::SurfaceAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt; {
-<a href=#685 id=685 data-nosnippet>685</a>        <span class="self">self</span>.<span class="number">0
-<a href=#686 id=686 data-nosnippet>686</a>            </span>.register(name.into(), (indices.into(), vertices.into()))
-<a href=#687 id=687 data-nosnippet>687</a>    }
-<a href=#688 id=688 data-nosnippet>688</a>
-<a href=#689 id=689 data-nosnippet>689</a>    <span class="kw">pub fn </span>get_surface_mut(
-<a href=#690 id=690 data-nosnippet>690</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#691 id=691 data-nosnippet>691</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#692 id=692 data-nosnippet>692</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;SurfaceMut&lt;T::SurfaceRenderer, T::SurfaceAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt;&gt; {
-<a href=#693 id=693 data-nosnippet>693</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape_mut(name)
-<a href=#694 id=694 data-nosnippet>694</a>    }
-<a href=#695 id=695 data-nosnippet>695</a>
-<a href=#696 id=696 data-nosnippet>696</a>    <span class="kw">pub fn </span>get_surface(
-<a href=#697 id=697 data-nosnippet>697</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#698 id=698 data-nosnippet>698</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#699 id=699 data-nosnippet>699</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Surface&lt;T::SurfaceRenderer, T::SurfaceAttachedData&gt;&gt; {
-<a href=#700 id=700 data-nosnippet>700</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape(name)
-<a href=#701 id=701 data-nosnippet>701</a>    }
-<a href=#702 id=702 data-nosnippet>702</a>
-<a href=#703 id=703 data-nosnippet>703</a>    <span class="kw">pub fn </span>remove_surface(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
-<a href=#704 id=704 data-nosnippet>704</a>        &lt;T <span class="kw">as </span>GeometryHolder&lt;Surface&lt;T::SurfaceRenderer, T::SurfaceAttachedData&gt;&gt;&gt;::remove_shape(
-<a href=#705 id=705 data-nosnippet>705</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>,
-<a href=#706 id=706 data-nosnippet>706</a>            name,
-<a href=#707 id=707 data-nosnippet>707</a>        );
-<a href=#708 id=708 data-nosnippet>708</a>    }
-<a href=#709 id=709 data-nosnippet>709</a>
-<a href=#710 id=710 data-nosnippet>710</a>    <span class="kw">pub fn </span>register_point_cloud&lt;V: Vertices&gt;(
-<a href=#711 id=711 data-nosnippet>711</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#712 id=712 data-nosnippet>712</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
-<a href=#713 id=713 data-nosnippet>713</a>        positions: V,
-<a href=#714 id=714 data-nosnippet>714</a>    ) -&gt; PointCloudMut&lt;T::PointCloudRenderer, T::PointCloudAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt; {
-<a href=#715 id=715 data-nosnippet>715</a>        <span class="self">self</span>.<span class="number">0</span>.register(name.into(), positions.into())
-<a href=#716 id=716 data-nosnippet>716</a>    }
-<a href=#717 id=717 data-nosnippet>717</a>
-<a href=#718 id=718 data-nosnippet>718</a>    <span class="kw">pub fn </span>get_point_cloud_mut(
-<a href=#719 id=719 data-nosnippet>719</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#720 id=720 data-nosnippet>720</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#721 id=721 data-nosnippet>721</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;PointCloudMut&lt;T::PointCloudRenderer, T::PointCloudAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt;&gt;
-<a href=#722 id=722 data-nosnippet>722</a>    {
-<a href=#723 id=723 data-nosnippet>723</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape_mut(name)
-<a href=#724 id=724 data-nosnippet>724</a>    }
-<a href=#725 id=725 data-nosnippet>725</a>
-<a href=#726 id=726 data-nosnippet>726</a>    <span class="kw">pub fn </span>get_point_cloud(
-<a href=#727 id=727 data-nosnippet>727</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#728 id=728 data-nosnippet>728</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#729 id=729 data-nosnippet>729</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PointCloud&lt;T::PointCloudRenderer, T::PointCloudAttachedData&gt;&gt; {
-<a href=#730 id=730 data-nosnippet>730</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape(name)
-<a href=#731 id=731 data-nosnippet>731</a>    }
-<a href=#732 id=732 data-nosnippet>732</a>
-<a href=#733 id=733 data-nosnippet>733</a>    <span class="kw">pub fn </span>remove_point_cloud(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
-<a href=#734 id=734 data-nosnippet>734</a>        &lt;T <span class="kw">as </span>GeometryHolder&lt;PointCloud&lt;T::PointCloudRenderer, T::PointCloudAttachedData&gt;&gt;&gt;::remove_shape(
-<a href=#735 id=735 data-nosnippet>735</a>                <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>,
-<a href=#736 id=736 data-nosnippet>736</a>                name,
-<a href=#737 id=737 data-nosnippet>737</a>            );
-<a href=#738 id=738 data-nosnippet>738</a>    }
-<a href=#739 id=739 data-nosnippet>739</a>
-<a href=#740 id=740 data-nosnippet>740</a>    <span class="doccomment">/// Register list of segments
-<a href=#741 id=741 data-nosnippet>741</a>    ///
-<a href=#742 id=742 data-nosnippet>742</a>    /// Arguments :
-<a href=#743 id=743 data-nosnippet>743</a>    /// * `positions`: segments extremities
-<a href=#744 id=744 data-nosnippet>744</a>    /// * `connections`: segments denoted by extremities indices
-<a href=#745 id=745 data-nosnippet>745</a>    </span><span class="kw">pub fn </span>register_segment&lt;V: Vertices&gt;(
-<a href=#746 id=746 data-nosnippet>746</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#747 id=747 data-nosnippet>747</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
-<a href=#748 id=748 data-nosnippet>748</a>        positions: V,
-<a href=#749 id=749 data-nosnippet>749</a>        connections: Vec&lt;[u32; <span class="number">2</span>]&gt;,
-<a href=#750 id=750 data-nosnippet>750</a>    ) -&gt; SegmentMut&lt;T::SegmentRenderer, T::SegmentAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt; {
-<a href=#751 id=751 data-nosnippet>751</a>        <span class="self">self</span>.<span class="number">0
-<a href=#752 id=752 data-nosnippet>752</a>            </span>.register(name.into(), (positions.into(), connections))
-<a href=#753 id=753 data-nosnippet>753</a>    }
-<a href=#754 id=754 data-nosnippet>754</a>
-<a href=#755 id=755 data-nosnippet>755</a>    <span class="kw">pub fn </span>get_segment_mut(
-<a href=#756 id=756 data-nosnippet>756</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#757 id=757 data-nosnippet>757</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#758 id=758 data-nosnippet>758</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;SegmentMut&lt;T::SegmentRenderer, T::SegmentAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt;&gt; {
-<a href=#759 id=759 data-nosnippet>759</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape_mut(name)
-<a href=#760 id=760 data-nosnippet>760</a>    }
-<a href=#761 id=761 data-nosnippet>761</a>
-<a href=#762 id=762 data-nosnippet>762</a>    <span class="kw">pub fn </span>get_segment(
-<a href=#763 id=763 data-nosnippet>763</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#764 id=764 data-nosnippet>764</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#765 id=765 data-nosnippet>765</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Segment&lt;T::SegmentRenderer, T::SegmentAttachedData&gt;&gt; {
-<a href=#766 id=766 data-nosnippet>766</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape(name)
+<a href=#679 id=679 data-nosnippet>679</a>    <span class="doccomment">/// Register a new surface. If an existing one with same number of vertices
+<a href=#680 id=680 data-nosnippet>680</a>    /// and same faces exists, previous settings and data are recovered.
+<a href=#681 id=681 data-nosnippet>681</a>    ///
+<a href=#682 id=682 data-nosnippet>682</a>    /// See [`Surface`] and [`SurfaceMut`] for how to add data to the created
+<a href=#683 id=683 data-nosnippet>683</a>    /// shape.
+<a href=#684 id=684 data-nosnippet>684</a>    </span><span class="kw">pub fn </span>register_surface&lt;V: Vertices, I: Into&lt;SurfaceIndices&gt;&gt;(
+<a href=#685 id=685 data-nosnippet>685</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#686 id=686 data-nosnippet>686</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
+<a href=#687 id=687 data-nosnippet>687</a>        vertices: V,
+<a href=#688 id=688 data-nosnippet>688</a>        indices: I,
+<a href=#689 id=689 data-nosnippet>689</a>    ) -&gt; SurfaceMut&lt;T::SurfaceRenderer, T::SurfaceAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt; {
+<a href=#690 id=690 data-nosnippet>690</a>        <span class="self">self</span>.<span class="number">0
+<a href=#691 id=691 data-nosnippet>691</a>            </span>.register(name.into(), (indices.into(), vertices.into()))
+<a href=#692 id=692 data-nosnippet>692</a>    }
+<a href=#693 id=693 data-nosnippet>693</a>
+<a href=#694 id=694 data-nosnippet>694</a>    <span class="kw">pub fn </span>get_surface_mut(
+<a href=#695 id=695 data-nosnippet>695</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#696 id=696 data-nosnippet>696</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#697 id=697 data-nosnippet>697</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;SurfaceMut&lt;T::SurfaceRenderer, T::SurfaceAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt;&gt; {
+<a href=#698 id=698 data-nosnippet>698</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape_mut(name)
+<a href=#699 id=699 data-nosnippet>699</a>    }
+<a href=#700 id=700 data-nosnippet>700</a>
+<a href=#701 id=701 data-nosnippet>701</a>    <span class="kw">pub fn </span>get_surface(
+<a href=#702 id=702 data-nosnippet>702</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#703 id=703 data-nosnippet>703</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#704 id=704 data-nosnippet>704</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Surface&lt;T::SurfaceRenderer, T::SurfaceAttachedData&gt;&gt; {
+<a href=#705 id=705 data-nosnippet>705</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape(name)
+<a href=#706 id=706 data-nosnippet>706</a>    }
+<a href=#707 id=707 data-nosnippet>707</a>
+<a href=#708 id=708 data-nosnippet>708</a>    <span class="kw">pub fn </span>remove_surface(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
+<a href=#709 id=709 data-nosnippet>709</a>        &lt;T <span class="kw">as </span>GeometryHolder&lt;Surface&lt;T::SurfaceRenderer, T::SurfaceAttachedData&gt;&gt;&gt;::remove_shape(
+<a href=#710 id=710 data-nosnippet>710</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>,
+<a href=#711 id=711 data-nosnippet>711</a>            name,
+<a href=#712 id=712 data-nosnippet>712</a>        );
+<a href=#713 id=713 data-nosnippet>713</a>    }
+<a href=#714 id=714 data-nosnippet>714</a>
+<a href=#715 id=715 data-nosnippet>715</a>    <span class="doccomment">/// Register a new point cloud. If an existing one with same number of points
+<a href=#716 id=716 data-nosnippet>716</a>    /// exists, previous settings and data are recovered.
+<a href=#717 id=717 data-nosnippet>717</a>    ///
+<a href=#718 id=718 data-nosnippet>718</a>    /// See [`PointCloud`] and [`PointCloudMut`] for how to add data to the created
+<a href=#719 id=719 data-nosnippet>719</a>    /// shape.
+<a href=#720 id=720 data-nosnippet>720</a>    </span><span class="kw">pub fn </span>register_point_cloud&lt;V: Vertices&gt;(
+<a href=#721 id=721 data-nosnippet>721</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#722 id=722 data-nosnippet>722</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
+<a href=#723 id=723 data-nosnippet>723</a>        positions: V,
+<a href=#724 id=724 data-nosnippet>724</a>    ) -&gt; PointCloudMut&lt;T::PointCloudRenderer, T::PointCloudAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt; {
+<a href=#725 id=725 data-nosnippet>725</a>        <span class="self">self</span>.<span class="number">0</span>.register(name.into(), positions.into())
+<a href=#726 id=726 data-nosnippet>726</a>    }
+<a href=#727 id=727 data-nosnippet>727</a>
+<a href=#728 id=728 data-nosnippet>728</a>    <span class="kw">pub fn </span>get_point_cloud_mut(
+<a href=#729 id=729 data-nosnippet>729</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#730 id=730 data-nosnippet>730</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#731 id=731 data-nosnippet>731</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;PointCloudMut&lt;T::PointCloudRenderer, T::PointCloudAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt;&gt;
+<a href=#732 id=732 data-nosnippet>732</a>    {
+<a href=#733 id=733 data-nosnippet>733</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape_mut(name)
+<a href=#734 id=734 data-nosnippet>734</a>    }
+<a href=#735 id=735 data-nosnippet>735</a>
+<a href=#736 id=736 data-nosnippet>736</a>    <span class="kw">pub fn </span>get_point_cloud(
+<a href=#737 id=737 data-nosnippet>737</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#738 id=738 data-nosnippet>738</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#739 id=739 data-nosnippet>739</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PointCloud&lt;T::PointCloudRenderer, T::PointCloudAttachedData&gt;&gt; {
+<a href=#740 id=740 data-nosnippet>740</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape(name)
+<a href=#741 id=741 data-nosnippet>741</a>    }
+<a href=#742 id=742 data-nosnippet>742</a>
+<a href=#743 id=743 data-nosnippet>743</a>    <span class="kw">pub fn </span>remove_point_cloud(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
+<a href=#744 id=744 data-nosnippet>744</a>        &lt;T <span class="kw">as </span>GeometryHolder&lt;PointCloud&lt;T::PointCloudRenderer, T::PointCloudAttachedData&gt;&gt;&gt;::remove_shape(
+<a href=#745 id=745 data-nosnippet>745</a>                <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>,
+<a href=#746 id=746 data-nosnippet>746</a>                name,
+<a href=#747 id=747 data-nosnippet>747</a>            );
+<a href=#748 id=748 data-nosnippet>748</a>    }
+<a href=#749 id=749 data-nosnippet>749</a>
+<a href=#750 id=750 data-nosnippet>750</a>    <span class="doccomment">/// Register a list of segments. If an existing one with same number of points
+<a href=#751 id=751 data-nosnippet>751</a>    /// and same connextions exists, previous settings and data are recovered.
+<a href=#752 id=752 data-nosnippet>752</a>    ///
+<a href=#753 id=753 data-nosnippet>753</a>    /// See [`Segment`] and [`SegmentMut`] for how to add data to the created
+<a href=#754 id=754 data-nosnippet>754</a>    /// shape.
+<a href=#755 id=755 data-nosnippet>755</a>    ///
+<a href=#756 id=756 data-nosnippet>756</a>    /// Arguments :
+<a href=#757 id=757 data-nosnippet>757</a>    /// * `positions`: segments extremities
+<a href=#758 id=758 data-nosnippet>758</a>    /// * `connections`: segments denoted by extremities indices
+<a href=#759 id=759 data-nosnippet>759</a>    </span><span class="kw">pub fn </span>register_segment&lt;V: Vertices&gt;(
+<a href=#760 id=760 data-nosnippet>760</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#761 id=761 data-nosnippet>761</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
+<a href=#762 id=762 data-nosnippet>762</a>        positions: V,
+<a href=#763 id=763 data-nosnippet>763</a>        connections: Vec&lt;[u32; <span class="number">2</span>]&gt;,
+<a href=#764 id=764 data-nosnippet>764</a>    ) -&gt; SegmentMut&lt;T::SegmentRenderer, T::SegmentAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt; {
+<a href=#765 id=765 data-nosnippet>765</a>        <span class="self">self</span>.<span class="number">0
+<a href=#766 id=766 data-nosnippet>766</a>            </span>.register(name.into(), (positions.into(), connections))
 <a href=#767 id=767 data-nosnippet>767</a>    }
 <a href=#768 id=768 data-nosnippet>768</a>
-<a href=#769 id=769 data-nosnippet>769</a>    <span class="kw">pub fn </span>remove_segment(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
-<a href=#770 id=770 data-nosnippet>770</a>        &lt;T <span class="kw">as </span>GeometryHolder&lt;Segment&lt;T::SegmentRenderer, T::SegmentAttachedData&gt;&gt;&gt;::remove_shape(
-<a href=#771 id=771 data-nosnippet>771</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>,
-<a href=#772 id=772 data-nosnippet>772</a>            name,
-<a href=#773 id=773 data-nosnippet>773</a>        );
+<a href=#769 id=769 data-nosnippet>769</a>    <span class="kw">pub fn </span>get_segment_mut(
+<a href=#770 id=770 data-nosnippet>770</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#771 id=771 data-nosnippet>771</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#772 id=772 data-nosnippet>772</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;SegmentMut&lt;T::SegmentRenderer, T::SegmentAttachedData, T::Context&lt;<span class="lifetime">'_</span>&gt;&gt;&gt; {
+<a href=#773 id=773 data-nosnippet>773</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape_mut(name)
 <a href=#774 id=774 data-nosnippet>774</a>    }
 <a href=#775 id=775 data-nosnippet>775</a>
-<a href=#776 id=776 data-nosnippet>776</a>    <span class="doccomment">/// Load app state from given file content.
-<a href=#777 id=777 data-nosnippet>777</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))))]
-<a href=#778 id=778 data-nosnippet>778</a>    #[cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))]
-<a href=#779 id=779 data-nosnippet>779</a>    </span><span class="kw">pub fn </span>load_from_state_file(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-<a href=#780 id=780 data-nosnippet>780</a>        <span class="kw">let </span>data = std::fs::read(path.as_ref()).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
-<a href=#781 id=781 data-nosnippet>781</a>        <span class="self">self</span>.<span class="number">0</span>.load_from_state_slice(<span class="kw-2">&amp;</span>data)
-<a href=#782 id=782 data-nosnippet>782</a>    }
-<a href=#783 id=783 data-nosnippet>783</a>
-<a href=#784 id=784 data-nosnippet>784</a>    <span class="doccomment">/// Load app state from given buffer.
-<a href=#785 id=785 data-nosnippet>785</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"saves"</span>)))]
-<a href=#786 id=786 data-nosnippet>786</a>    #[cfg(feature = <span class="string">"saves"</span>)]
-<a href=#787 id=787 data-nosnippet>787</a>    </span><span class="kw">pub fn </span>load_from_state_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-<a href=#788 id=788 data-nosnippet>788</a>        <span class="self">self</span>.<span class="number">0</span>.load_from_state_slice(data)
-<a href=#789 id=789 data-nosnippet>789</a>    }
-<a href=#790 id=790 data-nosnippet>790</a>
-<a href=#791 id=791 data-nosnippet>791</a>    <span class="doccomment">/// Save current state in cbor into chosen file.
-<a href=#792 id=792 data-nosnippet>792</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))))]
-<a href=#793 id=793 data-nosnippet>793</a>    #[cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))]
-<a href=#794 id=794 data-nosnippet>794</a>    </span><span class="kw">pub fn </span>save_state_file(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-<a href=#795 id=795 data-nosnippet>795</a>        <span class="kw">let </span>data = <span class="self">self</span>.<span class="number">0</span>.save_state_vec()<span class="question-mark">?</span>;
-<a href=#796 id=796 data-nosnippet>796</a>        std::fs::write(path.as_ref(), <span class="kw-2">&amp;</span>data).map_err(|<span class="kw">_</span>| ())
-<a href=#797 id=797 data-nosnippet>797</a>    }
-<a href=#798 id=798 data-nosnippet>798</a>
-<a href=#799 id=799 data-nosnippet>799</a>    <span class="doccomment">/// Save current state in cbor, downloaded in browser.
-<a href=#800 id=800 data-nosnippet>800</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, target_arch = <span class="string">"wasm32"</span>))))]
-<a href=#801 id=801 data-nosnippet>801</a>    #[cfg(all(feature = <span class="string">"saves"</span>, target_arch = <span class="string">"wasm32"</span>))]
-<a href=#802 id=802 data-nosnippet>802</a>    </span><span class="kw">pub fn </span>save_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-<a href=#803 id=803 data-nosnippet>803</a>        <span class="kw">let </span>data = <span class="self">self</span>.<span class="number">0</span>.save_state_vec()<span class="question-mark">?</span>;
-<a href=#804 id=804 data-nosnippet>804</a>        save_state(<span class="string">"deuxfleurs.cbor"</span>, <span class="kw-2">&amp;</span>data);
-<a href=#805 id=805 data-nosnippet>805</a>        <span class="prelude-val">Ok</span>(())
-<a href=#806 id=806 data-nosnippet>806</a>    }
-<a href=#807 id=807 data-nosnippet>807</a>
-<a href=#808 id=808 data-nosnippet>808</a>    <span class="doccomment">/// Save current state in cbor into buffer.
-<a href=#809 id=809 data-nosnippet>809</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"saves"</span>)))]
-<a href=#810 id=810 data-nosnippet>810</a>    #[cfg(feature = <span class="string">"saves"</span>)]
-<a href=#811 id=811 data-nosnippet>811</a>    </span><span class="kw">pub fn </span>save_state_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ()&gt; {
-<a href=#812 id=812 data-nosnippet>812</a>        <span class="self">self</span>.<span class="number">0</span>.save_state_vec()
-<a href=#813 id=813 data-nosnippet>813</a>    }
-<a href=#814 id=814 data-nosnippet>814</a>
-<a href=#815 id=815 data-nosnippet>815</a>    <span class="kw">pub fn </span>get_settings_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Settings {
-<a href=#816 id=816 data-nosnippet>816</a>        <span class="self">self</span>.<span class="number">0</span>.get_settings_mut()
-<a href=#817 id=817 data-nosnippet>817</a>    }
-<a href=#818 id=818 data-nosnippet>818</a>
-<a href=#819 id=819 data-nosnippet>819</a>    <span class="kw">pub fn </span>get_settings(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Settings {
-<a href=#820 id=820 data-nosnippet>820</a>        <span class="self">self</span>.<span class="number">0</span>.get_settings()
-<a href=#821 id=821 data-nosnippet>821</a>    }
-<a href=#822 id=822 data-nosnippet>822</a>
-<a href=#823 id=823 data-nosnippet>823</a>    <span class="kw">pub fn </span>set_camera(<span class="kw-2">&amp;mut </span><span class="self">self</span>, eye: [f32; <span class="number">3</span>], target: [f32; <span class="number">3</span>], up: [f32; <span class="number">3</span>]) {
-<a href=#824 id=824 data-nosnippet>824</a>        <span class="self">self</span>.<span class="number">0
-<a href=#825 id=825 data-nosnippet>825</a>            </span>.get_camera_mut()
-<a href=#826 id=826 data-nosnippet>826</a>            .set_from_eye_target_up(eye, target, up);
+<a href=#776 id=776 data-nosnippet>776</a>    <span class="kw">pub fn </span>get_segment(
+<a href=#777 id=777 data-nosnippet>777</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#778 id=778 data-nosnippet>778</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#779 id=779 data-nosnippet>779</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Segment&lt;T::SegmentRenderer, T::SegmentAttachedData&gt;&gt; {
+<a href=#780 id=780 data-nosnippet>780</a>        <span class="self">self</span>.<span class="number">0</span>.get_shape(name)
+<a href=#781 id=781 data-nosnippet>781</a>    }
+<a href=#782 id=782 data-nosnippet>782</a>
+<a href=#783 id=783 data-nosnippet>783</a>    <span class="kw">pub fn </span>remove_segment(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
+<a href=#784 id=784 data-nosnippet>784</a>        &lt;T <span class="kw">as </span>GeometryHolder&lt;Segment&lt;T::SegmentRenderer, T::SegmentAttachedData&gt;&gt;&gt;::remove_shape(
+<a href=#785 id=785 data-nosnippet>785</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>,
+<a href=#786 id=786 data-nosnippet>786</a>            name,
+<a href=#787 id=787 data-nosnippet>787</a>        );
+<a href=#788 id=788 data-nosnippet>788</a>    }
+<a href=#789 id=789 data-nosnippet>789</a>
+<a href=#790 id=790 data-nosnippet>790</a>    <span class="doccomment">/// Load app state from given file content.
+<a href=#791 id=791 data-nosnippet>791</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))))]
+<a href=#792 id=792 data-nosnippet>792</a>    #[cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))]
+<a href=#793 id=793 data-nosnippet>793</a>    </span><span class="kw">pub fn </span>load_from_state_file(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+<a href=#794 id=794 data-nosnippet>794</a>        <span class="kw">let </span>data = std::fs::read(path.as_ref()).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+<a href=#795 id=795 data-nosnippet>795</a>        <span class="self">self</span>.<span class="number">0</span>.load_from_state_slice(<span class="kw-2">&amp;</span>data)
+<a href=#796 id=796 data-nosnippet>796</a>    }
+<a href=#797 id=797 data-nosnippet>797</a>
+<a href=#798 id=798 data-nosnippet>798</a>    <span class="doccomment">/// Load app state from given buffer.
+<a href=#799 id=799 data-nosnippet>799</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"saves"</span>)))]
+<a href=#800 id=800 data-nosnippet>800</a>    #[cfg(feature = <span class="string">"saves"</span>)]
+<a href=#801 id=801 data-nosnippet>801</a>    </span><span class="kw">pub fn </span>load_from_state_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+<a href=#802 id=802 data-nosnippet>802</a>        <span class="self">self</span>.<span class="number">0</span>.load_from_state_slice(data)
+<a href=#803 id=803 data-nosnippet>803</a>    }
+<a href=#804 id=804 data-nosnippet>804</a>
+<a href=#805 id=805 data-nosnippet>805</a>    <span class="doccomment">/// Save current state in cbor into chosen file.
+<a href=#806 id=806 data-nosnippet>806</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))))]
+<a href=#807 id=807 data-nosnippet>807</a>    #[cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))]
+<a href=#808 id=808 data-nosnippet>808</a>    </span><span class="kw">pub fn </span>save_state_file(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+<a href=#809 id=809 data-nosnippet>809</a>        <span class="kw">let </span>data = <span class="self">self</span>.<span class="number">0</span>.save_state_vec()<span class="question-mark">?</span>;
+<a href=#810 id=810 data-nosnippet>810</a>        std::fs::write(path.as_ref(), <span class="kw-2">&amp;</span>data).map_err(|<span class="kw">_</span>| ())
+<a href=#811 id=811 data-nosnippet>811</a>    }
+<a href=#812 id=812 data-nosnippet>812</a>
+<a href=#813 id=813 data-nosnippet>813</a>    <span class="doccomment">/// Save current state in cbor, downloaded in browser.
+<a href=#814 id=814 data-nosnippet>814</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, target_arch = <span class="string">"wasm32"</span>))))]
+<a href=#815 id=815 data-nosnippet>815</a>    #[cfg(all(feature = <span class="string">"saves"</span>, target_arch = <span class="string">"wasm32"</span>))]
+<a href=#816 id=816 data-nosnippet>816</a>    </span><span class="kw">pub fn </span>save_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+<a href=#817 id=817 data-nosnippet>817</a>        <span class="kw">let </span>data = <span class="self">self</span>.<span class="number">0</span>.save_state_vec()<span class="question-mark">?</span>;
+<a href=#818 id=818 data-nosnippet>818</a>        save_state(<span class="string">"deuxfleurs.cbor"</span>, <span class="kw-2">&amp;</span>data);
+<a href=#819 id=819 data-nosnippet>819</a>        <span class="prelude-val">Ok</span>(())
+<a href=#820 id=820 data-nosnippet>820</a>    }
+<a href=#821 id=821 data-nosnippet>821</a>
+<a href=#822 id=822 data-nosnippet>822</a>    <span class="doccomment">/// Save current state in cbor into buffer.
+<a href=#823 id=823 data-nosnippet>823</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"saves"</span>)))]
+<a href=#824 id=824 data-nosnippet>824</a>    #[cfg(feature = <span class="string">"saves"</span>)]
+<a href=#825 id=825 data-nosnippet>825</a>    </span><span class="kw">pub fn </span>save_state_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ()&gt; {
+<a href=#826 id=826 data-nosnippet>826</a>        <span class="self">self</span>.<span class="number">0</span>.save_state_vec()
 <a href=#827 id=827 data-nosnippet>827</a>    }
 <a href=#828 id=828 data-nosnippet>828</a>
-<a href=#829 id=829 data-nosnippet>829</a>    <span class="doccomment">/// Result is `(eye, target, up)`.
-<a href=#830 id=830 data-nosnippet>830</a>    </span><span class="kw">pub fn </span>get_camera(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ([f32; <span class="number">3</span>], [f32; <span class="number">3</span>], [f32; <span class="number">3</span>]) {
-<a href=#831 id=831 data-nosnippet>831</a>        <span class="self">self</span>.<span class="number">0</span>.get_camera().as_eye_target_up()
-<a href=#832 id=832 data-nosnippet>832</a>    }
-<a href=#833 id=833 data-nosnippet>833</a>}
-<a href=#834 id=834 data-nosnippet>834</a>
-<a href=#835 id=835 data-nosnippet>835</a><span class="doccomment">/// Starting point to build the app.
-<a href=#836 id=836 data-nosnippet>836</a></span><span class="kw">pub type </span>InitialState&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; = State&lt;InnerBareState&lt;T&gt;&gt;;
-<a href=#837 id=837 data-nosnippet>837</a>
-<a href=#838 id=838 data-nosnippet>838</a><span class="kw">impl</span>&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; InitialState&lt;T&gt; {
-<a href=#839 id=839 data-nosnippet>839</a>    <span class="doccomment">/// Show the window and start the app.
-<a href=#840 id=840 data-nosnippet>840</a>    ///
-<a href=#841 id=841 data-nosnippet>841</a>    /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
-<a href=#842 id=842 data-nosnippet>842</a>    /// (allowing for dimensions in `%` and `vh`/`vw`).
-<a href=#843 id=843 data-nosnippet>843</a>    ///
-<a href=#844 id=844 data-nosnippet>844</a>    /// Arguments:
-<a href=#845 id=845 data-nosnippet>845</a>    /// * `width`: requested width of the app (no effect in wasm)
-<a href=#846 id=846 data-nosnippet>846</a>    /// * `height`: requested height of the app (no effect in wasm)
-<a href=#847 id=847 data-nosnippet>847</a>    /// * `id`: serves as window title, or id shape to attach to. If `None` uses `"State"`.
-<a href=#848 id=848 data-nosnippet>848</a>    ///
-<a href=#849 id=849 data-nosnippet>849</a>    /// ```
-<a href=#850 id=850 data-nosnippet>850</a>    /// use deuxfleurs::load_mesh;
-<a href=#851 id=851 data-nosnippet>851</a>    ///
-<a href=#852 id=852 data-nosnippet>852</a>    /// # fn main() {
-<a href=#853 id=853 data-nosnippet>853</a>    /// #     pollster::block_on(run());
-<a href=#854 id=854 data-nosnippet>854</a>    /// # }
-<a href=#855 id=855 data-nosnippet>855</a>    /// # pub async fn run() {
-<a href=#856 id=856 data-nosnippet>856</a>    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-<a href=#857 id=857 data-nosnippet>857</a>    /// let mut handle = deuxfleurs::init();
-<a href=#858 id=858 data-nosnippet>858</a>    /// handle.register_surface("Spot", spot_v, spot_f);
-<a href=#859 id=859 data-nosnippet>859</a>    /// let mut handle = handle.run(1920, 1080, Some("deuxfleurs"));
-<a href=#860 id=860 data-nosnippet>860</a>    /// # }
-<a href=#861 id=861 data-nosnippet>861</a>    /// ```
-<a href=#862 id=862 data-nosnippet>862</a>    </span><span class="kw">pub fn </span>run&lt;S: Into&lt;String&gt;&gt;(<span class="self">self</span>, width: u32, height: u32, id: <span class="prelude-ty">Option</span>&lt;S&gt;) {
-<a href=#863 id=863 data-nosnippet>863</a>        StateWrapper::run(<span class="self">self</span>, width, height, id.map(Into::into));
-<a href=#864 id=864 data-nosnippet>864</a>    }
-<a href=#865 id=865 data-nosnippet>865</a>
-<a href=#866 id=866 data-nosnippet>866</a>    <span class="doccomment">/// Run the app without a window. Allows running the app in environment where no
-<a href=#867 id=867 data-nosnippet>867</a>    /// display is available and taking screenshots automatically.
-<a href=#868 id=868 data-nosnippet>868</a>    ///
-<a href=#869 id=869 data-nosnippet>869</a>    /// Currently only available on non wasm targets, as webGL requires a context.
-<a href=#870 id=870 data-nosnippet>870</a>    ///
-<a href=#871 id=871 data-nosnippet>871</a>    /// ```
-<a href=#872 id=872 data-nosnippet>872</a>    /// use deuxfleurs::load_mesh;
-<a href=#873 id=873 data-nosnippet>873</a>    ///
-<a href=#874 id=874 data-nosnippet>874</a>    /// # fn main() {
-<a href=#875 id=875 data-nosnippet>875</a>    /// #     pollster::block_on(run());
-<a href=#876 id=876 data-nosnippet>876</a>    /// # }
-<a href=#877 id=877 data-nosnippet>877</a>    /// # pub async fn run() {
-<a href=#878 id=878 data-nosnippet>878</a>    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-<a href=#879 id=879 data-nosnippet>879</a>    /// let mut handle = deuxfleurs::init();
-<a href=#880 id=880 data-nosnippet>880</a>    /// handle.register_surface("Spot", spot_v, spot_f);
-<a href=#881 id=881 data-nosnippet>881</a>    /// let mut handle = handle.run_headless();
-<a href=#882 id=882 data-nosnippet>882</a>    /// handle.screenshot();
-<a href=#883 id=883 data-nosnippet>883</a>    /// # }
-<a href=#884 id=884 data-nosnippet>884</a>    /// ```
-<a href=#885 id=885 data-nosnippet>885</a>    </span><span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
-<a href=#886 id=886 data-nosnippet>886</a>    #[cfg_attr(docsrs, doc(cfg(not(target_arch = <span class="string">"wasm32"</span>))))]
-<a href=#887 id=887 data-nosnippet>887</a>    </span><span class="kw">pub fn </span>run_headless(<span class="self">self</span>) -&gt; RunningState {
-<a href=#888 id=888 data-nosnippet>888</a>        <span class="kw">let </span>inner = InnerGraphicalState::new(
-<a href=#889 id=889 data-nosnippet>889</a>            <span class="self">self</span>.<span class="number">0</span>.surfaces,
-<a href=#890 id=890 data-nosnippet>890</a>            <span class="self">self</span>.<span class="number">0</span>.clouds,
-<a href=#891 id=891 data-nosnippet>891</a>            <span class="self">self</span>.<span class="number">0</span>.segments,
-<a href=#892 id=892 data-nosnippet>892</a>            <span class="self">self</span>.<span class="number">0</span>.settings,
-<a href=#893 id=893 data-nosnippet>893</a>            <span class="self">self</span>.<span class="number">0</span>.camera,
-<a href=#894 id=894 data-nosnippet>894</a>            <span class="prelude-val">None</span>,
-<a href=#895 id=895 data-nosnippet>895</a>            <span class="prelude-val">None</span>,
-<a href=#896 id=896 data-nosnippet>896</a>        )
-<a href=#897 id=897 data-nosnippet>897</a>        .block_on();
-<a href=#898 id=898 data-nosnippet>898</a>        RunningState::new_inner(inner)
-<a href=#899 id=899 data-nosnippet>899</a>    }
-<a href=#900 id=900 data-nosnippet>900</a>
-<a href=#901 id=901 data-nosnippet>901</a>    <span class="doccomment">/// Specify a callback that will be called once every frame.
-<a href=#902 id=902 data-nosnippet>902</a>    ///
-<a href=#903 id=903 data-nosnippet>903</a>    /// Passes an [`egui::Ui`] and a [`RunningState`] arguments which can be
-<a href=#904 id=904 data-nosnippet>904</a>    /// used to add UI elements and modify state accordingly.
-<a href=#905 id=905 data-nosnippet>905</a>    </span><span class="kw">pub fn </span>with_callback&lt;U: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt;(
-<a href=#906 id=906 data-nosnippet>906</a>        <span class="self">self</span>,
-<a href=#907 id=907 data-nosnippet>907</a>        callback: U,
-<a href=#908 id=908 data-nosnippet>908</a>    ) -&gt; InitialState&lt;U&gt; {
-<a href=#909 id=909 data-nosnippet>909</a>        <span class="kw">let </span>InnerBareState {
-<a href=#910 id=910 data-nosnippet>910</a>            surfaces,
-<a href=#911 id=911 data-nosnippet>911</a>            clouds,
-<a href=#912 id=912 data-nosnippet>912</a>            segments,
-<a href=#913 id=913 data-nosnippet>913</a>            settings,
-<a href=#914 id=914 data-nosnippet>914</a>            camera,
-<a href=#915 id=915 data-nosnippet>915</a>            ..
-<a href=#916 id=916 data-nosnippet>916</a>        } = <span class="self">self</span>.<span class="number">0</span>;
-<a href=#917 id=917 data-nosnippet>917</a>        <span class="kw">let </span>inner = InnerBareState {
-<a href=#918 id=918 data-nosnippet>918</a>            surfaces,
-<a href=#919 id=919 data-nosnippet>919</a>            clouds,
-<a href=#920 id=920 data-nosnippet>920</a>            segments,
-<a href=#921 id=921 data-nosnippet>921</a>            settings,
-<a href=#922 id=922 data-nosnippet>922</a>            callback,
-<a href=#923 id=923 data-nosnippet>923</a>            camera,
-<a href=#924 id=924 data-nosnippet>924</a>        };
-<a href=#925 id=925 data-nosnippet>925</a>        InitialState::new_inner(inner)
-<a href=#926 id=926 data-nosnippet>926</a>    }
-<a href=#927 id=927 data-nosnippet>927</a>}
-<a href=#928 id=928 data-nosnippet>928</a>
-<a href=#929 id=929 data-nosnippet>929</a><span class="doccomment">/// Holds the application state. Starting point to add visualization datas.
-<a href=#930 id=930 data-nosnippet>930</a></span><span class="kw">pub type </span>RunningState = State&lt;InnerGraphicalState&gt;;
-<a href=#931 id=931 data-nosnippet>931</a>
-<a href=#932 id=932 data-nosnippet>932</a><span class="kw">struct </span>StateWrapper&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; {
-<a href=#933 id=933 data-nosnippet>933</a>    init_state: <span class="prelude-ty">Option</span>&lt;InitialState&lt;T&gt;&gt;,
-<a href=#934 id=934 data-nosnippet>934</a>    state: <span class="prelude-ty">Option</span>&lt;RunningState&gt;,
-<a href=#935 id=935 data-nosnippet>935</a>    ui: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::ui::UI&gt;,
-<a href=#936 id=936 data-nosnippet>936</a>    clipboard: <span class="prelude-ty">Option</span>&lt;Clipboard&gt;,
-<a href=#937 id=937 data-nosnippet>937</a>    callback: <span class="prelude-ty">Option</span>&lt;T&gt;,
-<a href=#938 id=938 data-nosnippet>938</a>    id: String,
-<a href=#939 id=939 data-nosnippet>939</a>    width: u32,
-<a href=#940 id=940 data-nosnippet>940</a>    height: u32,
-<a href=#941 id=941 data-nosnippet>941</a>    proxy: EventLoopProxy&lt;UserEvent&gt;,
-<a href=#942 id=942 data-nosnippet>942</a>}
-<a href=#943 id=943 data-nosnippet>943</a>
-<a href=#944 id=944 data-nosnippet>944</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>UserEvent {
-<a href=#945 id=945 data-nosnippet>945</a>    <span class="attr">#[cfg(feature = <span class="string">"obj_button"</span>)]
-<a href=#946 id=946 data-nosnippet>946</a>    </span>LoadMesh(Vec&lt;[f32; <span class="number">3</span>]&gt;, <span class="kw">crate</span>::types::SurfaceIndices, String),
-<a href=#947 id=947 data-nosnippet>947</a>    <span class="attr">#[cfg(feature = <span class="string">"saves"</span>)]
-<a href=#948 id=948 data-nosnippet>948</a>    </span>LoadState(InnerBareStateSerde),
-<a href=#949 id=949 data-nosnippet>949</a>    Paste(String),
-<a href=#950 id=950 data-nosnippet>950</a>    Pick,
-<a href=#951 id=951 data-nosnippet>951</a>}
-<a href=#952 id=952 data-nosnippet>952</a>
-<a href=#953 id=953 data-nosnippet>953</a><span class="kw">impl </span>Deref <span class="kw">for </span>RunningState {
-<a href=#954 id=954 data-nosnippet>954</a>    <span class="kw">type </span>Target = InnerGraphicalState;
-<a href=#955 id=955 data-nosnippet>955</a>
-<a href=#956 id=956 data-nosnippet>956</a>    <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
-<a href=#957 id=957 data-nosnippet>957</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
-<a href=#958 id=958 data-nosnippet>958</a>    </span>}
-<a href=#959 id=959 data-nosnippet>959</a>}
-<a href=#960 id=960 data-nosnippet>960</a>
-<a href=#961 id=961 data-nosnippet>961</a><span class="kw">impl </span>DerefMut <span class="kw">for </span>RunningState {
-<a href=#962 id=962 data-nosnippet>962</a>    <span class="kw">fn </span>deref_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Target {
-<a href=#963 id=963 data-nosnippet>963</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0
-<a href=#964 id=964 data-nosnippet>964</a>    </span>}
+<a href=#829 id=829 data-nosnippet>829</a>    <span class="kw">pub fn </span>get_settings_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Settings {
+<a href=#830 id=830 data-nosnippet>830</a>        <span class="self">self</span>.<span class="number">0</span>.get_settings_mut()
+<a href=#831 id=831 data-nosnippet>831</a>    }
+<a href=#832 id=832 data-nosnippet>832</a>
+<a href=#833 id=833 data-nosnippet>833</a>    <span class="kw">pub fn </span>get_settings(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Settings {
+<a href=#834 id=834 data-nosnippet>834</a>        <span class="self">self</span>.<span class="number">0</span>.get_settings()
+<a href=#835 id=835 data-nosnippet>835</a>    }
+<a href=#836 id=836 data-nosnippet>836</a>
+<a href=#837 id=837 data-nosnippet>837</a>    <span class="kw">pub fn </span>set_camera(<span class="kw-2">&amp;mut </span><span class="self">self</span>, eye: [f32; <span class="number">3</span>], target: [f32; <span class="number">3</span>], up: [f32; <span class="number">3</span>]) {
+<a href=#838 id=838 data-nosnippet>838</a>        <span class="self">self</span>.<span class="number">0
+<a href=#839 id=839 data-nosnippet>839</a>            </span>.get_camera_mut()
+<a href=#840 id=840 data-nosnippet>840</a>            .set_from_eye_target_up(eye, target, up);
+<a href=#841 id=841 data-nosnippet>841</a>    }
+<a href=#842 id=842 data-nosnippet>842</a>
+<a href=#843 id=843 data-nosnippet>843</a>    <span class="doccomment">/// Result is `(eye, target, up)`.
+<a href=#844 id=844 data-nosnippet>844</a>    </span><span class="kw">pub fn </span>get_camera(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ([f32; <span class="number">3</span>], [f32; <span class="number">3</span>], [f32; <span class="number">3</span>]) {
+<a href=#845 id=845 data-nosnippet>845</a>        <span class="self">self</span>.<span class="number">0</span>.get_camera().as_eye_target_up()
+<a href=#846 id=846 data-nosnippet>846</a>    }
+<a href=#847 id=847 data-nosnippet>847</a>}
+<a href=#848 id=848 data-nosnippet>848</a>
+<a href=#849 id=849 data-nosnippet>849</a><span class="doccomment">/// Starting point to build the app.
+<a href=#850 id=850 data-nosnippet>850</a></span><span class="kw">pub type </span>InitialState&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; = State&lt;InnerBareState&lt;T&gt;&gt;;
+<a href=#851 id=851 data-nosnippet>851</a>
+<a href=#852 id=852 data-nosnippet>852</a><span class="kw">impl</span>&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; InitialState&lt;T&gt; {
+<a href=#853 id=853 data-nosnippet>853</a>    <span class="doccomment">/// Show the window and start the app.
+<a href=#854 id=854 data-nosnippet>854</a>    ///
+<a href=#855 id=855 data-nosnippet>855</a>    /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
+<a href=#856 id=856 data-nosnippet>856</a>    /// (allowing for dimensions in `%` and `vh`/`vw`).
+<a href=#857 id=857 data-nosnippet>857</a>    ///
+<a href=#858 id=858 data-nosnippet>858</a>    /// Arguments:
+<a href=#859 id=859 data-nosnippet>859</a>    /// * `width`: requested width of the app (no effect in wasm)
+<a href=#860 id=860 data-nosnippet>860</a>    /// * `height`: requested height of the app (no effect in wasm)
+<a href=#861 id=861 data-nosnippet>861</a>    /// * `id`: serves as window title, or id shape to attach to. If `None` uses `"State"`.
+<a href=#862 id=862 data-nosnippet>862</a>    ///
+<a href=#863 id=863 data-nosnippet>863</a>    /// ```
+<a href=#864 id=864 data-nosnippet>864</a>    /// use deuxfleurs::load_mesh;
+<a href=#865 id=865 data-nosnippet>865</a>    ///
+<a href=#866 id=866 data-nosnippet>866</a>    /// # fn main() {
+<a href=#867 id=867 data-nosnippet>867</a>    /// #     pollster::block_on(run());
+<a href=#868 id=868 data-nosnippet>868</a>    /// # }
+<a href=#869 id=869 data-nosnippet>869</a>    /// # pub async fn run() {
+<a href=#870 id=870 data-nosnippet>870</a>    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
+<a href=#871 id=871 data-nosnippet>871</a>    /// let mut handle = deuxfleurs::init();
+<a href=#872 id=872 data-nosnippet>872</a>    /// handle.register_surface("Spot", spot_v, spot_f);
+<a href=#873 id=873 data-nosnippet>873</a>    /// let mut handle = handle.run(1920, 1080, Some("deuxfleurs"));
+<a href=#874 id=874 data-nosnippet>874</a>    /// # }
+<a href=#875 id=875 data-nosnippet>875</a>    /// ```
+<a href=#876 id=876 data-nosnippet>876</a>    </span><span class="kw">pub fn </span>run&lt;S: Into&lt;String&gt;&gt;(<span class="self">self</span>, width: u32, height: u32, id: <span class="prelude-ty">Option</span>&lt;S&gt;) {
+<a href=#877 id=877 data-nosnippet>877</a>        StateWrapper::run(<span class="self">self</span>, width, height, id.map(Into::into));
+<a href=#878 id=878 data-nosnippet>878</a>    }
+<a href=#879 id=879 data-nosnippet>879</a>
+<a href=#880 id=880 data-nosnippet>880</a>    <span class="doccomment">/// Run the app without a window. Allows running the app in environment where no
+<a href=#881 id=881 data-nosnippet>881</a>    /// display is available and taking screenshots automatically.
+<a href=#882 id=882 data-nosnippet>882</a>    ///
+<a href=#883 id=883 data-nosnippet>883</a>    /// Currently only available on non wasm targets, as webGL requires a context.
+<a href=#884 id=884 data-nosnippet>884</a>    ///
+<a href=#885 id=885 data-nosnippet>885</a>    /// ```
+<a href=#886 id=886 data-nosnippet>886</a>    /// use deuxfleurs::load_mesh;
+<a href=#887 id=887 data-nosnippet>887</a>    ///
+<a href=#888 id=888 data-nosnippet>888</a>    /// # fn main() {
+<a href=#889 id=889 data-nosnippet>889</a>    /// #     pollster::block_on(run());
+<a href=#890 id=890 data-nosnippet>890</a>    /// # }
+<a href=#891 id=891 data-nosnippet>891</a>    /// # pub async fn run() {
+<a href=#892 id=892 data-nosnippet>892</a>    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
+<a href=#893 id=893 data-nosnippet>893</a>    /// let mut handle = deuxfleurs::init();
+<a href=#894 id=894 data-nosnippet>894</a>    /// handle.register_surface("Spot", spot_v, spot_f);
+<a href=#895 id=895 data-nosnippet>895</a>    /// let mut handle = handle.run_headless();
+<a href=#896 id=896 data-nosnippet>896</a>    /// handle.screenshot();
+<a href=#897 id=897 data-nosnippet>897</a>    /// # }
+<a href=#898 id=898 data-nosnippet>898</a>    /// ```
+<a href=#899 id=899 data-nosnippet>899</a>    </span><span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+<a href=#900 id=900 data-nosnippet>900</a>    #[cfg_attr(docsrs, doc(cfg(not(target_arch = <span class="string">"wasm32"</span>))))]
+<a href=#901 id=901 data-nosnippet>901</a>    </span><span class="kw">pub fn </span>run_headless(<span class="self">self</span>) -&gt; RunningState {
+<a href=#902 id=902 data-nosnippet>902</a>        <span class="kw">let </span>inner = InnerGraphicalState::new(
+<a href=#903 id=903 data-nosnippet>903</a>            <span class="self">self</span>.<span class="number">0</span>.surfaces,
+<a href=#904 id=904 data-nosnippet>904</a>            <span class="self">self</span>.<span class="number">0</span>.clouds,
+<a href=#905 id=905 data-nosnippet>905</a>            <span class="self">self</span>.<span class="number">0</span>.segments,
+<a href=#906 id=906 data-nosnippet>906</a>            <span class="self">self</span>.<span class="number">0</span>.settings,
+<a href=#907 id=907 data-nosnippet>907</a>            <span class="self">self</span>.<span class="number">0</span>.camera,
+<a href=#908 id=908 data-nosnippet>908</a>            <span class="prelude-val">None</span>,
+<a href=#909 id=909 data-nosnippet>909</a>            <span class="prelude-val">None</span>,
+<a href=#910 id=910 data-nosnippet>910</a>        )
+<a href=#911 id=911 data-nosnippet>911</a>        .block_on();
+<a href=#912 id=912 data-nosnippet>912</a>        RunningState::new_inner(inner)
+<a href=#913 id=913 data-nosnippet>913</a>    }
+<a href=#914 id=914 data-nosnippet>914</a>
+<a href=#915 id=915 data-nosnippet>915</a>    <span class="doccomment">/// Specify a callback that will be called once every frame.
+<a href=#916 id=916 data-nosnippet>916</a>    ///
+<a href=#917 id=917 data-nosnippet>917</a>    /// Passes an [`egui::Ui`] and a [`RunningState`] arguments which can be
+<a href=#918 id=918 data-nosnippet>918</a>    /// used to add UI elements and modify state accordingly.
+<a href=#919 id=919 data-nosnippet>919</a>    </span><span class="kw">pub fn </span>with_callback&lt;U: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt;(
+<a href=#920 id=920 data-nosnippet>920</a>        <span class="self">self</span>,
+<a href=#921 id=921 data-nosnippet>921</a>        callback: U,
+<a href=#922 id=922 data-nosnippet>922</a>    ) -&gt; InitialState&lt;U&gt; {
+<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">let </span>InnerBareState {
+<a href=#924 id=924 data-nosnippet>924</a>            surfaces,
+<a href=#925 id=925 data-nosnippet>925</a>            clouds,
+<a href=#926 id=926 data-nosnippet>926</a>            segments,
+<a href=#927 id=927 data-nosnippet>927</a>            settings,
+<a href=#928 id=928 data-nosnippet>928</a>            camera,
+<a href=#929 id=929 data-nosnippet>929</a>            ..
+<a href=#930 id=930 data-nosnippet>930</a>        } = <span class="self">self</span>.<span class="number">0</span>;
+<a href=#931 id=931 data-nosnippet>931</a>        <span class="kw">let </span>inner = InnerBareState {
+<a href=#932 id=932 data-nosnippet>932</a>            surfaces,
+<a href=#933 id=933 data-nosnippet>933</a>            clouds,
+<a href=#934 id=934 data-nosnippet>934</a>            segments,
+<a href=#935 id=935 data-nosnippet>935</a>            settings,
+<a href=#936 id=936 data-nosnippet>936</a>            callback,
+<a href=#937 id=937 data-nosnippet>937</a>            camera,
+<a href=#938 id=938 data-nosnippet>938</a>        };
+<a href=#939 id=939 data-nosnippet>939</a>        InitialState::new_inner(inner)
+<a href=#940 id=940 data-nosnippet>940</a>    }
+<a href=#941 id=941 data-nosnippet>941</a>}
+<a href=#942 id=942 data-nosnippet>942</a>
+<a href=#943 id=943 data-nosnippet>943</a><span class="doccomment">/// Holds the application state. Starting point to add visualization datas.
+<a href=#944 id=944 data-nosnippet>944</a></span><span class="kw">pub type </span>RunningState = State&lt;InnerGraphicalState&gt;;
+<a href=#945 id=945 data-nosnippet>945</a>
+<a href=#946 id=946 data-nosnippet>946</a><span class="kw">struct </span>StateWrapper&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; {
+<a href=#947 id=947 data-nosnippet>947</a>    init_state: <span class="prelude-ty">Option</span>&lt;InitialState&lt;T&gt;&gt;,
+<a href=#948 id=948 data-nosnippet>948</a>    state: <span class="prelude-ty">Option</span>&lt;RunningState&gt;,
+<a href=#949 id=949 data-nosnippet>949</a>    ui: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::ui::UI&gt;,
+<a href=#950 id=950 data-nosnippet>950</a>    clipboard: <span class="prelude-ty">Option</span>&lt;Clipboard&gt;,
+<a href=#951 id=951 data-nosnippet>951</a>    callback: <span class="prelude-ty">Option</span>&lt;T&gt;,
+<a href=#952 id=952 data-nosnippet>952</a>    id: String,
+<a href=#953 id=953 data-nosnippet>953</a>    width: u32,
+<a href=#954 id=954 data-nosnippet>954</a>    height: u32,
+<a href=#955 id=955 data-nosnippet>955</a>    proxy: EventLoopProxy&lt;UserEvent&gt;,
+<a href=#956 id=956 data-nosnippet>956</a>}
+<a href=#957 id=957 data-nosnippet>957</a>
+<a href=#958 id=958 data-nosnippet>958</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>UserEvent {
+<a href=#959 id=959 data-nosnippet>959</a>    <span class="attr">#[cfg(feature = <span class="string">"obj_button"</span>)]
+<a href=#960 id=960 data-nosnippet>960</a>    </span>LoadMesh(Vec&lt;[f32; <span class="number">3</span>]&gt;, <span class="kw">crate</span>::types::SurfaceIndices, String),
+<a href=#961 id=961 data-nosnippet>961</a>    <span class="attr">#[cfg(feature = <span class="string">"saves"</span>)]
+<a href=#962 id=962 data-nosnippet>962</a>    </span>LoadState(InnerBareStateSerde),
+<a href=#963 id=963 data-nosnippet>963</a>    Paste(String),
+<a href=#964 id=964 data-nosnippet>964</a>    Pick,
 <a href=#965 id=965 data-nosnippet>965</a>}
 <a href=#966 id=966 data-nosnippet>966</a>
-<a href=#967 id=967 data-nosnippet>967</a><span class="kw">impl </span>RunningState {
-<a href=#968 id=968 data-nosnippet>968</a>    <span class="kw">async fn </span>new(
-<a href=#969 id=969 data-nosnippet>969</a>        surfaces: IndexMap&lt;String, UninitedSurface&gt;,
-<a href=#970 id=970 data-nosnippet>970</a>        clouds: IndexMap&lt;String, UninitedPointCloud&gt;,
-<a href=#971 id=971 data-nosnippet>971</a>        segments: IndexMap&lt;String, UninitedSegment&gt;,
-<a href=#972 id=972 data-nosnippet>972</a>        camera: Camera,
-<a href=#973 id=973 data-nosnippet>973</a>        settings: Settings,
-<a href=#974 id=974 data-nosnippet>974</a>        window: Window,
-<a href=#975 id=975 data-nosnippet>975</a>        proxy: EventLoopProxy&lt;UserEvent&gt;,
-<a href=#976 id=976 data-nosnippet>976</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#977 id=977 data-nosnippet>977</a>        <span class="kw">let </span>inner = InnerGraphicalState::new(
-<a href=#978 id=978 data-nosnippet>978</a>            surfaces,
-<a href=#979 id=979 data-nosnippet>979</a>            clouds,
-<a href=#980 id=980 data-nosnippet>980</a>            segments,
-<a href=#981 id=981 data-nosnippet>981</a>            settings,
-<a href=#982 id=982 data-nosnippet>982</a>            camera,
-<a href=#983 id=983 data-nosnippet>983</a>            <span class="prelude-val">Some</span>(window),
-<a href=#984 id=984 data-nosnippet>984</a>            <span class="prelude-val">Some</span>(proxy),
-<a href=#985 id=985 data-nosnippet>985</a>        )
-<a href=#986 id=986 data-nosnippet>986</a>        .<span class="kw">await</span>;
-<a href=#987 id=987 data-nosnippet>987</a>        <span class="self">Self</span>::new_inner(inner)
-<a href=#988 id=988 data-nosnippet>988</a>    }
-<a href=#989 id=989 data-nosnippet>989</a>
-<a href=#990 id=990 data-nosnippet>990</a>    <span class="doccomment">/// Fit camera and ground to match the visible shapes
-<a href=#991 id=991 data-nosnippet>991</a>    </span><span class="kw">pub fn </span>resize_scene(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#992 id=992 data-nosnippet>992</a>        <span class="self">self</span>.<span class="number">0</span>.resize_scene();
-<a href=#993 id=993 data-nosnippet>993</a>    }
-<a href=#994 id=994 data-nosnippet>994</a>
-<a href=#995 id=995 data-nosnippet>995</a>    <span class="doccomment">/// Take a screenshot of the scene. The screenshot is then
-<a href=#996 id=996 data-nosnippet>996</a>    /// saved on disk under the name `screenshot_[nnn].png`, with
-<a href=#997 id=997 data-nosnippet>997</a>    /// `nnn` incrementing each time.
-<a href=#998 id=998 data-nosnippet>998</a>    </span><span class="kw">pub fn </span>screenshot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#999 id=999 data-nosnippet>999</a>        <span class="self">self</span>.<span class="number">0</span>.screenshot();
-<a href=#1000 id=1000 data-nosnippet>1000</a>    }
-<a href=#1001 id=1001 data-nosnippet>1001</a>
-<a href=#1002 id=1002 data-nosnippet>1002</a>    <span class="doccomment">/// Take a screenshot of the scene. The screenshot is then
-<a href=#1003 id=1003 data-nosnippet>1003</a>    /// returned as a vector oy bytes, each storing `r` `g` `b`
-<a href=#1004 id=1004 data-nosnippet>1004</a>    /// `a` (in order) values of each pixel.
-<a href=#1005 id=1005 data-nosnippet>1005</a>    ///
-<a href=#1006 id=1006 data-nosnippet>1006</a>    /// Should not fail, unless internal buffer storage is
-<a href=#1007 id=1007 data-nosnippet>1007</a>    /// messed up.
-<a href=#1008 id=1008 data-nosnippet>1008</a>    </span><span class="kw">pub fn </span>screenshot_to_buffer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ()&gt; {
-<a href=#1009 id=1009 data-nosnippet>1009</a>        <span class="self">self</span>.<span class="number">0</span>.screenshot_to_buffer()
-<a href=#1010 id=1010 data-nosnippet>1010</a>    }
-<a href=#1011 id=1011 data-nosnippet>1011</a>
-<a href=#1012 id=1012 data-nosnippet>1012</a>    <span class="doccomment">/// Get current selected object: first the name, then index `i` and type of the selected element
-<a href=#1013 id=1013 data-nosnippet>1013</a>    </span><span class="kw">pub fn </span>get_picked(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;(String, Picked)&gt; {
-<a href=#1014 id=1014 data-nosnippet>1014</a>        <span class="self">self</span>.<span class="number">0</span>.get_picked()
-<a href=#1015 id=1015 data-nosnippet>1015</a>    }
-<a href=#1016 id=1016 data-nosnippet>1016</a>
-<a href=#1017 id=1017 data-nosnippet>1017</a>    <span class="doccomment">/// Politely ask to render the next frame, even if no change is detected
-<a href=#1018 id=1018 data-nosnippet>1018</a>    </span><span class="kw">pub fn </span>refresh(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#1019 id=1019 data-nosnippet>1019</a>        <span class="self">self</span>.<span class="number">0</span>.refresh();
-<a href=#1020 id=1020 data-nosnippet>1020</a>    }
-<a href=#1021 id=1021 data-nosnippet>1021</a>}
-<a href=#1022 id=1022 data-nosnippet>1022</a>
-<a href=#1023 id=1023 data-nosnippet>1023</a><span class="kw">impl</span>&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; StateWrapper&lt;T&gt; {
-<a href=#1024 id=1024 data-nosnippet>1024</a>    <span class="kw">fn </span>run(init_state: InitialState&lt;T&gt;, width: u32, height: u32, id: <span class="prelude-ty">Option</span>&lt;String&gt;) {
-<a href=#1025 id=1025 data-nosnippet>1025</a>        <span class="kw">let </span>id = id.unwrap_or(<span class="string">"deuxfleurs"</span>.into());
-<a href=#1026 id=1026 data-nosnippet>1026</a>        <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
-<a href=#1027 id=1027 data-nosnippet>1027</a>        </span>{
-<a href=#1028 id=1028 data-nosnippet>1028</a>            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-<a href=#1029 id=1029 data-nosnippet>1029</a>        }
-<a href=#1030 id=1030 data-nosnippet>1030</a>        <span class="attr">#[cfg(feature = <span class="string">"logger"</span>)]
-<a href=#1031 id=1031 data-nosnippet>1031</a>        </span><span class="macro">cfg_if::cfg_if!</span> {
-<a href=#1032 id=1032 data-nosnippet>1032</a>            <span class="kw">if </span><span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)] </span>{
-<a href=#1033 id=1033 data-nosnippet>1033</a>                console_log::init_with_level(log::Level::Warn).expect(<span class="string">"Couldn't initialize logger"</span>);
-<a href=#1034 id=1034 data-nosnippet>1034</a>            } <span class="kw">else </span>{
-<a href=#1035 id=1035 data-nosnippet>1035</a>                env_logger::init();
-<a href=#1036 id=1036 data-nosnippet>1036</a>            }
-<a href=#1037 id=1037 data-nosnippet>1037</a>        }
-<a href=#1038 id=1038 data-nosnippet>1038</a>
-<a href=#1039 id=1039 data-nosnippet>1039</a>        <span class="kw">let </span>event_loop = EventLoop::&lt;UserEvent&gt;::with_user_event().build().unwrap();
-<a href=#1040 id=1040 data-nosnippet>1040</a>        <span class="kw">let </span>proxy = event_loop.create_proxy();
-<a href=#1041 id=1041 data-nosnippet>1041</a>        <span class="kw">let </span><span class="kw-2">mut </span>app = <span class="self">Self </span>{
-<a href=#1042 id=1042 data-nosnippet>1042</a>            init_state: <span class="prelude-val">Some</span>(init_state),
-<a href=#1043 id=1043 data-nosnippet>1043</a>            state: <span class="prelude-val">None</span>,
-<a href=#1044 id=1044 data-nosnippet>1044</a>            clipboard: <span class="prelude-val">None</span>,
-<a href=#1045 id=1045 data-nosnippet>1045</a>            callback: <span class="prelude-val">None</span>,
-<a href=#1046 id=1046 data-nosnippet>1046</a>            ui: <span class="prelude-val">None</span>,
-<a href=#1047 id=1047 data-nosnippet>1047</a>            id,
-<a href=#1048 id=1048 data-nosnippet>1048</a>            width,
-<a href=#1049 id=1049 data-nosnippet>1049</a>            height,
-<a href=#1050 id=1050 data-nosnippet>1050</a>            proxy,
-<a href=#1051 id=1051 data-nosnippet>1051</a>        };
-<a href=#1052 id=1052 data-nosnippet>1052</a>        event_loop.run_app(<span class="kw-2">&amp;mut </span>app).unwrap();
-<a href=#1053 id=1053 data-nosnippet>1053</a>    }
-<a href=#1054 id=1054 data-nosnippet>1054</a>}</code></pre></div></section></main></body></html>
+<a href=#967 id=967 data-nosnippet>967</a><span class="kw">impl </span>Deref <span class="kw">for </span>RunningState {
+<a href=#968 id=968 data-nosnippet>968</a>    <span class="kw">type </span>Target = InnerGraphicalState;
+<a href=#969 id=969 data-nosnippet>969</a>
+<a href=#970 id=970 data-nosnippet>970</a>    <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
+<a href=#971 id=971 data-nosnippet>971</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
+<a href=#972 id=972 data-nosnippet>972</a>    </span>}
+<a href=#973 id=973 data-nosnippet>973</a>}
+<a href=#974 id=974 data-nosnippet>974</a>
+<a href=#975 id=975 data-nosnippet>975</a><span class="kw">impl </span>DerefMut <span class="kw">for </span>RunningState {
+<a href=#976 id=976 data-nosnippet>976</a>    <span class="kw">fn </span>deref_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Target {
+<a href=#977 id=977 data-nosnippet>977</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0
+<a href=#978 id=978 data-nosnippet>978</a>    </span>}
+<a href=#979 id=979 data-nosnippet>979</a>}
+<a href=#980 id=980 data-nosnippet>980</a>
+<a href=#981 id=981 data-nosnippet>981</a><span class="kw">impl </span>RunningState {
+<a href=#982 id=982 data-nosnippet>982</a>    <span class="kw">async fn </span>new(
+<a href=#983 id=983 data-nosnippet>983</a>        surfaces: IndexMap&lt;String, UninitedSurface&gt;,
+<a href=#984 id=984 data-nosnippet>984</a>        clouds: IndexMap&lt;String, UninitedPointCloud&gt;,
+<a href=#985 id=985 data-nosnippet>985</a>        segments: IndexMap&lt;String, UninitedSegment&gt;,
+<a href=#986 id=986 data-nosnippet>986</a>        camera: Camera,
+<a href=#987 id=987 data-nosnippet>987</a>        settings: Settings,
+<a href=#988 id=988 data-nosnippet>988</a>        window: Window,
+<a href=#989 id=989 data-nosnippet>989</a>        proxy: EventLoopProxy&lt;UserEvent&gt;,
+<a href=#990 id=990 data-nosnippet>990</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#991 id=991 data-nosnippet>991</a>        <span class="kw">let </span>inner = InnerGraphicalState::new(
+<a href=#992 id=992 data-nosnippet>992</a>            surfaces,
+<a href=#993 id=993 data-nosnippet>993</a>            clouds,
+<a href=#994 id=994 data-nosnippet>994</a>            segments,
+<a href=#995 id=995 data-nosnippet>995</a>            settings,
+<a href=#996 id=996 data-nosnippet>996</a>            camera,
+<a href=#997 id=997 data-nosnippet>997</a>            <span class="prelude-val">Some</span>(window),
+<a href=#998 id=998 data-nosnippet>998</a>            <span class="prelude-val">Some</span>(proxy),
+<a href=#999 id=999 data-nosnippet>999</a>        )
+<a href=#1000 id=1000 data-nosnippet>1000</a>        .<span class="kw">await</span>;
+<a href=#1001 id=1001 data-nosnippet>1001</a>        <span class="self">Self</span>::new_inner(inner)
+<a href=#1002 id=1002 data-nosnippet>1002</a>    }
+<a href=#1003 id=1003 data-nosnippet>1003</a>
+<a href=#1004 id=1004 data-nosnippet>1004</a>    <span class="doccomment">/// Fit camera and ground to match the visible shapes
+<a href=#1005 id=1005 data-nosnippet>1005</a>    </span><span class="kw">pub fn </span>resize_scene(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#1006 id=1006 data-nosnippet>1006</a>        <span class="self">self</span>.<span class="number">0</span>.resize_scene();
+<a href=#1007 id=1007 data-nosnippet>1007</a>    }
+<a href=#1008 id=1008 data-nosnippet>1008</a>
+<a href=#1009 id=1009 data-nosnippet>1009</a>    <span class="doccomment">/// Take a screenshot of the scene. The screenshot is then
+<a href=#1010 id=1010 data-nosnippet>1010</a>    /// saved on disk under the name `screenshot_[nnn].png`, with
+<a href=#1011 id=1011 data-nosnippet>1011</a>    /// `nnn` incrementing each time.
+<a href=#1012 id=1012 data-nosnippet>1012</a>    </span><span class="kw">pub fn </span>screenshot(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="self">self</span>.<span class="number">0</span>.screenshot();
+<a href=#1014 id=1014 data-nosnippet>1014</a>    }
+<a href=#1015 id=1015 data-nosnippet>1015</a>
+<a href=#1016 id=1016 data-nosnippet>1016</a>    <span class="doccomment">/// Take a screenshot of the scene. The screenshot is then
+<a href=#1017 id=1017 data-nosnippet>1017</a>    /// returned as a vector oy bytes, each storing `r` `g` `b`
+<a href=#1018 id=1018 data-nosnippet>1018</a>    /// `a` (in order) values of each pixel.
+<a href=#1019 id=1019 data-nosnippet>1019</a>    ///
+<a href=#1020 id=1020 data-nosnippet>1020</a>    /// Should not fail, unless internal buffer storage is
+<a href=#1021 id=1021 data-nosnippet>1021</a>    /// messed up.
+<a href=#1022 id=1022 data-nosnippet>1022</a>    </span><span class="kw">pub fn </span>screenshot_to_buffer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ()&gt; {
+<a href=#1023 id=1023 data-nosnippet>1023</a>        <span class="self">self</span>.<span class="number">0</span>.screenshot_to_buffer()
+<a href=#1024 id=1024 data-nosnippet>1024</a>    }
+<a href=#1025 id=1025 data-nosnippet>1025</a>
+<a href=#1026 id=1026 data-nosnippet>1026</a>    <span class="doccomment">/// Get current selected object: first the name, then index `i` and type of the selected element
+<a href=#1027 id=1027 data-nosnippet>1027</a>    </span><span class="kw">pub fn </span>get_picked(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;(String, Picked)&gt; {
+<a href=#1028 id=1028 data-nosnippet>1028</a>        <span class="self">self</span>.<span class="number">0</span>.get_picked()
+<a href=#1029 id=1029 data-nosnippet>1029</a>    }
+<a href=#1030 id=1030 data-nosnippet>1030</a>
+<a href=#1031 id=1031 data-nosnippet>1031</a>    <span class="doccomment">/// Politely ask to render the next frame, even if no change is detected
+<a href=#1032 id=1032 data-nosnippet>1032</a>    </span><span class="kw">pub fn </span>refresh(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#1033 id=1033 data-nosnippet>1033</a>        <span class="self">self</span>.<span class="number">0</span>.refresh();
+<a href=#1034 id=1034 data-nosnippet>1034</a>    }
+<a href=#1035 id=1035 data-nosnippet>1035</a>}
+<a href=#1036 id=1036 data-nosnippet>1036</a>
+<a href=#1037 id=1037 data-nosnippet>1037</a><span class="kw">impl</span>&lt;T: FnMut(<span class="kw-2">&amp;mut </span>egui::Ui, <span class="kw-2">&amp;mut </span>RunningState)&gt; StateWrapper&lt;T&gt; {
+<a href=#1038 id=1038 data-nosnippet>1038</a>    <span class="kw">fn </span>run(init_state: InitialState&lt;T&gt;, width: u32, height: u32, id: <span class="prelude-ty">Option</span>&lt;String&gt;) {
+<a href=#1039 id=1039 data-nosnippet>1039</a>        <span class="kw">let </span>id = id.unwrap_or(<span class="string">"deuxfleurs"</span>.into());
+<a href=#1040 id=1040 data-nosnippet>1040</a>        <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
+<a href=#1041 id=1041 data-nosnippet>1041</a>        </span>{
+<a href=#1042 id=1042 data-nosnippet>1042</a>            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+<a href=#1043 id=1043 data-nosnippet>1043</a>        }
+<a href=#1044 id=1044 data-nosnippet>1044</a>        <span class="attr">#[cfg(feature = <span class="string">"logger"</span>)]
+<a href=#1045 id=1045 data-nosnippet>1045</a>        </span><span class="macro">cfg_if::cfg_if!</span> {
+<a href=#1046 id=1046 data-nosnippet>1046</a>            <span class="kw">if </span><span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)] </span>{
+<a href=#1047 id=1047 data-nosnippet>1047</a>                console_log::init_with_level(log::Level::Warn).expect(<span class="string">"Couldn't initialize logger"</span>);
+<a href=#1048 id=1048 data-nosnippet>1048</a>            } <span class="kw">else </span>{
+<a href=#1049 id=1049 data-nosnippet>1049</a>                env_logger::init();
+<a href=#1050 id=1050 data-nosnippet>1050</a>            }
+<a href=#1051 id=1051 data-nosnippet>1051</a>        }
+<a href=#1052 id=1052 data-nosnippet>1052</a>
+<a href=#1053 id=1053 data-nosnippet>1053</a>        <span class="kw">let </span>event_loop = EventLoop::&lt;UserEvent&gt;::with_user_event().build().unwrap();
+<a href=#1054 id=1054 data-nosnippet>1054</a>        <span class="kw">let </span>proxy = event_loop.create_proxy();
+<a href=#1055 id=1055 data-nosnippet>1055</a>        <span class="kw">let </span><span class="kw-2">mut </span>app = <span class="self">Self </span>{
+<a href=#1056 id=1056 data-nosnippet>1056</a>            init_state: <span class="prelude-val">Some</span>(init_state),
+<a href=#1057 id=1057 data-nosnippet>1057</a>            state: <span class="prelude-val">None</span>,
+<a href=#1058 id=1058 data-nosnippet>1058</a>            clipboard: <span class="prelude-val">None</span>,
+<a href=#1059 id=1059 data-nosnippet>1059</a>            callback: <span class="prelude-val">None</span>,
+<a href=#1060 id=1060 data-nosnippet>1060</a>            ui: <span class="prelude-val">None</span>,
+<a href=#1061 id=1061 data-nosnippet>1061</a>            id,
+<a href=#1062 id=1062 data-nosnippet>1062</a>            width,
+<a href=#1063 id=1063 data-nosnippet>1063</a>            height,
+<a href=#1064 id=1064 data-nosnippet>1064</a>            proxy,
+<a href=#1065 id=1065 data-nosnippet>1065</a>        };
+<a href=#1066 id=1066 data-nosnippet>1066</a>        event_loop.run_app(<span class="kw-2">&amp;mut </span>app).unwrap();
+<a href=#1067 id=1067 data-nosnippet>1067</a>    }
+<a href=#1068 id=1068 data-nosnippet>1068</a>}</code></pre></div></section></main></body></html>
