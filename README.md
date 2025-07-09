@@ -14,11 +14,9 @@ Can be used in webpages thanks to wasm, so web-based slides can include demos, o
 
 Here's a quick example that loads a mesh and uses a button to show/hide it:
 ```rust
-use deuxfleurs::{load_mesh, Settings};
+use deuxfleurs::load_mesh;
 // Init the app
-let mut handle = deuxfleurs::init(
-    Settings::default(),
-);
+let mut handle = deuxfleurs::init();
 // Load the mesh and register it:
 let (v, f) = load_mesh("bunny.obj").await.unwrap();
 handle.register_surface("bunny", v, f);

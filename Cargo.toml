@@ -69,6 +69,11 @@ name = "load_filter"
 path = "examples/load_filter.rs"
 required-features = ["obj_button"]
 
+[[example]]
+name = "load_state"
+path = "examples/load_state.rs"
+required-features = ["saves"]
+
 # WASM specific dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"

@@ -1,5 +1,5 @@
 use deuxfleurs::{
-    Settings, load_mesh,
+    load_mesh,
     picker::{Picked, SurfacePicked},
 };
 
@@ -12,7 +12,7 @@ fn main() {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
-    let mut handle = deuxfleurs::init(Settings::default());
+    let mut handle = deuxfleurs::init();
     let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
     let num_edges = spot_v.len() + spot_f.size() - 2;
     handle.register_surface("spot", spot_v, spot_f);

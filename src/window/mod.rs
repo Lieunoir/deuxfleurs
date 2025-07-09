@@ -776,8 +776,8 @@ impl<T: StateTrait> State<T> {
     /// Load app state from given file content.
     #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", not(target_arch = "wasm32")))))]
     #[cfg(all(feature = "saves", not(target_arch = "wasm32")))]
-    pub fn load_from_state_file(&mut self, path: &std::path::Path) -> Result<(), ()> {
-        let data = std::fs::read(path).map_err(|_| ())?;
+    pub fn load_from_state_file(&mut self, path: impl AsRef<std::path::Path>) -> Result<(), ()> {
+        let data = std::fs::read(path.as_ref()).map_err(|_| ())?;
         self.0.load_from_state_slice(&data)
     }
 
@@ -791,9 +791,9 @@ impl<T: StateTrait> State<T> {
     /// Save current state in cbor into chosen file.
     #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", not(target_arch = "wasm32")))))]
     #[cfg(all(feature = "saves", not(target_arch = "wasm32")))]
-    pub fn save_state_file(&self, path: &std::path::Path) -> Result<(), ()> {
+    pub fn save_state_file(&self, path: impl AsRef<std::path::Path>) -> Result<(), ()> {
         let data = self.0.save_state_vec()?;
-        std::fs::write(path, &data).map_err(|_| ())
+        std::fs::write(path.as_ref(), &data).map_err(|_| ())
     }
 
     /// Save current state in cbor, downloaded in browser.
@@ -847,14 +847,14 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     /// * `id`: serves as window title, or id shape to attach to. If `None` uses `"State"`.
     ///
     /// ```
-    /// use deuxfleurs::{Settings, load_mesh};
+    /// use deuxfleurs::load_mesh;
     ///
     /// # fn main() {
     /// #     pollster::block_on(run());
     /// # }
     /// # pub async fn run() {
     /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-    /// let mut handle = deuxfleurs::init(Settings::default());
+    /// let mut handle = deuxfleurs::init();
     /// handle.register_surface("Spot", spot_v, spot_f);
     /// let mut handle = handle.run(1920, 1080, Some("deuxfleurs"));
     /// # }
@@ -869,14 +869,14 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     /// Currently only available on non wasm targets, as webGL requires a context.
     ///
     /// ```
-    /// use deuxfleurs::{Settings, load_mesh};
+    /// use deuxfleurs::load_mesh;
     ///
     /// # fn main() {
     /// #     pollster::block_on(run());
     /// # }
     /// # pub async fn run() {
     /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-    /// let mut handle = deuxfleurs::init(Settings::default());
+    /// let mut handle = deuxfleurs::init();
     /// handle.register_surface("Spot", spot_v, spot_f);
     /// let mut handle = handle.run_headless();
     /// handle.screenshot();

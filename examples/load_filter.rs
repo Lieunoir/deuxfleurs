@@ -1,9 +1,8 @@
-use deuxfleurs::Settings;
 use deuxfleurs::types::SurfaceIndices;
 use deuxfleurs::ui::LoadObjButton;
 
 fn main() {
-    let handle = deuxfleurs::init(Settings::default());
+    let handle = deuxfleurs::init();
 
     let handle = handle.with_callback(|ui, state| {
         ui.label("User defined stuff here : ");

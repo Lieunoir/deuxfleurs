@@ -26,6 +26,7 @@ pub struct Settings {
     pub mouse_sensitivity: f32,
     pub zoom_sensitivity: f32,
     pub default_color_map: Colors,
+    pub fit_camera_on_start: bool,
 }
 
 impl Default for Settings {
@@ -44,6 +45,7 @@ impl Default for Settings {
             mouse_sensitivity: 0.1,
             zoom_sensitivity: 0.1,
             default_color_map: Colors::Viridis,
+            fit_camera_on_start: true,
         }
     }
 }

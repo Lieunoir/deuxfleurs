@@ -43,15 +43,14 @@ pub mod internal {
 /// can then be used to register geometries and data. It the has to
 /// be ran.
 ///
-/// Arguments:
-/// * `settings`: global app [`Settings`]
+/// Settings can also be parameterized by modifying [`get_settings_mut`]
 #[must_use]
-pub fn init(settings: Settings) -> InitialState<impl FnMut(&mut egui::Ui, &mut RunningState)> {
+pub fn init() -> InitialState<impl FnMut(&mut egui::Ui, &mut RunningState)> {
     State::new_inner(InnerBareState {
         surfaces: IndexMap::new(),
         clouds: IndexMap::new(),
         segments: IndexMap::new(),
-        settings,
+        settings: Settings::default(),
         callback: |_, _| {},
         camera: Camera::new(1.),
     })

@@ -321,6 +321,7 @@ impl InnerGraphicalState {
             &camera_light_bind_group_layout,
             0.,
         );
+        let should_resize = settings.fit_camera_on_start;
         InnerGraphicalState {
             surfaces,
             segments,
@@ -349,7 +350,7 @@ impl InnerGraphicalState {
             //time: std::time::Instant::now(),
             dirty: true,
             egui_dirty: true,
-            should_resize: true,
+            should_resize,
             copy,
             pbr_renderer,
             ground,
@@ -952,6 +953,7 @@ impl InnerGraphicalState {
                         crate::resources::parse_preloaded_mesh(data).await
                     {
                         event_loop_proxy
+                            .unwrap()
                             .send_event(UserEvent::LoadMesh(mesh_v, mesh_f, name))
                             .ok();
                     }
