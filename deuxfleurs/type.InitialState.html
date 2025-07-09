@@ -9,20 +9,20 @@
 <li><code>id</code>: serves as window title, or id shape to attach to. If <code>None</code> uses <code>"State"</code>.</li>
 </ul>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>deuxfleurs::{Settings, load_mesh};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>deuxfleurs::load_mesh;
 
 <span class="kw">let </span>(spot_v, spot_f) = load_mesh(<span class="string">"examples/assets/spot.obj"</span>).<span class="kw">await</span>.unwrap();
-<span class="kw">let </span><span class="kw-2">mut </span>handle = deuxfleurs::init(Settings::default());
+<span class="kw">let </span><span class="kw-2">mut </span>handle = deuxfleurs::init();
 handle.register_surface(<span class="string">"Spot"</span>, spot_v, spot_f);
 <span class="kw">let </span><span class="kw-2">mut </span>handle = handle.run(<span class="number">1920</span>, <span class="number">1080</span>, <span class="prelude-val">Some</span>(<span class="string">"deuxfleurs"</span>));</code></pre></div>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.run_headless" class="method"><a class="src rightside" href="../src/deuxfleurs/window/mod.rs.html#887-899">Source</a><h4 class="code-header">pub fn <a href="#method.run_headless" class="fn">run_headless</a>(self) -&gt; <a class="type" href="type.RunningState.html" title="type deuxfleurs::RunningState">RunningState</a></h4></section><span class="item-info"><div class="stab portability">Available on <strong>non-WebAssembly</strong> only.</div></span></summary><div class="docblock"><p>Run the app without a window. Allows running the app in environment where no
 display is available and taking screenshots automatically.</p>
 <p>Currently only available on non wasm targets, as webGL requires a context.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>deuxfleurs::{Settings, load_mesh};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>deuxfleurs::load_mesh;
 
 <span class="kw">let </span>(spot_v, spot_f) = load_mesh(<span class="string">"examples/assets/spot.obj"</span>).<span class="kw">await</span>.unwrap();
-<span class="kw">let </span><span class="kw-2">mut </span>handle = deuxfleurs::init(Settings::default());
+<span class="kw">let </span><span class="kw-2">mut </span>handle = deuxfleurs::init();
 handle.register_surface(<span class="string">"Spot"</span>, spot_v, spot_f);
 <span class="kw">let </span><span class="kw-2">mut </span>handle = handle.run_headless();
 handle.screenshot();</code></pre></div>

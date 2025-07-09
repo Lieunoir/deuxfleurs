@@ -776,8 +776,8 @@
 <a href=#776 id=776 data-nosnippet>776</a>    <span class="doccomment">/// Load app state from given file content.
 <a href=#777 id=777 data-nosnippet>777</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))))]
 <a href=#778 id=778 data-nosnippet>778</a>    #[cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))]
-<a href=#779 id=779 data-nosnippet>779</a>    </span><span class="kw">pub fn </span>load_from_state_file(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>std::path::Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-<a href=#780 id=780 data-nosnippet>780</a>        <span class="kw">let </span>data = std::fs::read(path).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+<a href=#779 id=779 data-nosnippet>779</a>    </span><span class="kw">pub fn </span>load_from_state_file(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+<a href=#780 id=780 data-nosnippet>780</a>        <span class="kw">let </span>data = std::fs::read(path.as_ref()).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
 <a href=#781 id=781 data-nosnippet>781</a>        <span class="self">self</span>.<span class="number">0</span>.load_from_state_slice(<span class="kw-2">&amp;</span>data)
 <a href=#782 id=782 data-nosnippet>782</a>    }
 <a href=#783 id=783 data-nosnippet>783</a>
@@ -791,9 +791,9 @@
 <a href=#791 id=791 data-nosnippet>791</a>    <span class="doccomment">/// Save current state in cbor into chosen file.
 <a href=#792 id=792 data-nosnippet>792</a>    </span><span class="attr">#[cfg_attr(docsrs, doc(cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))))]
 <a href=#793 id=793 data-nosnippet>793</a>    #[cfg(all(feature = <span class="string">"saves"</span>, not(target_arch = <span class="string">"wasm32"</span>)))]
-<a href=#794 id=794 data-nosnippet>794</a>    </span><span class="kw">pub fn </span>save_state_file(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>std::path::Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+<a href=#794 id=794 data-nosnippet>794</a>    </span><span class="kw">pub fn </span>save_state_file(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
 <a href=#795 id=795 data-nosnippet>795</a>        <span class="kw">let </span>data = <span class="self">self</span>.<span class="number">0</span>.save_state_vec()<span class="question-mark">?</span>;
-<a href=#796 id=796 data-nosnippet>796</a>        std::fs::write(path, <span class="kw-2">&amp;</span>data).map_err(|<span class="kw">_</span>| ())
+<a href=#796 id=796 data-nosnippet>796</a>        std::fs::write(path.as_ref(), <span class="kw-2">&amp;</span>data).map_err(|<span class="kw">_</span>| ())
 <a href=#797 id=797 data-nosnippet>797</a>    }
 <a href=#798 id=798 data-nosnippet>798</a>
 <a href=#799 id=799 data-nosnippet>799</a>    <span class="doccomment">/// Save current state in cbor, downloaded in browser.
@@ -847,14 +847,14 @@
 <a href=#847 id=847 data-nosnippet>847</a>    /// * `id`: serves as window title, or id shape to attach to. If `None` uses `"State"`.
 <a href=#848 id=848 data-nosnippet>848</a>    ///
 <a href=#849 id=849 data-nosnippet>849</a>    /// ```
-<a href=#850 id=850 data-nosnippet>850</a>    /// use deuxfleurs::{Settings, load_mesh};
+<a href=#850 id=850 data-nosnippet>850</a>    /// use deuxfleurs::load_mesh;
 <a href=#851 id=851 data-nosnippet>851</a>    ///
 <a href=#852 id=852 data-nosnippet>852</a>    /// # fn main() {
 <a href=#853 id=853 data-nosnippet>853</a>    /// #     pollster::block_on(run());
 <a href=#854 id=854 data-nosnippet>854</a>    /// # }
 <a href=#855 id=855 data-nosnippet>855</a>    /// # pub async fn run() {
 <a href=#856 id=856 data-nosnippet>856</a>    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-<a href=#857 id=857 data-nosnippet>857</a>    /// let mut handle = deuxfleurs::init(Settings::default());
+<a href=#857 id=857 data-nosnippet>857</a>    /// let mut handle = deuxfleurs::init();
 <a href=#858 id=858 data-nosnippet>858</a>    /// handle.register_surface("Spot", spot_v, spot_f);
 <a href=#859 id=859 data-nosnippet>859</a>    /// let mut handle = handle.run(1920, 1080, Some("deuxfleurs"));
 <a href=#860 id=860 data-nosnippet>860</a>    /// # }
@@ -869,14 +869,14 @@
 <a href=#869 id=869 data-nosnippet>869</a>    /// Currently only available on non wasm targets, as webGL requires a context.
 <a href=#870 id=870 data-nosnippet>870</a>    ///
 <a href=#871 id=871 data-nosnippet>871</a>    /// ```
-<a href=#872 id=872 data-nosnippet>872</a>    /// use deuxfleurs::{Settings, load_mesh};
+<a href=#872 id=872 data-nosnippet>872</a>    /// use deuxfleurs::load_mesh;
 <a href=#873 id=873 data-nosnippet>873</a>    ///
 <a href=#874 id=874 data-nosnippet>874</a>    /// # fn main() {
 <a href=#875 id=875 data-nosnippet>875</a>    /// #     pollster::block_on(run());
 <a href=#876 id=876 data-nosnippet>876</a>    /// # }
 <a href=#877 id=877 data-nosnippet>877</a>    /// # pub async fn run() {
 <a href=#878 id=878 data-nosnippet>878</a>    /// let (spot_v, spot_f) = load_mesh("examples/assets/spot.obj").await.unwrap();
-<a href=#879 id=879 data-nosnippet>879</a>    /// let mut handle = deuxfleurs::init(Settings::default());
+<a href=#879 id=879 data-nosnippet>879</a>    /// let mut handle = deuxfleurs::init();
 <a href=#880 id=880 data-nosnippet>880</a>    /// handle.register_surface("Spot", spot_v, spot_f);
 <a href=#881 id=881 data-nosnippet>881</a>    /// let mut handle = handle.run_headless();
 <a href=#882 id=882 data-nosnippet>882</a>    /// handle.screenshot();
