@@ -23,6 +23,7 @@ use crate::ui::UiDataElement;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use pollster::FutureExt;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
@@ -444,6 +445,7 @@ pub struct InnerBareState<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     pub(crate) callback: T,
 }
 
+#[cfg(feature = "saves")]
 #[derive(Serialize, Deserialize)]
 pub(crate) struct InnerBareStateSerde {
     pub(crate) surfaces: IndexMap<String, UninitedSurface>,

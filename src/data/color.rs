@@ -1,9 +1,11 @@
 use crate::ui::UiDataElement;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct ColorSettings {
     pub color: [f32; 4],
 }

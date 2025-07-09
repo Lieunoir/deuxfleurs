@@ -7,10 +7,12 @@ use crate::types::{Color, Scalar};
 use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub enum SegmentData {
     Scalar(Vec<f32>, ColorMap),
     Color(Vec<[f32; 3]>),
@@ -162,7 +164,8 @@ impl SegmentData {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct PCSettings {
     radius: Radius,
     color: ColorSettings,
@@ -356,7 +359,8 @@ impl Vertex for CylinderScalarData {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct SegmentGeometry {
     pub positions: Vec<[f32; 3]>,
     pub connections: Vec<[u32; 2]>,

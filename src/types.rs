@@ -1,4 +1,5 @@
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub enum SurfaceIndices {
     Triangles(Vec<[u32; 3]>),
     Quads(Vec<[u32; 4]>),
@@ -100,9 +101,9 @@ impl<'a> IntoIterator for &'a SurfaceIndices {
     }
 }
 
-use std::borrow::Borrow;
-
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 
 impl<'a> Iterator for SurfaceIndicesIntoIterator<'a> {
     type Item = &'a [u32];

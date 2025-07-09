@@ -1,13 +1,15 @@
 use crate::ui::UiDataElement;
 use egui::Widget;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct Radius {
     radius: f32,
     characteristic_length: f32,
-    #[serde(skip)]
+    #[cfg_attr(feature = "saves", serde(skip))]
     _padding: [u32; 2],
 }
 

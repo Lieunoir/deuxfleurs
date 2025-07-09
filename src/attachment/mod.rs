@@ -11,9 +11,11 @@ pub use vector_field::VectorFieldSettingsMut;
 pub(crate) use vector_field::{NewVectorField, VectorField, VectorFieldSettings};
 
 pub(crate) mod internal {
+    #[cfg(feature = "saves")]
     use serde::{Deserialize, Serialize};
 
-    #[derive(Clone, Serialize, Deserialize)]
+    #[derive(Clone)]
+    #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
     pub enum AttachmentPosition {
         Vertex,
         Edge,

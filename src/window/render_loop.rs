@@ -3,7 +3,8 @@ use super::{
 };
 use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
-use crate::window::{InnerBareState, InnerBareStateSerde};
+#[cfg(feature = "saves")]
+use crate::window::InnerBareStateSerde;
 use crate::{Settings, deferred};
 
 use crate::picker::{self, Picked};
@@ -954,6 +955,7 @@ impl InnerGraphicalState {
         }
     }
 
+    #[cfg(feature = "saves")]
     pub(crate) fn save(&self) {
         let surfaces = self
             .surfaces
@@ -994,6 +996,7 @@ impl InnerGraphicalState {
         }
     }
 
+    #[cfg(feature = "saves")]
     pub(crate) fn load(&mut self) {
         if let Some(pathbuf) = rfd::FileDialog::new()
             .set_file_name("deuxfleurs.cbor")

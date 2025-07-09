@@ -1,10 +1,12 @@
 use crate::ui::UiDataElement;
 use glam::Vec4Swizzles;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use transform_gizmo_egui::math::{DMat4, DQuat, DVec3, Transform};
 use transform_gizmo_egui::prelude::*;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct TransformSettings {
     //pub transform: [[f64; 4]; 4],
     show_gizmo: bool,
@@ -12,7 +14,7 @@ pub struct TransformSettings {
     scale: DVec3,
     rotation: DQuat,
     translation: DVec3,
-    #[serde(skip)]
+    #[cfg_attr(feature = "saves", serde(skip))]
     gizmo: Gizmo,
 }
 

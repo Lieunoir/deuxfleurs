@@ -1,12 +1,14 @@
 use crate::ui::UiDataElement;
 use egui::Widget;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct IsolineSettings {
     pub isoline_number: f32,
-    #[serde(skip)]
+    #[cfg_attr(feature = "saves", serde(skip))]
     _padding: [f32; 3],
 }
 

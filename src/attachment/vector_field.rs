@@ -11,8 +11,8 @@ use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use egui::Widget;
-use serde::Deserialize;
-use serde::Serialize;
+#[cfg(feature = "saves")]
+use serde::{Deserialize, Serialize};
 use wgpu::BufferAddress;
 use wgpu::util::DeviceExt;
 
@@ -37,7 +37,8 @@ struct VectorFieldSettingsRaw {
     color: ColorSettings,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct VectorFieldSettings {
     pub show: bool,
     pub magnitude: f32,
@@ -93,7 +94,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct NewVectorField {
     position: AttachmentPosition,
     vectors: Vec<[f32; 3]>,

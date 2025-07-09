@@ -7,6 +7,7 @@ use crate::ui::UiDataElement;
 pub(crate) use data::*;
 use indexmap::IndexMap;
 pub(crate) use renderer::*;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 mod data;
@@ -48,7 +49,7 @@ impl Context for &mut Settings {
 }
 
 // `Renderer` can be `()` !
-#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct Shape<Geometry, Renderer, Settings, Data, AttachedGeometry> {
     pub(crate) name: String,
     pub(crate) geometry: Geometry,

@@ -5,10 +5,12 @@ use egui::Shape;
 use egui::{Color32, Pos2};
 use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};
 use epaint::RectShape;
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct ColorsValues {
     pub red: [f32; 8],
     pub green: [f32; 8],
@@ -16,7 +18,8 @@ pub struct ColorsValues {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, Serialize, Deserialize)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct ColorMapValues {
     colors: ColorsValues,
     min: f32,
@@ -24,7 +27,8 @@ pub struct ColorMapValues {
     _pad: [u32; 2],
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub enum Colors {
     Turbo,
     Viridis,
@@ -37,8 +41,12 @@ pub enum Colors {
     RdBU,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
-#[serde(from = "ColorMapSerde", into = "ColorMapSerde")]
+#[derive(Clone, PartialEq)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "saves",
+    serde(from = "ColorMapSerde", into = "ColorMapSerde")
+)]
 pub struct ColorMap {
     pub colors: Colors,
     bars: Vec<Bar>,
@@ -46,7 +54,8 @@ pub struct ColorMap {
     max: f64,
 }
 
-#[derive(Deserialize, Serialize)]
+#[cfg(feature = "saves")]
+#[derive(Serialize, Deserialize)]
 struct ColorMapSerde {
     colors: Colors,
     bars: Vec<f32>,
@@ -56,6 +65,7 @@ struct ColorMapSerde {
     max: f32,
 }
 
+#[cfg(feature = "saves")]
 impl From<ColorMap> for ColorMapSerde {
     fn from(value: ColorMap) -> Self {
         let bar_min = value.bars[0].value as f32;
@@ -72,6 +82,7 @@ impl From<ColorMap> for ColorMapSerde {
     }
 }
 
+#[cfg(feature = "saves")]
 impl From<ColorMapSerde> for ColorMap {
     fn from(value: ColorMapSerde) -> Self {
         let bars = value

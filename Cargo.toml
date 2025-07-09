@@ -23,19 +23,19 @@ pollster = "0.2.5"
 rfd = { version = "0.15", default-features = false, features = [
     "xdg-portal",
     "async-std",
-] }
-wgpu = { version = "24", features = ["serde"] }
+], optional = true }
+wgpu = "24"
 winit = { version = "0.30", default-features = false, features = ["rwh_06"] }
 ndarray = { version = "0.15", optional = true }
 nalgebra = { version = "0.32", optional = true }
-indexmap = { version = "2.2.3", features = ["serde"] }
+indexmap = { version = "2.2.3" }
 rand = { version = "0.9", default-features = false, features = ["small_rng"] }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.122"
 memchr = "2.7.4"
 atoi_radix10 = { version = "0.0.1", features = ["simd"] }
 num-traits = "0.2.19"
-serde_cbor = "0.11.2"
+serde_cbor = { version = "0.11.2", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 egui-winit = { version = "0.31", default-features = false, features = [
@@ -44,11 +44,24 @@ egui-winit = { version = "0.31", default-features = false, features = [
 
 [features]
 default = ["x11"]
+# Enable ndarray types as input
 ndarray = ["dep:ndarray"]
+# Enable nalgebra types as input
 nalgebra = ["dep:nalgebra"]
-obj_button = []                                                           # ["dep:rfd"]
+# Add ui loadObjButton component
+#
+# Optional as this requires several more dependencies
+obj_button = ["dep:rfd"]
+# Allow loading/saving state (from ui and programmatically)
+#
+# Add Serialization/Deserialization to several components,
+# with noticeable negative effect on compile times.
+saves = ["dep:rfd", "wgpu/serde", "indexmap/serde", "dep:serde_cbor"]
+# Starts logging at launch
 logger = ["dep:env_logger"]
+# Enable X11 winit backend
 x11 = ["egui-winit/x11", "winit/x11"]
+# Enable Wayland winit backend
 wayland = ["egui-winit/wayland", "winit/wayland", "winit/wayland-dlopen"]
 
 [[example]]

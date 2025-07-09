@@ -1,3 +1,4 @@
+#[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,7 +12,7 @@ use crate::{
     },
 };
 
-#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct NewSegments {
     inner: UninitedSegment,
     indices: Vec<u32>,

@@ -413,6 +413,8 @@ impl UI {
                                 state.screenshot();
                             }
                         });
+
+                        #[cfg(feature = "saves")]
                         ui.horizontal(|ui| {
                             if ui.button("Save state").clicked() {
                                 state.save();
@@ -421,6 +423,7 @@ impl UI {
                                 state.load();
                             }
                         });
+
                         state.0.settings.draw_ui(ui, &mut state.0.dirty);
                         state.picker.draw_ui(ui);
                         ui.separator();
