@@ -976,6 +976,7 @@ impl InnerGraphicalState {
             surfaces,
             clouds,
             segments,
+            ground_level: self.ground.level,
         };
         if let Some(pathbuf) = rfd::FileDialog::new()
             .set_file_name("deuxfleurs.cbor")
@@ -1053,6 +1054,7 @@ impl InnerGraphicalState {
                         .collect();
                     self.camera.set_from_camera(bared.camera);
                     self.settings = bared.settings;
+                    self.ground.set_level(&mut self.queue, bared.ground_level);
                     self.dirty = true;
                 }
             }

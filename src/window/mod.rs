@@ -449,8 +449,9 @@ pub(crate) struct InnerBareStateSerde {
     pub(crate) surfaces: IndexMap<String, UninitedSurface>,
     pub(crate) clouds: IndexMap<String, UninitedPointCloud>,
     pub(crate) segments: IndexMap<String, UninitedSegment>,
-    pub settings: Settings,
-    pub camera: Camera,
+    pub(crate) settings: Settings,
+    pub(crate) camera: Camera,
+    pub(crate) ground_level: f32,
 }
 
 impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContextHolder for InnerBareState<T> {
