@@ -37,6 +37,12 @@ use winit::{
     window::{Window, WindowAttributes},
 };
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(module = "/src/save.js")]
+extern "C" {
+    fn save_state(filename: &str, data: &[u8]);
+}
+
 impl InnerGraphicalState {
     // Initialize the state
     pub(crate) async fn new(
@@ -980,87 +986,126 @@ impl InnerGraphicalState {
             segments,
             ground_level: self.ground.level,
         };
-        if let Some(pathbuf) = rfd::FileDialog::new()
-            .set_file_name("deuxfleurs.cbor")
-            .set_parent(&*self.window.as_ref().unwrap())
-            .save_file()
+
+        #[cfg(not(target_arch = "wasm32"))]
         {
-            if let Ok(file) = std::fs::File::options()
-                .write(true)
-                .create(true)
-                .open(pathbuf)
+            if let Some(pathbuf) = rfd::FileDialog::new()
+                .set_file_name("deuxfleurs.cbor")
+                .set_parent(&*self.window.as_ref().unwrap())
+                .save_file()
             {
-                let buf_writer = std::io::BufWriter::new(file);
-                let _ = serde_cbor::to_writer(buf_writer, &bared);
+                if let Ok(file) = std::fs::File::options()
+                    .write(true)
+                    .create(true)
+                    .open(pathbuf)
+                {
+                    let buf_writer = std::io::BufWriter::new(file);
+                    let _ = serde_cbor::to_writer(buf_writer, &bared);
+                }
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(blob) = serde_cbor::to_vec(&bared) {
+                save_state("deuxfleurs.cbor", &blob);
             }
         }
     }
 
     #[cfg(feature = "saves")]
+    pub(crate) fn receive_save(&mut self, bared: InnerBareStateSerde) {
+        self.surfaces = bared
+            .surfaces
+            .into_iter()
+            .map(|(name, field)| {
+                (
+                    name,
+                    field.upgrade(
+                        &self.device,
+                        &self.camera_light_bind_group_layout,
+                        &self.picker.bind_group_layout,
+                        self.config.format,
+                    ),
+                )
+            })
+            .collect();
+        self.clouds = bared
+            .clouds
+            .into_iter()
+            .map(|(name, field)| {
+                (
+                    name,
+                    field.upgrade(
+                        &self.device,
+                        &self.camera_light_bind_group_layout,
+                        &self.picker.bind_group_layout,
+                        self.config.format,
+                    ),
+                )
+            })
+            .collect();
+        self.segments = bared
+            .segments
+            .into_iter()
+            .map(|(name, field)| {
+                (
+                    name,
+                    field.upgrade(
+                        &self.device,
+                        &self.camera_light_bind_group_layout,
+                        &self.picker.bind_group_layout,
+                        self.config.format,
+                    ),
+                )
+            })
+            .collect();
+        self.camera.set_from_camera(bared.camera);
+        self.settings = bared.settings;
+        self.ground.set_level(&mut self.queue, bared.ground_level);
+        self.dirty = true;
+    }
+
+    #[cfg(feature = "saves")]
     pub(crate) fn load(&mut self) {
-        if let Some(pathbuf) = rfd::FileDialog::new()
-            .set_file_name("deuxfleurs.cbor")
-            .set_parent(&*self.window.as_ref().unwrap())
-            .pick_file()
+        let event_loop_proxy = self.proxy.clone();
+        #[cfg(not(target_arch = "wasm32"))]
         {
-            if let Ok(file) = std::fs::File::options().read(true).open(pathbuf) {
-                let buf_reader = std::io::BufReader::new(file);
-                if let Ok(bared) = serde_cbor::from_reader::<
-                    InnerBareStateSerde,
-                    std::io::BufReader<std::fs::File>,
-                >(buf_reader)
-                {
-                    self.surfaces = bared
-                        .surfaces
-                        .into_iter()
-                        .map(|(name, field)| {
-                            (
-                                name,
-                                field.upgrade(
-                                    &self.device,
-                                    &self.camera_light_bind_group_layout,
-                                    &self.picker.bind_group_layout,
-                                    self.config.format,
-                                ),
-                            )
-                        })
-                        .collect();
-                    self.clouds = bared
-                        .clouds
-                        .into_iter()
-                        .map(|(name, field)| {
-                            (
-                                name,
-                                field.upgrade(
-                                    &self.device,
-                                    &self.camera_light_bind_group_layout,
-                                    &self.picker.bind_group_layout,
-                                    self.config.format,
-                                ),
-                            )
-                        })
-                        .collect();
-                    self.segments = bared
-                        .segments
-                        .into_iter()
-                        .map(|(name, field)| {
-                            (
-                                name,
-                                field.upgrade(
-                                    &self.device,
-                                    &self.camera_light_bind_group_layout,
-                                    &self.picker.bind_group_layout,
-                                    self.config.format,
-                                ),
-                            )
-                        })
-                        .collect();
-                    self.camera.set_from_camera(bared.camera);
-                    self.settings = bared.settings;
-                    self.ground.set_level(&mut self.queue, bared.ground_level);
-                    self.dirty = true;
+            if let Some(pathbuf) = rfd::FileDialog::new()
+                .set_file_name("deuxfleurs.cbor")
+                .add_filter("cbor", &["cbor"])
+                .set_parent(&*self.window.as_ref().unwrap())
+                .pick_file()
+            {
+                if let Ok(file) = std::fs::File::options().read(true).open(pathbuf) {
+                    let buf_reader = std::io::BufReader::new(file);
+                    if let Ok(bared) = serde_cbor::from_reader(buf_reader) {
+                        event_loop_proxy
+                            .unwrap()
+                            .send_event(UserEvent::LoadState(bared))
+                            .ok();
+                    }
                 }
             }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let file = rfd::AsyncFileDialog::new()
+                .set_file_name("deuxfleurs.cbor")
+                .add_filter("cbor", &["cbor"])
+                .pick_file();
+            let f = async move {
+                let file = file.await;
+                if let Some(file_handle) = file {
+                    let data = file_handle.read().await;
+                    if let Ok(bared) = serde_cbor::from_slice(&data) {
+                        event_loop_proxy
+                            .unwrap()
+                            .send_event(UserEvent::LoadState(bared))
+                            .ok();
+                    }
+                }
+            };
+            wasm_bindgen_futures::spawn_local(f);
         }
     }
 }
@@ -1134,6 +1179,10 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                 #[cfg(feature = "obj_button")]
                 UserEvent::LoadMesh(mesh_v, mesh_f, name) => {
                     state.register_surface(name, mesh_v, mesh_f);
+                }
+                #[cfg(feature = "saves")]
+                UserEvent::LoadState(bared) => {
+                    state.receive_save(bared);
                 }
                 UserEvent::Paste(cam) => {
                     state.camera.set(cam);
@@ -1268,7 +1317,10 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                                         wasm_bindgen_futures::JsFuture::from(promise).await
                                     {
                                         if let Some(cam) = res.as_string() {
-                                            event_loop_proxy.send_event(UserEvent::Paste(cam)).ok();
+                                            event_loop_proxy
+                                                .unwrap()
+                                                .send_event(UserEvent::Paste(cam))
+                                                .ok();
                                         }
                                     }
                                 };
