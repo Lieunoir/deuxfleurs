@@ -12,6 +12,7 @@ use crate::{
     },
 };
 
+#[derive(Clone)]
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct NewSegments {
     inner: UninitedSegment,

@@ -12,6 +12,7 @@ use crate::{
     shape::{AttachedGeometry, GraphicalContext, NewAttachedGeometry},
 };
 
+#[derive(Clone)]
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub enum NewSurfaceAttachment {
     VectorField(NewVectorField),

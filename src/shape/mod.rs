@@ -49,6 +49,7 @@ impl Context for &mut Settings {
 }
 
 // `Renderer` can be `()` !
+#[derive(Clone)]
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct Shape<Geometry, Renderer, Settings, Data, AttachedGeometry> {
     pub(crate) name: String,

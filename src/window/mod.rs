@@ -45,6 +45,12 @@ use winit::event_loop::EventLoopProxy;
 use winit::{event_loop::EventLoop, window::Window};
 mod render_loop;
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(module = "/src/save.js")]
+extern "C" {
+    fn save_state(filename: &str, data: &[u8]);
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightUniform {
@@ -434,7 +440,54 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
     }
 }
 
-impl StateTrait for InnerGraphicalState {}
+impl StateTrait for InnerGraphicalState {
+    #[cfg(feature = "saves")]
+    fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()> {
+        let bared = serde_cbor::from_slice(data).map_err(|_| ())?;
+        self.receive_save(bared);
+        Ok(())
+    }
+
+    #[cfg(feature = "saves")]
+    fn save_state_vec(&self) -> Result<Vec<u8>, ()> {
+        let surfaces = self
+            .surfaces
+            .iter()
+            .map(|(name, field)| (name.clone(), field.downgrade()))
+            .collect();
+        let clouds = self
+            .clouds
+            .iter()
+            .map(|(name, field)| (name.clone(), field.downgrade()))
+            .collect();
+        let segments = self
+            .segments
+            .iter()
+            .map(|(name, field)| (name.clone(), field.downgrade()))
+            .collect();
+        let bared = InnerBareStateSerde {
+            settings: self.settings.clone(),
+            camera: self.camera.clone(),
+            surfaces,
+            clouds,
+            segments,
+            ground_level: self.ground.level,
+        };
+        serde_cbor::to_vec(&bared).map_err(|_| ())
+    }
+
+    fn get_camera(&mut self) -> &mut Camera {
+        // Conservative
+        self.dirty = true;
+        &mut self.camera
+    }
+
+    fn get_settings(&mut self) -> &mut Settings {
+        // Conservative
+        self.dirty = true;
+        &mut self.settings
+    }
+}
 
 pub struct InnerBareState<T: FnMut(&mut egui::Ui, &mut RunningState)> {
     pub(crate) surfaces: IndexMap<String, UninitedSurface>,
@@ -526,7 +579,43 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContainerContextGiver<UninitedS
     }
 }
 
-impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateTrait for InnerBareState<T> {}
+impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateTrait for InnerBareState<T> {
+    #[cfg(feature = "saves")]
+    fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()> {
+        let bared: InnerBareStateSerde = serde_cbor::from_slice(data).map_err(|_| ())?;
+        self.surfaces = bared.surfaces;
+        self.clouds = bared.clouds;
+        self.segments = bared.segments;
+        self.settings = bared.settings;
+        self.camera = bared.camera;
+        Ok(())
+    }
+
+    #[cfg(feature = "saves")]
+    fn save_state_vec(&self) -> Result<Vec<u8>, ()> {
+        let surfaces = self.surfaces.clone();
+        let clouds = self.clouds.clone();
+        let segments = self.segments.clone();
+        let bared = InnerBareStateSerde {
+            settings: self.settings.clone(),
+            camera: self.camera.clone(),
+            surfaces,
+            clouds,
+            segments,
+            //ground_level: self.ground.level,
+            ground_level: 0.,
+        };
+        serde_cbor::to_vec(&bared).map_err(|_| ())
+    }
+
+    fn get_camera(&mut self) -> &mut Camera {
+        &mut self.camera
+    }
+
+    fn get_settings(&mut self) -> &mut Settings {
+        &mut self.settings
+    }
+}
 
 pub trait StateTrait:
     GeometryHolder<
@@ -549,6 +638,15 @@ pub trait StateTrait:
         Args = (Vec<[f32; 3]>, Vec<[u32; 2]>),
     >
 {
+    #[cfg(feature = "saves")]
+    fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()>;
+
+    #[cfg(feature = "saves")]
+    fn save_state_vec(&self) -> Result<Vec<u8>, ()>;
+
+    fn get_camera(&mut self) -> &mut Camera;
+
+    fn get_settings(&mut self) -> &mut Settings;
 }
 
 pub struct State<T>(pub(crate) T);
@@ -653,6 +751,45 @@ impl<T: StateTrait> State<T> {
             &mut self.0,
             name,
         );
+    }
+
+    /// Load app state from given file content.
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", not(target_arch = "wasm32")))))]
+    #[cfg(all(feature = "saves", not(target_arch = "wasm32")))]
+    pub fn load_from_state_file(&mut self, path: &std::path::Path) -> Result<(), ()> {
+        let data = std::fs::read(path).map_err(|_| ())?;
+        self.0.load_from_state_slice(&data)
+    }
+
+    /// Load app state from given buffer.
+    #[cfg_attr(docsrs, doc(cfg(feature = "saves")))]
+    #[cfg(feature = "saves")]
+    pub fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()> {
+        self.0.load_from_state_slice(data)
+    }
+
+    /// Save current state in cbor into chosen file.
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", not(target_arch = "wasm32")))))]
+    #[cfg(all(feature = "saves", not(target_arch = "wasm32")))]
+    pub fn save_state_file(&self, path: &std::path::Path) -> Result<(), ()> {
+        let data = self.0.save_state_vec()?;
+        std::fs::write(path, &data).map_err(|_| ())
+    }
+
+    /// Save current state in cbor, downloaded in browser.
+    #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", target_arch = "wasm32"))))]
+    #[cfg(all(feature = "saves", target_arch = "wasm32"))]
+    pub fn save_state(&self) -> Result<(), ()> {
+        let data = self.0.save_state_vec()?;
+        save_state("deuxfleurs.cbor", &data);
+        Ok(())
+    }
+
+    /// Save current state in cbor into buffer.
+    #[cfg_attr(docsrs, doc(cfg(feature = "saves")))]
+    #[cfg(feature = "saves")]
+    pub fn save_state_vec(&self) -> Result<Vec<u8>, ()> {
+        self.0.save_state_vec()
     }
 }
 

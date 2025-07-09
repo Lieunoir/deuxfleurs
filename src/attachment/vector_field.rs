@@ -94,6 +94,7 @@ where
     }
 }
 
+#[derive(Clone)]
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct NewVectorField {
     position: AttachmentPosition,
