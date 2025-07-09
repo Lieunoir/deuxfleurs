@@ -805,7 +805,7 @@ impl RenderPipeline for SurfacePipeline {
             Some(texture::Texture::DEPTH_FORMAT),
             &buffer_layout,
             shader,
-            Some("surface sphere render"),
+            Some("surface render"),
         );
 
         let shadow_render_pipeline = util::create_shadow_render_pipeline(
@@ -815,7 +815,7 @@ impl RenderPipeline for SurfacePipeline {
             None,
             &[SurfaceVertex::desc()],
             shadow_shader,
-            Some("surface sphere render"),
+            Some("surface shadow render"),
         );
 
         let picker_render_pipeline = util::create_picker_pipeline(

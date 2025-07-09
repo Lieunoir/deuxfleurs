@@ -875,7 +875,7 @@ impl InnerGraphicalState {
         Ok(request_redraw)
     }
 
-    pub(crate) fn screenshot(&mut self) {
+    fn render_screenshot(&mut self) -> wgpu::SubmissionIndex {
         // When in headless mode, we have to make sure a image can be copied from
         if self.surface.is_none() {
             self.update();
@@ -909,7 +909,16 @@ impl InnerGraphicalState {
         self.copy.screenshot(&mut render_pass);
         drop(render_pass);
         self.screenshoter.copy_texture_to_buffer(&mut encoder);
-        let index = self.queue.submit(iter::once(encoder.finish()));
+        self.queue.submit(iter::once(encoder.finish()))
+    }
+
+    pub(crate) fn screenshot_to_buffer(&mut self) -> Result<Vec<u8>, ()> {
+        let index = self.render_screenshot();
+        self.screenshoter.create_image_buffer(&self.device, index)
+    }
+
+    pub(crate) fn screenshot(&mut self) {
+        let index = self.render_screenshot();
         self.screenshoter.create_png(&self.device, index);
     }
 

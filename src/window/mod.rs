@@ -992,9 +992,21 @@ impl RunningState {
         self.0.resize_scene();
     }
 
-    /// Take a screenshot of the scene.
+    /// Take a screenshot of the scene. The screenshot is then
+    /// saved on disk under the name `screenshot_[nnn].png`, with
+    /// `nnn` incrementing each time.
     pub fn screenshot(&mut self) {
         self.0.screenshot();
+    }
+
+    /// Take a screenshot of the scene. The screenshot is then
+    /// returned as a vector oy bytes, each storing `r` `g` `b`
+    /// `a` (in order) values of each pixel.
+    ///
+    /// Should not fail, unless internal buffer storage is
+    /// messed up.
+    pub fn screenshot_to_buffer(&mut self) -> Result<Vec<u8>, ()> {
+        self.0.screenshot_to_buffer()
     }
 
     /// Get current selected object: first the name, then index `i` and type of the selected element

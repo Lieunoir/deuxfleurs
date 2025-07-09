@@ -130,9 +130,11 @@ impl Screenshoter {
         );
     }
 
-    pub fn create_png(&mut self, device: &wgpu::Device, submission_index: wgpu::SubmissionIndex) {
-        let png_output_path = format!("screenshot_{:03}.png", self.counter);
-        // Note that we're not calling `.await` here.
+    pub fn create_image_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        submission_index: wgpu::SubmissionIndex,
+    ) -> Result<Vec<u8>, ()> {
         let buffer_slice = self.output_buffer.slice(..);
         // Sets the buffer up for mapping, sending over the result of the mapping back to us when it is finished.
         //let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
@@ -147,7 +149,7 @@ impl Screenshoter {
         // We pass our submission index so we don't need to wait for any other possible submissions.
         device.poll(wgpu::Maintain::WaitForSubmissionIndex(submission_index));
         // If a file system is available, write the buffer as a PNG
-        if let Ok(Ok(())) = receiver.recv() {
+        let res = if let Ok(Ok(())) = receiver.recv() {
             let data = buffer_slice.get_mapped_range();
             let mut unpadded_data = Vec::<u8>::with_capacity(
                 4 * self.buffer_dimensions.width * self.buffer_dimensions.height,
@@ -168,7 +170,17 @@ impl Screenshoter {
                     unpadded_data.push(alpha);
                 }
             }
+            Ok(unpadded_data)
+        } else {
+            Err(())
+        };
+        self.output_buffer.unmap();
+        res
+    }
 
+    pub fn create_png(&mut self, device: &wgpu::Device, submission_index: wgpu::SubmissionIndex) {
+        let png_output_path = format!("screenshot_{:03}.png", self.counter);
+        if let Ok(unpadded_data) = self.create_image_buffer(device, submission_index) {
             use image::{ImageBuffer, Rgba};
             let buffer = ImageBuffer::<Rgba<u8>, _>::from_raw(
                 self.buffer_dimensions.width as u32,
@@ -191,6 +203,5 @@ impl Screenshoter {
             }
             self.counter += 1;
         }
-        self.output_buffer.unmap();
     }
 }
