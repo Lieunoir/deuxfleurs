@@ -32,6 +32,16 @@ impl Camera {
         }
     }
 
+    pub fn set_from_eye_target_up(&mut self, eye: [f32; 3], target: [f32; 3], up: [f32; 3]) {
+        self.eye = eye.into();
+        self.target = target.into();
+        self.up = up.into();
+    }
+
+    pub fn as_eye_target_up(&self) -> ([f32; 3], [f32; 3], [f32; 3]) {
+        (self.eye.into(), self.target.into(), self.up.into())
+    }
+
     pub fn build_view_projection_matrix(&self) -> glam::Mat4 {
         let view = glam::Mat4::look_at_rh(self.eye, self.target, self.up);
         let proj = glam::Mat4::perspective_rh(self.fovy, self.aspect, self.znear, self.zfar);

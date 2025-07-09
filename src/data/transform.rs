@@ -1,5 +1,5 @@
 use crate::ui::UiDataElement;
-use glam::Vec4Swizzles;
+use glam::{Mat4, Vec4Swizzles};
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use transform_gizmo_egui::math::{DMat4, DQuat, DVec3, Transform};
@@ -29,6 +29,14 @@ impl TransformSettings {
             }
         }
         model
+    }
+
+    pub fn set_transform(&mut self, transform: [[f32; 4]; 4]) {
+        let mat = Mat4::from_cols_array_2d(&transform);
+        let (scale, rotation, translation) = mat.to_scale_rotation_translation();
+        self.scale = scale.as_dvec3();
+        self.rotation = rotation.as_dquat();
+        self.translation = translation.as_dvec3();
     }
 
     pub fn to_raw(&self) -> TransformRaw {

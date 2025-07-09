@@ -92,6 +92,10 @@ impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
     pub fn get_attached_shape(&self, name: &str) -> Option<&AttachedGeometry> {
         self.attached_data.get(name)
     }
+
+    pub fn get_transform(&self) -> [[f32; 4]; 4] {
+        self.transform.get_transform()
+    }
 }
 
 pub type UninitedShape<Geometry, Settings, Data, AttachedGeometry> =
@@ -476,6 +480,8 @@ pub trait ShapeTrait<Ctxt: Context> {
 
     fn show(&mut self, show: bool, context: &mut Ctxt);
 
+    fn set_transform(&mut self, transform: [[f32; 4]; 4], context: &mut Ctxt);
+
     fn set_data(&mut self, name: Option<String>, context: &mut Ctxt);
 
     fn add_data<'b>(
@@ -532,6 +538,10 @@ where
 
     fn show(&mut self, show: bool, _context: &mut &'a mut crate::Settings) {
         self.show = show;
+    }
+
+    fn set_transform(&mut self, transform: [[f32; 4]; 4], _context: &mut &'a mut crate::Settings) {
+        self.transform.set_transform(transform);
     }
 
     fn set_data(&mut self, name: Option<String>, _context: &mut &'a mut crate::Settings) {
@@ -635,6 +645,11 @@ where
             *context.refresh_screen = true;
             self.show = show;
         }
+    }
+
+    fn set_transform(&mut self, transform: [[f32; 4]; 4], context: &mut GraphicalContext<'_>) {
+        self.transform.set_transform(transform);
+        self.update_transform(context);
     }
 
     fn remove_data(&mut self, name: String, context: &mut GraphicalContext<'_>) {
@@ -768,6 +783,10 @@ impl<'a, Shape: ShapeTrait<Ctxt>, Ctxt: Context> ShapeMut<'a, Shape, Ctxt> {
     pub fn show(&mut self, show: bool) -> &mut Self {
         self.inner.show(show, &mut self.context);
         self
+    }
+
+    pub fn set_transform(&mut self, transform: [[f32; 4]; 4]) {
+        self.inner.set_transform(transform, &mut self.context);
     }
 
     pub fn set_data<S: Into<String>>(&mut self, name: Option<S>) -> &mut Self {

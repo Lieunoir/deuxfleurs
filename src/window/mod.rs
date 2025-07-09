@@ -476,13 +476,21 @@ impl StateTrait for InnerGraphicalState {
         serde_cbor::to_vec(&bared).map_err(|_| ())
     }
 
-    fn get_camera(&mut self) -> &mut Camera {
+    fn get_camera(&self) -> &Camera {
+        &self.camera
+    }
+
+    fn get_camera_mut(&mut self) -> &mut Camera {
         // Conservative
         self.dirty = true;
         &mut self.camera
     }
 
-    fn get_settings(&mut self) -> &mut Settings {
+    fn get_settings(&self) -> &Settings {
+        &self.settings
+    }
+
+    fn get_settings_mut(&mut self) -> &mut Settings {
         // Conservative
         self.dirty = true;
         &mut self.settings
@@ -608,11 +616,19 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateTrait for InnerBareState<T
         serde_cbor::to_vec(&bared).map_err(|_| ())
     }
 
-    fn get_camera(&mut self) -> &mut Camera {
+    fn get_camera(&self) -> &Camera {
+        &self.camera
+    }
+
+    fn get_camera_mut(&mut self) -> &mut Camera {
         &mut self.camera
     }
 
-    fn get_settings(&mut self) -> &mut Settings {
+    fn get_settings(&self) -> &Settings {
+        &self.settings
+    }
+
+    fn get_settings_mut(&mut self) -> &mut Settings {
         &mut self.settings
     }
 }
@@ -644,9 +660,13 @@ pub trait StateTrait:
     #[cfg(feature = "saves")]
     fn save_state_vec(&self) -> Result<Vec<u8>, ()>;
 
-    fn get_camera(&mut self) -> &mut Camera;
+    fn get_camera(&self) -> &Camera;
 
-    fn get_settings(&mut self) -> &mut Settings;
+    fn get_camera_mut(&mut self) -> &mut Camera;
+
+    fn get_settings(&self) -> &Settings;
+
+    fn get_settings_mut(&mut self) -> &mut Settings;
 }
 
 pub struct State<T>(pub(crate) T);
@@ -790,6 +810,25 @@ impl<T: StateTrait> State<T> {
     #[cfg(feature = "saves")]
     pub fn save_state_vec(&self) -> Result<Vec<u8>, ()> {
         self.0.save_state_vec()
+    }
+
+    pub fn get_settings_mut(&mut self) -> &mut Settings {
+        self.0.get_settings_mut()
+    }
+
+    pub fn get_settings(&self) -> &Settings {
+        self.0.get_settings()
+    }
+
+    pub fn set_camera(&mut self, eye: [f32; 3], target: [f32; 3], up: [f32; 3]) {
+        self.0
+            .get_camera_mut()
+            .set_from_eye_target_up(eye, target, up);
+    }
+
+    /// Result is `(eye, target, up)`.
+    pub fn get_camera(&self) -> ([f32; 3], [f32; 3], [f32; 3]) {
+        self.0.get_camera().as_eye_target_up()
     }
 }
 
