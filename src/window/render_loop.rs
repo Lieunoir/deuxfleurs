@@ -1,8 +1,8 @@
 use super::{
     InnerGraphicalState, JitterUniform, LightUniform, RunningState, StateWrapper, UserEvent,
 };
-use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
+use crate::sbv::SBV;
 #[cfg(feature = "saves")]
 use crate::window::InnerBareStateSerde;
 use crate::{Settings, deferred};
@@ -152,8 +152,8 @@ impl InnerGraphicalState {
         let camera_controller = CameraController::new();
 
         let mut camera_uniform = CameraUniform::new();
-        let aabb = SBV::default();
-        camera_uniform.update_view_proj(&camera, &aabb, 0.);
+        let sbv = SBV::default();
+        camera_uniform.update_view_proj(&camera, &sbv, 0.);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -355,7 +355,7 @@ impl InnerGraphicalState {
             pbr_renderer,
             ground,
             taa_counter: 0,
-            aabb: SBV::default(),
+            sbv: SBV::default(),
             rng: SmallRng::seed_from_u64(1),
         }
     }
@@ -500,7 +500,7 @@ impl InnerGraphicalState {
         self.camera_controller
             .update_camera(&mut self.camera, &self.settings);
         self.camera_uniform
-            .update_view_proj(&self.camera, &self.aabb, self.ground.level);
+            .update_view_proj(&self.camera, &self.sbv, self.ground.level);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
@@ -547,7 +547,7 @@ impl InnerGraphicalState {
             }
         }
 
-        self.aabb = sbv.unwrap_or_else(SBV::default);
+        self.sbv = sbv.unwrap_or_else(SBV::default);
         if self.should_resize {
             self.resize_scene();
             self.should_resize = false;

@@ -1,8 +1,8 @@
 use crate::Settings;
-use crate::aabb::SBV;
 use crate::attachment::internal::AttachmentPosition;
 use crate::data::TransformSettings;
 use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
+use crate::sbv::SBV;
 use crate::ui::UiDataElement;
 pub(crate) use data::*;
 use indexmap::IndexMap;
@@ -418,6 +418,7 @@ where
         self.modification_stamp += 1;
         let ((adj_faces, adj_faces_centers), (adj_edges, adj_edges_centers)) =
             self.geometry.move_vertex(vertex, pos);
+        self.sbv.add_point(pos);
         self.renderer
             .fixed
             .update_vertex(queue, vertex, &self.geometry);
@@ -625,6 +626,7 @@ where
         if self.geometry().can_be_replaced_by(&new_geometry) {
             self.renderer.fixed = Fixed::initialize(context.device, &new_geometry);
             self.geometry = new_geometry;
+            self.sbv = SBV::new(self.geometry.get_positions());
             true
         } else {
             *self = Self::new_with_geometry(

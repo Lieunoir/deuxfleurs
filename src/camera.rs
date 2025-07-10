@@ -1,4 +1,4 @@
-use crate::{Settings, aabb::SBV};
+use crate::{Settings, sbv::SBV};
 
 use serde::{Deserialize, Serialize};
 use winit::event::*;

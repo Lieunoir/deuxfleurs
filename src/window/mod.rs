@@ -1,4 +1,3 @@
-use crate::aabb::SBV;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::data::internal::{DataSettings, DataUniformBuilder};
 use crate::deferred;
@@ -7,6 +6,7 @@ use crate::point_cloud::{
     DisplayPointCloud, PointCloud, PointCloudDataBuffer, PointCloudFixedRenderer, PointCloudMut,
     PointCloudPipeline, UninitedPointCloud,
 };
+use crate::sbv::SBV;
 use crate::screenshot;
 use crate::segment::{
     DisplaySegment, Segment, SegmentDataBuffer, SegmentFixedRenderer, SegmentMut, SegmentPipeline,
@@ -329,7 +329,7 @@ pub struct InnerGraphicalState {
     pbr_renderer: deferred::PBR,
     ground: deferred::Ground,
     taa_counter: u8,
-    aabb: SBV,
+    sbv: SBV,
     rng: SmallRng,
 }
 

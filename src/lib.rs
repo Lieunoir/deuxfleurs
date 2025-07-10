@@ -11,7 +11,6 @@
 //! * `Ctrl`+`C`: save current camera state to clipboard
 //! * `Ctrl`+`V`: load camera state from clipboard
 
-mod aabb;
 /// Data associated to a shape which have their own renderer.
 /// Wether they are shown or not does not affect other data.
 pub mod attachment;
@@ -27,6 +26,7 @@ pub mod picker;
 /// Point clouds structs and associated data/settings
 pub mod point_cloud;
 mod resources;
+mod sbv;
 mod screenshot;
 /// Segment lists structs and associated data/settings
 pub mod segment;
