@@ -1,4 +1,6 @@
 /target
 /dist
 /src/main.rs
+.zed/
+TODO
 screenshot_*.png
