@@ -1,8 +1,8 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/window/render_loop.rs`."><title>render_loop.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-aa0817cf.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (ab68b0fb2 2025-07-08)" data-channel="nightly" data-search-js="search-179e01a3.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-673ee1e0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/window/</div>render_loop.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use super</span>::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/window/render_loop.rs`."><title>render_loop.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-aa0817cf.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (e43d139a8 2025-07-09)" data-channel="nightly" data-search-js="search-179e01a3.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-673ee1e0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/window/</div>render_loop.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use super</span>::{
 <a href=#2 id=2 data-nosnippet>2</a>    InnerGraphicalState, JitterUniform, LightUniform, RunningState, StateWrapper, UserEvent,
 <a href=#3 id=3 data-nosnippet>3</a>};
-<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::aabb::SBV;
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::camera::{Camera, CameraController, CameraUniform};
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::camera::{Camera, CameraController, CameraUniform};
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::sbv::SBV;
 <a href=#6 id=6 data-nosnippet>6</a><span class="attr">#[cfg(feature = <span class="string">"saves"</span>)]
 <a href=#7 id=7 data-nosnippet>7</a></span><span class="kw">use </span><span class="kw">crate</span>::window::InnerBareStateSerde;
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use crate</span>::{Settings, deferred};
@@ -152,8 +152,8 @@
 <a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">let </span>camera_controller = CameraController::new();
 <a href=#153 id=153 data-nosnippet>153</a>
 <a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">let </span><span class="kw-2">mut </span>camera_uniform = CameraUniform::new();
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span>aabb = SBV::default();
-<a href=#156 id=156 data-nosnippet>156</a>        camera_uniform.update_view_proj(<span class="kw-2">&amp;</span>camera, <span class="kw-2">&amp;</span>aabb, <span class="number">0.</span>);
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span>sbv = SBV::default();
+<a href=#156 id=156 data-nosnippet>156</a>        camera_uniform.update_view_proj(<span class="kw-2">&amp;</span>camera, <span class="kw-2">&amp;</span>sbv, <span class="number">0.</span>);
 <a href=#157 id=157 data-nosnippet>157</a>
 <a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">let </span>camera_buffer = device.create_buffer_init(<span class="kw-2">&amp;</span>wgpu::util::BufferInitDescriptor {
 <a href=#159 id=159 data-nosnippet>159</a>            label: <span class="prelude-val">Some</span>(<span class="string">"Camera Buffer"</span>),
@@ -355,7 +355,7 @@
 <a href=#355 id=355 data-nosnippet>355</a>            pbr_renderer,
 <a href=#356 id=356 data-nosnippet>356</a>            ground,
 <a href=#357 id=357 data-nosnippet>357</a>            taa_counter: <span class="number">0</span>,
-<a href=#358 id=358 data-nosnippet>358</a>            aabb: SBV::default(),
+<a href=#358 id=358 data-nosnippet>358</a>            sbv: SBV::default(),
 <a href=#359 id=359 data-nosnippet>359</a>            rng: SmallRng::seed_from_u64(<span class="number">1</span>),
 <a href=#360 id=360 data-nosnippet>360</a>        }
 <a href=#361 id=361 data-nosnippet>361</a>    }
@@ -500,7 +500,7 @@
 <a href=#500 id=500 data-nosnippet>500</a>        </span><span class="self">self</span>.camera_controller
 <a href=#501 id=501 data-nosnippet>501</a>            .update_camera(<span class="kw-2">&amp;mut </span><span class="self">self</span>.camera, <span class="kw-2">&amp;</span><span class="self">self</span>.settings);
 <a href=#502 id=502 data-nosnippet>502</a>        <span class="self">self</span>.camera_uniform
-<a href=#503 id=503 data-nosnippet>503</a>            .update_view_proj(<span class="kw-2">&amp;</span><span class="self">self</span>.camera, <span class="kw-2">&amp;</span><span class="self">self</span>.aabb, <span class="self">self</span>.ground.level);
+<a href=#503 id=503 data-nosnippet>503</a>            .update_view_proj(<span class="kw-2">&amp;</span><span class="self">self</span>.camera, <span class="kw-2">&amp;</span><span class="self">self</span>.sbv, <span class="self">self</span>.ground.level);
 <a href=#504 id=504 data-nosnippet>504</a>        <span class="self">self</span>.queue.write_buffer(
 <a href=#505 id=505 data-nosnippet>505</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.camera_buffer,
 <a href=#506 id=506 data-nosnippet>506</a>            <span class="number">0</span>,
@@ -547,7 +547,7 @@
 <a href=#547 id=547 data-nosnippet>547</a>            }
 <a href=#548 id=548 data-nosnippet>548</a>        }
 <a href=#549 id=549 data-nosnippet>549</a>
-<a href=#550 id=550 data-nosnippet>550</a>        <span class="self">self</span>.aabb = sbv.unwrap_or_else(SBV::default);
+<a href=#550 id=550 data-nosnippet>550</a>        <span class="self">self</span>.sbv = sbv.unwrap_or_else(SBV::default);
 <a href=#551 id=551 data-nosnippet>551</a>        <span class="kw">if </span><span class="self">self</span>.should_resize {
 <a href=#552 id=552 data-nosnippet>552</a>            <span class="self">self</span>.resize_scene();
 <a href=#553 id=553 data-nosnippet>553</a>            <span class="self">self</span>.should_resize = <span class="bool-val">false</span>;
