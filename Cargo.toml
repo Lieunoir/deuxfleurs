@@ -3,6 +3,9 @@ name = "deuxfleurs"
 version = "0.1.0"
 edition = "2024"
 keywords = ["wgpu", "graphics", "geometry", "mesh"]
+license = "MIT"
+description = "Viewer for geometry processing data (surface meshes, point clouds, scalar field...)"
+repository = "https://github.com/Lieunoir/deuxfleurs"
 
 [dependencies]
 bytemuck = { version = "1.12.1", features = ["derive"] }
