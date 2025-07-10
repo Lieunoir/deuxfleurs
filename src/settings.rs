@@ -8,6 +8,7 @@ use wgpu::Color;
 /// Global rendering settings
 #[derive(Clone)]
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "saves", serde(default))]
 pub struct Settings {
     //vsync: bool,
     //show_fps: bool,
