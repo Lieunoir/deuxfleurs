@@ -2,8 +2,7 @@
 name = "deuxfleurs"
 version = "0.1.0"
 edition = "2024"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+keywords = ["wgpu", "graphics", "geometry", "mesh"]
 
 [dependencies]
 bytemuck = { version = "1.12.1", features = ["derive"] }
@@ -63,6 +62,11 @@ logger = ["dep:env_logger"]
 x11 = ["egui-winit/x11", "winit/x11"]
 # Enable Wayland winit backend
 wayland = ["egui-winit/wayland", "winit/wayland", "winit/wayland-dlopen"]
+
+[dev-dependencies]
+faer = "0.22.6"
+rayon = "1.10.0"
+fast-svd-3x3 = "0.2.0"
 
 [[example]]
 name = "load_filter"
