@@ -1,5 +1,5 @@
 use super::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
-use super::shader::{PICKER_SHADER, SHADOW_SHADER, get_shader};
+use super::shader::get_shader;
 use crate::attachment::{PointsSettingsMut, SegmentsSettingsMut};
 use crate::attachment::{VectorFieldSettingsMut, internal::AttachmentPosition};
 use crate::camera::Camera;
@@ -18,7 +18,7 @@ use num_traits::cast::ToPrimitive;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
-use wgpu::{BufferAddress, BufferSize};
+use wgpu::{BufferAddress, BufferSize, include_wgsl};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -782,15 +782,9 @@ impl RenderPipeline for SurfacePipeline {
                 get_shader(data, settings.smooth, settings.show_edges).into(),
             ),
         };
-        let shadow_shader = wgpu::ShaderModuleDescriptor {
-            label: Some("Surface Shadow Shader"),
-            source: wgpu::ShaderSource::Wgsl(SHADOW_SHADER.into()),
-        };
+        let shadow_shader = include_wgsl!("shadow.wgsl");
 
-        let picker_shader = wgpu::ShaderModuleDescriptor {
-            label: Some("Surface Picker Shader"),
-            source: wgpu::ShaderSource::Wgsl(PICKER_SHADER.into()),
-        };
+        let picker_shader = include_wgsl!("picker.wgsl");
 
         let buffer_layout = match data {
             Some(data) => vec![SurfaceVertex::desc(), data.desc()],

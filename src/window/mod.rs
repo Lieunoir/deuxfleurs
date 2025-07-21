@@ -1,11 +1,11 @@
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::data::internal::{DataSettings, DataUniformBuilder};
-use crate::deferred;
 use crate::picker::{self, Picked};
 use crate::point_cloud::{
     DisplayPointCloud, PointCloud, PointCloudDataBuffer, PointCloudFixedRenderer, PointCloudMut,
     PointCloudPipeline, UninitedPointCloud,
 };
+use crate::post_process;
 use crate::sbv::SBV;
 use crate::screenshot;
 use crate::segment::{
@@ -16,7 +16,7 @@ use crate::surface::{
     DisplaySurface, NewSurfaceAttachment, Surface, SurfaceAttachment, SurfaceDataBuffer,
     SurfaceFixedRenderer, SurfaceMut, SurfacePipeline, UninitedSurface,
 };
-use crate::texture;
+use crate::texture::TextureBufferPool;
 use crate::types::SurfaceIndices;
 use crate::types::*;
 use crate::ui::UiDataElement;
@@ -297,8 +297,7 @@ pub struct InnerGraphicalState {
     // Window size
     size: winit::dpi::PhysicalSize<u32>,
     // Textures
-    depth_texture: texture::Texture,
-    texture_buffer_pool: deferred::TextureBufferPool,
+    texture_buffer_pool: TextureBufferPool,
     // Screenshots
     screenshoter: screenshot::Screenshoter,
 
@@ -325,9 +324,9 @@ pub struct InnerGraphicalState {
     // Item picker
     pub(crate) picker: picker::Picker,
 
-    copy: deferred::TextureCopy,
-    pbr_renderer: deferred::PBR,
-    ground: deferred::Ground,
+    copy: post_process::TextureCopy,
+    pbr_renderer: post_process::PBR,
+    ground: post_process::Ground,
     taa_counter: u8,
     sbv: SBV,
     rng: SmallRng,
@@ -366,7 +365,6 @@ impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
                 queue: &self.queue,
                 camera_light_bind_group_layout: &self.camera_light_bind_group_layout,
                 counter_bind_group_layout: &self.picker.bind_group_layout,
-                color_format: self.config.format,
                 refresh_screen: &mut self.dirty,
             },
             Some(&mut self.should_resize),
@@ -398,7 +396,6 @@ impl ContainerContextGiver<DisplayPointCloud> for InnerGraphicalState {
                 queue: &self.queue,
                 camera_light_bind_group_layout: &self.camera_light_bind_group_layout,
                 counter_bind_group_layout: &self.picker.bind_group_layout,
-                color_format: self.config.format,
                 refresh_screen: &mut self.dirty,
             },
             Some(&mut self.should_resize),
@@ -430,7 +427,6 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
                 queue: &self.queue,
                 camera_light_bind_group_layout: &self.camera_light_bind_group_layout,
                 counter_bind_group_layout: &self.picker.bind_group_layout,
-                color_format: self.config.format,
                 refresh_screen: &mut self.dirty,
             },
             Some(&mut self.should_resize),
@@ -847,7 +843,7 @@ impl<T: StateTrait> State<T> {
 }
 
 /// Starting point to build the app.
-pub type InitialState<T: FnMut(&mut egui::Ui, &mut RunningState)> = State<InnerBareState<T>>;
+pub type InitialState<T> = State<InnerBareState<T>>;
 
 impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     /// Show the window and start the app.

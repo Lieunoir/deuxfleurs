@@ -99,8 +99,6 @@ pub struct CameraUniform {
     view_position: [f32; 4],
     view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],
-    proj: [[f32; 4]; 4],
-    proj_inv: [[f32; 4]; 4],
     floor_bb: [f32; 4],
     floor_proj: [[f32; 4]; 4],
 }
@@ -111,8 +109,6 @@ impl CameraUniform {
             view_position: [0.0; 4],
             view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
             view_proj_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
-            proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
-            proj_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
             floor_bb: [0.0; 4],
             floor_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
@@ -125,8 +121,6 @@ impl CameraUniform {
         self.view_proj = view_proj.to_cols_array_2d();
         let view_proj_inv = view_proj.inverse();
         self.view_proj_inv = view_proj_inv.to_cols_array_2d();
-        self.proj = camera.build_proj().to_cols_array_2d();
-        self.proj_inv = camera.build_proj().inverse().to_cols_array_2d();
         //let orig : cgmath::Vector4<f32> = self.view_position.into();
         let mut min_x = f32::MAX;
         let mut min_z = f32::MAX;

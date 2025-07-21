@@ -1,7 +1,6 @@
 mod points;
 mod segments;
 mod vector_field;
-mod vector_shader;
 
 pub use points::PointsSettingsMut;
 pub(crate) use points::{NewPoints, Points};

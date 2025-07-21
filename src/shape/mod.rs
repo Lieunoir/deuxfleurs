@@ -26,7 +26,6 @@ pub struct GraphicalContext<'a> {
     pub(crate) queue: &'a wgpu::Queue,
     pub(crate) camera_light_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) counter_bind_group_layout: &'a wgpu::BindGroupLayout,
-    pub(crate) color_format: wgpu::TextureFormat,
     pub(crate) refresh_screen: &'a mut bool,
 }
 

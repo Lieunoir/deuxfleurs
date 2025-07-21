@@ -4,8 +4,6 @@ use crate::DisplayPointCloud;
 use crate::DisplaySegment;
 use crate::DisplaySurface;
 use crate::shape::ShapeGeometry;
-use crate::texture;
-use crate::util;
 use crate::util::BufferDimensions;
 use crate::window::UserEvent;
 use egui::Checkbox;

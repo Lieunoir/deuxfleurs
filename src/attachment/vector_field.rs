@@ -14,6 +14,7 @@ use egui::Widget;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::BufferAddress;
+use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
 
 pub struct VectorField {
@@ -267,10 +268,7 @@ impl VectorField {
             ],
             push_constant_ranges: &[],
         });
-        let shader = wgpu::ShaderModuleDescriptor {
-            label: Some("arrow shader"),
-            source: wgpu::ShaderSource::Wgsl(super::vector_shader::ARROW_SHADER.into()),
-        };
+        let shader = include_wgsl!("vector_shader.wgsl");
         let render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,

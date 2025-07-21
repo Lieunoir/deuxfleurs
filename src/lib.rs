@@ -19,12 +19,12 @@ mod camera;
 /// one can be displayed at a time on the corresponding
 /// shape.
 pub mod data;
-mod deferred;
 mod obj_load;
 /// Picked element types
 pub mod picker;
 /// Point clouds structs and associated data/settings
 pub mod point_cloud;
+mod post_process;
 mod resources;
 mod sbv;
 mod screenshot;

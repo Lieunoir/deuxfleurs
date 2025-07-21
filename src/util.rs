@@ -436,23 +436,22 @@ pub fn create_double_sided_copy_quad_pipeline(
     depth_format: Option<wgpu::TextureFormat>,
     vertex_layouts: &[wgpu::VertexBufferLayout],
     blend_state: Option<wgpu::BlendState>,
-    shader: wgpu::ShaderModuleDescriptor,
+    shader_fragment: &str,
+    shader: &wgpu::ShaderModule,
     label: Option<&str>,
 ) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(shader);
-
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label,
         layout: Some(layout),
         vertex: wgpu::VertexState {
-            module: &shader,
+            module: shader,
             entry_point: Some("vs_main"),
             buffers: vertex_layouts,
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: Some("fs_main"),
+            module: shader,
+            entry_point: Some(shader_fragment),
             targets: &[Some(wgpu::ColorTargetState {
                 format: color_format,
                 blend: blend_state,

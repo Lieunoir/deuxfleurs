@@ -7,6 +7,7 @@ use crate::util;
 use crate::util::Vertex;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
+use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
 
 use super::shader::get_shader;
@@ -416,10 +417,7 @@ impl RenderPipeline for PointCloudPipeline {
                 ],
                 push_constant_ranges: &[],
             });
-        let picker_shader = wgpu::ShaderModuleDescriptor {
-            label: Some("Point cloud Picker Shader"),
-            source: wgpu::ShaderSource::Wgsl(super::shader::SPHERE_PICKER_SHADER.into()),
-        };
+        let picker_shader = include_wgsl!("picker.wgsl");
         let sphere_picker_render_pipeline = util::create_quad_picker_pipeline(
             device,
             &picker_pipeline_layout,

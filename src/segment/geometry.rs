@@ -1,6 +1,5 @@
 use crate::data::{internal::*, *};
 use crate::picker::SegmentPicked;
-use crate::segment::sphere_shader::SPHERE_PICKER_SHADER;
 use crate::shape::*;
 use crate::texture;
 use crate::types::{Color, Scalar};
@@ -9,6 +8,7 @@ use crate::util;
 use crate::util::Vertex;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
+use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
 
 #[derive(Clone)]
@@ -601,10 +601,7 @@ impl RenderPipeline for SegmentPipeline {
             source: wgpu::ShaderSource::Wgsl(super::sphere_shader::get_shader(data).into()),
         };
 
-        let sphere_picker_shader = wgpu::ShaderModuleDescriptor {
-            label: Some("sphere cloud picker shader"),
-            source: wgpu::ShaderSource::Wgsl(SPHERE_PICKER_SHADER.into()),
-        };
+        let sphere_picker_shader = include_wgsl!("../point_cloud/picker.wgsl");
 
         let sphere_buffer_layout = if let Some(data) = &data {
             vec![

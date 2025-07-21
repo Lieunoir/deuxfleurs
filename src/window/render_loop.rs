@@ -5,14 +5,14 @@ use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::sbv::SBV;
 #[cfg(feature = "saves")]
 use crate::window::InnerBareStateSerde;
-use crate::{Settings, deferred};
+use crate::{Settings, post_process};
 
 use crate::picker::{self, Picked};
 use crate::point_cloud::UninitedPointCloud;
 use crate::screenshot;
 use crate::segment::UninitedSegment;
 use crate::surface::UninitedSurface;
-use crate::texture;
+use crate::texture::TextureBufferPool;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use indexmap::IndexMap;
@@ -246,9 +246,6 @@ impl InnerGraphicalState {
             ],
             label: Some("camera_light_bind_group"),
         });
-        // Create depth texture
-        let depth_texture =
-            texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
         let screenshoter = screenshot::Screenshoter::new();
 
@@ -295,7 +292,7 @@ impl InnerGraphicalState {
             })
             .collect();
 
-        let texture_buffer_pool = deferred::TextureBufferPool::new(
+        let texture_buffer_pool = TextureBufferPool::new(
             &device,
             wgpu::Extent3d {
                 width: size.width.max(1),
@@ -305,24 +302,24 @@ impl InnerGraphicalState {
             surface_format,
         );
 
-        let copy = deferred::TextureCopy::new(
+        let copy = post_process::TextureCopy::new(
             &device,
             texture_buffer_pool.get_blend_stored_view(),
             texture_buffer_pool.get_blend_target_view(),
             surface_format,
         );
-        let pbr_renderer = deferred::PBR::new(
+        let pbr_renderer = post_process::PBR::new(
             &device,
             surface_format,
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
-            &depth_texture.view,
+            texture_buffer_pool.get_depth_view(),
             &camera_light_bind_group_layout,
         );
-        let ground = deferred::Ground::new(
+        let ground = post_process::Ground::new(
             &device,
             surface_format,
-            &depth_texture.view,
+            texture_buffer_pool.get_depth_view(),
             &camera_light_bind_group_layout,
             0.,
         );
@@ -339,7 +336,6 @@ impl InnerGraphicalState {
             queue,
             config,
             size,
-            depth_texture,
             texture_buffer_pool,
             screenshoter,
             ctrl_pressed: false,
@@ -469,10 +465,7 @@ impl InnerGraphicalState {
             self.surface
                 .as_mut()
                 .map(|surface| surface.configure(&self.device, &self.config));
-            // Make sure to current window size to depth texture - required for calc
-            self.depth_texture =
-                texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
-            self.texture_buffer_pool = deferred::TextureBufferPool::new(
+            self.texture_buffer_pool = TextureBufferPool::new(
                 &self.device,
                 Extent3d {
                     width: new_size.width,
@@ -492,7 +485,7 @@ impl InnerGraphicalState {
                 &self.device,
                 self.texture_buffer_pool.get_albedo_view(),
                 self.texture_buffer_pool.get_normals_view(),
-                &self.depth_texture.view,
+                self.texture_buffer_pool.get_depth_view(),
             );
         }
     }
@@ -594,7 +587,7 @@ impl InnerGraphicalState {
                 &self.device,
                 &mut encoder,
                 &self.texture_buffer_pool.get_picker_view(),
-                &self.depth_texture.view,
+                &self.texture_buffer_pool.get_depth_view(),
                 &self.camera_light_bind_group,
                 &self.surfaces,
                 &self.clouds,
@@ -714,7 +707,7 @@ impl InnerGraphicalState {
                     }),
                 ],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
+                    view: &self.texture_buffer_pool.get_depth_view(),
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
@@ -802,7 +795,7 @@ impl InnerGraphicalState {
                         })],
                         // Create a depth stencil buffer using the depth texture
                         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.depth_texture.view,
+                            view: &self.texture_buffer_pool.get_depth_view(),
                             depth_ops: Some(wgpu::Operations {
                                 load: wgpu::LoadOp::Load,
                                 store: wgpu::StoreOp::Store,
