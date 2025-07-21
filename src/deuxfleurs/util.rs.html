@@ -436,54 +436,53 @@
 <a href=#436 id=436 data-nosnippet>436</a>    depth_format: <span class="prelude-ty">Option</span>&lt;wgpu::TextureFormat&gt;,
 <a href=#437 id=437 data-nosnippet>437</a>    vertex_layouts: <span class="kw-2">&amp;</span>[wgpu::VertexBufferLayout],
 <a href=#438 id=438 data-nosnippet>438</a>    blend_state: <span class="prelude-ty">Option</span>&lt;wgpu::BlendState&gt;,
-<a href=#439 id=439 data-nosnippet>439</a>    shader: wgpu::ShaderModuleDescriptor,
-<a href=#440 id=440 data-nosnippet>440</a>    label: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
-<a href=#441 id=441 data-nosnippet>441</a>) -&gt; wgpu::RenderPipeline {
-<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">let </span>shader = device.create_shader_module(shader);
-<a href=#443 id=443 data-nosnippet>443</a>
-<a href=#444 id=444 data-nosnippet>444</a>    device.create_render_pipeline(<span class="kw-2">&amp;</span>wgpu::RenderPipelineDescriptor {
-<a href=#445 id=445 data-nosnippet>445</a>        label,
-<a href=#446 id=446 data-nosnippet>446</a>        layout: <span class="prelude-val">Some</span>(layout),
-<a href=#447 id=447 data-nosnippet>447</a>        vertex: wgpu::VertexState {
-<a href=#448 id=448 data-nosnippet>448</a>            module: <span class="kw-2">&amp;</span>shader,
-<a href=#449 id=449 data-nosnippet>449</a>            entry_point: <span class="prelude-val">Some</span>(<span class="string">"vs_main"</span>),
-<a href=#450 id=450 data-nosnippet>450</a>            buffers: vertex_layouts,
-<a href=#451 id=451 data-nosnippet>451</a>            compilation_options: wgpu::PipelineCompilationOptions::default(),
-<a href=#452 id=452 data-nosnippet>452</a>        },
-<a href=#453 id=453 data-nosnippet>453</a>        fragment: <span class="prelude-val">Some</span>(wgpu::FragmentState {
-<a href=#454 id=454 data-nosnippet>454</a>            module: <span class="kw-2">&amp;</span>shader,
-<a href=#455 id=455 data-nosnippet>455</a>            entry_point: <span class="prelude-val">Some</span>(<span class="string">"fs_main"</span>),
-<a href=#456 id=456 data-nosnippet>456</a>            targets: <span class="kw-2">&amp;</span>[<span class="prelude-val">Some</span>(wgpu::ColorTargetState {
-<a href=#457 id=457 data-nosnippet>457</a>                format: color_format,
-<a href=#458 id=458 data-nosnippet>458</a>                blend: blend_state,
-<a href=#459 id=459 data-nosnippet>459</a>                write_mask: wgpu::ColorWrites::ALL,
-<a href=#460 id=460 data-nosnippet>460</a>            })],
-<a href=#461 id=461 data-nosnippet>461</a>            compilation_options: wgpu::PipelineCompilationOptions::default(),
-<a href=#462 id=462 data-nosnippet>462</a>        }),
-<a href=#463 id=463 data-nosnippet>463</a>        primitive: wgpu::PrimitiveState {
-<a href=#464 id=464 data-nosnippet>464</a>            topology: wgpu::PrimitiveTopology::TriangleStrip,
-<a href=#465 id=465 data-nosnippet>465</a>            strip_index_format: <span class="prelude-val">None</span>,
-<a href=#466 id=466 data-nosnippet>466</a>            front_face: wgpu::FrontFace::Ccw,
-<a href=#467 id=467 data-nosnippet>467</a>            cull_mode: <span class="prelude-val">None</span>,
-<a href=#468 id=468 data-nosnippet>468</a>            polygon_mode: wgpu::PolygonMode::Fill,
-<a href=#469 id=469 data-nosnippet>469</a>            unclipped_depth: <span class="bool-val">false</span>,
-<a href=#470 id=470 data-nosnippet>470</a>            conservative: <span class="bool-val">false</span>,
-<a href=#471 id=471 data-nosnippet>471</a>        },
-<a href=#472 id=472 data-nosnippet>472</a>        depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
-<a href=#473 id=473 data-nosnippet>473</a>            format,
-<a href=#474 id=474 data-nosnippet>474</a>            depth_write_enabled: <span class="bool-val">true</span>,
-<a href=#475 id=475 data-nosnippet>475</a>            depth_compare: wgpu::CompareFunction::Less,
-<a href=#476 id=476 data-nosnippet>476</a>            stencil: wgpu::StencilState::default(),
-<a href=#477 id=477 data-nosnippet>477</a>            bias: wgpu::DepthBiasState::default(),
-<a href=#478 id=478 data-nosnippet>478</a>        }),
-<a href=#479 id=479 data-nosnippet>479</a>        multisample: wgpu::MultisampleState {
-<a href=#480 id=480 data-nosnippet>480</a>            count: <span class="number">1</span>,
-<a href=#481 id=481 data-nosnippet>481</a>            mask: !<span class="number">0</span>,
-<a href=#482 id=482 data-nosnippet>482</a>            alpha_to_coverage_enabled: <span class="bool-val">false</span>,
-<a href=#483 id=483 data-nosnippet>483</a>        },
-<a href=#484 id=484 data-nosnippet>484</a>        <span class="comment">// If the pipeline will be used with a multiview render pass, this
-<a href=#485 id=485 data-nosnippet>485</a>        // indicates how many array layers the attachments will have.
-<a href=#486 id=486 data-nosnippet>486</a>        </span>multiview: <span class="prelude-val">None</span>,
-<a href=#487 id=487 data-nosnippet>487</a>        cache: <span class="prelude-val">None</span>,
-<a href=#488 id=488 data-nosnippet>488</a>    })
-<a href=#489 id=489 data-nosnippet>489</a>}</code></pre></div></section></main></body></html>
+<a href=#439 id=439 data-nosnippet>439</a>    shader_fragment: <span class="kw-2">&amp;</span>str,
+<a href=#440 id=440 data-nosnippet>440</a>    shader: <span class="kw-2">&amp;</span>wgpu::ShaderModule,
+<a href=#441 id=441 data-nosnippet>441</a>    label: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#442 id=442 data-nosnippet>442</a>) -&gt; wgpu::RenderPipeline {
+<a href=#443 id=443 data-nosnippet>443</a>    device.create_render_pipeline(<span class="kw-2">&amp;</span>wgpu::RenderPipelineDescriptor {
+<a href=#444 id=444 data-nosnippet>444</a>        label,
+<a href=#445 id=445 data-nosnippet>445</a>        layout: <span class="prelude-val">Some</span>(layout),
+<a href=#446 id=446 data-nosnippet>446</a>        vertex: wgpu::VertexState {
+<a href=#447 id=447 data-nosnippet>447</a>            module: shader,
+<a href=#448 id=448 data-nosnippet>448</a>            entry_point: <span class="prelude-val">Some</span>(<span class="string">"vs_main"</span>),
+<a href=#449 id=449 data-nosnippet>449</a>            buffers: vertex_layouts,
+<a href=#450 id=450 data-nosnippet>450</a>            compilation_options: wgpu::PipelineCompilationOptions::default(),
+<a href=#451 id=451 data-nosnippet>451</a>        },
+<a href=#452 id=452 data-nosnippet>452</a>        fragment: <span class="prelude-val">Some</span>(wgpu::FragmentState {
+<a href=#453 id=453 data-nosnippet>453</a>            module: shader,
+<a href=#454 id=454 data-nosnippet>454</a>            entry_point: <span class="prelude-val">Some</span>(shader_fragment),
+<a href=#455 id=455 data-nosnippet>455</a>            targets: <span class="kw-2">&amp;</span>[<span class="prelude-val">Some</span>(wgpu::ColorTargetState {
+<a href=#456 id=456 data-nosnippet>456</a>                format: color_format,
+<a href=#457 id=457 data-nosnippet>457</a>                blend: blend_state,
+<a href=#458 id=458 data-nosnippet>458</a>                write_mask: wgpu::ColorWrites::ALL,
+<a href=#459 id=459 data-nosnippet>459</a>            })],
+<a href=#460 id=460 data-nosnippet>460</a>            compilation_options: wgpu::PipelineCompilationOptions::default(),
+<a href=#461 id=461 data-nosnippet>461</a>        }),
+<a href=#462 id=462 data-nosnippet>462</a>        primitive: wgpu::PrimitiveState {
+<a href=#463 id=463 data-nosnippet>463</a>            topology: wgpu::PrimitiveTopology::TriangleStrip,
+<a href=#464 id=464 data-nosnippet>464</a>            strip_index_format: <span class="prelude-val">None</span>,
+<a href=#465 id=465 data-nosnippet>465</a>            front_face: wgpu::FrontFace::Ccw,
+<a href=#466 id=466 data-nosnippet>466</a>            cull_mode: <span class="prelude-val">None</span>,
+<a href=#467 id=467 data-nosnippet>467</a>            polygon_mode: wgpu::PolygonMode::Fill,
+<a href=#468 id=468 data-nosnippet>468</a>            unclipped_depth: <span class="bool-val">false</span>,
+<a href=#469 id=469 data-nosnippet>469</a>            conservative: <span class="bool-val">false</span>,
+<a href=#470 id=470 data-nosnippet>470</a>        },
+<a href=#471 id=471 data-nosnippet>471</a>        depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
+<a href=#472 id=472 data-nosnippet>472</a>            format,
+<a href=#473 id=473 data-nosnippet>473</a>            depth_write_enabled: <span class="bool-val">true</span>,
+<a href=#474 id=474 data-nosnippet>474</a>            depth_compare: wgpu::CompareFunction::Less,
+<a href=#475 id=475 data-nosnippet>475</a>            stencil: wgpu::StencilState::default(),
+<a href=#476 id=476 data-nosnippet>476</a>            bias: wgpu::DepthBiasState::default(),
+<a href=#477 id=477 data-nosnippet>477</a>        }),
+<a href=#478 id=478 data-nosnippet>478</a>        multisample: wgpu::MultisampleState {
+<a href=#479 id=479 data-nosnippet>479</a>            count: <span class="number">1</span>,
+<a href=#480 id=480 data-nosnippet>480</a>            mask: !<span class="number">0</span>,
+<a href=#481 id=481 data-nosnippet>481</a>            alpha_to_coverage_enabled: <span class="bool-val">false</span>,
+<a href=#482 id=482 data-nosnippet>482</a>        },
+<a href=#483 id=483 data-nosnippet>483</a>        <span class="comment">// If the pipeline will be used with a multiview render pass, this
+<a href=#484 id=484 data-nosnippet>484</a>        // indicates how many array layers the attachments will have.
+<a href=#485 id=485 data-nosnippet>485</a>        </span>multiview: <span class="prelude-val">None</span>,
+<a href=#486 id=486 data-nosnippet>486</a>        cache: <span class="prelude-val">None</span>,
+<a href=#487 id=487 data-nosnippet>487</a>    })
+<a href=#488 id=488 data-nosnippet>488</a>}</code></pre></div></section></main></body></html>
