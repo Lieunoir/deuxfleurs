@@ -735,7 +735,6 @@ impl RenderPipeline for SurfacePipeline {
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self {
         let pipeline_layout = match data_uniform {
             Some(uniform) => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -801,8 +800,7 @@ impl RenderPipeline for SurfacePipeline {
         let surface_render_pipeline = util::create_render_pipeline(
             device,
             &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &buffer_layout,
             shader,
             Some("surface render"),
@@ -811,7 +809,7 @@ impl RenderPipeline for SurfacePipeline {
         let shadow_render_pipeline = util::create_shadow_render_pipeline(
             device,
             &shadow_pipeline_layout,
-            texture::Texture::SHADOW_FORMAT,
+            texture::SHADOW_FORMAT,
             None,
             &[SurfaceVertex::desc()],
             shadow_shader,
@@ -821,8 +819,8 @@ impl RenderPipeline for SurfacePipeline {
         let picker_render_pipeline = util::create_picker_pipeline(
             device,
             &picker_pipeline_layout,
-            texture::Texture::PICKER_FORMAT,
-            Some(texture::Texture::DEPTH_FORMAT),
+            texture::PICKER_FORMAT,
+            Some(texture::DEPTH_FORMAT),
             &[SurfaceVertex::desc()],
             picker_shader,
             Some("surface picker render"),
@@ -844,7 +842,6 @@ impl RenderPipeline for SurfacePipeline {
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) {
         let pipeline_layout = match data_uniform {
             Some(uniform) => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -882,8 +879,7 @@ impl RenderPipeline for SurfacePipeline {
         self.surface_render_pipeline = util::create_render_pipeline(
             device,
             &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &buffer_layout,
             shader,
             Some("surface sphere render"),

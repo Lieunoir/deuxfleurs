@@ -221,7 +221,7 @@ impl Vertex for VertexTripleScalarData {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<f32>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[wgpu::VertexAttribute {
                 offset: 0,

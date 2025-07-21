@@ -144,7 +144,6 @@ where
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Shape<
         Geometry,
         Renderer<Fixed, DataB, Pipeline>,
@@ -167,7 +166,6 @@ where
             data,
             camera_light_bind_group_layout,
             counter_bind_group_layout,
-            color_format,
         );
 
         let attached_data = self
@@ -180,7 +178,6 @@ where
                         device,
                         camera_light_bind_group_layout,
                         &renderer.transform_uniform.bind_group_layout,
-                        color_format,
                     ),
                 )
             })
@@ -221,7 +218,6 @@ where
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self {
         let geometry = Geometry::new(args);
         Self::new_with_geometry(
@@ -231,7 +227,6 @@ where
             device,
             camera_light_bind_group_layout,
             counter_bind_group_layout,
-            color_format,
         )
     }
 
@@ -242,7 +237,6 @@ where
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self {
         let transform = TransformSettings::default();
         let char_l = char_l.unwrap_or_else(|| geometry.get_characteristic_length());
@@ -255,7 +249,6 @@ where
             None,
             camera_light_bind_group_layout,
             counter_bind_group_layout,
-            color_format,
         );
         let sbv = SBV::new(geometry.get_positions());
         Self {
@@ -330,7 +323,6 @@ where
                     data,
                     &self.settings,
                     camera_light_bind_group_layout,
-                    color_format,
                 );
             }
             *refresh_screen = true;
@@ -358,7 +350,6 @@ where
                                 data,
                                 &self.settings,
                                 camera_light_bind_group_layout,
-                                color_format,
                             );
                             *refresh_screen = true;
                         }
@@ -636,7 +627,6 @@ where
                 context.device,
                 context.camera_light_bind_group_layout,
                 context.counter_bind_group_layout,
-                context.color_format,
             );
             false
         }
@@ -683,7 +673,6 @@ where
                 data,
                 &self.settings,
                 context.camera_light_bind_group_layout,
-                context.color_format,
             );
             *context.refresh_screen |= self.show;
         }
@@ -709,7 +698,6 @@ where
                 Some(data),
                 &self.settings,
                 context.camera_light_bind_group_layout,
-                context.color_format,
             );
             *context.refresh_screen |= self.show;
         }
@@ -730,7 +718,6 @@ where
                 data,
                 &self.settings,
                 context.camera_light_bind_group_layout,
-                context.color_format,
             );
         }
     }

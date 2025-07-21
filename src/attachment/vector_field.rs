@@ -221,7 +221,6 @@ impl VectorField {
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
         NewVectorField {
             position,
             vectors,
@@ -275,8 +274,7 @@ impl VectorField {
         let render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &[VectorVertex::desc(), VectorData::desc()],
             shader,
             Some("vector field render"),
@@ -349,7 +347,6 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
             context.device,
             context.camera_light_bind_group_layout,
             transform_layout,
-            context.color_format,
             new_vector_field,
         )
     }
@@ -436,13 +433,11 @@ impl NewAttachedGeometry for NewVectorField {
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry {
         VectorField::new(
             device,
             camera_light_bind_group_layout,
             transform_bind_group_layout,
-            color_format,
             self,
         )
     }

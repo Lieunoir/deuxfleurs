@@ -27,7 +27,6 @@ impl<
         data: Option<&Data>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self {
         let fixed = Fixed::initialize(device, geometry);
         let data_buffer = DataB::new(device, geometry, data);
@@ -45,7 +44,6 @@ impl<
             data_uniform.as_ref(),
             camera_light_bind_group_layout,
             counter_bind_group_layout,
-            color_format,
         );
         //TODO can be factored
         Self {
@@ -81,7 +79,6 @@ impl<
         data: Option<&Data>,
         settings: &Settings,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) {
         self.pipeline.rebuild(
             device,
@@ -91,7 +88,6 @@ impl<
             &self.settings_uniform,
             self.data_uniform.as_ref(),
             camera_light_bind_group_layout,
-            color_format,
         );
     }
 }
@@ -126,7 +122,6 @@ pub trait RenderPipeline {
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self;
 
     fn rebuild(
@@ -138,7 +133,6 @@ pub trait RenderPipeline {
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     );
 }
 

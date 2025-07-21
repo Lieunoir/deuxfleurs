@@ -1,7 +1,199 @@
 use crate::texture;
 use crate::util;
-use crate::util::Vertex;
+use crate::util::{BufferDimensions, Vertex};
 use wgpu::util::DeviceExt;
+
+pub struct TextureBufferPool {
+    // concerned by super sampling
+    // picking should be concerned by aa, so could be moved?
+    albedo_or_picking: wgpu::Texture,
+    picking_view: wgpu::TextureView,
+    albedo_view: wgpu::TextureView,
+    normals: wgpu::Texture,
+    normals_view: wgpu::TextureView,
+
+    // Could be used as blend_render_target too using uniform alpha?
+    // not concerned by super sampling
+    // has to be rgba format
+    screenshot_or_blend_stored: wgpu::Texture,
+    blend_stored_view: wgpu::TextureView,
+    screenshot_view: wgpu::TextureView,
+    // possibly concerned by super sampling
+    // has to be same format as window
+    blend_render_target: wgpu::Texture,
+    blend_render_target_view: wgpu::TextureView,
+    output_buffer: wgpu::Buffer,
+    output_buffer_dimensions: BufferDimensions,
+    //add ssao buffer?
+}
+
+impl TextureBufferPool {
+    pub fn new(
+        device: &wgpu::Device,
+        texture_size: wgpu::Extent3d,
+        color_format: wgpu::TextureFormat,
+    ) -> Self {
+        let albedo_or_picking = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC,
+            label: Some("picking_or_albedo_texture"),
+            view_formats: &[],
+        });
+        let albedo_view = albedo_or_picking.create_view(&wgpu::TextureViewDescriptor::default());
+        let picking_view = albedo_or_picking.create_view(&wgpu::TextureViewDescriptor::default());
+        let normals = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("normals_pbr_texture"),
+            view_formats: &[],
+        });
+        let normals_view = normals.create_view(&wgpu::TextureViewDescriptor::default());
+        let screenshot_or_blend_stored = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: texture::SCREENSHOT_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC,
+            label: Some("screenshot_or_blend_texture"),
+            view_formats: &[],
+        });
+        let screenshot_view =
+            screenshot_or_blend_stored.create_view(&wgpu::TextureViewDescriptor::default());
+        let blend_stored_view =
+            screenshot_or_blend_stored.create_view(&wgpu::TextureViewDescriptor::default());
+        let blend_render_target = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: color_format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("blend_render_target_texture"),
+            view_formats: &[],
+        });
+        let blend_render_target_view =
+            blend_render_target.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let output_buffer_dimensions =
+            BufferDimensions::new::<u32>(texture_size.width as usize, texture_size.height as usize);
+
+        let output_buffer_size = (output_buffer_dimensions.padded_bytes_per_row
+            * output_buffer_dimensions.height)
+            as wgpu::BufferAddress;
+        let output_buffer_desc = wgpu::BufferDescriptor {
+            size: output_buffer_size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            label: Some("output_buffer"),
+            mapped_at_creation: false,
+        };
+        let output_buffer = device.create_buffer(&output_buffer_desc);
+        Self {
+            albedo_or_picking,
+            albedo_view,
+            picking_view,
+            normals,
+            normals_view,
+            screenshot_or_blend_stored,
+            screenshot_view,
+            blend_stored_view,
+            blend_render_target,
+            blend_render_target_view,
+            output_buffer,
+            output_buffer_dimensions,
+        }
+    }
+
+    pub fn get_albedo_view(&self) -> &wgpu::TextureView {
+        &self.albedo_view
+    }
+
+    pub fn get_normals_view(&self) -> &wgpu::TextureView {
+        &self.normals_view
+    }
+
+    pub fn get_blend_target_view(&self) -> &wgpu::TextureView {
+        &self.blend_render_target_view
+    }
+
+    pub fn get_blend_stored_view(&self) -> &wgpu::TextureView {
+        &self.blend_stored_view
+    }
+
+    pub fn get_picker_view(&self) -> &wgpu::TextureView {
+        &self.picking_view
+    }
+
+    pub fn get_output_buffer(&self) -> &wgpu::Buffer {
+        &self.output_buffer
+    }
+
+    pub fn get_output_buffer_dimensions(&self) -> &BufferDimensions {
+        &self.output_buffer_dimensions
+    }
+
+    pub fn copy_screenshot_texture_to_buffer(&mut self, encoder: &mut wgpu::CommandEncoder) {
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                aspect: wgpu::TextureAspect::All,
+                texture: &self.screenshot_or_blend_stored,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &self.output_buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(self.output_buffer_dimensions.padded_bytes_per_row as u32),
+                    //rows_per_image: std::num::NonZeroU32::new(self.size.height),
+                    rows_per_image: None,
+                },
+            },
+            wgpu::Extent3d {
+                width: self.output_buffer_dimensions.width as u32,
+                height: self.output_buffer_dimensions.height as u32,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    pub fn copy_picker_texture_to_buffer(&mut self, encoder: &mut wgpu::CommandEncoder) {
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                aspect: wgpu::TextureAspect::All,
+                texture: &self.albedo_or_picking,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &self.output_buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(self.output_buffer_dimensions.padded_bytes_per_row as u32),
+                    //rows_per_image: std::num::NonZeroU32::new(self.size.height),
+                    rows_per_image: None,
+                },
+            },
+            wgpu::Extent3d {
+                width: self.output_buffer_dimensions.width as u32,
+                height: self.output_buffer_dimensions.height as u32,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+}
 
 pub struct TextureCopy {
     square: wgpu::Buffer,
@@ -10,11 +202,6 @@ pub struct TextureCopy {
     blend_bind_group: wgpu::BindGroup,
     copy_pipeline: wgpu::RenderPipeline,
     blend_pipeline: wgpu::RenderPipeline,
-    screenshot_pipeline: wgpu::RenderPipeline,
-    old_blend_texture: wgpu::Texture,
-    old_blend_texture_view: wgpu::TextureView,
-    new_blend_texture: wgpu::Texture,
-    new_blend_texture_view: wgpu::TextureView,
 }
 
 #[repr(C)]
@@ -43,39 +230,14 @@ impl TextureCopy {
     pub fn resize(
         &mut self,
         device: &wgpu::Device,
-        color_format: wgpu::TextureFormat,
-        width: u32,
-        height: u32,
+        blend_stored_view: &wgpu::TextureView,
+        blend_render_target_view: &wgpu::TextureView,
     ) {
-        let texture_size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-        let texture_descriptor = wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: color_format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: Some("copy_texture"),
-            view_formats: &[],
-        };
-        self.old_blend_texture = device.create_texture(&texture_descriptor);
-        self.old_blend_texture_view = self
-            .old_blend_texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        self.new_blend_texture = device.create_texture(&texture_descriptor);
-        self.new_blend_texture_view = self
-            .new_blend_texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
         self.copy_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.copy_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::TextureView(&self.old_blend_texture_view),
+                resource: wgpu::BindingResource::TextureView(blend_stored_view),
             }],
             label: Some("copy_bind_group"),
         });
@@ -83,21 +245,17 @@ impl TextureCopy {
             layout: &self.copy_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::TextureView(&self.new_blend_texture_view),
+                resource: wgpu::BindingResource::TextureView(blend_render_target_view),
             }],
             label: Some("copy_bind_group"),
         });
     }
 
-    pub fn get_view(&self) -> &wgpu::TextureView {
-        &self.new_blend_texture_view
-    }
-
     pub fn new(
         device: &wgpu::Device,
+        blend_stored_view: &wgpu::TextureView,
+        blend_render_target_view: &wgpu::TextureView,
         color_format: wgpu::TextureFormat,
-        width: u32,
-        height: u32,
     ) -> Self {
         let positions = [[-1., -1., 0.], [1., -1., 0.], [-1., 1., 0.], [1., 1., 0.]];
         let vertices = positions.map(|position| SquareVertex { position });
@@ -106,28 +264,6 @@ impl TextureCopy {
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
-
-        let texture_size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-        let texture_descriptor = wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: color_format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: Some("copy_texture"),
-            view_formats: &[],
-        };
-        let old_blend_texture = device.create_texture(&texture_descriptor);
-        let old_blend_texture_view =
-            old_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let new_blend_texture = device.create_texture(&texture_descriptor);
-        let new_blend_texture_view =
-            new_blend_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let copy_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -148,7 +284,7 @@ impl TextureCopy {
             layout: &copy_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::TextureView(&new_blend_texture_view),
+                resource: wgpu::BindingResource::TextureView(&blend_render_target_view),
             }],
             label: Some("blend_bind_group"),
         });
@@ -157,7 +293,7 @@ impl TextureCopy {
             layout: &copy_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::TextureView(&old_blend_texture_view),
+                resource: wgpu::BindingResource::TextureView(&blend_stored_view),
             }],
             label: Some("copy_bind_group"),
         });
@@ -186,20 +322,10 @@ impl TextureCopy {
             copy_shader.clone(),
             Some("copy render"),
         );
-        let screenshot_pipeline = util::create_copy_quad_pipeline(
-            device,
-            &copy_pipeline_layout,
-            crate::screenshot::SCREENSHOT_FORMAT,
-            None,
-            &[SquareVertex::desc()],
-            Some(wgpu::BlendState::REPLACE),
-            copy_shader.clone(),
-            Some("copy render"),
-        );
         let blend_pipeline = util::create_copy_quad_pipeline(
             device,
             &blend_pipeline_layout,
-            color_format,
+            texture::SCREENSHOT_FORMAT,
             None,
             &[SquareVertex::desc()],
             Some(wgpu::BlendState {
@@ -225,16 +351,16 @@ impl TextureCopy {
             blend_bind_group,
             copy_pipeline,
             blend_pipeline,
-            screenshot_pipeline,
-            old_blend_texture,
-            old_blend_texture_view,
-            new_blend_texture,
-            new_blend_texture_view,
         }
     }
 
-    pub fn blend<'a, 'b>(&'a self, encoder: &mut wgpu::CommandEncoder, factor: f64, first: bool)
-    where
+    pub fn blend<'a, 'b>(
+        &'a self,
+        encoder: &mut wgpu::CommandEncoder,
+        factor: f64,
+        first: bool,
+        blend_stored_view: &wgpu::TextureView,
+    ) where
         'a: 'b,
     {
         let load_op = if first {
@@ -250,7 +376,7 @@ impl TextureCopy {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Blend Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.old_blend_texture_view,
+                view: blend_stored_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: load_op,
@@ -279,16 +405,6 @@ impl TextureCopy {
     {
         render_pass.set_bind_group(0, &self.copy_bind_group, &[]);
         render_pass.set_pipeline(&self.copy_pipeline);
-        render_pass.set_vertex_buffer(0, self.square.slice(..));
-        render_pass.draw(0..4, 0..1);
-    }
-
-    pub fn screenshot<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
-    where
-        'a: 'b,
-    {
-        render_pass.set_bind_group(0, &self.copy_bind_group, &[]);
-        render_pass.set_pipeline(&self.screenshot_pipeline);
         render_pass.set_vertex_buffer(0, self.square.slice(..));
         render_pass.draw(0..4, 0..1);
     }
@@ -322,10 +438,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 ";
 
 pub struct PBR {
-    albedo: wgpu::Texture,
-    albedo_view: wgpu::TextureView,
-    normals: wgpu::Texture,
-    normals_view: wgpu::TextureView,
     square: wgpu::Buffer,
     sampler: wgpu::Sampler,
 
@@ -335,65 +447,23 @@ pub struct PBR {
 }
 
 impl PBR {
-    pub fn get_albedo_view(&self) -> &wgpu::TextureView {
-        &self.albedo_view
-    }
-
-    pub fn get_normals_view(&self) -> &wgpu::TextureView {
-        &self.normals_view
-    }
-
     pub fn resize(
         &mut self,
         device: &wgpu::Device,
-        color_format: wgpu::TextureFormat,
+        albedo_view: &wgpu::TextureView,
+        normals_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
-        width: u32,
-        height: u32,
     ) {
-        let texture_size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-        let descriptor = wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: Some("pbr_texture"),
-            view_formats: &[],
-        };
-        self.albedo = device.create_texture(&wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: color_format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: Some("albedo_texture"),
-            view_formats: &[],
-        });
-        self.albedo_view = self
-            .albedo
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        self.normals = device.create_texture(&descriptor);
-        self.normals_view = self
-            .normals
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
         self.material_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.material_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.albedo_view),
+                    resource: wgpu::BindingResource::TextureView(albedo_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&self.normals_view),
+                    resource: wgpu::BindingResource::TextureView(normals_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -411,10 +481,10 @@ impl PBR {
     pub fn new(
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
+        albedo_view: &wgpu::TextureView,
+        normals_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        width: u32,
-        height: u32,
     ) -> Self {
         let positions = [[-1., -1., 0.], [1., -1., 0.], [-1., 1., 0.], [1., 1., 0.]];
         let vertices = positions.map(|position| SquareVertex { position });
@@ -423,35 +493,6 @@ impl PBR {
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
-        let texture_size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-
-        let descriptor = wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: Some("pbr_texture"),
-            view_formats: &[],
-        };
-        let albedo = device.create_texture(&wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: color_format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: Some("albedo_texture"),
-            view_formats: &[],
-        });
-        let albedo_view = albedo.create_view(&wgpu::TextureViewDescriptor::default());
-        let normals = device.create_texture(&descriptor);
-        let normals_view = normals.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -553,10 +594,6 @@ impl PBR {
         );
 
         Self {
-            albedo,
-            albedo_view,
-            normals,
-            normals_view,
             square,
             sampler,
 
@@ -942,6 +979,8 @@ pub struct Ground {
     blur_pipeline: wgpu::RenderPipeline,
     h_blur_pipeline: wgpu::RenderPipeline,
     pipeline: wgpu::RenderPipeline,
+    // Using multiple texture but at lower res + only u8,
+    // so in total less than a render target
     blurred_texture_view: wgpu::TextureView,
     h_blurred_texture_view: wgpu::TextureView,
     low_blurred_texture_view: wgpu::TextureView,
@@ -1004,7 +1043,7 @@ impl Ground {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: texture::Texture::SHADOW_FORMAT,
+            format: texture::SHADOW_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         };
@@ -1014,7 +1053,7 @@ impl Ground {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: texture::Texture::SHADOW_FORMAT,
+            format: texture::SHADOW_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         };
@@ -1217,7 +1256,7 @@ impl Ground {
             device,
             &pipeline_layout,
             color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &[SquareVertex::desc()],
             Some(wgpu::BlendState::ALPHA_BLENDING),
             shader,
@@ -1227,7 +1266,7 @@ impl Ground {
         let blur_pipeline = util::create_double_sided_copy_quad_pipeline(
             device,
             &blur_pipeline_layout,
-            texture::Texture::SHADOW_FORMAT,
+            texture::SHADOW_FORMAT,
             None,
             &[SquareVertex::desc()],
             None,
@@ -1238,7 +1277,7 @@ impl Ground {
         let h_blur_pipeline = util::create_double_sided_copy_quad_pipeline(
             device,
             &blur_pipeline_layout,
-            texture::Texture::SHADOW_FORMAT,
+            texture::SHADOW_FORMAT,
             None,
             &[SquareVertex::desc()],
             None,

@@ -34,7 +34,6 @@ impl BufferDimensions {
 pub fn create_render_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
-    color_format: wgpu::TextureFormat,
     depth_format: Option<wgpu::TextureFormat>,
     vertex_layouts: &[wgpu::VertexBufferLayout],
     shader: wgpu::ShaderModuleDescriptor,
@@ -56,12 +55,12 @@ pub fn create_render_pipeline(
             entry_point: Some("fs_main"),
             targets: &[
                 Some(wgpu::ColorTargetState {
-                    format: color_format,
+                    format: crate::texture::ALBEDO_FORMAT,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 }),
                 Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    format: crate::texture::NORMALS_FORMAT,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 }),
@@ -309,7 +308,6 @@ pub fn create_quad_picker_pipeline(
 pub fn create_quad_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
-    color_format: wgpu::TextureFormat,
     depth_format: Option<wgpu::TextureFormat>,
     vertex_layouts: &[wgpu::VertexBufferLayout],
     shader: wgpu::ShaderModuleDescriptor,
@@ -331,12 +329,12 @@ pub fn create_quad_pipeline(
             entry_point: Some("fs_main"),
             targets: &[
                 Some(wgpu::ColorTargetState {
-                    format: color_format,
+                    format: crate::texture::ALBEDO_FORMAT,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 }),
                 Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    format: crate::texture::NORMALS_FORMAT,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 }),

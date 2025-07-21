@@ -25,9 +25,9 @@ use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
-use wgpu::CompositeAlphaMode;
 use wgpu::rwh::HasDisplayHandle;
 use wgpu::util::DeviceExt;
+use wgpu::{CompositeAlphaMode, Extent3d};
 use winit::application::ApplicationHandler;
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
 use winit::keyboard::{Key, NamedKey, SmolStr};
@@ -250,9 +250,7 @@ impl InnerGraphicalState {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
-        // Create texture for screenshots
-        let screenshoter =
-            screenshot::Screenshoter::new(&device, size.width.max(1), size.height.max(1));
+        let screenshoter = screenshot::Screenshoter::new();
 
         let picker = picker::Picker::new(&device, size.width.max(1), size.height.max(1));
 
@@ -265,7 +263,6 @@ impl InnerGraphicalState {
                         &device,
                         &camera_light_bind_group_layout,
                         &picker.bind_group_layout,
-                        surface_format,
                     ),
                 )
             })
@@ -280,7 +277,6 @@ impl InnerGraphicalState {
                         &device,
                         &camera_light_bind_group_layout,
                         &picker.bind_group_layout,
-                        surface_format,
                     ),
                 )
             })
@@ -294,25 +290,34 @@ impl InnerGraphicalState {
                         &device,
                         &camera_light_bind_group_layout,
                         &picker.bind_group_layout,
-                        surface_format,
                     ),
                 )
             })
             .collect();
 
+        let texture_buffer_pool = deferred::TextureBufferPool::new(
+            &device,
+            wgpu::Extent3d {
+                width: size.width.max(1),
+                height: size.height.max(1),
+                depth_or_array_layers: 1,
+            },
+            surface_format,
+        );
+
         let copy = deferred::TextureCopy::new(
             &device,
+            texture_buffer_pool.get_blend_stored_view(),
+            texture_buffer_pool.get_blend_target_view(),
             surface_format,
-            size.width.max(1),
-            size.height.max(1),
         );
         let pbr_renderer = deferred::PBR::new(
             &device,
             surface_format,
+            texture_buffer_pool.get_albedo_view(),
+            texture_buffer_pool.get_normals_view(),
             &depth_texture.view,
             &camera_light_bind_group_layout,
-            size.width.max(1),
-            size.height.max(1),
         );
         let ground = deferred::Ground::new(
             &device,
@@ -335,6 +340,7 @@ impl InnerGraphicalState {
             config,
             size,
             depth_texture,
+            texture_buffer_pool,
             screenshoter,
             ctrl_pressed: false,
             camera,
@@ -466,23 +472,27 @@ impl InnerGraphicalState {
             // Make sure to current window size to depth texture - required for calc
             self.depth_texture =
                 texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
-            self.screenshoter
-                .resize(&self.device, new_size.width, new_size.height);
+            self.texture_buffer_pool = deferred::TextureBufferPool::new(
+                &self.device,
+                Extent3d {
+                    width: new_size.width,
+                    height: new_size.height,
+                    depth_or_array_layers: 1,
+                },
+                self.config.format,
+            );
             self.camera.resize(new_size.width, new_size.height);
-            self.picker
-                .resize(&self.device, new_size.width, new_size.height);
+            self.picker.resize(new_size.width, new_size.height);
             self.copy.resize(
                 &self.device,
-                self.config.format,
-                new_size.width,
-                new_size.height,
+                self.texture_buffer_pool.get_blend_stored_view(),
+                self.texture_buffer_pool.get_blend_target_view(),
             );
             self.pbr_renderer.resize(
                 &self.device,
-                self.config.format,
+                self.texture_buffer_pool.get_albedo_view(),
+                self.texture_buffer_pool.get_normals_view(),
                 &self.depth_texture.view,
-                new_size.width,
-                new_size.height,
             );
         }
     }
@@ -580,15 +590,20 @@ impl InnerGraphicalState {
                 self.size.height,
             );
 
-            self.egui_dirty |= self.picker.render(
+            if self.picker.render(
                 &self.device,
                 &mut encoder,
+                &self.texture_buffer_pool.get_picker_view(),
                 &self.depth_texture.view,
                 &self.camera_light_bind_group,
                 &self.surfaces,
                 &self.clouds,
                 &self.segments,
-            );
+            ) {
+                self.egui_dirty = true;
+                self.texture_buffer_pool
+                    .copy_picker_texture_to_buffer(&mut encoder);
+            }
             deltas
         });
 
@@ -656,7 +671,7 @@ impl InnerGraphicalState {
         if render {
             let (view_ref, color) = if store_render {
                 (
-                    self.copy.get_view(),
+                    self.texture_buffer_pool.get_blend_target_view(),
                     wgpu::Color {
                         r: 0.0,
                         g: 0.0,
@@ -672,7 +687,7 @@ impl InnerGraphicalState {
                 label: Some("Material Render Pass"),
                 color_attachments: &[
                     Some(wgpu::RenderPassColorAttachment {
-                        view: self.pbr_renderer.get_albedo_view(),
+                        view: self.texture_buffer_pool.get_albedo_view(),
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -685,7 +700,7 @@ impl InnerGraphicalState {
                         },
                     }),
                     Some(wgpu::RenderPassColorAttachment {
-                        view: self.pbr_renderer.get_normals_view(),
+                        view: self.texture_buffer_pool.get_normals_view(),
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -805,7 +820,12 @@ impl InnerGraphicalState {
             //Blend with previous frame
             if store_render {
                 let factor = (self.taa_counter as f64 - 1.) / (self.taa_counter as f64);
-                self.copy.blend(&mut encoder, factor, self.taa_counter == 1);
+                self.copy.blend(
+                    &mut encoder,
+                    factor,
+                    self.taa_counter == 1,
+                    self.texture_buffer_pool.get_blend_stored_view(),
+                );
             }
         }
 
@@ -867,7 +887,11 @@ impl InnerGraphicalState {
         }
 
         event_loop_proxy.map(|proxy| {
-            self.picker.post_render(proxy);
+            self.picker.post_render(
+                proxy,
+                self.texture_buffer_pool.get_output_buffer(),
+                self.texture_buffer_pool.get_output_buffer_dimensions(),
+            );
         });
         if self.picker.pick_locked || !self.settings.lazy_draw {
             request_redraw = true;
@@ -887,39 +911,29 @@ impl InnerGraphicalState {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Screenshot Render Encoder"),
             });
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Copy Stored to Buffer Pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: self.screenshoter.get_view(),
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.,
-                        g: 0.,
-                        b: 0.,
-                        a: 0.,
-                    }),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            occlusion_query_set: None,
-            timestamp_writes: None,
-        });
-        self.copy.screenshot(&mut render_pass);
-        drop(render_pass);
-        self.screenshoter.copy_texture_to_buffer(&mut encoder);
+        self.texture_buffer_pool
+            .copy_screenshot_texture_to_buffer(&mut encoder);
         self.queue.submit(iter::once(encoder.finish()))
     }
 
     pub(crate) fn screenshot_to_buffer(&mut self) -> Result<Vec<u8>, ()> {
         let index = self.render_screenshot();
-        self.screenshoter.create_image_buffer(&self.device, index)
+        self.screenshoter.create_image_buffer(
+            &self.device,
+            index,
+            self.texture_buffer_pool.get_output_buffer(),
+            self.texture_buffer_pool.get_output_buffer_dimensions(),
+        )
     }
 
     pub(crate) fn screenshot(&mut self) {
         let index = self.render_screenshot();
-        self.screenshoter.create_png(&self.device, index);
+        self.screenshoter.create_png(
+            &self.device,
+            index,
+            self.texture_buffer_pool.get_output_buffer(),
+            self.texture_buffer_pool.get_output_buffer_dimensions(),
+        );
     }
 
     pub(crate) fn get_picked(&self) -> &Option<(String, Picked)> {
@@ -1205,6 +1219,8 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                         &state.0.clouds,
                         &state.0.segments,
                         &state.0.camera,
+                        state.0.texture_buffer_pool.get_output_buffer(),
+                        state.0.texture_buffer_pool.get_output_buffer_dimensions(),
                     );
                 }
             }

@@ -563,7 +563,6 @@ impl RenderPipeline for SegmentPipeline {
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self {
         let bind_group_layouts = if let Some(uniform) = data_uniform {
             vec![
@@ -620,8 +619,7 @@ impl RenderPipeline for SegmentPipeline {
         let sphere_render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &sphere_buffer_layout,
             shader,
             Some("segment sphere render"),
@@ -630,8 +628,8 @@ impl RenderPipeline for SegmentPipeline {
         let sphere_picker_render_pipeline = util::create_quad_picker_pipeline(
             device,
             &picker_pipeline_layout,
-            texture::Texture::PICKER_FORMAT,
-            Some(texture::Texture::DEPTH_FORMAT),
+            texture::PICKER_FORMAT,
+            Some(texture::DEPTH_FORMAT),
             &[SphereVertex::desc(), SphereCenter::desc()],
             sphere_picker_shader,
             Some("Curve Sphere picker"),
@@ -659,8 +657,7 @@ impl RenderPipeline for SegmentPipeline {
         let cylinder_render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &cylinder_buffer_layout,
             cylinder_shader,
             Some("segment cylinder render"),
@@ -668,8 +665,8 @@ impl RenderPipeline for SegmentPipeline {
         let cylinder_picker_render_pipeline = util::create_quad_picker_pipeline(
             device,
             &picker_pipeline_layout,
-            texture::Texture::PICKER_FORMAT,
-            Some(texture::Texture::DEPTH_FORMAT),
+            texture::PICKER_FORMAT,
+            Some(texture::DEPTH_FORMAT),
             &[SphereVertex::desc(), CylinderData::desc()],
             cylinder_picker_shader,
             Some("Curve Cylinder picker"),
@@ -692,7 +689,6 @@ impl RenderPipeline for SegmentPipeline {
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) {
         let bind_group_layouts = if let Some(uniform) = data_uniform {
             vec![
@@ -732,8 +728,7 @@ impl RenderPipeline for SegmentPipeline {
         let sphere_render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &sphere_buffer_layout,
             shader,
             Some("segment sphere render"),
@@ -756,8 +751,7 @@ impl RenderPipeline for SegmentPipeline {
         let cylinder_render_pipeline = util::create_quad_pipeline(
             device,
             &pipeline_layout,
-            color_format,
-            Some(texture::Texture::DEPTH_FORMAT),
+            Some(texture::DEPTH_FORMAT),
             &cylinder_buffer_layout,
             cylinder_shader,
             Some("segment cylinder render"),

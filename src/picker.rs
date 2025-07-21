@@ -6,6 +6,7 @@ use crate::DisplaySurface;
 use crate::shape::ShapeGeometry;
 use crate::texture;
 use crate::util;
+use crate::util::BufferDimensions;
 use crate::window::UserEvent;
 use egui::Checkbox;
 use indexmap::IndexMap;
@@ -15,10 +16,6 @@ use wgpu::util::DeviceExt;
 use winit::event::*;
 
 pub(crate) struct Picker {
-    texture: wgpu::Texture,
-    texture_view: wgpu::TextureView,
-    buffer: wgpu::Buffer,
-    buffer_dimensions: util::BufferDimensions,
     pub picked_item: Option<(String, Picked)>,
     item_to_pick: Option<(usize, usize)>,
     //lock to ensure buffer isn't used while mapped
@@ -68,36 +65,6 @@ pub(crate) struct CounterUniform {
 
 impl Picker {
     pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
-        let desc = wgpu::TextureDescriptor {
-            label: Some("picker texture"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: texture::Texture::PICKER_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
-        };
-        let texture = device.create_texture(&desc);
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let buffer_dimensions = util::BufferDimensions::new::<u32>(width as usize, height as usize);
-        let output_buffer_size = (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height)
-            as wgpu::BufferAddress;
-        let buffer_desc = wgpu::BufferDescriptor {
-            size: output_buffer_size,
-            usage: wgpu::BufferUsages::COPY_DST
-                // this tells wpgu that we want to read this buffer from the cpu
-                | wgpu::BufferUsages::MAP_READ,
-            label: Some("picker output buffer"),
-            mapped_at_creation: false,
-        };
-        let buffer = device.create_buffer(&buffer_desc);
-
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -111,25 +78,9 @@ impl Picker {
             }],
             label: Some("picker_counter_bind_group_layout"),
         });
-        /*
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: counter_buffer.as_entire_binding(),
-                },
-            ],
-            label: Some("camera_light_bind_group"),
-        });
-        */
         let bind_groups = Vec::new();
 
         Self {
-            texture,
-            texture_view,
-            buffer,
-            buffer_dimensions,
             picked_item: None,
             item_to_pick: None,
             pick_locked: false,
@@ -146,38 +97,7 @@ impl Picker {
         }
     }
 
-    pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        let desc = wgpu::TextureDescriptor {
-            label: Some("picker texture"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: crate::texture::Texture::PICKER_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
-        };
-        self.texture = device.create_texture(&desc);
-        self.texture_view = self
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let buffer_dimensions = util::BufferDimensions::new::<u32>(width as usize, height as usize);
-        let output_buffer_size = (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height)
-            as wgpu::BufferAddress;
-        self.buffer_dimensions = buffer_dimensions;
-        let picker_buffer_desc = wgpu::BufferDescriptor {
-            size: output_buffer_size,
-            usage: wgpu::BufferUsages::COPY_DST
-                // this tells wpgu that we want to read this buffer from the cpu
-                | wgpu::BufferUsages::MAP_READ,
-            label: Some("picker output buffer"),
-            mapped_at_creation: false,
-        };
-        self.buffer = device.create_buffer(&picker_buffer_desc);
+    pub fn resize(&mut self, width: u32, height: u32) {
         self.item_to_pick = None;
         self.width = width;
         self.height = height;
@@ -219,6 +139,7 @@ impl Picker {
         &mut self,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
+        texture_view: &wgpu::TextureView,
         depth_texture_view: &wgpu::TextureView,
         camera_light_bind_group: &wgpu::BindGroup,
         surfaces: &IndexMap<String, DisplaySurface>,
@@ -227,11 +148,10 @@ impl Picker {
     ) -> bool {
         if !self.pick_locked && self.item_to_pick.is_some() {
             {
-                let tex_view = &self.texture_view;
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Picker Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: tex_view,
+                        view: texture_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -364,39 +284,25 @@ impl Picker {
                     curve.render_picker(&mut render_pass);
                 }
             }
-            {
-                encoder.copy_texture_to_buffer(
-                    wgpu::TexelCopyTextureInfo {
-                        aspect: wgpu::TextureAspect::All,
-                        texture: &self.texture,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                    },
-                    wgpu::TexelCopyBufferInfo {
-                        buffer: &self.buffer,
-                        layout: wgpu::TexelCopyBufferLayout {
-                            offset: 0,
-                            bytes_per_row: Some(self.buffer_dimensions.padded_bytes_per_row as u32),
-                            //rows_per_image: std::num::NonZeroU32::new(self.size.height),
-                            rows_per_image: None,
-                        },
-                    },
-                    wgpu::Extent3d {
-                        width: self.buffer_dimensions.width as u32,
-                        height: self.buffer_dimensions.height as u32,
-                        depth_or_array_layers: 1,
-                    },
-                );
-            }
             true
         } else {
             false
         }
     }
 
-    pub fn post_render(&mut self, event_loop_proxy: &winit::event_loop::EventLoopProxy<UserEvent>) {
-        if !self.pick_locked && self.item_to_pick.is_some() {
-            let buffer_slice = self.buffer.slice(..);
+    pub fn post_render(
+        &mut self,
+        event_loop_proxy: &winit::event_loop::EventLoopProxy<UserEvent>,
+        buffer: &wgpu::Buffer,
+        buffer_dimensions: &BufferDimensions,
+    ) {
+        if let Some((i, j)) = self.item_to_pick
+            && !self.pick_locked
+        {
+            // Use slice more efficiently
+            let index = (j * buffer_dimensions.padded_bytes_per_row + 4 * i) as wgpu::BufferAddress;
+            let index = index - index % wgpu::MAP_ALIGNMENT;
+            let buffer_slice = buffer.slice(index..index + wgpu::MAP_ALIGNMENT);
             let event_loop_proxy = event_loop_proxy.clone();
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -429,16 +335,21 @@ impl Picker {
         clouds: &IndexMap<String, DisplayPointCloud>,
         curves: &IndexMap<String, DisplaySegment>,
         camera: &Camera,
+        buffer: &wgpu::Buffer,
+        buffer_dimensions: &BufferDimensions,
     ) {
         {
-            let buffer_slice = self.buffer.slice(..);
-            let data = buffer_slice.get_mapped_range();
             if let Some((i, j)) = self.item_to_pick {
-                let index = j * self.buffer_dimensions.padded_bytes_per_row + 4 * i;
-                let value = (data[index + 3] as u32) << 24
-                    | (data[index + 2] as u32) << 16
-                    | (data[index + 1] as u32) << 8
-                    | (data[index] as u32);
+                let index =
+                    (j * buffer_dimensions.padded_bytes_per_row + 4 * i) as wgpu::BufferAddress;
+                let aligned_index = index - index % wgpu::MAP_ALIGNMENT;
+                let buffer_slice = buffer.slice(aligned_index..aligned_index + wgpu::MAP_ALIGNMENT);
+                let data_offset = (index - aligned_index) as usize;
+                let data = buffer_slice.get_mapped_range();
+                let value = (data[data_offset + 3] as u32) << 24
+                    | (data[data_offset + 2] as u32) << 16
+                    | (data[data_offset + 1] as u32) << 8
+                    | (data[data_offset + 0] as u32);
                 let mut c = 1;
                 if let Some((name, picked)) = surfaces
                     .iter()
@@ -492,7 +403,7 @@ impl Picker {
                 self.item_to_pick = None;
             }
         }
-        self.buffer.unmap();
+        buffer.unmap();
         self.pick_locked = false;
     }
 

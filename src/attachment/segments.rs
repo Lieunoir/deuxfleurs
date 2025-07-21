@@ -79,13 +79,11 @@ impl NewAttachedGeometry for NewSegments {
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry {
         let inner = self.inner.upgrade(
             device,
             camera_light_bind_group_layout,
             transform_bind_group_layout, //Lie
-            color_format,
         );
         Segments {
             inner,
@@ -124,7 +122,6 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
             context.device,
             context.camera_light_bind_group_layout,
             context.counter_bind_group_layout,
-            context.color_format,
         );
         Segments {
             inner,

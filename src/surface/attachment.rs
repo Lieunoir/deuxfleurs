@@ -137,26 +137,22 @@ impl NewAttachedGeometry for NewSurfaceAttachment {
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry {
         match self {
             NewSurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.init(
                 device,
                 camera_light_bind_group_layout,
                 transform_bind_group_layout,
-                color_format,
             )),
             NewSurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.init(
                 device,
                 camera_light_bind_group_layout,
                 transform_bind_group_layout,
-                color_format,
             )),
             NewSurfaceAttachment::Segments(p) => SurfaceAttachment::Segments(p.init(
                 device,
                 camera_light_bind_group_layout,
                 transform_bind_group_layout,
-                color_format,
             )),
         }
     }

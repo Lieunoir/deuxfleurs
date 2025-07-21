@@ -225,7 +225,6 @@ where
                 context.device,
                 context.camera_light_bind_group_layout,
                 context.counter_bind_group_layout,
-                context.color_format,
             );
             container.insert(name.clone(), shape);
             should_resize.map(|should_resize| *should_resize = true);
@@ -299,6 +298,7 @@ pub struct InnerGraphicalState {
     size: winit::dpi::PhysicalSize<u32>,
     // Textures
     depth_texture: texture::Texture,
+    texture_buffer_pool: deferred::TextureBufferPool,
     // Screenshots
     screenshoter: screenshot::Screenshoter,
 

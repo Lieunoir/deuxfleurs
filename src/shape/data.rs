@@ -48,7 +48,6 @@ pub trait NewAttachedGeometry {
         device: &wgpu::Device,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry;
 
     fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self;
@@ -90,7 +89,6 @@ impl NewAttachedGeometry for () {
         _device: &wgpu::Device,
         _camera_light_bind_group_layout: &wgpu::BindGroupLayout,
         _transform_bind_group_layout: &wgpu::BindGroupLayout,
-        _color_format: wgpu::TextureFormat,
     ) -> Self::UpgradedAttachedGeometry {
         EmptyAttached(())
     }
