@@ -98,7 +98,9 @@ impl Camera {
 pub struct CameraUniform {
     view_position: [f32; 4],
     view_proj: [[f32; 4]; 4],
-    view_inv: [[f32; 4]; 4],
+    view_proj_inv: [[f32; 4]; 4],
+    proj: [[f32; 4]; 4],
+    proj_inv: [[f32; 4]; 4],
     floor_bb: [f32; 4],
     floor_proj: [[f32; 4]; 4],
 }
@@ -108,7 +110,9 @@ impl CameraUniform {
         Self {
             view_position: [0.0; 4],
             view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
-            view_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            view_proj_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            proj_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
             floor_bb: [0.0; 4],
             floor_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
@@ -119,8 +123,10 @@ impl CameraUniform {
         self.view_position = camera.eye.extend(1.).into();
         let view_proj = camera.build_view_projection_matrix();
         self.view_proj = view_proj.to_cols_array_2d();
-        let view_inv = view_proj.inverse();
-        self.view_inv = view_inv.to_cols_array_2d();
+        let view_proj_inv = view_proj.inverse();
+        self.view_proj_inv = view_proj_inv.to_cols_array_2d();
+        self.proj = camera.build_proj().to_cols_array_2d();
+        self.proj_inv = camera.build_proj().inverse().to_cols_array_2d();
         //let orig : cgmath::Vector4<f32> = self.view_position.into();
         let mut min_x = f32::MAX;
         let mut min_z = f32::MAX;
@@ -128,9 +134,9 @@ impl CameraUniform {
         let mut max_z = f32::MIN;
         let couples = [(-1., -1.), (-1., 1.), (1., -1.), (1., 1.)];
         for (x, y) in couples {
-            let mut target = view_inv * glam::Vec4::new(x, y, 1., 1.);
+            let mut target = view_proj_inv * glam::Vec4::new(x, y, 1., 1.);
             target = target / target.w;
-            let mut origin = view_inv * glam::Vec4::new(x, y, 0., 1.);
+            let mut origin = view_proj_inv * glam::Vec4::new(x, y, 0., 1.);
             origin = origin / origin.w;
             let ray = target - origin;
             if ray.y.abs() > 10e-9 {
@@ -154,9 +160,9 @@ impl CameraUniform {
         }
         let couples = [(-1., 0.), (-1., 1.), (1., 0.), (1., 1.)];
         for (x, z) in couples {
-            let mut target = view_inv * glam::Vec4::new(x, -1., z, 1.);
+            let mut target = view_proj_inv * glam::Vec4::new(x, -1., z, 1.);
             target = target / target.w;
-            let mut origin = view_inv * glam::Vec4::new(x, 1., z, 1.);
+            let mut origin = view_proj_inv * glam::Vec4::new(x, 1., z, 1.);
             origin = origin / origin.w;
             let ray = target - origin;
             if ray.y.abs() > 10e-9 {
@@ -180,9 +186,9 @@ impl CameraUniform {
         }
         let couples = [(-1., 0.), (-1., 1.), (1., 0.), (1., 1.)];
         for (y, z) in couples {
-            let mut target = view_inv * glam::Vec4::new(-1., y, z, 1.);
+            let mut target = view_proj_inv * glam::Vec4::new(-1., y, z, 1.);
             target = target / target.w;
-            let mut origin = view_inv * glam::Vec4::new(1., y, z, 1.);
+            let mut origin = view_proj_inv * glam::Vec4::new(1., y, z, 1.);
             origin = origin / origin.w;
             let ray = target - origin;
             if ray.y.abs() > 10e-9 {
@@ -364,21 +370,5 @@ impl CameraController {
             }
             self.pan_delta = None;
         }
-
-        // Redo radius calc in case the up/ down is pressed.
-        /*
-        let forward = camera.target - camera.eye;
-        let forward_mag = forward.magnitude();
-
-        if self.is_right_pressed {
-            // Rescale the distance between the target and eye so
-            // that it doesn't change. The eye therefore still
-            // lies on the circle made by the target and eye.
-            camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
-        }
-        if self.is_left_pressed {
-            camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
-        }
-        */
     }
 }
