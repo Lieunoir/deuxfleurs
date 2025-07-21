@@ -6,10 +6,12 @@ pub const ALBEDO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub const NORMALS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 // Same as albedo
 pub const PICKER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+pub const SSAO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 pub const SCREENSHOT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 pub struct TextureBufferPool {
     // concerned by super sampling
+    // custom formats
     // picking should be concerned by aa, so could be moved?
     depth: wgpu::Texture,
     depth_view: wgpu::TextureView,
@@ -21,7 +23,7 @@ pub struct TextureBufferPool {
 
     // Could be used as blend_render_target too using uniform alpha?
     // not concerned by super sampling
-    // has to be rgba format
+    // screenshot has to be rgba format
     screenshot_or_blend_stored: wgpu::Texture,
     blend_stored_view: wgpu::TextureView,
     screenshot_view: wgpu::TextureView,
@@ -31,7 +33,10 @@ pub struct TextureBufferPool {
     blend_render_target_view: wgpu::TextureView,
     output_buffer: wgpu::Buffer,
     output_buffer_dimensions: BufferDimensions,
-    //add ssao buffer?
+    // not concerned by aa
+    // own format
+    ssao: wgpu::Texture,
+    ssao_view: wgpu::TextureView,
 }
 
 impl TextureBufferPool {
@@ -40,6 +45,11 @@ impl TextureBufferPool {
         texture_size: wgpu::Extent3d,
         color_format: wgpu::TextureFormat,
     ) -> Self {
+        let half_size = wgpu::Extent3d {
+            width: (texture_size.width / 2).max(1),
+            height: (texture_size.height / 2).max(1),
+            depth_or_array_layers: 1,
+        };
         let depth = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("depth_texture"),
             size: texture_size,
@@ -105,6 +115,18 @@ impl TextureBufferPool {
         let blend_render_target_view =
             blend_render_target.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let ssao = device.create_texture(&wgpu::TextureDescriptor {
+            size: half_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: SSAO_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("ssao_texture"),
+            view_formats: &[],
+        });
+        let ssao_view = ssao.create_view(&wgpu::TextureViewDescriptor::default());
+
         let output_buffer_dimensions =
             BufferDimensions::new::<u32>(texture_size.width as usize, texture_size.height as usize);
 
@@ -133,6 +155,8 @@ impl TextureBufferPool {
             output_buffer_dimensions,
             depth,
             depth_view,
+            ssao,
+            ssao_view,
         }
     }
 
@@ -166,6 +190,10 @@ impl TextureBufferPool {
 
     pub fn get_depth_view(&self) -> &wgpu::TextureView {
         &self.depth_view
+    }
+
+    pub fn get_ssao_view(&self) -> &wgpu::TextureView {
+        &self.ssao_view
     }
 
     pub fn copy_screenshot_texture_to_buffer(&mut self, encoder: &mut wgpu::CommandEncoder) {

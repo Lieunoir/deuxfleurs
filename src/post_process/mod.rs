@@ -195,6 +195,7 @@ impl PBR {
         albedo_view: &wgpu::TextureView,
         normals_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
+        ssao_view: &wgpu::TextureView,
     ) {
         self.material_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.material_bind_group_layout,
@@ -215,6 +216,10 @@ impl PBR {
                     binding: 3,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(ssao_view),
+                },
             ],
             label: Some("pbr_material_bind_group"),
         });
@@ -226,6 +231,7 @@ impl PBR {
         albedo_view: &wgpu::TextureView,
         normals_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
+        ssao_view: &wgpu::TextureView,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -280,6 +286,17 @@ impl PBR {
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                         count: None,
                     },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            //sample_type: wgpu::TextureSampleType::Depth,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
+                    },
                 ],
                 label: Some("pbr_material_bind_group_layout"),
             });
@@ -302,6 +319,10 @@ impl PBR {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(ssao_view),
                 },
             ],
             label: Some("pbr_material_bind_group"),
@@ -327,7 +348,6 @@ impl PBR {
 
         Self {
             sampler,
-
             material_bind_group,
             material_bind_group_layout,
             pbr_pipeline,
@@ -790,5 +810,165 @@ impl Ground {
     ) {
         self.first_pass(encoder, camera_light_bind_group);
         self.second_pass(encoder, camera_light_bind_group);
+    }
+}
+
+pub struct SSAO {
+    sampler: wgpu::Sampler,
+    depth_bind_group: wgpu::BindGroup,
+    depth_bind_group_layout: wgpu::BindGroupLayout,
+    ssao_pipeline: wgpu::RenderPipeline,
+}
+
+impl SSAO {
+    pub fn resize(
+        &mut self,
+        device: &wgpu::Device,
+        normals_view: &wgpu::TextureView,
+        depth_view: &wgpu::TextureView,
+    ) {
+        self.depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.depth_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(normals_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+            label: Some("pbr_material_bind_group"),
+        });
+    }
+
+    pub fn new(
+        device: &wgpu::Device,
+        color_format: wgpu::TextureFormat,
+        normals_view: &wgpu::TextureView,
+        depth_view: &wgpu::TextureView,
+        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let depth_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        count: None,
+                    },
+                ],
+                label: Some("ssao_bind_group_layout"),
+            });
+
+        let depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &depth_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(normals_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: Some("ssao_bind_group"),
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("SSAO Pipeline Layout"),
+            bind_group_layouts: &[camera_light_bind_group_layout, &depth_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let shader = include_wgsl!("ssao.wgsl");
+        let ssao_pipeline = util::create_copy_quad_pipeline(
+            device,
+            &pipeline_layout,
+            texture::SSAO_FORMAT,
+            None,
+            &[],
+            None,
+            shader,
+            Some("ssao render"),
+        );
+
+        Self {
+            sampler,
+            depth_bind_group,
+            depth_bind_group_layout,
+            ssao_pipeline,
+        }
+    }
+
+    pub fn render(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        camera_light_bind_group: &wgpu::BindGroup,
+        ssao_view: &wgpu::TextureView,
+    ) {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("SSAO Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: ssao_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 1.,
+                        g: 1.,
+                        b: 1.,
+                        a: 1.,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+        render_pass.set_pipeline(&self.ssao_pipeline);
+        render_pass.draw(0..4, 0..1);
     }
 }

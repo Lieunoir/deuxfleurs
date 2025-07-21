@@ -314,6 +314,7 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
             texture_buffer_pool.get_depth_view(),
+            texture_buffer_pool.get_ssao_view(),
             &camera_light_bind_group_layout,
         );
         let ground = post_process::Ground::new(
@@ -322,6 +323,13 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_depth_view(),
             &camera_light_bind_group_layout,
             0.,
+        );
+        let ssao = post_process::SSAO::new(
+            &device,
+            surface_format,
+            texture_buffer_pool.get_normals_view(),
+            texture_buffer_pool.get_depth_view(),
+            &camera_light_bind_group_layout,
         );
         let should_resize = settings.fit_camera_on_start;
         InnerGraphicalState {
@@ -356,6 +364,7 @@ impl InnerGraphicalState {
             copy,
             pbr_renderer,
             ground,
+            ssao,
             taa_counter: 0,
             sbv: SBV::default(),
             rng: SmallRng::seed_from_u64(1),
@@ -484,6 +493,12 @@ impl InnerGraphicalState {
             self.pbr_renderer.resize(
                 &self.device,
                 self.texture_buffer_pool.get_albedo_view(),
+                self.texture_buffer_pool.get_normals_view(),
+                self.texture_buffer_pool.get_depth_view(),
+                self.texture_buffer_pool.get_ssao_view(),
+            );
+            self.ssao.resize(
+                &self.device,
                 self.texture_buffer_pool.get_normals_view(),
                 self.texture_buffer_pool.get_depth_view(),
             );
@@ -734,6 +749,12 @@ impl InnerGraphicalState {
                 surface.render(&mut material_render_pass);
             }
             drop(material_render_pass);
+
+            self.ssao.render(
+                &mut encoder,
+                &self.camera_light_bind_group,
+                self.texture_buffer_pool.get_ssao_view(),
+            );
 
             let mut pbr_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("PBR Render Pass"),

@@ -327,6 +327,7 @@ pub struct InnerGraphicalState {
     copy: post_process::TextureCopy,
     pbr_renderer: post_process::PBR,
     ground: post_process::Ground,
+    ssao: post_process::SSAO,
     taa_counter: u8,
     sbv: SBV,
     rng: SmallRng,
