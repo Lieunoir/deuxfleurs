@@ -221,7 +221,7 @@
 <a href=#221 id=221 data-nosnippet>221</a>    <span class="kw">fn </span>desc&lt;<span class="lifetime">'a</span>&gt;() -&gt; wgpu::VertexBufferLayout&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">use </span>std::mem;
 <a href=#223 id=223 data-nosnippet>223</a>        wgpu::VertexBufferLayout {
-<a href=#224 id=224 data-nosnippet>224</a>            array_stride: mem::size_of::&lt;f32&gt;() <span class="kw">as </span>wgpu::BufferAddress,
+<a href=#224 id=224 data-nosnippet>224</a>            array_stride: mem::size_of::&lt;[f32; <span class="number">3</span>]&gt;() <span class="kw">as </span>wgpu::BufferAddress,
 <a href=#225 id=225 data-nosnippet>225</a>            step_mode: wgpu::VertexStepMode::Vertex,
 <a href=#226 id=226 data-nosnippet>226</a>            attributes: <span class="kw-2">&amp;</span>[wgpu::VertexAttribute {
 <a href=#227 id=227 data-nosnippet>227</a>                offset: <span class="number">0</span>,

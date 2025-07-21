@@ -225,80 +225,80 @@
 <a href=#225 id=225 data-nosnippet>225</a>                context.device,
 <a href=#226 id=226 data-nosnippet>226</a>                context.camera_light_bind_group_layout,
 <a href=#227 id=227 data-nosnippet>227</a>                context.counter_bind_group_layout,
-<a href=#228 id=228 data-nosnippet>228</a>                context.color_format,
-<a href=#229 id=229 data-nosnippet>229</a>            );
-<a href=#230 id=230 data-nosnippet>230</a>            container.insert(name.clone(), shape);
-<a href=#231 id=231 data-nosnippet>231</a>            should_resize.map(|should_resize| <span class="kw-2">*</span>should_resize = <span class="bool-val">true</span>);
-<a href=#232 id=232 data-nosnippet>232</a>            counters_dirty.map(|counters_dirty| <span class="kw-2">*</span>counters_dirty = <span class="bool-val">true</span>);
-<a href=#233 id=233 data-nosnippet>233</a>            <span class="kw">let </span>picked = picked.unwrap();
-<a href=#234 id=234 data-nosnippet>234</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>((picked_name, _picked)) = picked {
-<a href=#235 id=235 data-nosnippet>235</a>                <span class="kw">if </span><span class="kw-2">*</span>picked_name == name {
-<a href=#236 id=236 data-nosnippet>236</a>                    <span class="kw-2">*</span>picked = <span class="prelude-val">None</span>;
-<a href=#237 id=237 data-nosnippet>237</a>                }
-<a href=#238 id=238 data-nosnippet>238</a>            }
-<a href=#239 id=239 data-nosnippet>239</a>            ShapeMut {
-<a href=#240 id=240 data-nosnippet>240</a>                inner: container.get_mut(<span class="kw-2">&amp;</span>name).unwrap(),
-<a href=#241 id=241 data-nosnippet>241</a>                context,
-<a href=#242 id=242 data-nosnippet>242</a>            }
-<a href=#243 id=243 data-nosnippet>243</a>        }
-<a href=#244 id=244 data-nosnippet>244</a>    }
-<a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a>    <span class="kw">fn </span>get_shape_mut(
-<a href=#247 id=247 data-nosnippet>247</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#248 id=248 data-nosnippet>248</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#249 id=249 data-nosnippet>249</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;
-<a href=#250 id=250 data-nosnippet>250</a>        ShapeMut&lt;
-<a href=#251 id=251 data-nosnippet>251</a>            DisplayShape&lt;Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached&gt;,
-<a href=#252 id=252 data-nosnippet>252</a>            <span class="self">Self</span>::Context&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#253 id=253 data-nosnippet>253</a>        &gt;,
-<a href=#254 id=254 data-nosnippet>254</a>    &gt; {
-<a href=#255 id=255 data-nosnippet>255</a>        <span class="kw">let </span>(container, context, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="self">self</span>.get_container_mut();
-<a href=#256 id=256 data-nosnippet>256</a>        container.get_mut(name).map(|shape| ShapeMut {
-<a href=#257 id=257 data-nosnippet>257</a>            inner: shape,
-<a href=#258 id=258 data-nosnippet>258</a>            context,
-<a href=#259 id=259 data-nosnippet>259</a>        })
-<a href=#260 id=260 data-nosnippet>260</a>    }
-<a href=#261 id=261 data-nosnippet>261</a>
-<a href=#262 id=262 data-nosnippet>262</a>    <span class="kw">fn </span>get_shape(
-<a href=#263 id=263 data-nosnippet>263</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#264 id=264 data-nosnippet>264</a>        name: <span class="kw-2">&amp;</span>str,
-<a href=#265 id=265 data-nosnippet>265</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DisplayShape&lt;Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached&gt;&gt; {
-<a href=#266 id=266 data-nosnippet>266</a>        <span class="self">self</span>.get_container().get(name)
-<a href=#267 id=267 data-nosnippet>267</a>    }
-<a href=#268 id=268 data-nosnippet>268</a>
-<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">fn </span>remove_shape(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
-<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">let </span>(container, context, _should_resize, counters_dirty, picked) = <span class="self">self</span>.get_container_mut();
-<a href=#271 id=271 data-nosnippet>271</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(shape) = container.shift_remove(name) {
-<a href=#272 id=272 data-nosnippet>272</a>            <span class="kw">let </span>picked = picked.unwrap();
-<a href=#273 id=273 data-nosnippet>273</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>((picked_name, _picked)) = picked {
-<a href=#274 id=274 data-nosnippet>274</a>                <span class="kw">if </span><span class="kw-2">*</span>picked_name == name {
-<a href=#275 id=275 data-nosnippet>275</a>                    <span class="kw-2">*</span>picked = <span class="prelude-val">None</span>;
-<a href=#276 id=276 data-nosnippet>276</a>                }
-<a href=#277 id=277 data-nosnippet>277</a>            }
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="kw-2">*</span>context.refresh_screen |= shape.show;
-<a href=#279 id=279 data-nosnippet>279</a>            <span class="kw-2">*</span>counters_dirty.unwrap() = <span class="bool-val">true</span>;
-<a href=#280 id=280 data-nosnippet>280</a>        }
-<a href=#281 id=281 data-nosnippet>281</a>    }
-<a href=#282 id=282 data-nosnippet>282</a>}
-<a href=#283 id=283 data-nosnippet>283</a>
-<a href=#284 id=284 data-nosnippet>284</a><span class="doccomment">/// Holds the application state. Starting point to add visualization datas.
-<a href=#285 id=285 data-nosnippet>285</a></span><span class="kw">pub struct </span>InnerGraphicalState {
-<a href=#286 id=286 data-nosnippet>286</a>    surfaces: IndexMap&lt;String, DisplaySurface&gt;,
-<a href=#287 id=287 data-nosnippet>287</a>    clouds: IndexMap&lt;String, DisplayPointCloud&gt;,
-<a href=#288 id=288 data-nosnippet>288</a>    segments: IndexMap&lt;String, DisplaySegment&gt;,
-<a href=#289 id=289 data-nosnippet>289</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) settings: Settings,
-<a href=#290 id=290 data-nosnippet>290</a>
-<a href=#291 id=291 data-nosnippet>291</a>    window: <span class="prelude-ty">Option</span>&lt;Arc&lt;Window&gt;&gt;,
-<a href=#292 id=292 data-nosnippet>292</a>    proxy: <span class="prelude-ty">Option</span>&lt;EventLoopProxy&lt;UserEvent&gt;&gt;,
-<a href=#293 id=293 data-nosnippet>293</a>    <span class="comment">// Graphic context
-<a href=#294 id=294 data-nosnippet>294</a>    </span>surface: <span class="prelude-ty">Option</span>&lt;wgpu::Surface&lt;<span class="lifetime">'static</span>&gt;&gt;,
-<a href=#295 id=295 data-nosnippet>295</a>    device: wgpu::Device,
-<a href=#296 id=296 data-nosnippet>296</a>    queue: wgpu::Queue,
-<a href=#297 id=297 data-nosnippet>297</a>    config: wgpu::SurfaceConfiguration,
-<a href=#298 id=298 data-nosnippet>298</a>    <span class="comment">// Window size
-<a href=#299 id=299 data-nosnippet>299</a>    </span>size: winit::dpi::PhysicalSize&lt;u32&gt;,
-<a href=#300 id=300 data-nosnippet>300</a>    <span class="comment">// Textures
-<a href=#301 id=301 data-nosnippet>301</a>    </span>depth_texture: texture::Texture,
+<a href=#228 id=228 data-nosnippet>228</a>            );
+<a href=#229 id=229 data-nosnippet>229</a>            container.insert(name.clone(), shape);
+<a href=#230 id=230 data-nosnippet>230</a>            should_resize.map(|should_resize| <span class="kw-2">*</span>should_resize = <span class="bool-val">true</span>);
+<a href=#231 id=231 data-nosnippet>231</a>            counters_dirty.map(|counters_dirty| <span class="kw-2">*</span>counters_dirty = <span class="bool-val">true</span>);
+<a href=#232 id=232 data-nosnippet>232</a>            <span class="kw">let </span>picked = picked.unwrap();
+<a href=#233 id=233 data-nosnippet>233</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>((picked_name, _picked)) = picked {
+<a href=#234 id=234 data-nosnippet>234</a>                <span class="kw">if </span><span class="kw-2">*</span>picked_name == name {
+<a href=#235 id=235 data-nosnippet>235</a>                    <span class="kw-2">*</span>picked = <span class="prelude-val">None</span>;
+<a href=#236 id=236 data-nosnippet>236</a>                }
+<a href=#237 id=237 data-nosnippet>237</a>            }
+<a href=#238 id=238 data-nosnippet>238</a>            ShapeMut {
+<a href=#239 id=239 data-nosnippet>239</a>                inner: container.get_mut(<span class="kw-2">&amp;</span>name).unwrap(),
+<a href=#240 id=240 data-nosnippet>240</a>                context,
+<a href=#241 id=241 data-nosnippet>241</a>            }
+<a href=#242 id=242 data-nosnippet>242</a>        }
+<a href=#243 id=243 data-nosnippet>243</a>    }
+<a href=#244 id=244 data-nosnippet>244</a>
+<a href=#245 id=245 data-nosnippet>245</a>    <span class="kw">fn </span>get_shape_mut(
+<a href=#246 id=246 data-nosnippet>246</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#247 id=247 data-nosnippet>247</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#248 id=248 data-nosnippet>248</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;
+<a href=#249 id=249 data-nosnippet>249</a>        ShapeMut&lt;
+<a href=#250 id=250 data-nosnippet>250</a>            DisplayShape&lt;Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached&gt;,
+<a href=#251 id=251 data-nosnippet>251</a>            <span class="self">Self</span>::Context&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#252 id=252 data-nosnippet>252</a>        &gt;,
+<a href=#253 id=253 data-nosnippet>253</a>    &gt; {
+<a href=#254 id=254 data-nosnippet>254</a>        <span class="kw">let </span>(container, context, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="self">self</span>.get_container_mut();
+<a href=#255 id=255 data-nosnippet>255</a>        container.get_mut(name).map(|shape| ShapeMut {
+<a href=#256 id=256 data-nosnippet>256</a>            inner: shape,
+<a href=#257 id=257 data-nosnippet>257</a>            context,
+<a href=#258 id=258 data-nosnippet>258</a>        })
+<a href=#259 id=259 data-nosnippet>259</a>    }
+<a href=#260 id=260 data-nosnippet>260</a>
+<a href=#261 id=261 data-nosnippet>261</a>    <span class="kw">fn </span>get_shape(
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#263 id=263 data-nosnippet>263</a>        name: <span class="kw-2">&amp;</span>str,
+<a href=#264 id=264 data-nosnippet>264</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DisplayShape&lt;Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached&gt;&gt; {
+<a href=#265 id=265 data-nosnippet>265</a>        <span class="self">self</span>.get_container().get(name)
+<a href=#266 id=266 data-nosnippet>266</a>    }
+<a href=#267 id=267 data-nosnippet>267</a>
+<a href=#268 id=268 data-nosnippet>268</a>    <span class="kw">fn </span>remove_shape(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
+<a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">let </span>(container, context, _should_resize, counters_dirty, picked) = <span class="self">self</span>.get_container_mut();
+<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(shape) = container.shift_remove(name) {
+<a href=#271 id=271 data-nosnippet>271</a>            <span class="kw">let </span>picked = picked.unwrap();
+<a href=#272 id=272 data-nosnippet>272</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>((picked_name, _picked)) = picked {
+<a href=#273 id=273 data-nosnippet>273</a>                <span class="kw">if </span><span class="kw-2">*</span>picked_name == name {
+<a href=#274 id=274 data-nosnippet>274</a>                    <span class="kw-2">*</span>picked = <span class="prelude-val">None</span>;
+<a href=#275 id=275 data-nosnippet>275</a>                }
+<a href=#276 id=276 data-nosnippet>276</a>            }
+<a href=#277 id=277 data-nosnippet>277</a>            <span class="kw-2">*</span>context.refresh_screen |= shape.show;
+<a href=#278 id=278 data-nosnippet>278</a>            <span class="kw-2">*</span>counters_dirty.unwrap() = <span class="bool-val">true</span>;
+<a href=#279 id=279 data-nosnippet>279</a>        }
+<a href=#280 id=280 data-nosnippet>280</a>    }
+<a href=#281 id=281 data-nosnippet>281</a>}
+<a href=#282 id=282 data-nosnippet>282</a>
+<a href=#283 id=283 data-nosnippet>283</a><span class="doccomment">/// Holds the application state. Starting point to add visualization datas.
+<a href=#284 id=284 data-nosnippet>284</a></span><span class="kw">pub struct </span>InnerGraphicalState {
+<a href=#285 id=285 data-nosnippet>285</a>    surfaces: IndexMap&lt;String, DisplaySurface&gt;,
+<a href=#286 id=286 data-nosnippet>286</a>    clouds: IndexMap&lt;String, DisplayPointCloud&gt;,
+<a href=#287 id=287 data-nosnippet>287</a>    segments: IndexMap&lt;String, DisplaySegment&gt;,
+<a href=#288 id=288 data-nosnippet>288</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) settings: Settings,
+<a href=#289 id=289 data-nosnippet>289</a>
+<a href=#290 id=290 data-nosnippet>290</a>    window: <span class="prelude-ty">Option</span>&lt;Arc&lt;Window&gt;&gt;,
+<a href=#291 id=291 data-nosnippet>291</a>    proxy: <span class="prelude-ty">Option</span>&lt;EventLoopProxy&lt;UserEvent&gt;&gt;,
+<a href=#292 id=292 data-nosnippet>292</a>    <span class="comment">// Graphic context
+<a href=#293 id=293 data-nosnippet>293</a>    </span>surface: <span class="prelude-ty">Option</span>&lt;wgpu::Surface&lt;<span class="lifetime">'static</span>&gt;&gt;,
+<a href=#294 id=294 data-nosnippet>294</a>    device: wgpu::Device,
+<a href=#295 id=295 data-nosnippet>295</a>    queue: wgpu::Queue,
+<a href=#296 id=296 data-nosnippet>296</a>    config: wgpu::SurfaceConfiguration,
+<a href=#297 id=297 data-nosnippet>297</a>    <span class="comment">// Window size
+<a href=#298 id=298 data-nosnippet>298</a>    </span>size: winit::dpi::PhysicalSize&lt;u32&gt;,
+<a href=#299 id=299 data-nosnippet>299</a>    <span class="comment">// Textures
+<a href=#300 id=300 data-nosnippet>300</a>    </span>depth_texture: texture::Texture,
+<a href=#301 id=301 data-nosnippet>301</a>    texture_buffer_pool: deferred::TextureBufferPool,
 <a href=#302 id=302 data-nosnippet>302</a>    <span class="comment">// Screenshots
 <a href=#303 id=303 data-nosnippet>303</a>    </span>screenshoter: screenshot::Screenshoter,
 <a href=#304 id=304 data-nosnippet>304</a>
