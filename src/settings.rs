@@ -28,6 +28,9 @@ pub struct Settings {
     pub zoom_sensitivity: f32,
     pub default_color_map: Colors,
     pub fit_camera_on_start: bool,
+    pub ssao_enabled: bool,
+    pub ssao_slice_per_pixel: u8,
+    pub ssao_sample_per_slice: u8,
 }
 
 impl Default for Settings {
@@ -47,6 +50,9 @@ impl Default for Settings {
             zoom_sensitivity: 0.1,
             default_color_map: Colors::Viridis,
             fit_camera_on_start: true,
+            ssao_enabled: true,
+            ssao_slice_per_pixel: 3,
+            ssao_sample_per_slice: 3,
         }
     }
 }
@@ -83,6 +89,22 @@ impl Settings {
                         .speed(0.01)
                         .prefix("Zoom sensitivity: "),
                 );
+            });
+            ui.horizontal(|ui| {
+                if ui.checkbox(&mut self.ssao_enabled, "SSAO").changed() {
+                    *refresh_screen = true;
+                }
+                let mut value = self.ssao_slice_per_pixel as f32;
+                ui.add(
+                    DragValue::new(&mut value)
+                        .range(0..=16)
+                        .prefix("Slice per pixel: "),
+                );
+                let value = value as u8;
+                if self.ssao_slice_per_pixel != value {
+                    self.ssao_slice_per_pixel = value;
+                    *refresh_screen = true;
+                }
             });
         });
     }

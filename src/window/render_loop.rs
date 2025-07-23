@@ -754,6 +754,8 @@ impl InnerGraphicalState {
             drop(material_render_pass);
 
             self.ssao.render(
+                self.settings.ssao_enabled,
+                self.settings.ssao_slice_per_pixel,
                 &self.queue,
                 &mut encoder,
                 &self.camera_light_bind_group,

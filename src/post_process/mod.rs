@@ -846,6 +846,7 @@ pub struct SSAO {
     denoiser_bind_group: wgpu::BindGroup,
     denoiser_bind_group_layout: wgpu::BindGroupLayout,
     denoiser_pipeline: wgpu::RenderPipeline,
+    cleared: bool,
 }
 
 impl SSAO {
@@ -1125,11 +1126,14 @@ impl SSAO {
             denoiser_bind_group,
             denoiser_bind_group_layout,
             denoiser_pipeline,
+            cleared: false,
         }
     }
 
     pub fn render(
         &mut self,
+        ssao_enabled: bool,
+        slices: u8,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         camera_light_bind_group: &wgpu::BindGroup,
@@ -1137,17 +1141,57 @@ impl SSAO {
         denoiser_edges_view: &wgpu::TextureView,
         denoised_ssao_view: &wgpu::TextureView,
     ) {
-        self.frame_index += 1;
-        queue.write_buffer(
-            &self.frame_index_buffer,
-            0,
-            bytemuck::cast_slice(&[self.frame_index, 0, 0, 0]),
-        );
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("SSAO Render Pass"),
-            color_attachments: &[
-                Some(wgpu::RenderPassColorAttachment {
-                    view: ssao_view,
+        if ssao_enabled {
+            self.cleared = false;
+            self.frame_index += 1;
+            queue.write_buffer(
+                &self.frame_index_buffer,
+                0,
+                bytemuck::cast_slice(&[self.frame_index, slices as u32, 0, 0]),
+            );
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("SSAO Render Pass"),
+                color_attachments: &[
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: ssao_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 1.,
+                                g: 1.,
+                                b: 1.,
+                                a: 1.,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    }),
+                    Some(wgpu::RenderPassColorAttachment {
+                        view: denoiser_edges_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.,
+                                g: 0.,
+                                b: 0.,
+                                a: 0.,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    }),
+                ],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+            render_pass.set_pipeline(&self.ssao_pipeline);
+            render_pass.draw(0..4, 0..1);
+            drop(render_pass);
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("SSAO Denoiser Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: denoised_ssao_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -1158,51 +1202,35 @@ impl SSAO {
                         }),
                         store: wgpu::StoreOp::Store,
                     },
-                }),
-                Some(wgpu::RenderPassColorAttachment {
-                    view: denoiser_edges_view,
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            render_pass.set_bind_group(0, &self.denoiser_bind_group, &[]);
+            render_pass.set_pipeline(&self.denoiser_pipeline);
+            render_pass.draw(0..4, 0..1);
+        } else if !self.cleared {
+            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("SSAO Clear Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: denoised_ssao_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.,
-                            g: 0.,
-                            b: 0.,
-                            a: 0.,
+                            r: 1.,
+                            g: 1.,
+                            b: 1.,
+                            a: 1.,
                         }),
                         store: wgpu::StoreOp::Store,
                     },
-                }),
-            ],
-            depth_stencil_attachment: None,
-            occlusion_query_set: None,
-            timestamp_writes: None,
-        });
-        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
-        render_pass.set_pipeline(&self.ssao_pipeline);
-        render_pass.draw(0..4, 0..1);
-        drop(render_pass);
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("SSAO Denoiser Render Pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: denoised_ssao_view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 1.,
-                        g: 1.,
-                        b: 1.,
-                        a: 1.,
-                    }),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            occlusion_query_set: None,
-            timestamp_writes: None,
-        });
-        render_pass.set_bind_group(0, &self.denoiser_bind_group, &[]);
-        render_pass.set_pipeline(&self.denoiser_pipeline);
-        render_pass.draw(0..4, 0..1);
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            self.cleared = true;
+        }
     }
 }

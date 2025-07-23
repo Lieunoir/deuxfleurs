@@ -14,9 +14,9 @@ var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
 var<uniform> light: Light;
 
-struct FrameIndex {
-    i: u32,
-    _pad1: u32,
+struct Parameters {
+    frame_index: u32,
+    slices: u32,
     _pad2: u32,
     _pad3: u32,
 }
@@ -28,7 +28,7 @@ var t_d: texture_2d<f32>;
 @group(1) @binding(2)
 var s: sampler;
 @group(1) @binding(3)
-var<uniform> frame_index: FrameIndex;
+var<uniform> param: Parameters;
 
 const pos = array(vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
 
@@ -115,7 +115,7 @@ const a2: f32 = 1.0 / (g * g);
 // mapping each pixel to a hilbert curve index, then taking a value from the Roberts R2 quasirandom sequence for it
 fn hilbert_r2_blue_noisef(p: vec2<u32>) -> vec2<f32> {
     var x = u32(hilbert(vec2<i32>(p), 6)) % (1u << 6u);
-    x += 288 * (frame_index.i % 64);
+    x += 288 * (param.frame_index % 64);
     return vec2<f32>(fract(0.5 + a1 * f32(x)), fract(0.5 + a2 * f32(x)));
 }
 
@@ -180,7 +180,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
 
     // GTAO
     var visibility = 0.0;
-    let kernelSize: u32 = 3u;
+    let kernelSize: u32 = param.slices;
     let pix_dif = vec2<f32>(1.) / vec2<f32>(buffer_size);
     let camera_distance = sqrt(dot(camera.view_pos.xyz - position, camera.view_pos.xyz - position));
     let wanted_radius = 64. / camera_distance * pix_dif;
