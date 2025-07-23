@@ -314,7 +314,7 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
             texture_buffer_pool.get_depth_view(),
-            texture_buffer_pool.get_ssao_view(),
+            texture_buffer_pool.get_denoised_ssao_view(),
             &camera_light_bind_group_layout,
         );
         let ground = post_process::Ground::new(
@@ -326,8 +326,9 @@ impl InnerGraphicalState {
         );
         let ssao = post_process::SSAO::new(
             &device,
-            surface_format,
             texture_buffer_pool.get_normals_view(),
+            texture_buffer_pool.get_ssao_view(),
+            texture_buffer_pool.get_denoiser_edges_view(),
             texture_buffer_pool.get_depth_view(),
             &camera_light_bind_group_layout,
         );
@@ -495,11 +496,13 @@ impl InnerGraphicalState {
                 self.texture_buffer_pool.get_albedo_view(),
                 self.texture_buffer_pool.get_normals_view(),
                 self.texture_buffer_pool.get_depth_view(),
-                self.texture_buffer_pool.get_ssao_view(),
+                self.texture_buffer_pool.get_denoised_ssao_view(),
             );
             self.ssao.resize(
                 &self.device,
                 self.texture_buffer_pool.get_normals_view(),
+                self.texture_buffer_pool.get_ssao_view(),
+                self.texture_buffer_pool.get_denoiser_edges_view(),
                 self.texture_buffer_pool.get_depth_view(),
             );
         }
@@ -751,9 +754,12 @@ impl InnerGraphicalState {
             drop(material_render_pass);
 
             self.ssao.render(
+                &self.queue,
                 &mut encoder,
                 &self.camera_light_bind_group,
                 self.texture_buffer_pool.get_ssao_view(),
+                self.texture_buffer_pool.get_denoiser_edges_view(),
+                self.texture_buffer_pool.get_denoised_ssao_view(),
             );
 
             let mut pbr_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

@@ -14,6 +14,12 @@ var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
 var<uniform> light: Light;
 
+struct FrameIndex {
+    i: u32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
+}
 
 @group(1) @binding(0)
 var t_n: texture_2d<f32>;
@@ -21,48 +27,26 @@ var t_n: texture_2d<f32>;
 var t_d: texture_2d<f32>;
 @group(1) @binding(2)
 var s: sampler;
-
-struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-}
+@group(1) @binding(3)
+var<uniform> frame_index: FrameIndex;
 
 const pos = array(vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
 
 @vertex
 fn vs_main(
-    @builtin(vertex_index) index : u32,
-    ) -> VertexOutput {
-    var out: VertexOutput;
-    out.clip_position = vec4<f32>(pos[index], 0.0, 1.0);
-    return out;
+    @builtin(vertex_index) index: u32,
+) -> @builtin(position) vec4<f32> {
+    return vec4<f32>(pos[index], 0.0, 1.0);
 }
 
 const PI: f32 = 3.14159265359;
 
-fn world_from_screen_coord(coord : vec2<f32>, depth_sample: f32) -> vec3<f32> {
+fn world_from_screen_coord(coord: vec2<f32>, depth_sample: f32) -> vec3<f32> {
     // reconstruct world-space position from the screen coordinate.
     let posClip = vec4(coord.x * 2.0 - 1.0, 1.0 - 2.0 * coord.y, depth_sample, 1.0);
     let posWorldW = camera.view_inv * posClip;
     let posWorld = posWorldW.xyz / posWorldW.www;
     return posWorld;
-}
-
-fn pcg3d(v_orig: vec3<u32>) -> vec3<u32> {
-    var v = v_orig * 1664525 + 1013904223;
-
-    v.x += v.y*v.z;
-    v.y += v.z*v.x;
-    v.z += v.x*v.y;
-
-    v.x ^= v.x>>16u;
-    v.y ^= v.y>>16u;
-    v.z ^= v.z>>16u;
-
-    v.x += v.y*v.z;
-    v.y += v.z*v.x;
-    v.z += v.x*v.y;
-
-    return v;
 }
 
 fn fast_sqrt(x: f32) -> f32 {
@@ -75,124 +59,175 @@ fn fast_acos(x: f32) -> f32 {
     return select(PI - res, res, x >= 0);
 }
 
-const randoms = array<f32, 64>(0.9073287956637583, 0.8953753268762352, 0.3220086438462023, 0.007605212815564366, 0.01591998320496857, 0.16333876403470682, 0.7633080275109663, 0.6253689714158442, 0.9796289477520932, 0.47768855334816007, 0.20994347509627442, 0.42647190872472107, 0.3264460758651072, 0.603054743243745, 0.4421765326581557, 0.13635578498504275,
-    0.5480187485794791, 0.7002945901365113, 0.04093307934142931, 0.8409299478779066, 0.3657819008493858, 0.3872717431211139, 0.5296179826887955, 0.3549791699992324, 0.03845149501235379, 0.9752711547848418, 0.20037853481683254, 0.31096408522103347, 0.9594224215818684, 0.9629871955616451, 0.4983265536276734, 0.002695323442428843,
-    0.35680469302547124, 0.6338448300380964, 0.26924514548124223, 0.5489805045735846, 0.38712840331458065, 0.34813314754718905, 0.21110995223799223, 0.06735202851625521, 0.22925362499197766, 0.9693096630885775, 0.13104928603132715, 0.5136988570398621, 0.993335107309559, 0.8645336635925384, 0.05809545593417287, 0.12120304216110633,
-    0.22041811198640138, 0.17310442191243958, 0.26970976141108405, 0.7577908143740093, 0.3530547214528106, 0.7158705393016846, 0.4373999583878948, 0.8503007357829833, 0.06923972709448556, 0.7685377089983041, 0.2800583414822193, 0.4926678074779679, 0.8794457785989035, 0.22453667177222958, 0.5565299827383392, 0.6752055012992703);
+// https://www.shadertoy.com/view/3tB3z3
+fn part1by1(in: u32) -> u32 {
+    var x = in;
+    x = (x & 0x0000ffffu);
+    x = ((x ^ (x << 8u)) & 0x00ff00ffu);
+    x = ((x ^ (x << 4u)) & 0x0f0f0f0fu);
+    x = ((x ^ (x << 2u)) & 0x33333333u);
+    x = ((x ^ (x << 1u)) & 0x55555555u);
+    return x;
+}
+
+fn compact1by1(in: u32) -> u32 {
+    var x = in;
+    x = (x & 0x55555555u);
+    x = ((x ^ (x >> 1u)) & 0x33333333u);
+    x = ((x ^ (x >> 2u)) & 0x0f0f0f0fu);
+    x = ((x ^ (x >> 4u)) & 0x00ff00ffu);
+    x = ((x ^ (x >> 8u)) & 0x0000ffffu);
+    return x;
+}
+
+fn pack_morton2x16(v: vec2<u32>) -> u32 {
+    return part1by1(v.x) | (part1by1(v.y) << 1);
+}
+
+fn unpack_morton2x16(p: u32) -> vec2<u32> {
+    return vec2<u32>(compact1by1(p), compact1by1(p >> 1));
+}
+
+// https://www.shadertoy.com/view/llGcDm
+fn hilbert(in: vec2<i32>, level: i32) -> i32 {
+    var p = in;
+    var d = 0;
+    for (var k = 0; k < level; k++) {
+        let n_i = level - k-1;
+        let n = u32(n_i);
+        let r = vec2<i32>((p.x >> n) & 1, (p.y >> n) & 1);
+        d += ((3 * r.x) ^ r.y) << (2 * n);
+        if r.y == 0 {
+            if r.x == 1 {
+                p.x = (i32(1) << n) - i32(1) - p.x;
+                p.y = (i32(1) << n) - i32(1) - p.y;
+            }
+            p = p.yx;
+        }
+    }
+    return d;
+}
+
+const g : f32= 1.32471795724474602596;
+const a1: f32 = 1.0 / g;
+const a2: f32 = 1.0 / (g * g);
+
+// mapping each pixel to a hilbert curve index, then taking a value from the Roberts R2 quasirandom sequence for it
+fn hilbert_r2_blue_noisef(p: vec2<u32>) -> vec2<f32> {
+    var x = u32(hilbert(vec2<i32>(p), 6)) % (1u << 6u);
+    x += 288 * (frame_index.i % 64);
+    return vec2<f32>(fract(0.5 + a1 * f32(x)), fract(0.5 + a2 * f32(x)));
+}
+
+fn calculate_edges(centerZ: f32, leftZ: f32, rightZ: f32, topZ: f32, bottomZ: f32) -> vec4<f32> {
+    var edgesLRTB = vec4<f32>(leftZ, rightZ, topZ, bottomZ) - centerZ;
+
+    let slopeLR = (edgesLRTB.y - edgesLRTB.x) * 0.5;
+    let slopeTB = (edgesLRTB.w - edgesLRTB.z) * 0.5;
+    let edgesLRTBSlopeAdjusted = edgesLRTB + vec4<f32>(slopeLR, -slopeLR, slopeTB, -slopeTB);
+    edgesLRTB = min(abs(edgesLRTB), abs(edgesLRTBSlopeAdjusted));
+    return vec4<f32>(saturate((1.25 - edgesLRTB / (centerZ * 0.000011))));
+}
+
+// packing/unpacking for edges; 2 bits per edge mean 4 gradient values (0, 0.33, 0.66, 1) for smoother transitions!
+fn pack_edges(in: vec4<f32>) -> f32 {
+    // integer version:
+    // edgesLRTB = saturate(edgesLRTB) * 2.9.xxxx + 0.5.xxxx;
+    // return (((uint)edgesLRTB.x) << 6) + (((uint)edgesLRTB.y) << 4) + (((uint)edgesLRTB.z) << 2) + (((uint)edgesLRTB.w));
+    //
+    // optimized, should be same as above
+    var edgesLRTB = round(saturate(in) * 2.9);
+    return dot(edgesLRTB, vec4<f32>(64.0 / 255.0, 16.0 / 255.0, 4.0 / 255.0, 1.0 / 255.0)) ;
+}
+
+const sample_factor: f32 = 1.;
+
+struct FragmentOutput {
+    @location(0) ssao: f32,
+    @location(1) edges: f32,
+}
 
 @fragment
-fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) f32 {
-    let coords = vec2<i32>(floor(fcoords.xy * 2.));
+fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
+    var out: FragmentOutput;
+    let coords = vec2<i32>(floor(fcoords.xy * sample_factor));
+    let noise = hilbert_r2_blue_noisef(vec2<u32>(coords));
     let buffer_size = textureDimensions(t_d);
-    let depth = textureSample(t_d, s, fcoords.xy * 2. / vec2<f32>(buffer_size)).x;
-    let position = world_from_screen_coord(fcoords.xy * 2. / vec2<f32>(buffer_size), depth);
-    let normal   = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
-	let view_dir = normalize(camera.view_pos.xyz - position);
+    let origin = sample_factor * fcoords.xy / vec2<f32>(buffer_size);
 
-	if abs(normal[0]) + abs(normal[1]) + abs(normal[2]) < 0.1 {
+    let values_ul = textureGather(0, t_d, s, origin);
+    let values_br = textureGather(0, t_d, s, origin, vec2<i32>(1, 1));
+    let depth = values_ul.y;
+
+    // viewspace Zs left top right bottom
+    let pix_lz = values_ul.x;
+    let pix_tz = values_ul.z;
+    let pix_rz = values_br.z;
+    let pix_bz = values_br.x;
+
+    let edgesLRTB = calculate_edges(depth, pix_lz, pix_rz, pix_tz, pix_bz);
+    let packed_edges = pack_edges(edgesLRTB);
+    out.edges = packed_edges;
+
+    let position = world_from_screen_coord(origin, depth);
+    let normal_sample = textureLoad(t_n, coords, 0).xyz;
+    let normal = normalize(normal_sample * 2. - vec3<f32>(1.));
+    let view_dir = normalize(camera.view_pos.xyz - position);
+
+    if abs(normal_sample[0]) + abs(normal_sample[1]) + abs(normal_sample[2]) < 0.01 {
 	    discard;
-	}
-
-    // SSAO
-    //let rand = pcg3d(vec3<u32>(bitcast<u32>(coords.x), bitcast<u32>(coords.y), bitcast<u32>(depth)));
-    //let randoms_i_1 = rand.x & 63;
-    //let randoms_i_2 = rand.y & 63;
-    //let randoms_i_3 = rand.z & 63;
-    //let random_vec = vec3<f32>(
-    //    2. * randoms[randoms_i_1] - 1.,
-    //    2. * randoms[randoms_i_2] - 1.,
-    //    2. * randoms[randoms_i_3] - 1.,
-    //);
-    //let tangent = normalize(random_vec - normal * dot(random_vec, normal));
-    //let bitangent = cross(normal, tangent);
-    //let TBN = mat3x3<f32>(tangent, bitangent, normal);
-    //var occlusion = 0.0;
-    //let kernelSize: u32 = 6u;
-    //let radius = 0.05;
-    //for(var i: u32 = 0; i < kernelSize; i+=1)
-    //{
-    //    let rand2 = pcg3d(vec3<u32>(i, bitcast<u32>(depth), bitcast<u32>(coords.x * coords.y)));
-    //    let angle_bias = 0.2;
-    //    //let theta = (angle_bias + randoms[rand2.x & 63] * (1. - angle_bias)) * PI;
-    //    let theta = (randoms[rand2.x & 63] - 0.5) * PI;
-    //    let phi = randoms[rand2.y & 63] * PI;
-    //    let i4 = rand2.z & 63;
-    //    let offset = TBN * vec3<f32>(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta)); // from tangent to world
-    //    let sample_pos = position + offset * radius * pow(randoms[i4], 2.);
-
-    //    var sample = vec4(sample_pos, 1.0);
-    //    sample = camera.view_proj * sample;    // from world to clip-space
-    //    //let bias = 0.0025;
-    //    let bias = 0.0000001;
-    //    sample /= sample.w;               // perspective divide
-    //    sample.x = sample.x * 0.5 + 0.5;
-    //    sample.y = 0.5 - sample.y * 0.5;
-    //    let sample_depth = sample.z;
-    //    let origin = fcoords.xy / vec2<f32>(buffer_size);
-    //    let sample_off = origin - sample.xy;
-    //    let sampleDepth_1 = textureSample(t_d, s, origin + sample_off * 0.3).x;
-    //    let sampleDepth_2 = textureSample(t_d, s, origin + sample_off * 0.6).x;
-    //    let sampleDepth_3 = textureSample(t_d, s, sample.xy).x;
-    //    let sample_world_pos_1 = world_from_screen_coord(origin + sample_off * 0.3, sampleDepth_1);
-    //    let sample_world_pos_2 = world_from_screen_coord(origin + sample_off * 0.6, sampleDepth_2);
-    //    let sample_world_pos_3 = world_from_screen_coord(sample.xy, sampleDepth_3);
-    //    let range_check_1 = smoothstep(0.0, 1.0, radius / abs(sample_world_pos_1.z - position.z));
-    //    let range_check_2 = smoothstep(0.0, 1.0, radius / abs(sample_world_pos_2.z - position.z));
-    //    let range_check_3 = smoothstep(0.0, 1.0, radius / abs(sample_world_pos_3.z - position.z));
-    //    let occlusion_1 = select(0., 1. / f32(kernelSize), sampleDepth_1 + bias < sample_depth) * range_check_1;
-    //    let occlusion_2 = max(occlusion_1, select(0., 1. / f32(kernelSize), sampleDepth_2 + bias < sample_depth) * range_check_2);
-    //    occlusion += max(occlusion_2, select(0., 1. / f32(kernelSize), sampleDepth_3 + bias < sample_depth) * range_check_3);
-    //}
+    }
 
     // GTAO
     var visibility = 0.0;
     let kernelSize: u32 = 3u;
-    let origin = 2. * fcoords.xy / vec2<f32>(buffer_size);
-    let pix_dif = 2. * vec2<f32>(1.) / vec2<f32>(buffer_size);
-    let camera_distance = sqrt(dot(camera.view_pos.xyz - position,camera.view_pos.xyz - position));
-    let wanted_radius = 20. / camera_distance * pix_dif;
+    let pix_dif = vec2<f32>(1.) / vec2<f32>(buffer_size);
+    let camera_distance = sqrt(dot(camera.view_pos.xyz - position, camera.view_pos.xyz - position));
+    let wanted_radius = 64. / camera_distance * pix_dif;
     let radius = vec2<f32>(
-        min(wanted_radius.x, 20. * pix_dif.x),
-        min(wanted_radius.y, 20. * pix_dif.y),
+        min(wanted_radius.x, 64. * pix_dif.x),
+        min(wanted_radius.y, 64. * pix_dif.y),
     );
     //let radius = min(min(0.005 / camera_distance, 30. * pix_dif.x), 30. * pix_dif.y);
-    for(var i: u32 = 0; i < kernelSize; i+=1) {
-        let rand = pcg3d(vec3<u32>(i, bitcast<u32>(depth), bitcast<u32>(coords.x * coords.y)));
-        let phi = (randoms[rand.x & 63] + f32(i)) * PI / f32(kernelSize);
-        let dir = vec2<f32>(cos(phi), -sin(phi)) * radius * randoms[rand.y & 63];
-        //let dir = vec2<f32>(cos(phi), -sin(phi)) * radius;
-        let world_dir = normalize(world_from_screen_coord(origin + dir, 0.) - position);
+    for (var i: u32 = 0; i < kernelSize; i += 1) {
+        let phi = (noise.x + f32(i)) * PI / f32(kernelSize);
+        let dir = vec2<f32>(cos(phi), -sin(phi)) * radius;
+
+        let step_noise_1 = fract(noise.y + f32(i + 1 * 3) * 0.6180339887498948482);
+        let step_noise_2 = fract(noise.y + f32(i + 2 * 3) * 0.6180339887498948482);
+        let step_noise_3 = fract(noise.y + f32(i + 3 * 3) * 0.6180339887498948482);
+
+        let world_dir = normalize(world_from_screen_coord(origin + dir, depth) - position);
         let ortho_direction_v = world_dir - dot(world_dir, view_dir) * view_dir;
         let slice_plane_normal = normalize(cross(world_dir, view_dir));
         let projected_normal = normal - dot(normal, slice_plane_normal) * slice_plane_normal;
         let sign_n = sign(dot(ortho_direction_v, projected_normal));
-        let cos_n = saturate(dot(view_dir,normalize(projected_normal)));
+        let cos_n = saturate(dot(view_dir, normalize(projected_normal)));
         let n = sign_n * acos(cos_n);
 
-
-        let sample_coords_1 =  vec2<f32>( origin + 0.33 * dir);
-        let sample_coords_2 =  vec2<f32>( origin + 0.66 * dir);
-        let sample_coords_3 =  vec2<f32>( origin + 1.00 * dir);
-        let sample_coords_1p =  vec2<f32>(origin - 0.33 * dir);
-        let sample_coords_2p =  vec2<f32>(origin - 0.66 * dir);
-        let sample_coords_3p =  vec2<f32>(origin - 1.00 * dir);
-        let sample_depth_1 = textureSample(t_d, s,  sample_coords_1).x;
-        let sample_depth_2 = textureSample(t_d, s,  sample_coords_2).x;
-        let sample_depth_3 = textureSample(t_d, s,  sample_coords_3).x;
+        let sample_coords_1 = vec2<f32>(origin + (0.33 * step_noise_1 + 0.01) * dir);
+        let sample_coords_2 = vec2<f32>(origin + (0.33 * step_noise_2 + 0.34) * dir);
+        let sample_coords_3 = vec2<f32>(origin + (0.33 * step_noise_3 + 0.67) * dir);
+        let sample_coords_1p = vec2<f32>(origin - (0.33 * step_noise_1 + 0.01) * dir);
+        let sample_coords_2p = vec2<f32>(origin - (0.33 * step_noise_2 + 0.34) * dir);
+        let sample_coords_3p = vec2<f32>(origin - (0.33 * step_noise_3 + 0.67) * dir);
+        let sample_depth_1 = textureSample(t_d, s, sample_coords_1).x;
+        let sample_depth_2 = textureSample(t_d, s, sample_coords_2).x;
+        let sample_depth_3 = textureSample(t_d, s, sample_coords_3).x;
         let sample_depth_1p = textureSample(t_d, s, sample_coords_1p).x;
         let sample_depth_2p = textureSample(t_d, s, sample_coords_2p).x;
         let sample_depth_3p = textureSample(t_d, s, sample_coords_3p).x;
 
-        let sample_1 =  world_from_screen_coord(sample_coords_1, sample_depth_1);
-        let sample_2 =  world_from_screen_coord(sample_coords_2, sample_depth_2);
-        let sample_3 =  world_from_screen_coord(sample_coords_3, sample_depth_3);
+        let sample_1 = world_from_screen_coord(sample_coords_1, sample_depth_1);
+        let sample_2 = world_from_screen_coord(sample_coords_2, sample_depth_2);
+        let sample_3 = world_from_screen_coord(sample_coords_3, sample_depth_3);
         let sample_1p = world_from_screen_coord(sample_coords_1p, sample_depth_1p);
         let sample_2p = world_from_screen_coord(sample_coords_2p, sample_depth_2p);
         let sample_3p = world_from_screen_coord(sample_coords_3p, sample_depth_3p);
 
-        let d_s_1_squared = dot(sample_1  - position, sample_1 - position);
-        let d_s_2_squared = dot(sample_2  - position, sample_2 - position);
-        let d_s_3_squared = dot(sample_3  - position, sample_3 - position);
+        let d_s_1_squared = dot(sample_1 - position, sample_1 - position);
+        let d_s_2_squared = dot(sample_2 - position, sample_2 - position);
+        let d_s_3_squared = dot(sample_3 - position, sample_3 - position);
         let d_t_1_squared = dot(sample_1p - position, sample_1p - position);
         let d_t_2_squared = dot(sample_2p - position, sample_2p - position);
         let d_t_3_squared = dot(sample_3p - position, sample_3p - position);
@@ -204,8 +239,8 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) f32 {
         let d_t_2 = normalize(sample_2p - position);
         let d_t_3 = normalize(sample_3p - position);
 
-        let world_radius = 10000.;
-        //let world_radius = 0.5;
+        //let world_radius = 10000.;
+        let world_radius = 0.2;
         let l_s_1 = saturate((sqrt(d_s_1_squared) - world_radius) / world_radius);
         let l_s_2 = saturate((sqrt(d_s_2_squared) - world_radius) / world_radius);
         let l_s_3 = saturate((sqrt(d_s_3_squared) - world_radius) / world_radius);
@@ -229,11 +264,9 @@ fn fs_main(@builtin(position) fcoords : vec4<f32>) -> @location(0) f32 {
         let projected_normal_length = sqrt(dot(projected_normal, projected_normal));
         let projected_normal_length_2 = 0.05 * projected_normal_length + (1. - 0.05);
 
-        let local_visibility = 0.25 * projected_normal_length * (
-            - cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin(n)
-            - cos(2. * h2p - n)
-        );
+        let local_visibility = 0.25 * projected_normal_length * (- cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin(n) - cos(2. * h2p - n));
         visibility += local_visibility / f32(kernelSize);
     }
-    return visibility;
+    out.ssao = visibility;
+    return out;
 }

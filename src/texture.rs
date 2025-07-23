@@ -37,6 +37,10 @@ pub struct TextureBufferPool {
     // own format
     ssao: wgpu::Texture,
     ssao_view: wgpu::TextureView,
+    denoiser_edges: wgpu::Texture,
+    denoiser_edges_view: wgpu::TextureView,
+    denoised_ssao: wgpu::Texture,
+    denoised_ssao_view: wgpu::TextureView,
 }
 
 impl TextureBufferPool {
@@ -116,7 +120,8 @@ impl TextureBufferPool {
             blend_render_target.create_view(&wgpu::TextureViewDescriptor::default());
 
         let ssao = device.create_texture(&wgpu::TextureDescriptor {
-            size: half_size,
+            //size: half_size,
+            size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -126,6 +131,31 @@ impl TextureBufferPool {
             view_formats: &[],
         });
         let ssao_view = ssao.create_view(&wgpu::TextureViewDescriptor::default());
+        let denoiser_edges = device.create_texture(&wgpu::TextureDescriptor {
+            //size: half_size,
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: SSAO_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("denoised ssao_texture"),
+            view_formats: &[],
+        });
+        let denoiser_edges_view =
+            denoiser_edges.create_view(&wgpu::TextureViewDescriptor::default());
+        let denoised_ssao = device.create_texture(&wgpu::TextureDescriptor {
+            //size: half_size,
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: SSAO_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("denoised ssao_texture"),
+            view_formats: &[],
+        });
+        let denoised_ssao_view = denoised_ssao.create_view(&wgpu::TextureViewDescriptor::default());
 
         let output_buffer_dimensions =
             BufferDimensions::new::<u32>(texture_size.width as usize, texture_size.height as usize);
@@ -157,6 +187,10 @@ impl TextureBufferPool {
             depth_view,
             ssao,
             ssao_view,
+            denoiser_edges,
+            denoiser_edges_view,
+            denoised_ssao,
+            denoised_ssao_view,
         }
     }
 
@@ -194,6 +228,14 @@ impl TextureBufferPool {
 
     pub fn get_ssao_view(&self) -> &wgpu::TextureView {
         &self.ssao_view
+    }
+
+    pub fn get_denoised_ssao_view(&self) -> &wgpu::TextureView {
+        &self.denoised_ssao_view
+    }
+
+    pub fn get_denoiser_edges_view(&self) -> &wgpu::TextureView {
+        &self.denoiser_edges_view
     }
 
     pub fn copy_screenshot_texture_to_buffer(&mut self, encoder: &mut wgpu::CommandEncoder) {
