@@ -17,7 +17,7 @@ var<uniform> light: Light;
 struct Parameters {
     frame_index: u32,
     slices: u32,
-    _pad2: u32,
+    samples: u32,
     _pad3: u32,
 }
 
@@ -131,11 +131,6 @@ fn calculate_edges(centerZ: f32, leftZ: f32, rightZ: f32, topZ: f32, bottomZ: f3
 
 // packing/unpacking for edges; 2 bits per edge mean 4 gradient values (0, 0.33, 0.66, 1) for smoother transitions!
 fn pack_edges(in: vec4<f32>) -> f32 {
-    // integer version:
-    // edgesLRTB = saturate(edgesLRTB) * 2.9.xxxx + 0.5.xxxx;
-    // return (((uint)edgesLRTB.x) << 6) + (((uint)edgesLRTB.y) << 4) + (((uint)edgesLRTB.z) << 2) + (((uint)edgesLRTB.w));
-    //
-    // optimized, should be same as above
     var edgesLRTB = round(saturate(in) * 2.9);
     return dot(edgesLRTB, vec4<f32>(64.0 / 255.0, 16.0 / 255.0, 4.0 / 255.0, 1.0 / 255.0)) ;
 }
@@ -192,11 +187,6 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     for (var i: u32 = 0; i < kernelSize; i += 1) {
         let phi = (noise.x + f32(i)) * PI / f32(kernelSize);
         let dir = vec2<f32>(cos(phi), -sin(phi)) * radius;
-
-        let step_noise_1 = fract(noise.y + f32(i + 1 * 3) * 0.6180339887498948482);
-        let step_noise_2 = fract(noise.y + f32(i + 2 * 3) * 0.6180339887498948482);
-        let step_noise_3 = fract(noise.y + f32(i + 3 * 3) * 0.6180339887498948482);
-
         let world_dir = normalize(world_from_screen_coord(origin + dir, depth) - position);
         let ortho_direction_v = world_dir - dot(world_dir, view_dir) * view_dir;
         let slice_plane_normal = normalize(cross(world_dir, view_dir));
@@ -204,58 +194,40 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let sign_n = sign(dot(ortho_direction_v, projected_normal));
         let cos_n = saturate(dot(view_dir, normalize(projected_normal)));
         let n = sign_n * acos(cos_n);
-
-        let sample_coords_1 = vec2<f32>(origin + (0.33 * step_noise_1 + 0.01) * dir);
-        let sample_coords_2 = vec2<f32>(origin + (0.33 * step_noise_2 + 0.34) * dir);
-        let sample_coords_3 = vec2<f32>(origin + (0.33 * step_noise_3 + 0.67) * dir);
-        let sample_coords_1p = vec2<f32>(origin - (0.33 * step_noise_1 + 0.01) * dir);
-        let sample_coords_2p = vec2<f32>(origin - (0.33 * step_noise_2 + 0.34) * dir);
-        let sample_coords_3p = vec2<f32>(origin - (0.33 * step_noise_3 + 0.67) * dir);
-        let sample_depth_1 = textureSample(t_d, s, sample_coords_1).x;
-        let sample_depth_2 = textureSample(t_d, s, sample_coords_2).x;
-        let sample_depth_3 = textureSample(t_d, s, sample_coords_3).x;
-        let sample_depth_1p = textureSample(t_d, s, sample_coords_1p).x;
-        let sample_depth_2p = textureSample(t_d, s, sample_coords_2p).x;
-        let sample_depth_3p = textureSample(t_d, s, sample_coords_3p).x;
-
-        let sample_1 = world_from_screen_coord(sample_coords_1, sample_depth_1);
-        let sample_2 = world_from_screen_coord(sample_coords_2, sample_depth_2);
-        let sample_3 = world_from_screen_coord(sample_coords_3, sample_depth_3);
-        let sample_1p = world_from_screen_coord(sample_coords_1p, sample_depth_1p);
-        let sample_2p = world_from_screen_coord(sample_coords_2p, sample_depth_2p);
-        let sample_3p = world_from_screen_coord(sample_coords_3p, sample_depth_3p);
-
-        let d_s_1_squared = dot(sample_1 - position, sample_1 - position);
-        let d_s_2_squared = dot(sample_2 - position, sample_2 - position);
-        let d_s_3_squared = dot(sample_3 - position, sample_3 - position);
-        let d_t_1_squared = dot(sample_1p - position, sample_1p - position);
-        let d_t_2_squared = dot(sample_2p - position, sample_2p - position);
-        let d_t_3_squared = dot(sample_3p - position, sample_3p - position);
-
-        let d_s_1 = normalize(sample_1 - position);
-        let d_s_2 = normalize(sample_2 - position);
-        let d_s_3 = normalize(sample_3 - position);
-        let d_t_1 = normalize(sample_1p - position);
-        let d_t_2 = normalize(sample_2p - position);
-        let d_t_3 = normalize(sample_3p - position);
+        let sin_n = sin(n);
+        let cos_n_plus_pi_2 = -sin_n;
+        let cos_n_minus_pi_2 = sin_n;
+        var cos_h1 = cos_n_plus_pi_2;
+        var cos_h2 = cos_n_minus_pi_2;
 
         //let world_radius = 10000.;
         let world_radius = 0.2;
-        let l_s_1 = saturate((sqrt(d_s_1_squared) - world_radius) / world_radius);
-        let l_s_2 = saturate((sqrt(d_s_2_squared) - world_radius) / world_radius);
-        let l_s_3 = saturate((sqrt(d_s_3_squared) - world_radius) / world_radius);
-        let l_t_1 = saturate((sqrt(d_t_1_squared) - world_radius) / world_radius);
-        let l_t_2 = saturate((sqrt(d_t_2_squared) - world_radius) / world_radius);
-        let l_t_3 = saturate((sqrt(d_t_3_squared) - world_radius) / world_radius);
-        let dot_s_1 = (1. - l_s_1) * dot(d_s_1, view_dir) + l_s_1 * cos(n + PI * 0.5);
-        let dot_s_2 = (1. - l_s_2) * dot(d_s_2, view_dir) + l_s_2 * cos(n + PI * 0.5);
-        let dot_s_3 = (1. - l_s_3) * dot(d_s_3, view_dir) + l_s_3 * cos(n + PI * 0.5);
-        let dot_t_1 = (1. - l_t_1) * dot(d_t_1, view_dir) + l_t_1 * cos(n - PI * 0.5);
-        let dot_t_2 = (1. - l_t_2) * dot(d_t_2, view_dir) + l_t_2 * cos(n - PI * 0.5);
-        let dot_t_3 = (1. - l_t_3) * dot(d_t_3, view_dir) + l_t_3 * cos(n - PI * 0.5);
 
-        let cos_h1 = max(max(dot_s_1, dot_s_2), dot_s_3);
-        let cos_h2 = max(max(dot_t_1, dot_t_2), dot_t_3);
+        for (var j: u32 = 0; j < param.samples; j += 1) {
+            let step_noise = fract(noise.y + f32(i + j * param.samples) * 0.6180339887498948482);
+
+            let sample_coords_1 = vec2<f32>(origin + (step_noise + f32(j)) * dir / f32(param.samples));
+            let sample_coords_2 = vec2<f32>(origin - (step_noise + f32(j)) * dir / f32(param.samples));
+            let sample_depth_1 = textureSample(t_d, s, sample_coords_1).x;
+            let sample_depth_2 = textureSample(t_d, s, sample_coords_2).x;
+
+            let sample_1 = world_from_screen_coord(sample_coords_1, sample_depth_1);
+            let sample_2 = world_from_screen_coord(sample_coords_2, sample_depth_2);
+
+            let d_s_1_squared = dot(sample_1 - position, sample_1 - position);
+            let d_s_2_squared = dot(sample_2 - position, sample_2 - position);
+
+            let d_s_1 = normalize(sample_1 - position);
+            let d_s_2 = normalize(sample_2 - position);
+
+            let l_s_1 = saturate((sqrt(d_s_1_squared) - world_radius) / world_radius);
+            let l_s_2 = saturate((sqrt(d_s_2_squared) - world_radius) / world_radius);
+            let dot_s_1 = (1. - l_s_1) * dot(d_s_1, view_dir) + l_s_1 * cos_n_plus_pi_2;
+            let dot_s_2 = (1. - l_s_2) * dot(d_s_2, view_dir) + l_s_2 * cos_n_minus_pi_2;
+            cos_h1 = max(cos_h1, dot_s_1);
+            cos_h2 = max(cos_h2, dot_s_2);
+        }
+
         let h1 = acos(cos_h1);
         let h2 = -acos(cos_h2);
         let h1p = n + clamp(h1 - n, -PI * 0.5, PI * 0.5);
@@ -264,7 +236,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let projected_normal_length = sqrt(dot(projected_normal, projected_normal));
         let projected_normal_length_2 = 0.05 * projected_normal_length + (1. - 0.05);
 
-        let local_visibility = 0.25 * projected_normal_length * (- cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin(n) - cos(2. * h2p - n));
+        let local_visibility = 0.25 * projected_normal_length * (- cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin_n - cos(2. * h2p - n));
         visibility += local_visibility / f32(kernelSize);
     }
     out.ssao = visibility;

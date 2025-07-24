@@ -50,8 +50,8 @@ struct DataInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-	@location(0) world_pos: vec3<f32>,
-	@location(1) center: vec3<f32>,
+    @location(0) world_pos: vec3<f32>,
+    @location(1) center: vec3<f32>,
     @location(2) index: u32,
 };
 
@@ -81,15 +81,14 @@ fn vs_main(
 fn dot2(v: vec3<f32>) -> f32 { return dot(v, v); }
 
 
-fn sphIntersect( ro: vec3<f32>, rd: vec3<f32>, ce: vec3<f32>, ra: f32 ) -> vec2<f32>
-{
+fn sphIntersect(ro: vec3<f32>, rd: vec3<f32>, ce: vec3<f32>, ra: f32) -> vec2<f32> {
     let oc = ro - ce;
-    let b = dot( oc, rd );
-    let c = dot( oc, oc ) - ra*ra;
-    var h = b*b - c;
-    if( h<0.0 ) { return vec2<f32>(-1.0); } // no intersection
-    h = sqrt( h );
-    return vec2<f32>( -b-h, -b+h );
+    let b = dot(oc, rd);
+    let c = dot(oc, oc) - ra * ra;
+    var h = b * b - c;
+    if h < 0.0 { return vec2<f32>(-1.0); } // no intersection
+    h = sqrt(h);
+    return vec2<f32>(-b - h, -b + h);
 }
 
 struct FragOutput {
@@ -100,22 +99,22 @@ struct FragOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> FragOutput {
     let ro = camera.view_pos.xyz;
-	let rd = normalize(in.world_pos - camera.view_pos.xyz);
+    let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let ce = in.center;
     let det = determinant(transform.normal);
     let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
 
     var out: FragOutput;
 
-    let t = sphIntersect( ro, rd, ce, r);
-    if(t.x < 0.0) {
+    let t = sphIntersect(ro, rd, ce, r);
+    if t.x < 0.0 {
         discard;
     }
-	let pos = ro + t.x * rd;
+    let pos = ro + t.x * rd;
 
-	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
-	out.depth = clip_space_pos.z / clip_space_pos.w;
-    let res =   counter.count + in.index;
+    let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+    out.depth = clip_space_pos.z / clip_space_pos.w;
+    let res = counter.count + in.index;
     // webgl dosen't support rendering to u32, so we have to resort to this
     let f1 = f32((res >> u32(24))) / 255.;
     let f2 = f32(((res << u32(8)) >> u32(24))) / 255.;
@@ -123,5 +122,5 @@ fn fs_main(in: VertexOutput) -> FragOutput {
     let f4 = f32(((res << u32(24)) >> u32(24))) / 255.;
     out.color = vec4<f32>(f4, f3, f2, f1);
     //return bitcast<vec4<f32>>(res);
-	return out;
+    return out;
 }

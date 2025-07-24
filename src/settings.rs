@@ -105,6 +105,17 @@ impl Settings {
                     self.ssao_slice_per_pixel = value;
                     *refresh_screen = true;
                 }
+                let mut value = self.ssao_sample_per_slice as f32;
+                ui.add(
+                    DragValue::new(&mut value)
+                        .range(0..=16)
+                        .prefix("Sample per slice: "),
+                );
+                let value = value as u8;
+                if self.ssao_sample_per_slice != value {
+                    self.ssao_sample_per_slice = value;
+                    *refresh_screen = true;
+                }
             });
         });
     }

@@ -314,7 +314,7 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
             texture_buffer_pool.get_depth_view(),
-            texture_buffer_pool.get_denoised_ssao_view(),
+            texture_buffer_pool.get_ssao_view(),
             &camera_light_bind_group_layout,
         );
         let ground = post_process::Ground::new(
@@ -329,6 +329,7 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_normals_view(),
             texture_buffer_pool.get_ssao_view(),
             texture_buffer_pool.get_denoiser_edges_view(),
+            texture_buffer_pool.get_denoised_ssao_view(),
             texture_buffer_pool.get_depth_view(),
             &camera_light_bind_group_layout,
         );
@@ -496,13 +497,14 @@ impl InnerGraphicalState {
                 self.texture_buffer_pool.get_albedo_view(),
                 self.texture_buffer_pool.get_normals_view(),
                 self.texture_buffer_pool.get_depth_view(),
-                self.texture_buffer_pool.get_denoised_ssao_view(),
+                self.texture_buffer_pool.get_ssao_view(),
             );
             self.ssao.resize(
                 &self.device,
                 self.texture_buffer_pool.get_normals_view(),
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
+                self.texture_buffer_pool.get_denoised_ssao_view(),
                 self.texture_buffer_pool.get_depth_view(),
             );
         }
@@ -756,6 +758,7 @@ impl InnerGraphicalState {
             self.ssao.render(
                 self.settings.ssao_enabled,
                 self.settings.ssao_slice_per_pixel,
+                self.settings.ssao_sample_per_slice,
                 &self.queue,
                 &mut encoder,
                 &self.camera_light_bind_group,

@@ -843,7 +843,8 @@ pub struct SSAO {
     depth_bind_group: wgpu::BindGroup,
     depth_bind_group_layout: wgpu::BindGroupLayout,
     ssao_pipeline: wgpu::RenderPipeline,
-    denoiser_bind_group: wgpu::BindGroup,
+    denoiser_bind_group_1: wgpu::BindGroup,
+    denoiser_bind_group_2: wgpu::BindGroup,
     denoiser_bind_group_layout: wgpu::BindGroupLayout,
     denoiser_pipeline: wgpu::RenderPipeline,
     cleared: bool,
@@ -856,6 +857,7 @@ impl SSAO {
         normals_view: &wgpu::TextureView,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
+        denoised_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
     ) {
         self.depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -880,12 +882,30 @@ impl SSAO {
             ],
             label: Some("ssao_bind_group"),
         });
-        self.denoiser_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        self.denoiser_bind_group_1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.denoiser_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureView(ssao_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(denoiser_edges_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+            label: Some("denoiser_bind_group"),
+        });
+        self.denoiser_bind_group_2 = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.denoiser_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(denoised_ssao_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -905,6 +925,7 @@ impl SSAO {
         normals_view: &wgpu::TextureView,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
+        denoised_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
@@ -1023,12 +1044,31 @@ impl SSAO {
             label: Some("ssao_bind_group"),
         });
 
-        let denoiser_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let denoiser_bind_group_1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &denoiser_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureView(ssao_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(denoiser_edges_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: Some("denoiser_bind_group"),
+        });
+
+        let denoiser_bind_group_2 = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &denoiser_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(denoised_ssao_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -1123,7 +1163,8 @@ impl SSAO {
             ssao_pipeline,
             frame_index,
             frame_index_buffer,
-            denoiser_bind_group,
+            denoiser_bind_group_1,
+            denoiser_bind_group_2,
             denoiser_bind_group_layout,
             denoiser_pipeline,
             cleared: false,
@@ -1134,6 +1175,7 @@ impl SSAO {
         &mut self,
         ssao_enabled: bool,
         slices: u8,
+        samples: u8,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         camera_light_bind_group: &wgpu::BindGroup,
@@ -1147,7 +1189,7 @@ impl SSAO {
             queue.write_buffer(
                 &self.frame_index_buffer,
                 0,
-                bytemuck::cast_slice(&[self.frame_index, slices as u32, 0, 0]),
+                bytemuck::cast_slice(&[self.frame_index, slices as u32, samples as u32, 0]),
             );
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("SSAO Render Pass"),
@@ -1207,14 +1249,37 @@ impl SSAO {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            render_pass.set_bind_group(0, &self.denoiser_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.denoiser_bind_group_1, &[]);
+            render_pass.set_pipeline(&self.denoiser_pipeline);
+            render_pass.draw(0..4, 0..1);
+            drop(render_pass);
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("SSAO Denoiser Render Pass 2"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: ssao_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 1.,
+                            g: 1.,
+                            b: 1.,
+                            a: 1.,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            render_pass.set_bind_group(0, &self.denoiser_bind_group_2, &[]);
             render_pass.set_pipeline(&self.denoiser_pipeline);
             render_pass.draw(0..4, 0..1);
         } else if !self.cleared {
             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("SSAO Clear Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: denoised_ssao_view,
+                    view: ssao_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {

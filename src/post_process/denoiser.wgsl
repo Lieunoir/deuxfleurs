@@ -37,8 +37,9 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let buffer_size = textureDimensions(source_ao);
     let gatherCenter = fcoords.xy / vec2<f32>(buffer_size);
 
-    let blurAmount = 1.2f;
-    let diagWeight = 0.85 * 0.5;
+    // let blurAmount = 1.2f;
+    let blurAmount = 0.6f;
+    let diagWeight = 0.45 * 0.5;
 
     // gather edge and visibility quads, used later
     let edgesQ0 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(0, 0));
