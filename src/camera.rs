@@ -32,6 +32,13 @@ impl Camera {
         }
     }
 
+    pub fn get_linearize_z_mul_add(&self) -> (f32, f32) {
+        (
+            self.zfar * self.znear / (self.zfar - self.znear),
+            self.zfar / (self.zfar - self.znear),
+        )
+    }
+
     pub fn set_from_eye_target_up(&mut self, eye: [f32; 3], target: [f32; 3], up: [f32; 3]) {
         self.eye = eye.into();
         self.target = target.into();

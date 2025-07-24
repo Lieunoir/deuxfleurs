@@ -19,6 +19,10 @@ struct Parameters {
     slices: u32,
     samples: u32,
     _pad3: u32,
+    depth_linearize_mul: f32,
+    depth_linearize_add: f32,
+    _pad4: u32,
+    _pad5: u32,
 }
 
 @group(1) @binding(0)
@@ -47,6 +51,10 @@ fn world_from_screen_coord(coord: vec2<f32>, depth_sample: f32) -> vec3<f32> {
     let posWorldW = camera.view_inv * posClip;
     let posWorld = posWorldW.xyz / posWorldW.www;
     return posWorld;
+}
+
+fn linearize_depth(depth: f32) -> f32 {
+    return param.depth_linearize_mul / (param.depth_linearize_add - depth);
 }
 
 fn fast_sqrt(x: f32) -> f32 {
@@ -126,7 +134,7 @@ fn calculate_edges(centerZ: f32, leftZ: f32, rightZ: f32, topZ: f32, bottomZ: f3
     let slopeTB = (edgesLRTB.w - edgesLRTB.z) * 0.5;
     let edgesLRTBSlopeAdjusted = edgesLRTB + vec4<f32>(slopeLR, -slopeLR, slopeTB, -slopeTB);
     edgesLRTB = min(abs(edgesLRTB), abs(edgesLRTBSlopeAdjusted));
-    return vec4<f32>(saturate((1.25 - edgesLRTB / (centerZ * 0.000011))));
+    return vec4<f32>(saturate((1.25 - edgesLRTB / (centerZ * 0.0011))));
 }
 
 // packing/unpacking for edges; 2 bits per edge mean 4 gradient values (0, 0.33, 0.66, 1) for smoother transitions!
@@ -160,7 +168,13 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let pix_rz = values_br.z;
     let pix_bz = values_br.x;
 
-    let edgesLRTB = calculate_edges(depth, pix_lz, pix_rz, pix_tz, pix_bz);
+    let edgesLRTB = calculate_edges(
+        linearize_depth(depth),
+        linearize_depth(pix_lz),
+        linearize_depth(pix_rz),
+        linearize_depth(pix_tz),
+        linearize_depth(pix_bz)
+    );
     let packed_edges = pack_edges(edgesLRTB);
     out.edges = packed_edges;
 
@@ -177,11 +191,12 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     var visibility = 0.0;
     let kernelSize: u32 = param.slices;
     let pix_dif = vec2<f32>(1.) / vec2<f32>(buffer_size);
-    let camera_distance = sqrt(dot(camera.view_pos.xyz - position, camera.view_pos.xyz - position));
-    let wanted_radius = 64. / camera_distance * pix_dif;
+    let world_distance = linearize_depth(1.);
+    let camera_distance = linearize_depth(depth) / world_distance;
+    let wanted_radius = 32. / camera_distance * pix_dif;
     let radius = vec2<f32>(
-        min(wanted_radius.x, 64. * pix_dif.x),
-        min(wanted_radius.y, 64. * pix_dif.y),
+        min(wanted_radius.x, 32. * pix_dif.x),
+        min(wanted_radius.y, 32. * pix_dif.y),
     );
     //let radius = min(min(0.005 / camera_distance, 30. * pix_dif.x), 30. * pix_dif.y);
     for (var i: u32 = 0; i < kernelSize; i += 1) {
@@ -201,7 +216,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         var cos_h2 = cos_n_minus_pi_2;
 
         //let world_radius = 10000.;
-        let world_radius = 0.2;
+        let world_radius = 0.02 * world_distance;
 
         for (var j: u32 = 0; j < param.samples; j += 1) {
             let step_noise = fract(noise.y + f32(i + j * param.samples) * 0.6180339887498948482);
