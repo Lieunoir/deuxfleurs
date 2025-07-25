@@ -33,6 +33,8 @@ var t_d: texture_2d<f32>;
 var s: sampler;
 @group(1) @binding(3)
 var<uniform> param: Parameters;
+@group(1) @binding(4)
+var hilbert: texture_2d<u32>;
 
 const pos = array(vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
 
@@ -58,7 +60,7 @@ fn linearize_depth(depth: f32) -> f32 {
 }
 
 fn fast_sqrt(x: f32) -> f32 {
-    return f32(0x1FBD1DF5 + (u32(x) >> 1));
+    return bitcast<f32>(0x1FBD1DF5 + (bitcast<i32>(x) >> 1));
 }
 
 fn fast_acos(x: f32) -> f32 {
@@ -67,62 +69,13 @@ fn fast_acos(x: f32) -> f32 {
     return select(PI - res, res, x >= 0);
 }
 
-// https://www.shadertoy.com/view/3tB3z3
-fn part1by1(in: u32) -> u32 {
-    var x = in;
-    x = (x & 0x0000ffffu);
-    x = ((x ^ (x << 8u)) & 0x00ff00ffu);
-    x = ((x ^ (x << 4u)) & 0x0f0f0f0fu);
-    x = ((x ^ (x << 2u)) & 0x33333333u);
-    x = ((x ^ (x << 1u)) & 0x55555555u);
-    return x;
-}
-
-fn compact1by1(in: u32) -> u32 {
-    var x = in;
-    x = (x & 0x55555555u);
-    x = ((x ^ (x >> 1u)) & 0x33333333u);
-    x = ((x ^ (x >> 2u)) & 0x0f0f0f0fu);
-    x = ((x ^ (x >> 4u)) & 0x00ff00ffu);
-    x = ((x ^ (x >> 8u)) & 0x0000ffffu);
-    return x;
-}
-
-fn pack_morton2x16(v: vec2<u32>) -> u32 {
-    return part1by1(v.x) | (part1by1(v.y) << 1);
-}
-
-fn unpack_morton2x16(p: u32) -> vec2<u32> {
-    return vec2<u32>(compact1by1(p), compact1by1(p >> 1));
-}
-
-// https://www.shadertoy.com/view/llGcDm
-fn hilbert(in: vec2<i32>, level: i32) -> i32 {
-    var p = in;
-    var d = 0;
-    for (var k = 0; k < level; k++) {
-        let n_i = level - k-1;
-        let n = u32(n_i);
-        let r = vec2<i32>((p.x >> n) & 1, (p.y >> n) & 1);
-        d += ((3 * r.x) ^ r.y) << (2 * n);
-        if r.y == 0 {
-            if r.x == 1 {
-                p.x = (i32(1) << n) - i32(1) - p.x;
-                p.y = (i32(1) << n) - i32(1) - p.y;
-            }
-            p = p.yx;
-        }
-    }
-    return d;
-}
-
 const g : f32= 1.32471795724474602596;
 const a1: f32 = 1.0 / g;
 const a2: f32 = 1.0 / (g * g);
 
 // mapping each pixel to a hilbert curve index, then taking a value from the Roberts R2 quasirandom sequence for it
-fn hilbert_r2_blue_noisef(p: vec2<u32>) -> vec2<f32> {
-    var x = u32(hilbert(vec2<i32>(p), 6)) % (1u << 6u);
+fn hilbert_r2_blue_noisef(p: vec2<i32>) -> vec2<f32> {
+    var x = textureLoad(hilbert, vec2<i32>(p.x % 64, p.y % 64), 0).x;
     x += 288 * (param.frame_index % 64);
     return vec2<f32>(fract(0.5 + a1 * f32(x)), fract(0.5 + a2 * f32(x)));
 }
@@ -154,12 +107,12 @@ struct FragmentOutput {
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     var out: FragmentOutput;
     let coords = vec2<i32>(floor(fcoords.xy * sample_factor));
-    let noise = hilbert_r2_blue_noisef(vec2<u32>(coords));
+    let noise = hilbert_r2_blue_noisef(coords);
     let buffer_size = textureDimensions(t_d);
     let origin = sample_factor * fcoords.xy / vec2<f32>(buffer_size);
-
-    let values_ul = textureGather(0, t_d, s, origin);
-    let values_br = textureGather(0, t_d, s, origin, vec2<i32>(1, 1));
+    let gather_offset = - vec2<f32>(0.25) / vec2<f32>(buffer_size);
+    let values_ul = textureGather(0, t_d, s, origin + gather_offset);
+    let values_br = textureGather(0, t_d, s, origin + gather_offset, vec2<i32>(1, 1));
     let depth = values_ul.y;
 
     // viewspace Zs left top right bottom
@@ -193,7 +146,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let pix_dif = vec2<f32>(1.) / vec2<f32>(buffer_size);
     let world_distance = linearize_depth(1.);
     let camera_distance = linearize_depth(depth) / world_distance;
-    let wanted_radius = 32. / camera_distance * pix_dif;
+    let wanted_radius = 64. / camera_distance * pix_dif;
     let radius = vec2<f32>(
         min(wanted_radius.x, 32. * pix_dif.x),
         min(wanted_radius.y, 32. * pix_dif.y),
@@ -208,7 +161,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let projected_normal = normal - dot(normal, slice_plane_normal) * slice_plane_normal;
         let sign_n = sign(dot(ortho_direction_v, projected_normal));
         let cos_n = saturate(dot(view_dir, normalize(projected_normal)));
-        let n = sign_n * acos(cos_n);
+        let n = sign_n * fast_acos(cos_n);
         let sin_n = sin(n);
         let cos_n_plus_pi_2 = -sin_n;
         let cos_n_minus_pi_2 = sin_n;
@@ -235,22 +188,20 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
             let d_s_1 = normalize(sample_1 - position);
             let d_s_2 = normalize(sample_2 - position);
 
-            let l_s_1 = saturate((sqrt(d_s_1_squared) - world_radius) / world_radius);
-            let l_s_2 = saturate((sqrt(d_s_2_squared) - world_radius) / world_radius);
+            let l_s_1 = saturate((fast_sqrt(d_s_1_squared) - world_radius) / world_radius);
+            let l_s_2 = saturate((fast_sqrt(d_s_2_squared) - world_radius) / world_radius);
             let dot_s_1 = (1. - l_s_1) * dot(d_s_1, view_dir) + l_s_1 * cos_n_plus_pi_2;
             let dot_s_2 = (1. - l_s_2) * dot(d_s_2, view_dir) + l_s_2 * cos_n_minus_pi_2;
             cos_h1 = max(cos_h1, dot_s_1);
             cos_h2 = max(cos_h2, dot_s_2);
         }
 
-        let h1 = acos(cos_h1);
-        let h2 = -acos(cos_h2);
+        let h1 = fast_acos(cos_h1);
+        let h2 = -fast_acos(cos_h2);
         let h1p = n + clamp(h1 - n, -PI * 0.5, PI * 0.5);
         let h2p = n + clamp(h2 - n, -PI * 0.5, PI * 0.5);
 
-        let projected_normal_length = sqrt(dot(projected_normal, projected_normal));
-        let projected_normal_length_2 = 0.05 * projected_normal_length + (1. - 0.05);
-
+        let projected_normal_length = fast_sqrt(dot(projected_normal, projected_normal));
         let local_visibility = 0.25 * projected_normal_length * (- cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin_n - cos(2. * h2p - n));
         visibility += local_visibility / f32(kernelSize);
     }

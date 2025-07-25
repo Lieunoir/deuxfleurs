@@ -35,11 +35,12 @@ fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let buffer_size = textureDimensions(source_ao);
-    let gatherCenter = fcoords.xy / vec2<f32>(buffer_size);
+    let gather_offset = - vec2<f32>(0.25) / vec2<f32>(buffer_size);
+    let gatherCenter = fcoords.xy / vec2<f32>(buffer_size) + gather_offset;
 
     // let blurAmount = 1.2f;
-    let blurAmount = 0.6f;
-    let diagWeight = 0.45 * 0.5;
+    let blurAmount = 1.2f;
+    let diagWeight = 0.65 * 0.5;
 
     // gather edge and visibility quads, used later
     let edgesQ0 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(0, 0));

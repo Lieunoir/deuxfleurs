@@ -76,7 +76,7 @@ impl InnerGraphicalState {
             .map(|window| instance.create_surface(Arc::clone(&window)).unwrap());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::None,
+                power_preference: wgpu::PowerPreference::LowPower,
                 compatible_surface: surface.as_ref(),
                 force_fallback_adapter: false,
             })
@@ -326,6 +326,7 @@ impl InnerGraphicalState {
         );
         let ssao = post_process::SSAO::new(
             &device,
+            &queue,
             texture_buffer_pool.get_normals_view(),
             texture_buffer_pool.get_ssao_view(),
             texture_buffer_pool.get_denoiser_edges_view(),

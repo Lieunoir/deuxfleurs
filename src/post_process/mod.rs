@@ -837,9 +837,73 @@ impl Ground {
     }
 }
 
+fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
+    let texture_size = wgpu::Extent3d {
+        width: 64,
+        height: 64,
+        depth_or_array_layers: 1,
+    };
+    let hilbert_noise = device.create_texture(&wgpu::TextureDescriptor {
+        size: texture_size,
+        mip_level_count: 1, // We'll talk about this a little later
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::R32Uint,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        label: Some("hilbert_noise"),
+        view_formats: &[],
+    });
+
+    let level = 6;
+    let mut buffer = [0; 64 * 64 * 4];
+    for i in 0..64 {
+        for j in 0..64 {
+            let mut p = (i, j);
+            let mut d = 0_u32;
+            for k in 0..6 {
+                let n_i = level - k - 1;
+                let n = n_i as u32;
+                let r = ((p.0 >> n) & 1, (p.1 >> n) & 1);
+                d += ((3 * r.0) ^ r.1) << (2 * n);
+                if r.1 == 0 {
+                    if r.0 == 1 {
+                        p.0 = (1 << n) - 1 - p.0;
+                        p.1 = (1 << n) - 1 - p.1;
+                    }
+                    let temp = p.0;
+                    p.0 = p.1;
+                    p.1 = temp;
+                }
+            }
+            buffer[((i * 64 + j) * 4 + 0) as usize] = d.to_ne_bytes()[0];
+            buffer[((i * 64 + j) * 4 + 1) as usize] = d.to_ne_bytes()[1];
+            buffer[((i * 64 + j) * 4 + 2) as usize] = d.to_ne_bytes()[2];
+            buffer[((i * 64 + j) * 4 + 3) as usize] = d.to_ne_bytes()[3];
+        }
+    }
+
+    queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: &hilbert_noise,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &buffer,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(4 * 64),
+            rows_per_image: Some(64),
+        },
+        texture_size,
+    );
+    hilbert_noise.create_view(&wgpu::TextureViewDescriptor::default())
+}
+
 pub struct SSAO {
     frame_index: u32,
     frame_index_buffer: wgpu::Buffer,
+    hilbert_noise: wgpu::TextureView,
     sampler: wgpu::Sampler,
     depth_bind_group: wgpu::BindGroup,
     depth_bind_group_layout: wgpu::BindGroupLayout,
@@ -878,6 +942,10 @@ impl SSAO {
                     binding: 3,
                     resource: self.frame_index_buffer.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&self.hilbert_noise),
+                },
             ],
             label: Some("ssao_bind_group"),
         });
@@ -903,6 +971,7 @@ impl SSAO {
 
     pub fn new(
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         normals_view: &wgpu::TextureView,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
@@ -964,6 +1033,16 @@ impl SSAO {
                         },
                         count: None,
                     },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Uint,
+                        },
+                        count: None,
+                    },
                 ],
                 label: Some("ssao_bind_group_layout"),
             });
@@ -1001,6 +1080,7 @@ impl SSAO {
                 label: Some("denoiser_bind_group_layout"),
             });
 
+        let hilbert_noise = create_hilbert_texture(device, queue);
         let depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &depth_bind_group_layout,
             entries: &[
@@ -1019,6 +1099,10 @@ impl SSAO {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: frame_index_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&hilbert_noise),
                 },
             ],
             label: Some("ssao_bind_group"),
@@ -1119,6 +1203,7 @@ impl SSAO {
 
         Self {
             sampler,
+            hilbert_noise,
             depth_bind_group,
             depth_bind_group_layout,
             ssao_pipeline,
@@ -1227,7 +1312,7 @@ impl SSAO {
             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("SSAO Clear Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: ssao_view,
+                    view: denoised_ssao_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {

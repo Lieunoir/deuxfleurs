@@ -27,7 +27,7 @@ impl Camera {
             up: glam::Vec3::new(0., 1., 0.),
             aspect,
             fovy: 45.0,
-            znear: 0.01,
+            znear: 0.001,
             zfar: 10.0,
         }
     }
@@ -68,7 +68,7 @@ impl Camera {
             let dir = glam::Vec3::new(0., 0., -3.);
             self.eye = center + dir * size;
             self.target = center;
-            self.znear = size * 0.01;
+            self.znear = size * 0.001;
             self.zfar = size * 10.;
             self.up = glam::Vec3::new(0., 1., 0.);
         }
