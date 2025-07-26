@@ -104,8 +104,8 @@ impl Camera {
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     view_position: [f32; 4],
-    view_proj: [[f32; 4]; 4],
-    view_proj_inv: [[f32; 4]; 4],
+    pub(crate) view_proj: [[f32; 4]; 4],
+    pub(crate) view_proj_inv: [[f32; 4]; 4],
     floor_bb: [f32; 4],
     floor_proj: [[f32; 4]; 4],
 }

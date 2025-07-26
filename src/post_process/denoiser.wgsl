@@ -1,9 +1,36 @@
+struct CameraUniform {
+    view_pos: vec4<f32>,
+    view_proj: mat4x4<f32>,
+    view_inv: mat4x4<f32>,
+}
+
+struct Light {
+    position: vec3<f32>,
+    color: vec3<f32>,
+}
+
 @group(0) @binding(0)
-var source_ao: texture_2d<f32>;
+var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
+var<uniform> light: Light;
+
+struct OldCamera {
+    view_proj: mat4x4<f32>,
+    view_inv: mat4x4<f32>,
+}
+
+@group(1) @binding(0)
+var source_ao: texture_2d<f32>;
+@group(1) @binding(1)
 var source_edges: texture_2d<f32>;
-@group(0) @binding(2)
+@group(1) @binding(2)
+var history: texture_2d<f32>;
+@group(1) @binding(3)
+var depth: texture_2d<f32>;
+@group(1) @binding(4)
 var s: sampler;
+@group(1) @binding(5)
+var<uniform> old_camera: OldCamera;
 
 const pos = array(vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
 
@@ -32,14 +59,27 @@ fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight
     *sumWeight += weight;
 }
 
+fn get_previous_value(uv: vec2<f32>) -> f32 {
+    let depth_value = textureSample(depth, s, uv).x;
+    let pos_clip = vec4(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
+    let pos_world_w = camera.view_inv * pos_clip;
+    let pos_world = pos_world_w / pos_world_w.wwww;
+    let recovered_clip_w = old_camera.view_proj * pos_world;
+    let recovered_clip = recovered_clip_w.xyz / recovered_clip_w.www;
+    let recovered_uv = vec2<f32>(0.5 * recovered_clip.x + 0.5, - 0.5 * recovered_clip.y + 0.5);
+    let old_ao = textureSample(history, s, recovered_uv).x;
+    return old_ao;
+}
+
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let buffer_size = textureDimensions(source_ao);
     let gather_offset = - vec2<f32>(0.25) / vec2<f32>(buffer_size);
     let gatherCenter = fcoords.xy / vec2<f32>(buffer_size) + gather_offset;
 
-    // let blurAmount = 1.2f;
-    let blurAmount = 1.2f;
+    var previous_ao = get_previous_value(fcoords.xy / vec2<f32>(buffer_size));
+
+    let blurAmount = 1.2f / 10.;
     let diagWeight = 0.65 * 0.5;
 
     // gather edge and visibility quads, used later
@@ -100,5 +140,32 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     add_sample(ssaoValueBL, weightBL, &sum, &sumWeight);
     add_sample(ssaoValueBR, weightBR, &sum, &sumWeight);
 
-    return(sum / sumWeight);
+    var min_ssao = ssaoValue;
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueTL), weightTL > 0.8);
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueTR), weightTR > 0.8);
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueBL), weightBL > 0.8);
+    min_ssao = select(min_ssao, min(min_ssao, ssaoValueBR), weightBR > 0.8);
+    var max_ssao = ssaoValue;
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueTL), weightTL > 0.8);
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueTR), weightTR > 0.8);
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueBL), weightBL > 0.8);
+    max_ssao = select(max_ssao, max(max_ssao, ssaoValueBR), weightBR > 0.8);
+
+    let blurred_ao = sum / sumWeight;
+
+    var weight = 0.9;
+    weight = select(weight, 0.5 * (previous_ao - blurred_ao), max_ssao < previous_ao);
+    weight = select(weight, 0.5 * (blurred_ao - previous_ao), min_ssao > previous_ao);
+    previous_ao = min(max_ssao, previous_ao);
+    previous_ao = max(min_ssao, previous_ao);
+
+    return weight * previous_ao + (1. - weight) * blurred_ao;
 }

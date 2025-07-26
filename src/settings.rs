@@ -52,7 +52,7 @@ impl Default for Settings {
             fit_camera_on_start: true,
             ssao_enabled: true,
             ssao_slice_per_pixel: 3,
-            ssao_sample_per_slice: 3,
+            ssao_sample_per_slice: 2,
         }
     }
 }

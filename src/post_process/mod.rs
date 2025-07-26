@@ -903,6 +903,7 @@ fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::T
 pub struct SSAO {
     frame_index: u32,
     frame_index_buffer: wgpu::Buffer,
+    denoiser_buffer: wgpu::Buffer,
     hilbert_noise: wgpu::TextureView,
     sampler: wgpu::Sampler,
     depth_bind_group: wgpu::BindGroup,
@@ -921,6 +922,7 @@ impl SSAO {
         normals_view: &wgpu::TextureView,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
+        history_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
     ) {
         self.depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -962,7 +964,19 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
+                    resource: wgpu::BindingResource::TextureView(history_ssao_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.denoiser_buffer.as_entire_binding(),
                 },
             ],
             label: Some("denoiser_bind_group"),
@@ -975,6 +989,7 @@ impl SSAO {
         normals_view: &wgpu::TextureView,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
+        history_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
@@ -982,6 +997,11 @@ impl SSAO {
         let frame_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Frame Index Buffer"),
             contents: bytemuck::cast_slice(&[[frame_index, 0, 0, 0, 0, 0, 0, 0]]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let denoiser_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Denoiser Buffer"),
+            contents: bytemuck::cast_slice(&[0.0_f32; 16 * 2]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -1073,7 +1093,37 @@ impl SSAO {
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
                         count: None,
                     },
                 ],
@@ -1121,7 +1171,19 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
+                    resource: wgpu::BindingResource::TextureView(history_ssao_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
                     resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: denoiser_buffer.as_entire_binding(),
                 },
             ],
             label: Some("denoiser_bind_group"),
@@ -1185,7 +1247,7 @@ impl SSAO {
         let denoiser_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("SSAO denoiser Pipeline Layout"),
-                bind_group_layouts: &[&denoiser_bind_group_layout],
+                bind_group_layouts: &[&camera_light_bind_group_layout, &denoiser_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -1212,6 +1274,7 @@ impl SSAO {
             denoiser_bind_group_1,
             denoiser_bind_group_layout,
             denoiser_pipeline,
+            denoiser_buffer,
             cleared: false,
         }
     }
@@ -1228,6 +1291,9 @@ impl SSAO {
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
         denoised_ssao_view: &wgpu::TextureView,
+        history_ssao: &wgpu::Texture,
+        denoised_ssao: &wgpu::Texture,
+        size: &wgpu::Extent3d,
     ) {
         if ssao_enabled {
             let (mul, add) = camera.get_linearize_z_mul_add();
@@ -1292,12 +1358,7 @@ impl SSAO {
                     view: denoised_ssao_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 1.,
-                            g: 1.,
-                            b: 1.,
-                            a: 1.,
-                        }),
+                        load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -1305,9 +1366,33 @@ impl SSAO {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            render_pass.set_bind_group(0, &self.denoiser_bind_group_1, &[]);
+            render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.denoiser_bind_group_1, &[]);
             render_pass.set_pipeline(&self.denoiser_pipeline);
             render_pass.draw(0..4, 0..1);
+            drop(render_pass);
+            let proj = camera.build_view_projection_matrix();
+            let proj_inv = proj.inverse();
+            queue.write_buffer(
+                &self.denoiser_buffer,
+                0,
+                bytemuck::cast_slice(&[proj.to_cols_array(), proj_inv.to_cols_array()]),
+            );
+            encoder.copy_texture_to_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: denoised_ssao,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::TexelCopyTextureInfo {
+                    texture: history_ssao,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                *size,
+            );
         } else if !self.cleared {
             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("SSAO Clear Pass"),
