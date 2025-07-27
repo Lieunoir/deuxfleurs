@@ -9,6 +9,9 @@ pub const PICKER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub const SSAO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 pub const SCREENSHOT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
+pub const FILTERED_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+pub const FILTERED_DEPTH_MIP_LEVEL_COUNT: u32 = 4;
+
 pub struct TextureBufferPool {
     size: wgpu::Extent3d,
     // concerned by super sampling
@@ -42,6 +45,9 @@ pub struct TextureBufferPool {
     denoised_ssao_view: wgpu::TextureView,
     history_ssao: wgpu::Texture,
     history_ssao_view: wgpu::TextureView,
+    filtered_depth: wgpu::Texture,
+    filtered_depth_mip_views: [wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
+    filtered_depth_view: wgpu::TextureView,
 }
 
 impl TextureBufferPool {
@@ -175,6 +181,28 @@ impl TextureBufferPool {
         });
         let history_ssao_view = history_ssao.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let filtered_depth = device.create_texture(&wgpu::TextureDescriptor {
+            //size: half_size,
+            size: texture_size,
+            mip_level_count: FILTERED_DEPTH_MIP_LEVEL_COUNT,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: FILTERED_DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("filtered_depth_texture"),
+            view_formats: &[],
+        });
+
+        let filtered_depth_mip_views = core::array::from_fn(|i| {
+            filtered_depth.create_view(&wgpu::TextureViewDescriptor {
+                base_mip_level: i as u32,
+                mip_level_count: Some(1),
+                ..Default::default()
+            })
+        });
+        let filtered_depth_view =
+            filtered_depth.create_view(&wgpu::TextureViewDescriptor::default());
+
         let output_buffer_dimensions =
             BufferDimensions::new::<u32>(texture_size.width as usize, texture_size.height as usize);
 
@@ -210,6 +238,9 @@ impl TextureBufferPool {
             denoised_ssao_view,
             history_ssao,
             history_ssao_view,
+            filtered_depth,
+            filtered_depth_mip_views,
+            filtered_depth_view,
         }
     }
 
@@ -271,6 +302,16 @@ impl TextureBufferPool {
 
     pub fn get_ssao_size(&self) -> &wgpu::Extent3d {
         &self.size
+    }
+
+    pub fn get_filtered_depth_mip_views(
+        &self,
+    ) -> &[wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize] {
+        &self.filtered_depth_mip_views
+    }
+
+    pub fn get_filtered_depth_view(&self) -> &wgpu::TextureView {
+        &self.filtered_depth_view
     }
 
     pub fn copy_screenshot_texture_to_buffer(&mut self, encoder: &mut wgpu::CommandEncoder) {

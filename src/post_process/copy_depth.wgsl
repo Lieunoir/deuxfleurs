@@ -17,6 +17,7 @@ fn vs_main(
 }
 
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureLoad(t_copy, vec2<i32>(floor(in.clip_position.xy)), 0);
+fn fs_main(in: VertexOutput) -> @location(0) f32 {
+    //let log_depth = log(C*w + 1) / log(C*Far + 1) * w
+    return log(textureLoad(t_copy, vec2<i32>(floor(in.clip_position.xy)), 0).x);
 }

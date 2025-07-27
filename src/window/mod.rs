@@ -27,6 +27,7 @@ use pollster::FutureExt;
 use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
+use wgpu_profiler::GpuProfiler;
 
 use crate::Settings;
 use crate::shape::{
@@ -331,6 +332,8 @@ pub struct InnerGraphicalState {
     taa_counter: u8,
     sbv: SBV,
     rng: SmallRng,
+
+    profiler: GpuProfiler,
 }
 
 impl ContextHolder for InnerGraphicalState {

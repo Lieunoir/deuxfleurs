@@ -65,6 +65,7 @@ pub mod internal {
 /// Settings can also be parameterized by modifying [`get_settings_mut`]
 #[must_use]
 pub fn init() -> InitialState<impl FnMut(&mut egui::Ui, &mut RunningState)> {
+    tracy_client::Client::start();
     State::new_inner(InnerBareState {
         surfaces: IndexMap::new(),
         clouds: IndexMap::new(),

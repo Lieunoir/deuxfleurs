@@ -3,6 +3,7 @@ use crate::texture;
 use crate::util;
 use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
+use wgpu_profiler::GpuProfiler;
 
 pub struct TextureCopy {
     copy_bind_group: wgpu::BindGroup,
@@ -906,12 +907,20 @@ pub struct SSAO {
     denoiser_buffer: wgpu::Buffer,
     hilbert_noise: wgpu::TextureView,
     sampler: wgpu::Sampler,
+    depth_mip_sampler: wgpu::Sampler,
     depth_bind_group: wgpu::BindGroup,
     depth_bind_group_layout: wgpu::BindGroupLayout,
     ssao_pipeline: wgpu::RenderPipeline,
     denoiser_bind_group_1: wgpu::BindGroup,
     denoiser_bind_group_layout: wgpu::BindGroupLayout,
     denoiser_pipeline: wgpu::RenderPipeline,
+    depth_copy_bind_group_layout: wgpu::BindGroupLayout,
+    depth_copy_bind_group: wgpu::BindGroup,
+    depth_copy_pipeline: wgpu::RenderPipeline,
+    depth_filter_bind_group_layout: wgpu::BindGroupLayout,
+    depth_filter_bind_groups:
+        [wgpu::BindGroup; texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize - 1],
+    depth_filter_pipeline: wgpu::RenderPipeline,
     cleared: bool,
 }
 
@@ -924,6 +933,9 @@ impl SSAO {
         denoiser_edges_view: &wgpu::TextureView,
         history_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
+        filtered_depth_view: &wgpu::TextureView,
+        filtered_depth_mip_views: &[wgpu::TextureView;
+             texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
     ) {
         self.depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.depth_bind_group_layout,
@@ -934,11 +946,11 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(depth_view),
+                    resource: wgpu::BindingResource::TextureView(filtered_depth_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    resource: wgpu::BindingResource::Sampler(&self.depth_mip_sampler),
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
@@ -968,7 +980,7 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(depth_view),
+                    resource: wgpu::BindingResource::TextureView(filtered_depth_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
@@ -981,6 +993,30 @@ impl SSAO {
             ],
             label: Some("denoiser_bind_group"),
         });
+        self.depth_copy_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.depth_copy_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(depth_view),
+            }],
+            label: Some("depth_copy_bind_group"),
+        });
+        self.depth_filter_bind_groups = std::array::from_fn(|i| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.depth_filter_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&filtered_depth_mip_views[i]),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
+                ],
+                label: Some("depth_filter_bind_group"),
+            })
+        });
     }
 
     pub fn new(
@@ -991,6 +1027,9 @@ impl SSAO {
         denoiser_edges_view: &wgpu::TextureView,
         history_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
+        filtered_depth_view: &wgpu::TextureView,
+        filtered_depth_mip_views: &[wgpu::TextureView;
+             texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
         camera_light_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let frame_index = 0;
@@ -1001,7 +1040,7 @@ impl SSAO {
         });
         let denoiser_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Denoiser Buffer"),
-            contents: bytemuck::cast_slice(&[0.0_f32; 16 * 2]),
+            contents: bytemuck::cast_slice(&[0.0_f32; 16]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -1009,8 +1048,19 @@ impl SSAO {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        let depth_mip_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
 
@@ -1023,7 +1073,7 @@ impl SSAO {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
@@ -1033,14 +1083,14 @@ impl SSAO {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
@@ -1076,7 +1126,7 @@ impl SSAO {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
@@ -1086,7 +1136,7 @@ impl SSAO {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
@@ -1096,7 +1146,7 @@ impl SSAO {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
@@ -1106,14 +1156,14 @@ impl SSAO {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 4,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
@@ -1140,11 +1190,11 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(depth_view),
+                    resource: wgpu::BindingResource::TextureView(filtered_depth_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
+                    resource: wgpu::BindingResource::Sampler(&depth_mip_sampler),
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
@@ -1175,7 +1225,7 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(depth_view),
+                    resource: wgpu::BindingResource::TextureView(filtered_depth_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
@@ -1263,8 +1313,105 @@ impl SSAO {
             Some("ssao denoiser render"),
         );
 
+        let depth_copy_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    },
+                    count: None,
+                }],
+                label: Some("depth_copy_bind_group_layout"),
+            });
+        let depth_copy_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &depth_copy_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(depth_view),
+            }],
+            label: Some("depth_copy_bind_group"),
+        });
+        let depth_copy_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Depth copy Pipeline Layout"),
+                bind_group_layouts: &[&depth_copy_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+        let depth_copy_shader = include_wgsl!("copy_depth.wgsl");
+        let depth_copy_pipeline = util::create_copy_quad_pipeline(
+            device,
+            &depth_copy_pipeline_layout,
+            texture::FILTERED_DEPTH_FORMAT,
+            None,
+            &[],
+            None,
+            depth_copy_shader,
+            Some("depth copy render"),
+        );
+
+        let depth_filter_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("depth_filter_bind_group_layout"),
+            });
+        let depth_filter_bind_groups = std::array::from_fn(|i| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &depth_filter_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&filtered_depth_mip_views[i]),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&sampler),
+                    },
+                ],
+                label: Some("depth_filter_bind_group"),
+            })
+        });
+        let depth_filter_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Depth filter Pipeline Layout"),
+                bind_group_layouts: &[&depth_filter_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+        let depth_filter_shader = include_wgsl!("blit.wgsl");
+        let depth_filter_pipeline = util::create_copy_quad_pipeline(
+            device,
+            &depth_filter_pipeline_layout,
+            texture::FILTERED_DEPTH_FORMAT,
+            None,
+            &[],
+            None,
+            depth_filter_shader,
+            Some("depth filter render"),
+        );
+
         Self {
             sampler,
+            depth_mip_sampler,
             hilbert_noise,
             depth_bind_group,
             depth_bind_group_layout,
@@ -1276,6 +1423,12 @@ impl SSAO {
             denoiser_pipeline,
             denoiser_buffer,
             cleared: false,
+            depth_copy_bind_group,
+            depth_copy_bind_group_layout,
+            depth_copy_pipeline,
+            depth_filter_bind_groups,
+            depth_filter_bind_group_layout,
+            depth_filter_pipeline,
         }
     }
 
@@ -1287,15 +1440,65 @@ impl SSAO {
         samples: u8,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
+        profiler: &GpuProfiler,
         camera_light_bind_group: &wgpu::BindGroup,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
         denoised_ssao_view: &wgpu::TextureView,
         history_ssao: &wgpu::Texture,
         denoised_ssao: &wgpu::Texture,
+        filtered_depth_view: &wgpu::TextureView,
+        filtered_depth_mip_views: &[wgpu::TextureView;
+             texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
         size: &wgpu::Extent3d,
     ) {
         if ssao_enabled {
+            let mut scope = profiler.scope("SSAO", encoder);
+
+            let mut render_pass = scope.scoped_render_pass(
+                "SSAO Copy depth",
+                wgpu::RenderPassDescriptor {
+                    label: Some("Copy Depth Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &filtered_depth_mip_views[0],
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                },
+            );
+            render_pass.set_bind_group(0, &self.depth_copy_bind_group, &[]);
+            render_pass.set_pipeline(&self.depth_copy_pipeline);
+            render_pass.draw(0..4, 0..1);
+            drop(render_pass);
+            for (i, bind_group) in self.depth_filter_bind_groups.iter().enumerate() {
+                let mut render_pass = scope.scoped_render_pass(
+                    "SSAO Mip filter depth",
+                    wgpu::RenderPassDescriptor {
+                        label: Some("Mip filter Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &filtered_depth_mip_views[i + 1],
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    },
+                );
+                render_pass.set_bind_group(0, bind_group, &[]);
+                render_pass.set_pipeline(&self.depth_filter_pipeline);
+                render_pass.draw(0..4, 0..1);
+            }
+
             let (mul, add) = camera.get_linearize_z_mul_add();
             self.cleared = false;
             self.frame_index += 1;
@@ -1303,7 +1506,7 @@ impl SSAO {
                 &self.frame_index_buffer,
                 0,
                 bytemuck::cast_slice(&[
-                    self.frame_index,
+                    288 * (self.frame_index % 64),
                     slices as u32,
                     samples as u32,
                     0,
@@ -1313,72 +1516,77 @@ impl SSAO {
                     0,
                 ]),
             );
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("SSAO Render Pass"),
-                color_attachments: &[
-                    Some(wgpu::RenderPassColorAttachment {
-                        view: ssao_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 1.,
-                                g: 1.,
-                                b: 1.,
-                                a: 1.,
-                            }),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    }),
-                    Some(wgpu::RenderPassColorAttachment {
-                        view: denoiser_edges_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.,
-                                g: 0.,
-                                b: 0.,
-                                a: 0.,
-                            }),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    }),
-                ],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
+            let mut render_pass = scope.scoped_render_pass(
+                "SSAO Primary",
+                wgpu::RenderPassDescriptor {
+                    label: Some("SSAO Render Pass"),
+                    color_attachments: &[
+                        Some(wgpu::RenderPassColorAttachment {
+                            view: ssao_view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color {
+                                    r: 1.,
+                                    g: 1.,
+                                    b: 1.,
+                                    a: 1.,
+                                }),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        }),
+                        Some(wgpu::RenderPassColorAttachment {
+                            view: denoiser_edges_view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color {
+                                    r: 0.,
+                                    g: 0.,
+                                    b: 0.,
+                                    a: 0.,
+                                }),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        }),
+                    ],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                },
+            );
             render_pass.set_bind_group(0, camera_light_bind_group, &[]);
             render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
             render_pass.set_pipeline(&self.ssao_pipeline);
             render_pass.draw(0..4, 0..1);
             drop(render_pass);
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("SSAO Denoiser Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: denoised_ssao_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
+            let mut render_pass = scope.scoped_render_pass(
+                "SSAO denoiser",
+                wgpu::RenderPassDescriptor {
+                    label: Some("SSAO Denoiser Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: denoised_ssao_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                },
+            );
             render_pass.set_bind_group(0, camera_light_bind_group, &[]);
             render_pass.set_bind_group(1, &self.denoiser_bind_group_1, &[]);
             render_pass.set_pipeline(&self.denoiser_pipeline);
             render_pass.draw(0..4, 0..1);
             drop(render_pass);
             let proj = camera.build_view_projection_matrix();
-            let proj_inv = proj.inverse();
             queue.write_buffer(
                 &self.denoiser_buffer,
                 0,
-                bytemuck::cast_slice(&[proj.to_cols_array(), proj_inv.to_cols_array()]),
+                bytemuck::cast_slice(&[proj.to_cols_array()]),
             );
-            encoder.copy_texture_to_texture(
+            scope.copy_texture_to_texture(
                 wgpu::TexelCopyTextureInfo {
                     texture: denoised_ssao,
                     mip_level: 0,

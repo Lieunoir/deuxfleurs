@@ -15,7 +15,7 @@ var<uniform> camera: CameraUniform;
 var<uniform> light: Light;
 
 struct Parameters {
-    frame_index: u32,
+    frame_offset: u32,
     slices: u32,
     samples: u32,
     _pad3: u32,
@@ -76,7 +76,7 @@ const a2: f32 = 1.0 / (g * g);
 // mapping each pixel to a hilbert curve index, then taking a value from the Roberts R2 quasirandom sequence for it
 fn hilbert_r2_blue_noisef(p: vec2<i32>) -> vec2<f32> {
     var x = textureLoad(hilbert, vec2<i32>(p.x % 64, p.y % 64), 0).x;
-    x += 288 * (param.frame_index % 64);
+    x += param.frame_offset;
     return vec2<f32>(fract(0.5 + a1 * f32(x)), fract(0.5 + a2 * f32(x)));
 }
 
@@ -87,7 +87,7 @@ fn calculate_edges(centerZ: f32, leftZ: f32, rightZ: f32, topZ: f32, bottomZ: f3
     let slopeTB = (edgesLRTB.w - edgesLRTB.z) * 0.5;
     let edgesLRTBSlopeAdjusted = edgesLRTB + vec4<f32>(slopeLR, -slopeLR, slopeTB, -slopeTB);
     edgesLRTB = min(abs(edgesLRTB), abs(edgesLRTBSlopeAdjusted));
-    return vec4<f32>(saturate((1.25 - edgesLRTB / (centerZ * 0.0011))));
+    return vec4<f32>(saturate((1.25 - edgesLRTB / (centerZ * 0.011))));
 }
 
 // packing/unpacking for edges; 2 bits per edge mean 4 gradient values (0, 0.33, 0.66, 1) for smoother transitions!
@@ -103,6 +103,10 @@ struct FragmentOutput {
     @location(1) edges: f32,
 }
 
+fn convert_depth(in: f32) -> f32 {
+    return exp(in);
+}
+
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     var out: FragmentOutput;
@@ -113,7 +117,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let gather_offset = - vec2<f32>(0.25) / vec2<f32>(buffer_size);
     let values_ul = textureGather(0, t_d, s, origin + gather_offset);
     let values_br = textureGather(0, t_d, s, origin + gather_offset, vec2<i32>(1, 1));
-    let depth = values_ul.y;
+    let depth = convert_depth(values_ul.y);
+    let linear_depth = linearize_depth(depth);
 
     // viewspace Zs left top right bottom
     let pix_lz = values_ul.x;
@@ -122,11 +127,11 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let pix_bz = values_br.x;
 
     let edgesLRTB = calculate_edges(
-        linearize_depth(depth),
-        linearize_depth(pix_lz),
-        linearize_depth(pix_rz),
-        linearize_depth(pix_tz),
-        linearize_depth(pix_bz)
+        linear_depth,
+        linearize_depth(convert_depth(pix_lz)),
+        linearize_depth(convert_depth(pix_rz)),
+        linearize_depth(convert_depth(pix_tz)),
+        linearize_depth(convert_depth(pix_bz))
     );
     let packed_edges = pack_edges(edgesLRTB);
     out.edges = packed_edges;
@@ -145,16 +150,18 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let kernelSize: u32 = param.slices;
     let pix_dif = vec2<f32>(1.) / vec2<f32>(buffer_size);
     let world_distance = linearize_depth(1.);
-    let camera_distance = linearize_depth(depth) / world_distance;
-    let wanted_radius = 64. / camera_distance * pix_dif;
+    let world_radius = 0.02 * world_distance;
+    let wanted_screen_radius = 64. * world_distance * pix_dif / linear_depth;
     let radius = vec2<f32>(
-        min(wanted_radius.x, 32. * pix_dif.x),
-        min(wanted_radius.y, 32. * pix_dif.y),
+        min(wanted_screen_radius.x, 32. * pix_dif.x),
+        min(wanted_screen_radius.y, 32. * pix_dif.y),
     );
     //let radius = min(min(0.005 / camera_distance, 30. * pix_dif.x), 30. * pix_dif.y);
     for (var i: u32 = 0; i < kernelSize; i += 1) {
         let phi = (noise.x + f32(i)) * PI / f32(kernelSize);
-        let dir = vec2<f32>(cos(phi), -sin(phi)) * radius;
+        let cos_phi = cos(phi);
+        let sin_phi = fast_sqrt(1. - cos_phi * cos_phi);
+        let dir = vec2<f32>(cos_phi, -sin_phi) * radius;
         let world_dir = normalize(world_from_screen_coord(origin + dir, depth) - position);
         let ortho_direction_v = world_dir - dot(world_dir, view_dir) * view_dir;
         let slice_plane_normal = normalize(cross(world_dir, view_dir));
@@ -162,34 +169,40 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let sign_n = sign(dot(ortho_direction_v, projected_normal));
         let cos_n = saturate(dot(view_dir, normalize(projected_normal)));
         let n = sign_n * fast_acos(cos_n);
-        let sin_n = sin(n);
+        let sin_n = sign_n * fast_sqrt(1. - cos_n * cos_n);
         let cos_n_plus_pi_2 = -sin_n;
         let cos_n_minus_pi_2 = sin_n;
         var cos_h1 = cos_n_plus_pi_2;
         var cos_h2 = cos_n_minus_pi_2;
 
-        //let world_radius = 10000.;
-        let world_radius = 0.02 * world_distance;
-
         for (var j: u32 = 0; j < param.samples; j += 1) {
             let step_noise = fract(noise.y + f32(i + j * param.samples) * 0.6180339887498948482);
+            let sample_offset = (step_noise + f32(j)) * dir / f32(param.samples);
 
-            let sample_coords_1 = vec2<f32>(origin + (step_noise + f32(j)) * dir / f32(param.samples));
-            let sample_coords_2 = vec2<f32>(origin - (step_noise + f32(j)) * dir / f32(param.samples));
-            let sample_depth_1 = textureSample(t_d, s, sample_coords_1).x;
-            let sample_depth_2 = textureSample(t_d, s, sample_coords_2).x;
+            let sample_offset_length = length(sample_offset * vec2<f32>(buffer_size));
+            let mip_level = clamp(log2(sample_offset_length) - 3.3, 0., 4.);
+
+            // note: when sampling, using point_point_point or point_point_linear sampler works, but linear_linear_linear will cause unwanted interpolation between neighbouring depth values on the same MIP level!
+            //const lpfloat mipLevel    = (lpfloat)clamp( log2( sampleOffsetLength ) - consts.DepthMIPSamplingOffset, 0, XE_GTAO_DEPTH_MIP_LEVELS );
+
+            let sample_coords_1 = vec2<f32>(origin + sample_offset);
+            let sample_coords_2 = vec2<f32>(origin - sample_offset);
+            let sample_depth_1 = convert_depth(textureSampleLevel(t_d, s, sample_coords_1, mip_level).x);
+            let sample_depth_2 = convert_depth(textureSampleLevel(t_d, s, sample_coords_2, mip_level).x);
 
             let sample_1 = world_from_screen_coord(sample_coords_1, sample_depth_1);
             let sample_2 = world_from_screen_coord(sample_coords_2, sample_depth_2);
+            let dir_1 = sample_1 - position;
+            let dir_2 = sample_2 - position;
 
-            let d_s_1_squared = dot(sample_1 - position, sample_1 - position);
-            let d_s_2_squared = dot(sample_2 - position, sample_2 - position);
+            let d_s_1_norm = fast_sqrt(dot(dir_1, dir_1));
+            let d_s_2_norm = fast_sqrt(dot(dir_2, dir_2));
 
-            let d_s_1 = normalize(sample_1 - position);
-            let d_s_2 = normalize(sample_2 - position);
+            let d_s_1 = dir_1 / d_s_1_norm;
+            let d_s_2 = dir_2 / d_s_2_norm;
 
-            let l_s_1 = saturate((fast_sqrt(d_s_1_squared) - world_radius) / world_radius);
-            let l_s_2 = saturate((fast_sqrt(d_s_2_squared) - world_radius) / world_radius);
+            let l_s_1 = saturate((d_s_1_norm - world_radius) / world_radius);
+            let l_s_2 = saturate((d_s_2_norm - world_radius) / world_radius);
             let dot_s_1 = (1. - l_s_1) * dot(d_s_1, view_dir) + l_s_1 * cos_n_plus_pi_2;
             let dot_s_2 = (1. - l_s_2) * dot(d_s_2, view_dir) + l_s_2 * cos_n_minus_pi_2;
             cos_h1 = max(cos_h1, dot_s_1);
@@ -205,6 +218,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let local_visibility = 0.25 * projected_normal_length * (- cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin_n - cos(2. * h2p - n));
         visibility += local_visibility / f32(kernelSize);
     }
+    //out.ssao = visibility;
     out.ssao = visibility;
     return out;
 }

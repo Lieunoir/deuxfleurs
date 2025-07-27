@@ -16,7 +16,6 @@ var<uniform> light: Light;
 
 struct OldCamera {
     view_proj: mat4x4<f32>,
-    view_inv: mat4x4<f32>,
 }
 
 @group(1) @binding(0)
@@ -60,7 +59,7 @@ fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight
 }
 
 fn get_previous_value(uv: vec2<f32>) -> f32 {
-    let depth_value = textureSample(depth, s, uv).x;
+    let depth_value = exp(textureSampleLevel(depth, s, uv, 0.).x);
     let pos_clip = vec4(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
     let pos_world_w = camera.view_inv * pos_clip;
     let pos_world = pos_world_w / pos_world_w.wwww;
@@ -92,17 +91,14 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let visQ2 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(0, 2));
     let visQ3 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 2));
 
-    let side = 0;
+    let edgesL_LRTB = unpack_edges(edgesQ0.x);
+    let edgesT_LRTB = unpack_edges(edgesQ0.z);
+    let edgesR_LRTB = unpack_edges(edgesQ1.x);
+    let edgesB_LRTB = unpack_edges(edgesQ2.w);
+    var edgesC_LRTB = unpack_edges(edgesQ0.y);
 
-    let edgesL_LRTB = unpack_edges(select(edgesQ0.y, edgesQ0.x, side == 0));
-    let edgesT_LRTB = unpack_edges(select(edgesQ1.w, edgesQ0.z, side == 0));
-    let edgesR_LRTB = unpack_edges(select(edgesQ1.y, edgesQ0.x, side == 0));
-    let edgesB_LRTB = unpack_edges(select(edgesQ2.z, edgesQ0.w, side == 0));
-
-    var edgesC_LRTB = unpack_edges(select(edgesQ1.x, edgesQ0.y, side == 0));
-
-        // Edges aren't perfectly symmetrical: edge detection algorithm does not guarantee that a left edge on the right pixel will match the right edge on the left pixel (although
-        // they will match in majority of cases). This line further enforces the symmetricity, creating a slightly sharper blur. Works real nice with TAA.
+    // Edges aren't perfectly symmetrical: edge detection algorithm does not guarantee that a left edge on the right pixel will match the right edge on the left pixel (although
+    // they will match in majority of cases). This line further enforces the symmetricity, creating a slightly sharper blur. Works real nice with TAA.
     edgesC_LRTB *= vec4<f32>(edgesL_LRTB.y, edgesR_LRTB.x, edgesT_LRTB.w, edgesB_LRTB.z);
 
     let leak_threshold = 2.5;
@@ -110,22 +106,22 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let edginess = (saturate(4.0 - leak_threshold - dot(edgesC_LRTB, vec4<f32>(1.))) / (4 - leak_threshold)) * leak_strength;
     edgesC_LRTB = saturate(edgesC_LRTB + edginess);
 
-        // for diagonals; used by first and second pass
+    // for diagonals; used by first and second pass
     let weightTL = diagWeight * (edgesC_LRTB.x * edgesL_LRTB.z + edgesC_LRTB.z * edgesT_LRTB.x);
     let weightTR = diagWeight * (edgesC_LRTB.z * edgesT_LRTB.y + edgesC_LRTB.y * edgesR_LRTB.z);
     let weightBL = diagWeight * (edgesC_LRTB.w * edgesB_LRTB.x + edgesC_LRTB.x * edgesL_LRTB.w);
     let weightBR = diagWeight * (edgesC_LRTB.y * edgesR_LRTB.w + edgesC_LRTB.w * edgesB_LRTB.y);
 
-        // first pass
-    let ssaoValue = select(visQ1.x, visQ0.y, (side == 0));
-    let ssaoValueL = select(visQ0.y, visQ0.x, (side == 0));
-    let ssaoValueT = select(visQ1.w, visQ0.z, (side == 0));
-    let ssaoValueR = select(visQ1.y, visQ1.x, (side == 0));
-    let ssaoValueB = select(visQ3.w, visQ2.z, (side == 0));
-    let ssaoValueTL = select(visQ0.z, visQ0.w, (side == 0));
-    let ssaoValueBR = select(visQ3.z, visQ3.w, (side == 0));
-    let ssaoValueTR = select(visQ1.z, visQ1.w, (side == 0));
-    let ssaoValueBL = select(visQ2.z, visQ2.w, (side == 0));
+    // first pass
+    let ssaoValue = visQ0.y;
+    let ssaoValueL = visQ0.x;
+    let ssaoValueT = visQ0.z;
+    let ssaoValueR = visQ1.x;
+    let ssaoValueB = visQ2.z;
+    let ssaoValueTL = visQ0.w;
+    let ssaoValueBR = visQ3.w;
+    let ssaoValueTR = visQ1.w;
+    let ssaoValueBL = visQ2.w;
 
     var sumWeight = blurAmount;
     var sum = ssaoValue * sumWeight;
