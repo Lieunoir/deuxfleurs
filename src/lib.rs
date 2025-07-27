@@ -19,7 +19,6 @@ mod camera;
 /// one can be displayed at a time on the corresponding
 /// shape.
 pub mod data;
-mod obj_load;
 /// Picked element types
 pub mod picker;
 /// Point clouds structs and associated data/settings
@@ -47,7 +46,7 @@ use crate::surface::geometry::DisplaySurface;
 use crate::{camera::Camera, point_cloud::DisplayPointCloud};
 pub use egui;
 use indexmap::IndexMap;
-pub use resources::{load_mesh, load_mesh_blocking};
+pub use resources::{load_mesh, load_mesh_blocking, load_off_mesh, load_off_mesh_blocking};
 pub use settings::Settings;
 pub use wgpu::Color;
 pub use window::{InitialState, RunningState};

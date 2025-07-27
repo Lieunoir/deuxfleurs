@@ -1,7 +1,7 @@
 use std::{
     fmt,
     fs::File,
-    io::{prelude::*, BufReader},
+    io::{BufReader, prelude::*},
     path::Path,
     str::FromStr,
 };
@@ -163,13 +163,13 @@ fn parse_face_pos(
         } else if *mode == FaceMode::Triangle && i != 3 {
             //add missing strides
             *strides = vec![3; (indices.len() - i) / 3];
-            strides.reserve(2 * pos_sz as usize - strides.len());
+            strides.reserve(3 * 2 * pos_sz as usize - strides.len());
             *mode = FaceMode::Polygon;
         } else if *mode == FaceMode::Quad && i != 4 {
             //add missing strides
             *strides = vec![4; (indices.len() - i) / 4];
             *mode = FaceMode::Polygon;
-            strides.reserve(2 * pos_sz as usize - strides.len());
+            strides.reserve(4 * 2 * pos_sz as usize - strides.len());
         }
     }
     if i >= 3 && *mode == FaceMode::Polygon {
@@ -197,7 +197,7 @@ pub fn load_obj_buf<B>(reader: &mut B) -> (Vec<[Float; 3]>, SurfaceIndices)
 where
     B: BufRead,
 {
-    let mut tmp_pos = Vec::new();
+    let mut vertices = Vec::new();
     let mut mode = FaceMode::Undetermined;
     let mut indices: Vec<u32> = Vec::new();
     let mut tex_indices: Vec<u32> = Vec::new();
@@ -227,7 +227,7 @@ where
                 b'v' => match buf[i + 1] {
                     b' ' => {
                         let (off, pos) = unsafe { parse_float3(&buf[i + 2..]) };
-                        tmp_pos.push(pos);
+                        vertices.push(pos);
                         i += off + 2;
                     }
                     _ => i += find_newline(&buf[i + 1..]).unwrap() + 2,
@@ -235,7 +235,8 @@ where
                 b'f' => {
                     if !encountered_f {
                         encountered_f = true;
-                        indices.reserve(tmp_pos.len() * 2);
+                        // first estimate that `nf = 2 * nv`
+                        indices.reserve(vertices.len() * 2 * 3);
                     }
                     let off = parse_face_pos(
                         &buf[i + 2..],
@@ -244,7 +245,7 @@ where
                         &mut tex_indices,
                         &mut n_indices,
                         &mut strides,
-                        tmp_pos.len() as u32,
+                        vertices.len() as u32,
                         0,
                         0,
                     );
@@ -272,7 +273,7 @@ where
             .collect::<Vec<[u32; 3]>>()
             .into()
     };
-    (tmp_pos, indices)
+    (vertices, indices)
 }
 
 #[derive(PartialEq)]

@@ -5,6 +5,9 @@ use std::{
     path::PathBuf,
 };
 
+mod obj_load;
+mod off_load;
+
 #[cfg(target_arch = "wasm32")]
 async fn fetch(file_name: &str) -> Option<String> {
     use wasm_bindgen::prelude::*;
@@ -48,12 +51,25 @@ pub async fn load_mesh(file_name: &str) -> Option<(Vec<[f32; 3]>, SurfaceIndices
     let obj_text = load_string(file_name).await?;
     let obj_cursor = Cursor::new(obj_text);
     let mut obj_reader = BufReader::new(obj_cursor);
-    Some(crate::obj_load::load_obj_buf(&mut obj_reader))
+    Some(obj_load::load_obj_buf(&mut obj_reader))
 }
 
 /// Helper to load a mesh from an obj file
 pub fn load_mesh_blocking(file_name: PathBuf) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
-    Some(crate::obj_load::load_obj(file_name))
+    Some(obj_load::load_obj(file_name))
+}
+
+/// Helper to load a mesh from an obj file
+pub async fn load_off_mesh(file_name: &str) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
+    let obj_text = load_string(file_name).await?;
+    let obj_cursor = Cursor::new(obj_text);
+    let mut obj_reader = BufReader::new(obj_cursor);
+    Some(off_load::load_off_buf(&mut obj_reader))
+}
+
+/// Helper to load a mesh from an obj file
+pub fn load_off_mesh_blocking(file_name: PathBuf) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
+    Some(off_load::load_off(file_name))
 }
 
 #[cfg(target_arch = "wasm32")]
