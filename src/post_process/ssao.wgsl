@@ -96,7 +96,7 @@ fn pack_edges(in: vec4<f32>) -> f32 {
     return dot(edgesLRTB, vec4<f32>(64.0 / 255.0, 16.0 / 255.0, 4.0 / 255.0, 1.0 / 255.0)) ;
 }
 
-const sample_factor: f32 = 1.;
+const sample_factor: f32 = 2.;
 
 struct FragmentOutput {
     @location(0) ssao: f32,

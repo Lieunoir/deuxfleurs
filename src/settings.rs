@@ -51,8 +51,8 @@ impl Default for Settings {
             default_color_map: Colors::Viridis,
             fit_camera_on_start: true,
             ssao_enabled: true,
-            ssao_slice_per_pixel: 2,
-            ssao_sample_per_slice: 2,
+            ssao_slice_per_pixel: 3,
+            ssao_sample_per_slice: 4,
         }
     }
 }

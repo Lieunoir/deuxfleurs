@@ -27,8 +27,10 @@ var history: texture_2d<f32>;
 @group(1) @binding(3)
 var depth: texture_2d<f32>;
 @group(1) @binding(4)
-var s: sampler;
+var old_depth: texture_2d<f32>;
 @group(1) @binding(5)
+var s: sampler;
+@group(1) @binding(6)
 var<uniform> old_camera: OldCamera;
 
 const pos = array(vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
@@ -58,7 +60,7 @@ fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight
     *sumWeight += weight;
 }
 
-fn get_previous_value(uv: vec2<f32>) -> f32 {
+fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
     let depth_value = exp(textureSampleLevel(depth, s, uv, 0.).x);
     let pos_clip = vec4(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
     let pos_world_w = camera.view_inv * pos_clip;
@@ -67,16 +69,18 @@ fn get_previous_value(uv: vec2<f32>) -> f32 {
     let recovered_clip = recovered_clip_w.xyz / recovered_clip_w.www;
     let recovered_uv = vec2<f32>(0.5 * recovered_clip.x + 0.5, - 0.5 * recovered_clip.y + 0.5);
     let old_ao = textureSample(history, s, recovered_uv).x;
-    return old_ao;
+    let old_depth_sample = textureSample(old_depth, s, recovered_uv).x;
+    let weight = select(0., 1., (old_depth_sample - recovered_clip.z) / old_depth_sample < 0.00001);
+    return vec2<f32>(old_ao, weight);
 }
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let buffer_size = textureDimensions(source_ao);
     let gather_offset = - vec2<f32>(0.25) / vec2<f32>(buffer_size);
-    let gatherCenter = fcoords.xy / vec2<f32>(buffer_size) + gather_offset;
+    let gatherCenter = 0.5 * fcoords.xy / vec2<f32>(buffer_size) + gather_offset;
 
-    var previous_ao = get_previous_value(fcoords.xy / vec2<f32>(buffer_size));
+    var previous_ao = get_previous_value(0.5 * fcoords.xy / vec2<f32>(buffer_size));
 
     let blurAmount = 1.2f / 10.;
     let diagWeight = 0.65 * 0.5;
@@ -158,10 +162,11 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let blurred_ao = sum / sumWeight;
 
     var weight = 0.9;
-    weight = select(weight, 0.5 * (previous_ao - blurred_ao), max_ssao < previous_ao);
-    weight = select(weight, 0.5 * (blurred_ao - previous_ao), min_ssao > previous_ao);
-    previous_ao = min(max_ssao, previous_ao);
-    previous_ao = max(min_ssao, previous_ao);
+    weight = select(weight, 0.5 * (previous_ao.x - blurred_ao), max_ssao < previous_ao.x);
+    weight = select(weight, 0.5 * (blurred_ao - previous_ao.x), min_ssao > previous_ao.x);
+    previous_ao.x = min(max_ssao, previous_ao.x);
+    previous_ao.x = max(min_ssao, previous_ao.x);
+    weight *= previous_ao.y;
 
-    return weight * previous_ao + (1. - weight) * blurred_ao;
+    return weight * previous_ao.x + (1. - weight) * blurred_ao;
 }

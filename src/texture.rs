@@ -45,6 +45,8 @@ pub struct TextureBufferPool {
     denoised_ssao_view: wgpu::TextureView,
     history_ssao: wgpu::Texture,
     history_ssao_view: wgpu::TextureView,
+    old_depth: wgpu::Texture,
+    old_depth_view: wgpu::TextureView,
     filtered_depth: wgpu::Texture,
     filtered_depth_mip_views: [wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
     filtered_depth_view: wgpu::TextureView,
@@ -127,8 +129,8 @@ impl TextureBufferPool {
             blend_render_target.create_view(&wgpu::TextureViewDescriptor::default());
 
         let ssao = device.create_texture(&wgpu::TextureDescriptor {
-            //size: half_size,
-            size: texture_size,
+            size: half_size,
+            //size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -139,8 +141,8 @@ impl TextureBufferPool {
         });
         let ssao_view = ssao.create_view(&wgpu::TextureViewDescriptor::default());
         let denoiser_edges = device.create_texture(&wgpu::TextureDescriptor {
-            //size: half_size,
-            size: texture_size,
+            size: half_size,
+            //size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -173,22 +175,33 @@ impl TextureBufferPool {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: SSAO_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::COPY_DST,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             label: Some("history_ssao_texture"),
             view_formats: &[],
         });
         let history_ssao_view = history_ssao.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let old_depth = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: FILTERED_DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            label: Some("filtered_depth_texture"),
+            view_formats: &[],
+        });
+        let old_depth_view = old_depth.create_view(&wgpu::TextureViewDescriptor::default());
+
         let filtered_depth = device.create_texture(&wgpu::TextureDescriptor {
-            //size: half_size,
             size: texture_size,
             mip_level_count: FILTERED_DEPTH_MIP_LEVEL_COUNT,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: FILTERED_DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::COPY_SRC,
             label: Some("filtered_depth_texture"),
             view_formats: &[],
         });
@@ -238,6 +251,8 @@ impl TextureBufferPool {
             denoised_ssao_view,
             history_ssao,
             history_ssao_view,
+            old_depth,
+            old_depth_view,
             filtered_depth,
             filtered_depth_mip_views,
             filtered_depth_view,
@@ -298,6 +313,18 @@ impl TextureBufferPool {
 
     pub fn get_history_ssao(&self) -> &wgpu::Texture {
         &self.history_ssao
+    }
+
+    pub fn get_old_depth_view(&self) -> &wgpu::TextureView {
+        &self.old_depth_view
+    }
+
+    pub fn get_old_depth(&self) -> &wgpu::Texture {
+        &self.old_depth
+    }
+
+    pub fn get_filtered_depth(&self) -> &wgpu::Texture {
+        &self.filtered_depth
     }
 
     pub fn get_ssao_size(&self) -> &wgpu::Extent3d {

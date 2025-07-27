@@ -933,6 +933,7 @@ impl SSAO {
         denoiser_edges_view: &wgpu::TextureView,
         history_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
+        old_depth_view: &wgpu::TextureView,
         filtered_depth_view: &wgpu::TextureView,
         filtered_depth_mip_views: &[wgpu::TextureView;
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
@@ -984,10 +985,14 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    resource: wgpu::BindingResource::TextureView(old_depth_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
                     resource: self.denoiser_buffer.as_entire_binding(),
                 },
             ],
@@ -1027,6 +1032,7 @@ impl SSAO {
         denoiser_edges_view: &wgpu::TextureView,
         history_ssao_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
+        old_depth_view: &wgpu::TextureView,
         filtered_depth_view: &wgpu::TextureView,
         filtered_depth_mip_views: &[wgpu::TextureView;
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
@@ -1163,11 +1169,21 @@ impl SSAO {
                     wgpu::BindGroupLayoutEntry {
                         binding: 4,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
@@ -1229,10 +1245,14 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
+                    resource: wgpu::BindingResource::TextureView(old_depth_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
                     resource: denoiser_buffer.as_entire_binding(),
                 },
             ],
@@ -1447,7 +1467,8 @@ impl SSAO {
         denoised_ssao_view: &wgpu::TextureView,
         history_ssao: &wgpu::Texture,
         denoised_ssao: &wgpu::Texture,
-        filtered_depth_view: &wgpu::TextureView,
+        old_depth: &wgpu::Texture,
+        filtered_depth: &wgpu::Texture,
         filtered_depth_mip_views: &[wgpu::TextureView;
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
         size: &wgpu::Extent3d,
@@ -1585,6 +1606,21 @@ impl SSAO {
                 &self.denoiser_buffer,
                 0,
                 bytemuck::cast_slice(&[proj.to_cols_array()]),
+            );
+            scope.copy_texture_to_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: filtered_depth,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::TexelCopyTextureInfo {
+                    texture: old_depth,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                *size,
             );
             scope.copy_texture_to_texture(
                 wgpu::TexelCopyTextureInfo {

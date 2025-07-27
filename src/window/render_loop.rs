@@ -351,6 +351,7 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_denoiser_edges_view(),
             texture_buffer_pool.get_history_ssao_view(),
             texture_buffer_pool.get_depth_view(),
+            texture_buffer_pool.get_old_depth_view(),
             texture_buffer_pool.get_filtered_depth_view(),
             texture_buffer_pool.get_filtered_depth_mip_views(),
             &camera_light_bind_group_layout,
@@ -529,6 +530,7 @@ impl InnerGraphicalState {
                 self.texture_buffer_pool.get_denoiser_edges_view(),
                 self.texture_buffer_pool.get_history_ssao_view(),
                 self.texture_buffer_pool.get_depth_view(),
+                self.texture_buffer_pool.get_old_depth_view(),
                 self.texture_buffer_pool.get_filtered_depth_view(),
                 self.texture_buffer_pool.get_filtered_depth_mip_views(),
             );
@@ -797,7 +799,8 @@ impl InnerGraphicalState {
                 self.texture_buffer_pool.get_denoised_ssao_view(),
                 self.texture_buffer_pool.get_history_ssao(),
                 self.texture_buffer_pool.get_denoised_ssao(),
-                self.texture_buffer_pool.get_filtered_depth_view(),
+                self.texture_buffer_pool.get_old_depth(),
+                self.texture_buffer_pool.get_filtered_depth(),
                 self.texture_buffer_pool.get_filtered_depth_mip_views(),
                 self.texture_buffer_pool.get_ssao_size(),
             );
