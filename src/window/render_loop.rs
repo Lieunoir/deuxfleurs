@@ -974,18 +974,18 @@ impl InnerGraphicalState {
         self.dirty = true;
     }
 
-    #[cfg(feature = "obj_button")]
+    #[cfg(feature = "surface_button")]
     pub(crate) fn send_mesh(&mut self, name: String) {
         let event_loop_proxy = self.proxy.clone();
         #[cfg(not(target_arch = "wasm32"))]
         {
             let file = rfd::FileDialog::new()
                 .set_parent(&*self.window.as_ref().unwrap())
-                .add_filter("obj", &["obj"])
+                .add_filter("obj, off", &["obj", "off"])
                 .pick_file();
             if let Some(file_handle) = file {
                 let data = file_handle;
-                if let Some((mesh_v, mesh_f)) = crate::resources::load_mesh_blocking(data.into()) {
+                if let Some((mesh_v, mesh_f)) = crate::resources::load_mesh_blocking(data) {
                     event_loop_proxy
                         .unwrap()
                         .send_event(UserEvent::LoadMesh(mesh_v, mesh_f, name))
@@ -996,14 +996,14 @@ impl InnerGraphicalState {
         #[cfg(target_arch = "wasm32")]
         {
             let file = rfd::AsyncFileDialog::new()
-                .add_filter("obj", &["obj"])
+                .add_filter("obj, off", &["obj", "off"])
                 .pick_file();
             let f = async move {
                 let file = file.await;
                 if let Some(file_handle) = file {
                     let data = file_handle.read().await;
                     if let Some((mesh_v, mesh_f)) =
-                        crate::resources::parse_preloaded_mesh(data).await
+                        crate::resources::parse_preloaded_mesh(file_handle.file_name(), data).await
                     {
                         event_loop_proxy
                             .unwrap()
@@ -1231,7 +1231,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
         if let Some(state) = self.state.as_mut() {
             match event {
-                #[cfg(feature = "obj_button")]
+                #[cfg(feature = "surface_button")]
                 UserEvent::LoadMesh(mesh_v, mesh_f, name) => {
                     state.register_surface(name, mesh_v, mesh_f);
                 }

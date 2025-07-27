@@ -2,20 +2,20 @@ use crate::types::SurfaceIndices;
 use cfg_if::cfg_if;
 use std::{
     io::{BufReader, Cursor},
-    path::PathBuf,
+    path::Path,
 };
 
 mod obj_load;
 mod off_load;
 
 #[cfg(target_arch = "wasm32")]
-async fn fetch(file_name: &str) -> Option<String> {
+async fn fetch(file_name: &Path) -> Option<String> {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::{Request, RequestInit, RequestMode, Response};
     let window = web_sys::window().unwrap();
     let location = window.location().origin().ok()?;
-    let url = format!("{location}/{file_name}");
+    let url = format!("{location}/{}", file_name.to_string_lossy());
     let opts = RequestInit::new();
     opts.set_mode(RequestMode::Cors);
 
@@ -33,49 +33,71 @@ async fn fetch(file_name: &str) -> Option<String> {
     let json = JsFuture::from(resp.text().ok()?).await.ok()?;
     json.as_string()
 }
-async fn load_string(file_name: &str) -> Option<String> {
+
+async fn load_string(file_name: &Path) -> Option<String> {
     cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             fetch(file_name).await
 
         } else {
-            let path = std::path::Path::new(file_name);
-            let text = std::fs::read_to_string(path).ok()?;
+            let text = std::fs::read_to_string(file_name).ok()?;
             Some(text)
         }
     }
 }
 
-/// Helper to load a mesh from an obj file
-pub async fn load_mesh(file_name: &str) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
-    let obj_text = load_string(file_name).await?;
-    let obj_cursor = Cursor::new(obj_text);
-    let mut obj_reader = BufReader::new(obj_cursor);
-    Some(obj_load::load_obj_buf(&mut obj_reader))
+/// Helper to load a mesh from an obj or off file
+pub async fn load_mesh(file_name: impl AsRef<Path>) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
+    let file_text = load_string(file_name.as_ref()).await?;
+    let obj_cursor = Cursor::new(file_text);
+    let mut file_reader = BufReader::new(obj_cursor);
+    match file_name.as_ref().extension() {
+        Some(ext) => {
+            if ext == "obj" {
+                Some(obj_load::load_obj_buf(&mut file_reader))
+            } else if ext == "off" {
+                Some(off_load::load_off_buf(&mut file_reader))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
-/// Helper to load a mesh from an obj file
-pub fn load_mesh_blocking(file_name: PathBuf) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
-    Some(obj_load::load_obj(file_name))
-}
-
-/// Helper to load a mesh from an obj file
-pub async fn load_off_mesh(file_name: &str) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
-    let obj_text = load_string(file_name).await?;
-    let obj_cursor = Cursor::new(obj_text);
-    let mut obj_reader = BufReader::new(obj_cursor);
-    Some(off_load::load_off_buf(&mut obj_reader))
-}
-
-/// Helper to load a mesh from an obj file
-pub fn load_off_mesh_blocking(file_name: PathBuf) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
-    Some(off_load::load_off(file_name))
+/// Helper to load a mesh from an obj or off file
+pub fn load_mesh_blocking(file_name: impl AsRef<Path>) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
+    match file_name.as_ref().extension() {
+        Some(ext) => {
+            if ext == "obj" {
+                Some(obj_load::load_obj(file_name))
+            } else if ext == "off" {
+                Some(off_load::load_off(file_name))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) async fn parse_preloaded_mesh(data: Vec<u8>) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
-    let obj_cursor = Cursor::new(data);
-    let mut obj_reader = BufReader::new(obj_cursor);
-
-    Some(crate::obj_load::load_obj_buf(&mut obj_reader))
+pub(crate) async fn parse_preloaded_mesh(
+    file_name: &str,
+    data: Vec<u8>,
+) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
+    let file_cursor = Cursor::new(data);
+    let mut file_reader = BufReader::new(file_cursor);
+    match Path::new(&file_name).extension() {
+        Some(ext) => {
+            if ext == "obj" {
+                Some(obj_load::load_obj_buf(&mut file_reader))
+            } else if ext == "off" {
+                Some(off_load::load_off_buf(&mut file_reader))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }

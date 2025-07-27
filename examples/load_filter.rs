@@ -1,12 +1,12 @@
 use deuxfleurs::types::SurfaceIndices;
-use deuxfleurs::ui::LoadObjButton;
+use deuxfleurs::ui::LoadSurfaceButton;
 
 fn main() {
     let handle = deuxfleurs::init();
 
     let handle = handle.with_callback(|ui, state| {
         ui.label("User defined stuff here : ");
-        ui.add(LoadObjButton::new("Load obj", "loaded mesh", state));
+        ui.add(LoadSurfaceButton::new("Load surface", "loaded mesh", state));
         if ui
             .add(egui::Button::new("Filter input mesh (require mesh loaded)"))
             .clicked()

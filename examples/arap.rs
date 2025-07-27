@@ -26,7 +26,7 @@ use std::{
 
 fn main() {
     faer::set_global_parallelism(faer::Par::Seq);
-    let (spot_v, spot_f) = load_mesh_blocking("examples/assets/spot.obj".into()).unwrap();
+    let (spot_v, spot_f) = load_mesh_blocking("examples/assets/spot.obj").unwrap();
     let spot_f = match spot_f {
         SurfaceIndices::Triangles(t) => t,
         _ => panic!(),

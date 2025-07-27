@@ -51,10 +51,10 @@ default = ["x11"]
 ndarray = ["dep:ndarray"]
 # Enable nalgebra types as input
 nalgebra = ["dep:nalgebra"]
-# Add ui loadObjButton component
+# Add ui loadSurfaceButton component
 #
 # Optional as this requires several more dependencies
-obj_button = ["dep:rfd"]
+surface_button = ["dep:rfd"]
 # Allow loading/saving state (from ui and programmatically)
 #
 # Add Serialization/Deserialization to several components,
@@ -75,7 +75,7 @@ fast-svd-3x3 = "0.2.0"
 [[example]]
 name = "load_filter"
 path = "examples/load_filter.rs"
-required-features = ["obj_button"]
+required-features = ["surface_button"]
 
 [[example]]
 name = "load_state"

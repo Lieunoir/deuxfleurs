@@ -5,7 +5,7 @@ use egui::text::LayoutJob;
 use egui::{
     Align, Color32, CornerRadius, FontSelection, RichText, Shadow, Stroke, TextFormat, TextWrapMode,
 };
-#[cfg(feature = "obj_button")]
+#[cfg(feature = "surface_button")]
 use egui::{Response, Widget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
@@ -14,17 +14,17 @@ use indexmap::IndexMap;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
-#[cfg_attr(docsrs, doc(cfg(feature = "obj_button")))]
-#[cfg(feature = "obj_button")]
+#[cfg_attr(docsrs, doc(cfg(feature = "surface_button")))]
+#[cfg(feature = "surface_button")]
 /// When clicked, pops an interative window to load a mesh
-pub struct LoadObjButton<'a, 'b, 'c> {
+pub struct LoadSurfaceButton<'a, 'b, 'c> {
     name: &'a str,
     mesh_name: &'b str,
     state: &'c mut RunningState,
 }
 
-#[cfg(feature = "obj_button")]
-impl<'a, 'b, 'c> LoadObjButton<'a, 'b, 'c> {
+#[cfg(feature = "surface_button")]
+impl<'a, 'b, 'c> LoadSurfaceButton<'a, 'b, 'c> {
     pub fn new(name: &'a str, mesh_name: &'b str, state: &'c mut RunningState) -> Self {
         Self {
             name,
@@ -34,8 +34,8 @@ impl<'a, 'b, 'c> LoadObjButton<'a, 'b, 'c> {
     }
 }
 
-#[cfg(feature = "obj_button")]
-impl<'a, 'b, 'c> Widget for LoadObjButton<'a, 'b, 'c> {
+#[cfg(feature = "surface_button")]
+impl<'a, 'b, 'c> Widget for LoadSurfaceButton<'a, 'b, 'c> {
     fn ui(self, ui: &mut egui::Ui) -> Response {
         let button = egui::Button::new(self.name);
         let response = button.ui(ui);

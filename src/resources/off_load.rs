@@ -186,10 +186,7 @@ fn parse_header(buf: &[u8]) -> (usize, usize, usize) {
     (nv as usize, nf as usize, endword)
 }
 
-pub fn load_off<P>(file_name: P) -> (Vec<[Float; 3]>, SurfaceIndices)
-where
-    P: AsRef<Path> + fmt::Debug,
-{
+pub fn load_off(file_name: impl AsRef<Path>) -> (Vec<[Float; 3]>, SurfaceIndices) {
     let file = match File::open(file_name.as_ref()) {
         Ok(f) => f,
         Err(_e) => {

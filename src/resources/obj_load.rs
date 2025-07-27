@@ -178,10 +178,7 @@ fn parse_face_pos(
     off
 }
 
-pub fn load_obj<P>(file_name: P) -> (Vec<[Float; 3]>, SurfaceIndices)
-where
-    P: AsRef<Path> + fmt::Debug,
-{
+pub fn load_obj(file_name: impl AsRef<Path>) -> (Vec<[Float; 3]>, SurfaceIndices) {
     let file = match File::open(file_name.as_ref()) {
         Ok(f) => f,
         Err(_e) => {

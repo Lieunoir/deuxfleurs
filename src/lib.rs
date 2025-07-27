@@ -46,7 +46,7 @@ use crate::surface::geometry::DisplaySurface;
 use crate::{camera::Camera, point_cloud::DisplayPointCloud};
 pub use egui;
 use indexmap::IndexMap;
-pub use resources::{load_mesh, load_mesh_blocking, load_off_mesh, load_off_mesh_blocking};
+pub use resources::{load_mesh, load_mesh_blocking};
 pub use settings::Settings;
 pub use wgpu::Color;
 pub use window::{InitialState, RunningState};
