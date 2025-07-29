@@ -75,7 +75,7 @@ impl InnerGraphicalState {
             .map(|window| instance.create_surface(Arc::clone(&window)).unwrap());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::LowPower,
+                power_preference: wgpu::PowerPreference::None,
                 compatible_surface: surface.as_ref(),
                 force_fallback_adapter: false,
             })
@@ -301,8 +301,8 @@ impl InnerGraphicalState {
             surface_format,
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
-            texture_buffer_pool.get_filtered_depth_view(),
-            texture_buffer_pool.get_denoised_ssao_view(),
+            texture_buffer_pool.get_denoised_ssao_view_ping(),
+            texture_buffer_pool.get_denoised_ssao_view_pong(),
         );
         let ground = post_process::Ground::new(
             &device,
@@ -317,11 +317,13 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_normals_view(),
             texture_buffer_pool.get_ssao_view(),
             texture_buffer_pool.get_denoiser_edges_view(),
-            texture_buffer_pool.get_history_ssao_view(),
+            texture_buffer_pool.get_denoised_ssao_view_ping(),
+            texture_buffer_pool.get_denoised_ssao_view_pong(),
             texture_buffer_pool.get_depth_view(),
-            texture_buffer_pool.get_old_depth_view(),
-            texture_buffer_pool.get_filtered_depth_view(),
-            texture_buffer_pool.get_filtered_depth_mip_views(),
+            texture_buffer_pool.get_filtered_depth_view_ping(),
+            texture_buffer_pool.get_filtered_depth_mip_views_ping(),
+            texture_buffer_pool.get_filtered_depth_view_pong(),
+            texture_buffer_pool.get_filtered_depth_mip_views_pong(),
             &camera_bind_group_layout,
         );
         let should_resize = settings.fit_camera_on_start;
@@ -486,19 +488,21 @@ impl InnerGraphicalState {
                 &self.device,
                 self.texture_buffer_pool.get_albedo_view(),
                 self.texture_buffer_pool.get_normals_view(),
-                self.texture_buffer_pool.get_filtered_depth_view(),
-                self.texture_buffer_pool.get_denoised_ssao_view(),
+                self.texture_buffer_pool.get_denoised_ssao_view_ping(),
+                self.texture_buffer_pool.get_denoised_ssao_view_pong(),
             );
             self.ssao.resize(
                 &self.device,
                 self.texture_buffer_pool.get_normals_view(),
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
-                self.texture_buffer_pool.get_history_ssao_view(),
+                self.texture_buffer_pool.get_denoised_ssao_view_ping(),
+                self.texture_buffer_pool.get_denoised_ssao_view_pong(),
                 self.texture_buffer_pool.get_depth_view(),
-                self.texture_buffer_pool.get_old_depth_view(),
-                self.texture_buffer_pool.get_filtered_depth_view(),
-                self.texture_buffer_pool.get_filtered_depth_mip_views(),
+                self.texture_buffer_pool.get_filtered_depth_view_ping(),
+                self.texture_buffer_pool.get_filtered_depth_mip_views_ping(),
+                self.texture_buffer_pool.get_filtered_depth_view_pong(),
+                self.texture_buffer_pool.get_filtered_depth_mip_views_pong(),
             );
         }
     }
@@ -742,7 +746,7 @@ impl InnerGraphicalState {
             drop(material_render_pass);
             drop(scope);
 
-            self.ssao.render(
+            let ping = self.ssao.render(
                 &self.camera,
                 self.settings.ssao_enabled,
                 self.settings.ssao_slice_per_pixel,
@@ -753,13 +757,10 @@ impl InnerGraphicalState {
                 &self.camera_bind_group,
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
-                self.texture_buffer_pool.get_denoised_ssao_view(),
-                self.texture_buffer_pool.get_history_ssao(),
-                self.texture_buffer_pool.get_denoised_ssao(),
-                self.texture_buffer_pool.get_old_depth(),
-                self.texture_buffer_pool.get_filtered_depth(),
-                self.texture_buffer_pool.get_filtered_depth_mip_views(),
-                self.texture_buffer_pool.get_ssao_size(),
+                self.texture_buffer_pool.get_denoised_ssao_view_ping(),
+                self.texture_buffer_pool.get_denoised_ssao_view_pong(),
+                self.texture_buffer_pool.get_filtered_depth_mip_views_ping(),
+                self.texture_buffer_pool.get_filtered_depth_mip_views_pong(),
             );
             let mut scope = self.profiler.scope("PBR", &mut encoder);
             let mut pbr_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -777,7 +778,7 @@ impl InnerGraphicalState {
                 timestamp_writes: None,
             });
 
-            self.pbr_renderer.render(&mut pbr_render_pass);
+            self.pbr_renderer.render(&mut pbr_render_pass, ping);
             drop(pbr_render_pass);
             drop(scope);
             if self.settings.shadow {
@@ -821,7 +822,6 @@ impl InnerGraphicalState {
                             store: wgpu::StoreOp::Store,
                         },
                     })],
-                    // Create a depth stencil buffer using the depth texture
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &self.texture_buffer_pool.get_depth_view(),
                         depth_ops: Some(wgpu::Operations {

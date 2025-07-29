@@ -30,7 +30,7 @@ fn vs_main(
 }
 
 const PI: f32 = 3.14159265359;
-const tan_pi_0125 = sqrt(3. - 2. * sqrt(2.));
+const tan_pi_0125 = 0.41421356237;
 
 fn view_from_screen_coord(coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
@@ -120,37 +120,37 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let position = view_from_screen_coord(origin, depth);
     let normal_sample = textureLoad(t_n, coords, 0).xyz;
     let normal = normalize(normal_sample * 2. - vec3<f32>(1.));
-    //let view_dir = normalize(camera.view_pos.xyz - position);
     let view_dir = normalize(-position);
-    //let normal = view_dir;
 
-    if abs(normal_sample[0]) + abs(normal_sample[1]) + abs(normal_sample[2]) < 0.01 {
-	    discard;
-    }
+    //if abs(normal_sample[0]) + abs(normal_sample[1]) + abs(normal_sample[2]) < 0.01 {
+	//    discard;
+    //}
 
     // GTAO
     var visibility = 0.0;
-    let kernelSize: u32 = param.slices;
+    //let kernel_size: u32 = param.slices;
+    let kernel_size: u32 = 2u;
+    //let samples_per_slice = param.samples;
+    let samples_per_slice = 2u;
     let world_distance = linearize_depth(1.);
     let world_radius = 0.04 * world_distance;
-    let wanted_screen_radius = 128. * world_distance * pix_dif / depth;
+    let wanted_screen_radius = 64. * world_distance * pix_dif / depth;
     let radius = vec2<f32>(
-        min(wanted_screen_radius.x, 64. * pix_dif.x),
-        min(wanted_screen_radius.y, 64. * pix_dif.y),
+        min(wanted_screen_radius.x, 32. * pix_dif.x),
+        min(wanted_screen_radius.y, 32. * pix_dif.y),
     );
     //let radius = min(min(0.005 / camera_distance, 30. * pix_dif.x), 30. * pix_dif.y);
-    for (var i: u32 = 0; i < kernelSize; i += 1) {
-        let phi = (noise.x + f32(i)) * PI / f32(kernelSize);
+    for (var i: u32 = 0; i < kernel_size; i += 1) {
+        let phi = (noise.x + f32(i)) * PI / f32(kernel_size);
         let cos_phi = cos(phi);
         let sin_phi = fast_sqrt(1. - cos_phi * cos_phi);
         let dir = vec2<f32>(cos_phi, -sin_phi) * radius;
-        //let world_dir = normalize(view_from_screen_coord(origin + dir, depth) - position);
         let world_dir = vec3<f32>(cos_phi, sin_phi, 0.);
         let ortho_direction_v = world_dir - dot(world_dir, view_dir) * view_dir;
         let slice_plane_normal = normalize(cross(world_dir, view_dir));
         let projected_normal = normal - dot(normal, slice_plane_normal) * slice_plane_normal;
         let sign_n = sign(dot(ortho_direction_v, projected_normal));
-        let cos_n = saturate(dot(view_dir, normalize(projected_normal)));
+        let cos_n = dot(view_dir, normalize(projected_normal));
         let n = sign_n * fast_acos(cos_n);
         let sin_n = sign_n * fast_sqrt(1. - cos_n * cos_n);
         let cos_n_plus_pi_2 = -sin_n;
@@ -158,10 +158,10 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         var cos_h1 = cos_n_plus_pi_2;
         var cos_h2 = cos_n_minus_pi_2;
 
-        for (var j: u32 = 0; j < param.samples; j += 1) {
-            let step_noise = fract(noise.y + f32(i + j * param.samples) * 0.6180339887498948482);
+        for (var j: u32 = 0; j < samples_per_slice; j += 1) {
+            let step_noise = fract(noise.y + f32(i + j * samples_per_slice) * 0.6180339887498948482);
             //let step_noise = noise.y;
-            let sample_offset = (step_noise + f32(j)) * dir / f32(param.samples);
+            let sample_offset = (step_noise + f32(j)) * dir / f32(samples_per_slice);
 
             let sample_offset_length = length(sample_offset / pix_dif);
             let mip_level = clamp(log2(sample_offset_length) - 3.3, 0., 4.);
@@ -176,8 +176,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
             let dir_1 = sample_1 - position;
             let dir_2 = sample_2 - position;
 
-            let d_s_1_norm = fast_sqrt(dot(dir_1, dir_1));
-            let d_s_2_norm = fast_sqrt(dot(dir_2, dir_2));
+            let d_s_1_norm = length(dir_1);
+            let d_s_2_norm = length(dir_2);
 
             let d_s_1 = dir_1 / d_s_1_norm;
             let d_s_2 = dir_2 / d_s_2_norm;
@@ -194,10 +194,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let h2 = -fast_acos(cos_h2);
         let h1p = n + clamp(h1 - n, -PI * 0.5, PI * 0.5);
         let h2p = n + clamp(h2 - n, -PI * 0.5, PI * 0.5);
-
-        let projected_normal_length = fast_sqrt(dot(projected_normal, projected_normal));
-        let local_visibility = 0.25 * projected_normal_length * (- cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin_n - cos(2. * h2p - n));
-        visibility += local_visibility / f32(kernelSize);
+        let local_visibility = 0.25 * length(projected_normal) * (- cos(2. * h1p - n) + 2. * cos_n + 2. * (h1p + h2p) * sin_n - cos(2. * h2p - n));
+        visibility += local_visibility / f32(kernel_size);
     }
     out.ssao = visibility;
     return out;

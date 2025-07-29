@@ -10,7 +10,7 @@ pub const SSAO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 pub const SCREENSHOT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 pub const FILTERED_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
-pub const FILTERED_DEPTH_MIP_LEVEL_COUNT: u32 = 4;
+pub const FILTERED_DEPTH_MIP_LEVEL_COUNT: u32 = 5;
 
 pub struct TextureBufferPool {
     size: wgpu::Extent3d,
@@ -41,15 +41,14 @@ pub struct TextureBufferPool {
     // own format
     ssao_view: wgpu::TextureView,
     denoiser_edges_view: wgpu::TextureView,
-    denoised_ssao: wgpu::Texture,
-    denoised_ssao_view: wgpu::TextureView,
-    history_ssao: wgpu::Texture,
-    history_ssao_view: wgpu::TextureView,
-    old_depth: wgpu::Texture,
-    old_depth_view: wgpu::TextureView,
-    filtered_depth: wgpu::Texture,
-    filtered_depth_mip_views: [wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
-    filtered_depth_view: wgpu::TextureView,
+    denoised_ssao_ping: wgpu::Texture,
+    denoised_ssao_view_ping: wgpu::TextureView,
+    denoised_ssao_pong: wgpu::Texture,
+    denoised_ssao_view_pong: wgpu::TextureView,
+    filtered_depth_mip_views_ping: [wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
+    filtered_depth_view_ping: wgpu::TextureView,
+    filtered_depth_mip_views_pong: [wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
+    filtered_depth_view_pong: wgpu::TextureView,
 }
 
 impl TextureBufferPool {
@@ -154,33 +153,23 @@ impl TextureBufferPool {
         });
         let denoiser_edges_view =
             denoiser_edges.create_view(&wgpu::TextureViewDescriptor::default());
-        let denoised_ssao = device.create_texture(&wgpu::TextureDescriptor {
+        let denoised_ssao_descriptor = wgpu::TextureDescriptor {
             //size: half_size,
             size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: SSAO_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::COPY_SRC,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             label: Some("denoised ssao_texture"),
             view_formats: &[],
-        });
-        let denoised_ssao_view = denoised_ssao.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let history_ssao = device.create_texture(&wgpu::TextureDescriptor {
-            //size: half_size,
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: SSAO_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            label: Some("history_ssao_texture"),
-            view_formats: &[],
-        });
-        let history_ssao_view = history_ssao.create_view(&wgpu::TextureViewDescriptor::default());
+        };
+        let denoised_ssao_ping = device.create_texture(&denoised_ssao_descriptor);
+        let denoised_ssao_view_ping =
+            denoised_ssao_ping.create_view(&wgpu::TextureViewDescriptor::default());
+        let denoised_ssao_pong = device.create_texture(&denoised_ssao_descriptor);
+        let denoised_ssao_view_pong =
+            denoised_ssao_pong.create_view(&wgpu::TextureViewDescriptor::default());
 
         let old_depth = device.create_texture(&wgpu::TextureDescriptor {
             size: texture_size,
@@ -193,8 +182,7 @@ impl TextureBufferPool {
             view_formats: &[],
         });
         let old_depth_view = old_depth.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let filtered_depth = device.create_texture(&wgpu::TextureDescriptor {
+        let filtered_depth_descriptor = wgpu::TextureDescriptor {
             size: texture_size,
             mip_level_count: FILTERED_DEPTH_MIP_LEVEL_COUNT,
             sample_count: 1,
@@ -205,17 +193,27 @@ impl TextureBufferPool {
                 | wgpu::TextureUsages::COPY_SRC,
             label: Some("filtered_depth_texture"),
             view_formats: &[],
-        });
-
-        let filtered_depth_mip_views = core::array::from_fn(|i| {
-            filtered_depth.create_view(&wgpu::TextureViewDescriptor {
+        };
+        let filtered_depth_ping = device.create_texture(&filtered_depth_descriptor);
+        let filtered_depth_mip_views_ping = core::array::from_fn(|i| {
+            filtered_depth_ping.create_view(&wgpu::TextureViewDescriptor {
                 base_mip_level: i as u32,
                 mip_level_count: Some(1),
                 ..Default::default()
             })
         });
-        let filtered_depth_view =
-            filtered_depth.create_view(&wgpu::TextureViewDescriptor::default());
+        let filtered_depth_view_ping =
+            filtered_depth_ping.create_view(&wgpu::TextureViewDescriptor::default());
+        let filtered_depth_pong = device.create_texture(&filtered_depth_descriptor);
+        let filtered_depth_mip_views_pong = core::array::from_fn(|i| {
+            filtered_depth_pong.create_view(&wgpu::TextureViewDescriptor {
+                base_mip_level: i as u32,
+                mip_level_count: Some(1),
+                ..Default::default()
+            })
+        });
+        let filtered_depth_view_pong =
+            filtered_depth_pong.create_view(&wgpu::TextureViewDescriptor::default());
 
         let output_buffer_dimensions =
             BufferDimensions::new::<u32>(texture_size.width as usize, texture_size.height as usize);
@@ -248,15 +246,14 @@ impl TextureBufferPool {
             depth_view,
             ssao_view,
             denoiser_edges_view,
-            denoised_ssao,
-            denoised_ssao_view,
-            history_ssao,
-            history_ssao_view,
-            old_depth,
-            old_depth_view,
-            filtered_depth,
-            filtered_depth_mip_views,
-            filtered_depth_view,
+            denoised_ssao_ping,
+            denoised_ssao_view_ping,
+            denoised_ssao_pong,
+            denoised_ssao_view_pong,
+            filtered_depth_mip_views_ping,
+            filtered_depth_view_ping,
+            filtered_depth_mip_views_pong,
+            filtered_depth_view_pong,
         }
     }
 
@@ -296,50 +293,40 @@ impl TextureBufferPool {
         &self.ssao_view
     }
 
-    pub fn get_denoised_ssao_view(&self) -> &wgpu::TextureView {
-        &self.denoised_ssao_view
+    pub fn get_denoised_ssao_view_ping(&self) -> &wgpu::TextureView {
+        &self.denoised_ssao_view_ping
+    }
+
+    pub fn get_denoised_ssao_view_pong(&self) -> &wgpu::TextureView {
+        &self.denoised_ssao_view_pong
     }
 
     pub fn get_denoiser_edges_view(&self) -> &wgpu::TextureView {
         &self.denoiser_edges_view
     }
 
-    pub fn get_history_ssao_view(&self) -> &wgpu::TextureView {
-        &self.history_ssao_view
-    }
-
-    pub fn get_denoised_ssao(&self) -> &wgpu::Texture {
-        &self.denoised_ssao
-    }
-
-    pub fn get_history_ssao(&self) -> &wgpu::Texture {
-        &self.history_ssao
-    }
-
-    pub fn get_old_depth_view(&self) -> &wgpu::TextureView {
-        &self.old_depth_view
-    }
-
-    pub fn get_old_depth(&self) -> &wgpu::Texture {
-        &self.old_depth
-    }
-
-    pub fn get_filtered_depth(&self) -> &wgpu::Texture {
-        &self.filtered_depth
-    }
-
     pub fn get_ssao_size(&self) -> &wgpu::Extent3d {
         &self.size
     }
 
-    pub fn get_filtered_depth_mip_views(
+    pub fn get_filtered_depth_mip_views_ping(
         &self,
     ) -> &[wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize] {
-        &self.filtered_depth_mip_views
+        &self.filtered_depth_mip_views_ping
     }
 
-    pub fn get_filtered_depth_view(&self) -> &wgpu::TextureView {
-        &self.filtered_depth_view
+    pub fn get_filtered_depth_view_ping(&self) -> &wgpu::TextureView {
+        &self.filtered_depth_view_ping
+    }
+
+    pub fn get_filtered_depth_mip_views_pong(
+        &self,
+    ) -> &[wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize] {
+        &self.filtered_depth_mip_views_pong
+    }
+
+    pub fn get_filtered_depth_view_pong(&self) -> &wgpu::TextureView {
+        &self.filtered_depth_view_pong
     }
 
     pub fn copy_screenshot_texture_to_buffer(&mut self, encoder: &mut wgpu::CommandEncoder) {

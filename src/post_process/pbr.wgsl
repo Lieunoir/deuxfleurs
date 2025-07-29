@@ -3,12 +3,10 @@ var t_a: texture_2d<f32>;
 @group(0) @binding(1)
 var t_n: texture_2d<f32>;
 @group(0) @binding(2)
-var t_d: texture_2d<f32>;
-@group(0) @binding(3)
 var s: sampler;
-@group(0) @binding(4)
+@group(0) @binding(3)
 var t_v: texture_2d<f32>;
-@group(0) @binding(5)
+@group(0) @binding(4)
 var s_v: sampler;
 
 struct VertexOutput {
@@ -27,6 +25,7 @@ fn vs_main(
 }
 
 const PI: f32 = 3.14159265359;
+const tan_pi_0125 = 0.41421356237;
 
 // PBR functions taken from https://learnopengl.com/PBR/Theory
 fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {
@@ -61,25 +60,13 @@ fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32> {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-const tan_pi_0125 = sqrt(3. - 2. * sqrt(2.));
-//const tan_pi_0125 = tan(PI / 8.);
-
-fn view_from_screen_coord(coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
-   // reconstruct view-space position from the screen coordinate and view space depth.
-    return vec3<f32>(
-        - (vec2<f32>(2. * 0.90225565, -2.) * coord + vec2<f32>(-1. * 0.90225565, 1.)) * linear_depth_sample * tan_pi_0125, // * znear * zfar / (znear - zfar)
-        linear_depth_sample
-    );
-}
-
-/*
 fn normalized_view_from_screen_coord(coord: vec2<f32>) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
     return normalize(vec3<f32>(
         (vec2<f32>(2. * 0.90225565, -2.) * coord + vec2<f32>(-1. * 0.90225565, 1.)) * tan_pi_0125,
         -1.
     ));
-}*/
+}
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
@@ -89,9 +76,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
         discard;
     }
     let buffer_size = textureDimensions(t_a);
-    let depth = textureSampleLevel(t_d, s, fcoords.xy / vec2<f32>(buffer_size), 0.).x;
-    let position = view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size), depth);
-    //let position = normalized_view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size));
+    let position = normalized_view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size));
     var normal = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
     let visibility = textureSample(t_v, s_v, fcoords.xy / vec2<f32>(buffer_size)).x;
     let view_dir = - position;
@@ -103,9 +88,6 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
     let up = vec3<f32>(0., 1., 0.);
     let right = vec3<f32>(-1., 0., 0.);
     let forward = vec3<f32>(0., 0., -1.);
-    //let up = normalize(position + vec3<f32>(0., 1., 0.));
-    //let right = normalize(position + vec3<f32>(-1., 0., 0.));
-    //let forward = normalize(position + vec3<f32>(0., 0., -1.));
 
     let light_color = vec3<f32>(1.);
     let light_dir = normalize(right - up - forward);
@@ -149,6 +131,4 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
     let a = v * (v + 0.0245786) - 0.000090537;
     let b = v * (0.983729 * v + 0.4329510) + 0.238081;
     return vec4<f32>(clamp(m2 * (a / b), vec3(0.0), vec3(1.0)), 1.0);
-    //return vec4<f32>(vec3<f32>(f_ct_3), 1.0);
-    //return vec4<f32>(normal, 1.0);
 }

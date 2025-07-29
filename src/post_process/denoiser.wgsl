@@ -54,27 +54,33 @@ fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight
     *sumWeight += weight;
 }
 
+fn delinearize_depth(depth: f32) -> f32 {
+    return 0.0008740438 / depth + 1.0001;
+}
+
 fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
-    let depth_value = exp(textureSampleLevel(depth, s, uv, 0.).x);
+    let depth_value = delinearize_depth(textureSampleLevel(depth, s, uv, 0.).x);
     let pos_clip = vec4(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
     let pos_world_w = camera.view_inv * pos_clip;
     let pos_world = pos_world_w / pos_world_w.wwww;
     let recovered_clip_w = old_camera.view_proj * pos_world;
+    let recovered_clip_z = - recovered_clip_w.w;
     let recovered_clip = recovered_clip_w.xyz / recovered_clip_w.www;
     let recovered_uv = vec2<f32>(0.5 * recovered_clip.x + 0.5, - 0.5 * recovered_clip.y + 0.5);
     let old_ao = textureSample(history, s, recovered_uv).x;
-    let old_depth_sample = exp(textureSample(old_depth, s, recovered_uv).x);
-    let weight = select(0., 1., (old_depth_sample - recovered_clip.z) / old_depth_sample < 0.001);
+    let linear_old_depth_sample = textureSampleLevel(old_depth, s, recovered_uv, 0.).x;
+    let old_depth_sample = delinearize_depth(linear_old_depth_sample);
+    let weight = select(0., 0.9, abs(linear_old_depth_sample - recovered_clip_z) < 0.005);
     return vec2<f32>(old_ao, weight);
 }
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
-    let buffer_size = textureDimensions(depth);
-    let gather_offset = - vec2<f32>(0.25) / vec2<f32>(buffer_size);
-    let gatherCenter = fcoords.xy / vec2<f32>(buffer_size) + gather_offset;
+    let buffer_size_inv = 1. / vec2<f32>(textureDimensions(depth));
+    let gather_offset = - vec2<f32>(0.25) * buffer_size_inv;
+    let gatherCenter = fcoords.xy * buffer_size_inv + gather_offset;
 
-    var previous_ao = get_previous_value(fcoords.xy / vec2<f32>(buffer_size));
+    var previous_ao = get_previous_value(fcoords.xy * buffer_size_inv);
 
     let blurAmount = 1.2f;
     let diagWeight = 0.65 * 0.5;
@@ -134,27 +140,18 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     add_sample(ssaoValueBL, weightBL, &sum, &sumWeight);
     add_sample(ssaoValueBR, weightBR, &sum, &sumWeight);
 
+    let blurred_ao = sum / sumWeight;
+
     var min_ssao = ssaoValue;
     min_ssao = select(min_ssao, min(min_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
     min_ssao = select(min_ssao, min(min_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
     min_ssao = select(min_ssao, min(min_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
     min_ssao = select(min_ssao, min(min_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueTL), weightTL > 0.8);
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueTR), weightTR > 0.8);
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueBL), weightBL > 0.8);
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueBR), weightBR > 0.8);
     var max_ssao = ssaoValue;
     max_ssao = select(max_ssao, max(max_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
     max_ssao = select(max_ssao, max(max_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
     max_ssao = select(max_ssao, max(max_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
     max_ssao = select(max_ssao, max(max_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueTL), weightTL > 0.8);
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueTR), weightTR > 0.8);
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueBL), weightBL > 0.8);
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueBR), weightBR > 0.8);
-
-    let blurred_ao = sum / sumWeight;
-
     var weight = 0.9;
     weight = select(weight, 0.5 * (previous_ao.x - blurred_ao), max_ssao < previous_ao.x);
     weight = select(weight, 0.5 * (blurred_ao - previous_ao.x), min_ssao > previous_ao.x);
