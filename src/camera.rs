@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use crate::{Settings, sbv::SBV};
 
 use serde::{Deserialize, Serialize};
@@ -33,10 +35,10 @@ impl Camera {
     }
 
     pub fn get_linearize_z_mul_add(&self) -> (f32, f32) {
-        (
-            self.zfar * self.znear / (self.zfar - self.znear),
-            self.zfar / (self.zfar - self.znear),
-        )
+        let zmul = -self.zfar * self.znear / (self.znear - self.zfar);
+        let zadd = self.zfar / (self.znear - self.zfar);
+        // linear_z = zmul / (zadd + buffer_z)
+        (zmul, zadd)
     }
 
     pub fn set_from_eye_target_up(&mut self, eye: [f32; 3], target: [f32; 3], up: [f32; 3]) {
@@ -49,10 +51,11 @@ impl Camera {
         (self.eye.into(), self.target.into(), self.up.into())
     }
 
-    pub fn build_view_projection_matrix(&self) -> glam::Mat4 {
+    pub fn build_view_view_projection_matrix(&self) -> (glam::Mat4, glam::Mat4) {
         let view = glam::Mat4::look_at_rh(self.eye, self.target, self.up);
-        let proj = glam::Mat4::perspective_rh(self.fovy, self.aspect, self.znear, self.zfar);
-        proj * view
+        let proj =
+            glam::Mat4::perspective_rh(self.fovy / 180. * PI, self.aspect, self.znear, self.zfar);
+        (view, proj * view)
     }
 
     pub fn build_view(&self) -> glam::Mat4 {
@@ -60,7 +63,7 @@ impl Camera {
     }
 
     pub fn build_proj(&self) -> glam::Mat4 {
-        glam::Mat4::perspective_rh(self.fovy, self.aspect, self.znear, self.zfar)
+        glam::Mat4::perspective_rh(self.fovy / 180. * PI, self.aspect, self.znear, self.zfar)
     }
 
     pub fn set_scene_size(&mut self, size: f32, center: glam::Vec3) {
@@ -105,6 +108,7 @@ impl Camera {
 pub struct CameraUniform {
     view_position: [f32; 4],
     pub(crate) view_proj: [[f32; 4]; 4],
+    pub(crate) view: [[f32; 4]; 4],
     pub(crate) view_proj_inv: [[f32; 4]; 4],
     floor_bb: [f32; 4],
     floor_proj: [[f32; 4]; 4],
@@ -114,6 +118,7 @@ impl CameraUniform {
     pub fn new() -> Self {
         Self {
             view_position: [0.0; 4],
+            view: glam::Mat4::IDENTITY.to_cols_array_2d(),
             view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
             view_proj_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
             floor_bb: [0.0; 4],
@@ -124,7 +129,11 @@ impl CameraUniform {
     pub fn update_view_proj(&mut self, camera: &Camera, sbv: &SBV, level: f32) {
         // We're using Vector4 because ofthe camera_uniform 16 byte spacing requirement
         self.view_position = camera.eye.extend(1.).into();
-        let view_proj = camera.build_view_projection_matrix();
+        let (view, view_proj) = camera.build_view_view_projection_matrix();
+        let view_mat_3 = glam::Mat3::from_mat4(view);
+        let view_inv_trans = glam::Mat4::from_mat3(view_mat_3.inverse().transpose());
+        //let view_inv_trans = glam::Mat4::from_mat3(view_mat_3);
+        self.view = view_inv_trans.to_cols_array_2d();
         self.view_proj = view_proj.to_cols_array_2d();
         let view_proj_inv = view_proj.inverse();
         self.view_proj_inv = view_proj_inv.to_cols_array_2d();

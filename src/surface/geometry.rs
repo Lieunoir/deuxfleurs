@@ -733,14 +733,14 @@ impl RenderPipeline for SurfacePipeline {
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let pipeline_layout = match data_uniform {
             Some(uniform) => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                     &transform_uniform.bind_group_layout,
                     &settings_uniform.bind_group_layout,
                     &uniform.bind_group_layout,
@@ -750,7 +750,7 @@ impl RenderPipeline for SurfacePipeline {
             None => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                     &transform_uniform.bind_group_layout,
                     &settings_uniform.bind_group_layout,
                 ],
@@ -761,7 +761,7 @@ impl RenderPipeline for SurfacePipeline {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Surface Shadow Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                     &transform_uniform.bind_group_layout,
                 ],
                 push_constant_ranges: &[],
@@ -770,7 +770,7 @@ impl RenderPipeline for SurfacePipeline {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Surface Picker Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                     counter_bind_group_layout,
                     &transform_uniform.bind_group_layout,
                 ],
@@ -835,13 +835,13 @@ impl RenderPipeline for SurfacePipeline {
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) {
         let pipeline_layout = match data_uniform {
             Some(uniform) => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                     &transform_uniform.bind_group_layout,
                     &settings_uniform.bind_group_layout,
                     &uniform.bind_group_layout,
@@ -851,7 +851,7 @@ impl RenderPipeline for SurfacePipeline {
             None => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                     &transform_uniform.bind_group_layout,
                     &settings_uniform.bind_group_layout,
                 ],
@@ -1047,7 +1047,7 @@ impl DisplaySurface {
         let v2 = v2.extend(1.);
         let v3 = v3.extend(1.);
         let model = glam::Mat4::from_cols_array_2d(&self.transform.to_raw().get_model());
-        let camera = camera.build_view_projection_matrix();
+        let camera = camera.build_view_view_projection_matrix().1;
         let v1 = camera * model * v1;
         let v2 = camera * model * v2;
         let v3 = camera * model * v3;

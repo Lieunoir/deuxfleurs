@@ -135,23 +135,23 @@ impl NewAttachedGeometry for NewSurfaceAttachment {
     fn init(
         self,
         device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self::UpgradedAttachedGeometry {
         match self {
             NewSurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.init(
                 device,
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 transform_bind_group_layout,
             )),
             NewSurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.init(
                 device,
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 transform_bind_group_layout,
             )),
             NewSurfaceAttachment::Segments(p) => SurfaceAttachment::Segments(p.init(
                 device,
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 transform_bind_group_layout,
             )),
         }
@@ -272,7 +272,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
         ui: &mut egui::Ui,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
@@ -281,7 +281,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
                 ui,
                 device,
                 queue,
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 color_format,
                 refresh_screen,
             ),
@@ -289,7 +289,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
                 ui,
                 device,
                 queue,
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 color_format,
                 refresh_screen,
             ),
@@ -297,7 +297,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for SurfaceAttachment {
                 ui,
                 device,
                 queue,
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 color_format,
                 refresh_screen,
             ),

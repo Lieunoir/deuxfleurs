@@ -1,11 +1,7 @@
 struct CameraUniform {
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-}
-
-struct Light {
-    position: vec3<f32>,
-    color: vec3<f32>,
+    view: mat4x4<f32>,
 }
 
 struct TransformUniform {
@@ -26,8 +22,6 @@ struct Jitter {
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
-var<uniform> light: Light;
-@group(0) @binding(2)
 var<uniform> jitter: Jitter;
 
 @group(1) @binding(0)
@@ -45,10 +39,10 @@ struct VectorInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-	@location(0) world_pos: vec3<f32>,
-	@location(1) orig_position: vec3<f32>,
-	@location(2) arrow: vec3<f32>,
-	@location(3) radius: f32,
+    @location(0) world_pos: vec3<f32>,
+    @location(1) orig_position: vec3<f32>,
+    @location(2) arrow: vec3<f32>,
+    @location(3) radius: f32,
 };
 
 @vertex
@@ -68,8 +62,8 @@ fn vs_main(
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-	out.orig_position = world_vector_pos;
-	out.arrow = world_vector_arrow * settings.magnitude * settings.char_l * arrow_ampl;
+    out.orig_position = world_vector_pos;
+    out.arrow = world_vector_arrow * settings.magnitude * settings.char_l * arrow_ampl;
 
     let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
     let arrow_axis = world_vector_arrow;
@@ -83,7 +77,8 @@ fn vs_main(
     let rotation_mat = mat3x3<f32>(
         right_axis,
         world_vector_arrow,
-        depth_axis);
+        depth_axis
+    );
 
     var corrected_pos = model.position;
     //Change this for fully scaled arrows
@@ -102,68 +97,63 @@ fn vs_main(
 fn dot2(v: vec3<f32>) -> f32 { return dot(v, v); }
 
 fn iCappedCone(ro: vec3<f32>, rd: vec3<f32>,
-                  pa: vec3<f32>, pb: vec3<f32>,
-                  ra: f32, rb: f32 ) -> vec4<f32>
-{
+    pa: vec3<f32>, pb: vec3<f32>,
+    ra: f32, rb: f32) -> vec4<f32> {
     let  ba = pb - pa;
     let  oa = ro - pa;
     let  ob = ro - pb;
 
-    let m0 = dot(ba,ba);
-    let m1 = dot(oa,ba);
-    let m2 = dot(ob,ba);
-    let m3 = dot(rd,ba);
+    let m0 = dot(ba, ba);
+    let m1 = dot(oa, ba);
+    let m2 = dot(ob, ba);
+    let m3 = dot(rd, ba);
 
     //caps
-         if( m1<0.0 ) { if( dot2(oa*m3-rd*m1)<(ra*ra*m3*m3) ) { return vec4<f32>(-m1/m3,-ba*inverseSqrt(m0)); } }
-    else if( m2>0.0 ) { if( dot2(ob*m3-rd*m2)<(rb*rb*m3*m3) ) { return vec4<f32>(-m2/m3, ba*inverseSqrt(m0)); } }
+    if m1 < 0.0 { if dot2(oa * m3 - rd * m1) < (ra * ra * m3 * m3) { return vec4<f32>(-m1 / m3, -ba * inverseSqrt(m0)); } } else if m2 > 0.0 { if dot2(ob * m3 - rd * m2) < (rb * rb * m3 * m3) { return vec4<f32>(-m2 / m3, ba * inverseSqrt(m0)); } }
 
     // body
-    let m4 = dot(rd,oa);
-    let m5 = dot(oa,oa);
+    let m4 = dot(rd, oa);
+    let m5 = dot(oa, oa);
     let rr = ra - rb;
-    let hy = m0 + rr*rr;
+    let hy = m0 + rr * rr;
 
-    let k2 = m0*m0    - m3*m3*hy;
-    let k1 = m0*m0*m4 - m1*m3*hy + m0*ra*(rr*m3*1.0        );
-    let k0 = m0*m0*m5 - m1*m1*hy + m0*ra*(rr*m1*2.0 - m0*ra);
+    let k2 = m0 * m0 - m3 * m3 * hy;
+    let k1 = m0 * m0 * m4 - m1 * m3 * hy + m0 * ra * (rr * m3 * 1.0);
+    let k0 = m0 * m0 * m5 - m1 * m1 * hy + m0 * ra * (rr * m1 * 2.0 - m0 * ra);
 
-    let h = k1*k1 - k2*k0;
-    if( h<0.0 ) { return vec4(-1.0); }
+    let h = k1 * k1 - k2 * k0;
+    if h < 0.0 { return vec4(-1.0); }
 
-    let t = (-k1-sqrt(h))/k2;
+    let t = (-k1 - sqrt(h)) / k2;
 
-    let y = m1 + t*m3;
-    if( y>0.0 && y<m0 )
-    {
-        return vec4<f32>(t, normalize(m0*(m0*(oa+t*rd)+rr*ba*ra)-ba*hy*y));
+    let y = m1 + t * m3;
+    if y > 0.0 && y < m0 {
+        return vec4<f32>(t, normalize(m0 * (m0 * (oa + t * rd) + rr * ba * ra) - ba * hy * y));
     }
 
     return vec4<f32>(-1.0);
 }
 
-fn cylIntersect( ro: vec3<f32>, rd: vec3<f32>, pa: vec3<f32>, pb: vec3<f32>, ra: f32 ) -> vec4<f32>
-{
-    let ba = pb-pa;
+fn cylIntersect(ro: vec3<f32>, rd: vec3<f32>, pa: vec3<f32>, pb: vec3<f32>, ra: f32) -> vec4<f32> {
+    let ba = pb - pa;
     let oc = ro - pa;
-    let baba = dot(ba,ba);
-    let bard = dot(ba,rd);
-    let baoc = dot(ba,oc);
-    let k2 = baba            - bard*bard;
-    let k1 = baba*dot(oc,rd) - baoc*bard;
-    let k0 = baba*dot(oc,oc) - baoc*baoc - ra*ra*baba;
-    var h = k1*k1 - k2*k0;
-    if( h<0.0 ) { return vec4<f32>(-1.0); }//no intersection
+    let baba = dot(ba, ba);
+    let bard = dot(ba, rd);
+    let baoc = dot(ba, oc);
+    let k2 = baba - bard * bard;
+    let k1 = baba * dot(oc, rd) - baoc * bard;
+    let k0 = baba * dot(oc, oc) - baoc * baoc - ra * ra * baba;
+    var h = k1 * k1 - k2 * k0;
+    if h < 0.0 { return vec4<f32>(-1.0); }//no intersection
     h = sqrt(h);
-    var t = (-k1-h)/k2;
+    var t = (-k1 - h) / k2;
     // body
-    let y = baoc + t*bard;
-    if( y>0.0 && y<baba ) { return vec4<f32>( t, (oc+t*rd - ba*y/baba)/ra ); }
+    let y = baoc + t * bard;
+    if y > 0.0 && y < baba { return vec4<f32>(t, (oc + t * rd - ba * y / baba) / ra); }
     // caps
-	t = ( select(baba, 0., y< 0.) - baoc) / bard;
-    if( abs(k1+k2*t)<h )
-    {
-        return vec4<f32>( t, ba*sign(y)/sqrt(baba) );
+    t = (select(baba, 0., y < 0.) - baoc) / bard;
+    if abs(k1 + k2 * t) < h {
+        return vec4<f32>(t, ba * sign(y) / sqrt(baba));
     }
     return vec4<f32>(-1.0);//no intersection
 }
@@ -178,7 +168,7 @@ struct FragOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> FragOutput {
     let ro = camera.view_pos.xyz;
-	let rd = normalize(in.world_pos - camera.view_pos.xyz);
+    let rd = normalize(in.world_pos - camera.view_pos.xyz);
     let pa = in.orig_position;
     let pb1 = in.orig_position + 0.5 * in.arrow;
     let pb2 = in.orig_position + in.arrow;
@@ -187,16 +177,16 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 
     let traced_1 = iCappedCone(ro, rd, pb1, pb2, in.radius * settings.magnitude * settings.char_l, 0.);
     let traced_2 = cylIntersect(ro, rd, pa, pb1, 0.5 * in.radius * settings.magnitude * settings.char_l);
-	if(max(traced_1.x, traced_2.x) < 0.) {
+    if max(traced_1.x, traced_2.x) < 0. {
 		discard;
-	}
-	let traced = select(traced_1, traced_2, traced_1.x < 0. || (traced_2.x < traced_1.x && traced_2.x > 0.));
+    }
+    let traced = select(traced_1, traced_2, traced_1.x < 0. || (traced_2.x < traced_1.x && traced_2.x > 0.));
 
-	let pos = ro + traced.x * rd;
-	let normal = traced.yzw;
-	out.albedo = vec4<f32>(settings.color, 0.1);
-    out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
-	let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
-	out.depth = clip_space_pos.z / clip_space_pos.w;
-	return out;
+    let pos = ro + traced.x * rd;
+    let normal = normalize((camera.view * vec4<f32>(traced.yzw, 0.)).xyz);
+    out.albedo = vec4<f32>(settings.color, 0.1);
+    out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2., 0.);
+    let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+    out.depth = clip_space_pos.z / clip_space_pos.w;
+    return out;
 }

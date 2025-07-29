@@ -54,15 +54,6 @@ extern "C" {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct LightUniform {
-    position: [f32; 3],
-    _padding: u32,
-    color: [f32; 3],
-    _padding2: u32,
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct JitterUniform {
     x: f32,
     y: f32,
@@ -224,7 +215,7 @@ where
                 args,
                 None,
                 context.device,
-                context.camera_light_bind_group_layout,
+                context.camera_bind_group_layout,
                 context.counter_bind_group_layout,
             );
             container.insert(name.clone(), shape);
@@ -310,11 +301,9 @@ pub struct InnerGraphicalState {
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     // Lighting
-    light_uniform: LightUniform,
-    light_buffer: wgpu::Buffer,
     jitter_buffer: wgpu::Buffer,
-    camera_light_bind_group_layout: wgpu::BindGroupLayout,
-    camera_light_bind_group: wgpu::BindGroup,
+    camera_bind_group_layout: wgpu::BindGroupLayout,
+    camera_bind_group: wgpu::BindGroup,
     // egui
     //ui: ui::UI,
     //time: std::time::Instant,
@@ -367,7 +356,7 @@ impl ContainerContextGiver<DisplaySurface> for InnerGraphicalState {
                 settings: &self.settings,
                 device: &self.device,
                 queue: &self.queue,
-                camera_light_bind_group_layout: &self.camera_light_bind_group_layout,
+                camera_bind_group_layout: &self.camera_bind_group_layout,
                 counter_bind_group_layout: &self.picker.bind_group_layout,
                 refresh_screen: &mut self.dirty,
             },
@@ -398,7 +387,7 @@ impl ContainerContextGiver<DisplayPointCloud> for InnerGraphicalState {
                 settings: &self.settings,
                 device: &self.device,
                 queue: &self.queue,
-                camera_light_bind_group_layout: &self.camera_light_bind_group_layout,
+                camera_bind_group_layout: &self.camera_bind_group_layout,
                 counter_bind_group_layout: &self.picker.bind_group_layout,
                 refresh_screen: &mut self.dirty,
             },
@@ -429,7 +418,7 @@ impl ContainerContextGiver<DisplaySegment> for InnerGraphicalState {
                 settings: &self.settings,
                 device: &self.device,
                 queue: &self.queue,
-                camera_light_bind_group_layout: &self.camera_light_bind_group_layout,
+                camera_bind_group_layout: &self.camera_bind_group_layout,
                 counter_bind_group_layout: &self.picker.bind_group_layout,
                 refresh_screen: &mut self.dirty,
             },

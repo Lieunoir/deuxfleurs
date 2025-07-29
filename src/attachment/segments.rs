@@ -77,12 +77,12 @@ impl NewAttachedGeometry for NewSegments {
     fn init(
         self,
         device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self::UpgradedAttachedGeometry {
         let inner = self.inner.upgrade(
             device,
-            camera_light_bind_group_layout,
+            camera_bind_group_layout,
             transform_bind_group_layout, //Lie
         );
         Segments {
@@ -120,7 +120,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
             args.1,
             Some(characteristic_l),
             context.device,
-            context.camera_light_bind_group_layout,
+            context.camera_bind_group_layout,
             context.counter_bind_group_layout,
         );
         Segments {
@@ -176,7 +176,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
         ui: &mut egui::Ui,
         _device: &wgpu::Device,
         queue: &wgpu::Queue,
-        _camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        _camera_bind_group_layout: &wgpu::BindGroupLayout,
         _color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {

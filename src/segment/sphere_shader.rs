@@ -5,11 +5,7 @@ macro_rules! SHADER { () => {"
 struct CameraUniform {{
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-}}
-
-struct Light {{
-    position: vec3<f32>,
-    color: vec3<f32>,
+    view: mat4x4<f32>,
 }}
 
 struct TransformUniform {{
@@ -30,8 +26,6 @@ struct SettingsUniform {{
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
-var<uniform> light: Light;
-@group(0) @binding(2)
 var<uniform> jitter: Jitter;
 
 @group(1) @binding(0)
@@ -118,7 +112,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
         discard;
     }}
 	let pos = ro + t.x * rd;
-	let normal = normalize(pos - ce);
+	let normal = normalize((camera.view * vec4<f32>(pos - ce, 0.)).xyz);
 
     {}
 

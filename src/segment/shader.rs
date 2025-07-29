@@ -5,11 +5,7 @@ macro_rules! SHADER { () => {"
 struct CameraUniform {{
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-}}
-
-struct Light {{
-    position: vec3<f32>,
-    color: vec3<f32>,
+    view: mat4x4<f32>,
 }}
 
 struct TransformUniform {{
@@ -30,8 +26,6 @@ struct SettingsUniform {{
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 @group(0) @binding(1)
-var<uniform> light: Light;
-@group(0) @binding(2)
 var<uniform> jitter: Jitter;
 
 @group(1) @binding(0)
@@ -141,7 +135,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
     var out: FragOutput;
 
 	let pos = ro + t.x * rd;
-	let normal = cylNormal(pos, a, b, r);
+	let normal = normalize((camera.view * vec4<f32>(cylNormal(pos, a, b, r), 0.)).xyz);
 
     {}
 
@@ -209,11 +203,7 @@ pub const CYLINDER_PICKER_SHADER: &str = "
 struct CameraUniform {
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-}
-
-struct Light {
-    position: vec3<f32>,
-    color: vec3<f32>,
+    view: mat4x4<f32>,
 }
 
 struct TransformUniform {
@@ -236,8 +226,6 @@ struct SettingsUniform {
 
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
-@group(0) @binding(1)
-var<uniform> light: Light;
 
 @group(1) @binding(0)
 var<uniform> counter: CounterUniform;
@@ -341,7 +329,8 @@ fn fs_main(in: VertexOutput) -> FragOutput {
     var out: FragOutput;
 
 	let pos = ro + t.x * rd;
-	let normal = cylNormal(pos, a, b, r);
+
+	let normal = normalize((camera.view * vec4<f32>(cylNormal(pos, a, b, r), 0.)).xyz);
     let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;
     let res = in.index;

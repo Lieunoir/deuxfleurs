@@ -239,7 +239,6 @@ impl PBR {
         normals_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
         denoised_ssao_view: &wgpu::TextureView,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -354,7 +353,7 @@ impl PBR {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("PBR Pipeline Layout"),
-            bind_group_layouts: &[camera_light_bind_group_layout, &material_bind_group_layout],
+            bind_group_layouts: &[&material_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -383,7 +382,7 @@ impl PBR {
     where
         'a: 'b,
     {
-        render_pass.set_bind_group(1, &self.material_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.material_bind_group, &[]);
         render_pass.set_pipeline(&self.pbr_pipeline);
         render_pass.draw(0..4, 0..1);
     }
@@ -434,7 +433,7 @@ impl Ground {
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
         _depth_view: &wgpu::TextureView,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         level: f32,
     ) -> Self {
         let level = GroundLevel {
@@ -640,16 +639,13 @@ impl Ground {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
-            bind_group_layouts: &[
-                camera_light_bind_group_layout,
-                &material_ground_bind_group_layout,
-            ],
+            bind_group_layouts: &[camera_bind_group_layout, &material_ground_bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let blur_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
-            bind_group_layouts: &[camera_light_bind_group_layout, &material_bind_group_layout],
+            bind_group_layouts: &[camera_bind_group_layout, &material_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -720,11 +716,7 @@ impl Ground {
         render_pass.draw(0..4, 0..1);
     }
 
-    fn first_pass(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        camera_light_bind_group: &wgpu::BindGroup,
-    ) {
+    fn first_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_bind_group: &wgpu::BindGroup) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Horizontal Blur Shadow Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -745,7 +737,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
-        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_bind_group, &[]);
         render_pass.set_bind_group(1, &self.h_blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
         drop(render_pass);
@@ -769,16 +761,12 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
-        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_bind_group, &[]);
         render_pass.set_bind_group(1, &self.low_blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
     }
 
-    fn second_pass(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        camera_light_bind_group: &wgpu::BindGroup,
-    ) {
+    fn second_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_bind_group: &wgpu::BindGroup) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Horizontal Blur Shadow Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -799,7 +787,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
-        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_bind_group, &[]);
         render_pass.set_bind_group(1, &self.low_h_blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
         drop(render_pass);
@@ -823,18 +811,14 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
-        render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+        render_pass.set_bind_group(0, camera_bind_group, &[]);
         render_pass.set_bind_group(1, &self.blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
     }
 
-    pub fn blur(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        camera_light_bind_group: &wgpu::BindGroup,
-    ) {
-        self.first_pass(encoder, camera_light_bind_group);
-        self.second_pass(encoder, camera_light_bind_group);
+    pub fn blur(&self, encoder: &mut wgpu::CommandEncoder, camera_bind_group: &wgpu::BindGroup) {
+        self.first_pass(encoder, camera_bind_group);
+        self.second_pass(encoder, camera_bind_group);
     }
 }
 
@@ -938,6 +922,7 @@ impl SSAO {
         filtered_depth_mip_views: &[wgpu::TextureView;
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
     ) {
+        self.cleared = false;
         self.depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.depth_bind_group_layout,
             entries: &[
@@ -1036,7 +1021,7 @@ impl SSAO {
         filtered_depth_view: &wgpu::TextureView,
         filtered_depth_mip_views: &[wgpu::TextureView;
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let frame_index = 0;
         let frame_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1261,7 +1246,7 @@ impl SSAO {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SSAO Pipeline Layout"),
-            bind_group_layouts: &[camera_light_bind_group_layout, &depth_bind_group_layout],
+            bind_group_layouts: &[&depth_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -1317,7 +1302,7 @@ impl SSAO {
         let denoiser_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("SSAO denoiser Pipeline Layout"),
-                bind_group_layouts: &[&camera_light_bind_group_layout, &denoiser_bind_group_layout],
+                bind_group_layouts: &[&camera_bind_group_layout, &denoiser_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -1461,7 +1446,7 @@ impl SSAO {
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         profiler: &GpuProfiler,
-        camera_light_bind_group: &wgpu::BindGroup,
+        camera_bind_group: &wgpu::BindGroup,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
         denoised_ssao_view: &wgpu::TextureView,
@@ -1473,30 +1458,31 @@ impl SSAO {
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
         size: &wgpu::Extent3d,
     ) {
+        let mut scope = profiler.scope("Z copy", encoder);
+        let mut render_pass = scope.scoped_render_pass(
+            "Z Copy depth",
+            wgpu::RenderPassDescriptor {
+                label: Some("Copy Depth Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &filtered_depth_mip_views[0],
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            },
+        );
+        render_pass.set_bind_group(0, &self.depth_copy_bind_group, &[]);
+        render_pass.set_pipeline(&self.depth_copy_pipeline);
+        render_pass.draw(0..4, 0..1);
+        drop(render_pass);
+        drop(scope);
         if ssao_enabled {
             let mut scope = profiler.scope("SSAO", encoder);
-
-            let mut render_pass = scope.scoped_render_pass(
-                "SSAO Copy depth",
-                wgpu::RenderPassDescriptor {
-                    label: Some("Copy Depth Pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &filtered_depth_mip_views[0],
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                },
-            );
-            render_pass.set_bind_group(0, &self.depth_copy_bind_group, &[]);
-            render_pass.set_pipeline(&self.depth_copy_pipeline);
-            render_pass.draw(0..4, 0..1);
-            drop(render_pass);
             for (i, bind_group) in self.depth_filter_bind_groups.iter().enumerate() {
                 let mut render_pass = scope.scoped_render_pass(
                     "SSAO Mip filter depth",
@@ -1574,8 +1560,7 @@ impl SSAO {
                     timestamp_writes: None,
                 },
             );
-            render_pass.set_bind_group(0, camera_light_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.depth_bind_group, &[]);
             render_pass.set_pipeline(&self.ssao_pipeline);
             render_pass.draw(0..4, 0..1);
             drop(render_pass);
@@ -1596,12 +1581,12 @@ impl SSAO {
                     timestamp_writes: None,
                 },
             );
-            render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+            render_pass.set_bind_group(0, camera_bind_group, &[]);
             render_pass.set_bind_group(1, &self.denoiser_bind_group_1, &[]);
             render_pass.set_pipeline(&self.denoiser_pipeline);
             render_pass.draw(0..4, 0..1);
             drop(render_pass);
-            let proj = camera.build_view_projection_matrix();
+            let proj = camera.build_view_view_projection_matrix().1;
             queue.write_buffer(
                 &self.denoiser_buffer,
                 0,

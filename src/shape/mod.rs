@@ -24,7 +24,7 @@ pub struct GraphicalContext<'a> {
     pub(crate) settings: &'a Settings,
     pub(crate) device: &'a wgpu::Device,
     pub(crate) queue: &'a wgpu::Queue,
-    pub(crate) camera_light_bind_group_layout: &'a wgpu::BindGroupLayout,
+    pub(crate) camera_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) counter_bind_group_layout: &'a wgpu::BindGroupLayout,
     pub(crate) refresh_screen: &'a mut bool,
 }
@@ -141,7 +141,7 @@ where
     pub(crate) fn upgrade<Fixed, DataB, Pipeline>(
         self,
         device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Shape<
         Geometry,
@@ -163,7 +163,7 @@ where
             &self.transform,
             &self.settings,
             data,
-            camera_light_bind_group_layout,
+            camera_bind_group_layout,
             counter_bind_group_layout,
         );
 
@@ -175,7 +175,7 @@ where
                     name,
                     field.init(
                         device,
-                        camera_light_bind_group_layout,
+                        camera_bind_group_layout,
                         &renderer.transform_uniform.bind_group_layout,
                     ),
                 )
@@ -215,7 +215,7 @@ where
         args: Geometry::Args,
         char_l: Option<f32>,
         device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let geometry = Geometry::new(args);
@@ -224,7 +224,7 @@ where
             geometry,
             char_l,
             device,
-            camera_light_bind_group_layout,
+            camera_bind_group_layout,
             counter_bind_group_layout,
         )
     }
@@ -234,7 +234,7 @@ where
         geometry: Geometry,
         char_l: Option<f32>,
         device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let transform = TransformSettings::default();
@@ -246,7 +246,7 @@ where
             &transform,
             &settings,
             None,
-            camera_light_bind_group_layout,
+            camera_bind_group_layout,
             counter_bind_group_layout,
         );
         let sbv = SBV::new(geometry.get_positions());
@@ -296,7 +296,7 @@ where
         ui: &mut egui::Ui,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
@@ -321,7 +321,7 @@ where
                     device,
                     data,
                     &self.settings,
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                 );
             }
             *refresh_screen = true;
@@ -348,7 +348,7 @@ where
                                 device,
                                 data,
                                 &self.settings,
-                                camera_light_bind_group_layout,
+                                camera_bind_group_layout,
                             );
                             *refresh_screen = true;
                         }
@@ -379,7 +379,7 @@ where
                         ui,
                         device,
                         queue,
-                        camera_light_bind_group_layout,
+                        camera_bind_group_layout,
                         color_format,
                         refresh_screen,
                     );
@@ -624,7 +624,7 @@ where
                 new_geometry,
                 None,
                 context.device,
-                context.camera_light_bind_group_layout,
+                context.camera_bind_group_layout,
                 context.counter_bind_group_layout,
             );
             false
@@ -671,7 +671,7 @@ where
                 context.device,
                 data,
                 &self.settings,
-                context.camera_light_bind_group_layout,
+                context.camera_bind_group_layout,
             );
             *context.refresh_screen |= self.show;
         }
@@ -696,7 +696,7 @@ where
                 context.device,
                 Some(data),
                 &self.settings,
-                context.camera_light_bind_group_layout,
+                context.camera_bind_group_layout,
             );
             *context.refresh_screen |= self.show;
         }
@@ -716,7 +716,7 @@ where
                 context.device,
                 data,
                 &self.settings,
-                context.camera_light_bind_group_layout,
+                context.camera_bind_group_layout,
             );
         }
     }

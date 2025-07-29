@@ -139,7 +139,7 @@ impl Picker {
         encoder: &mut wgpu::CommandEncoder,
         texture_view: &wgpu::TextureView,
         depth_texture_view: &wgpu::TextureView,
-        camera_light_bind_group: &wgpu::BindGroup,
+        camera_bind_group: &wgpu::BindGroup,
         surfaces: &IndexMap<String, DisplaySurface>,
         clouds: &IndexMap<String, DisplayPointCloud>,
         curves: &IndexMap<String, DisplaySegment>,
@@ -172,7 +172,7 @@ impl Picker {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                render_pass.set_bind_group(0, camera_light_bind_group, &[]);
+                render_pass.set_bind_group(0, camera_bind_group, &[]);
 
                 if self.counters_dirty {
                     let mut counter = 1;
@@ -201,7 +201,7 @@ impl Picker {
                                     binding: 0,
                                     resource: counter_buffer.as_entire_binding(),
                                 }],
-                                label: Some("camera_light_bind_group"),
+                                label: Some("counter_bind_group"),
                             });
                             bind_group
                         })
@@ -228,7 +228,7 @@ impl Picker {
                                 binding: 0,
                                 resource: counter_buffer.as_entire_binding(),
                             }],
-                            label: Some("camera_light_bind_group"),
+                            label: Some("counter_bind_group"),
                         });
                         self.bind_groups.push(bind_group);
                     }
@@ -254,7 +254,7 @@ impl Picker {
                                 binding: 0,
                                 resource: counter_buffer.as_entire_binding(),
                             }],
-                            label: Some("camera_light_bind_group"),
+                            label: Some("counter_bind_group"),
                         });
                         self.bind_groups.push(bind_group);
                     }

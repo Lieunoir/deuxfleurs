@@ -46,7 +46,7 @@ pub trait NewAttachedGeometry {
     fn init(
         self,
         device: &wgpu::Device,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self::UpgradedAttachedGeometry;
 
@@ -87,7 +87,7 @@ impl NewAttachedGeometry for () {
     fn init(
         self,
         _device: &wgpu::Device,
-        _camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        _camera_bind_group_layout: &wgpu::BindGroupLayout,
         _transform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self::UpgradedAttachedGeometry {
         EmptyAttached(())
@@ -178,7 +178,7 @@ pub trait AttachedGeometry<Ctxt: Context> {
         _ui: &mut egui::Ui,
         _device: &wgpu::Device,
         _queue: &wgpu::Queue,
-        _camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        _camera_bind_group_layout: &wgpu::BindGroupLayout,
         _color_format: wgpu::TextureFormat,
         _refresh_screen: &mut bool,
     ) {

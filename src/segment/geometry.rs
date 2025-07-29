@@ -561,19 +561,19 @@ impl RenderPipeline for SegmentPipeline {
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let bind_group_layouts = if let Some(uniform) = data_uniform {
             vec![
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 &transform_uniform.bind_group_layout,
                 &settings_uniform.bind_group_layout,
                 &uniform.bind_group_layout,
             ]
         } else {
             vec![
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 &transform_uniform.bind_group_layout,
                 &settings_uniform.bind_group_layout,
             ]
@@ -588,7 +588,7 @@ impl RenderPipeline for SegmentPipeline {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Sphere Cloud Picker Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_light_bind_group_layout,
+                    camera_bind_group_layout,
                     counter_bind_group_layout,
                     &transform_uniform.bind_group_layout,
                     &settings_uniform.bind_group_layout,
@@ -685,18 +685,18 @@ impl RenderPipeline for SegmentPipeline {
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) {
         let bind_group_layouts = if let Some(uniform) = data_uniform {
             vec![
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 &transform_uniform.bind_group_layout,
                 &settings_uniform.bind_group_layout,
                 &uniform.bind_group_layout,
             ]
         } else {
             vec![
-                camera_light_bind_group_layout,
+                camera_bind_group_layout,
                 &transform_uniform.bind_group_layout,
                 &settings_uniform.bind_group_layout,
             ]

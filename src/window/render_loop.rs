@@ -1,6 +1,4 @@
-use super::{
-    InnerGraphicalState, JitterUniform, LightUniform, RunningState, StateWrapper, UserEvent,
-};
+use super::{InnerGraphicalState, JitterUniform, RunningState, StateWrapper, UserEvent};
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::sbv::SBV;
 #[cfg(feature = "saves")]
@@ -180,21 +178,6 @@ impl InnerGraphicalState {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        // Lighting
-        // Create light uniforms and setup buffer for them
-        let light_uniform = LightUniform {
-            position: [2.0, 2.0, 2.0],
-            _padding: 0,
-            color: [1.0, 1.0, 1.0],
-            _padding2: 0,
-        };
-
-        let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Light Buffer"),
-            contents: bytemuck::cast_slice(&[light_uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
         let jitter_uniform = JitterUniform {
             x: 0.,
             y: 0.,
@@ -208,7 +191,7 @@ impl InnerGraphicalState {
         });
 
         // Create a bind group for camera buffer
-        let camera_light_bind_group_layout =
+        let camera_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
@@ -225,16 +208,6 @@ impl InnerGraphicalState {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
@@ -244,11 +217,11 @@ impl InnerGraphicalState {
                         count: None,
                     },
                 ],
-                label: Some("camera_light_bind_group_layout"),
+                label: Some("camera_bind_group_layout"),
             });
 
-        let camera_light_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_light_bind_group_layout,
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -256,14 +229,10 @@ impl InnerGraphicalState {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: light_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
                     resource: jitter_buffer.as_entire_binding(),
                 },
             ],
-            label: Some("camera_light_bind_group"),
+            label: Some("camera_bind_group"),
         });
 
         let screenshoter = screenshot::Screenshoter::new();
@@ -277,7 +246,7 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
-                        &camera_light_bind_group_layout,
+                        &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
                 )
@@ -291,7 +260,7 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
-                        &camera_light_bind_group_layout,
+                        &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
                 )
@@ -304,7 +273,7 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
-                        &camera_light_bind_group_layout,
+                        &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
                 )
@@ -332,15 +301,14 @@ impl InnerGraphicalState {
             surface_format,
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
-            texture_buffer_pool.get_depth_view(),
+            texture_buffer_pool.get_filtered_depth_view(),
             texture_buffer_pool.get_denoised_ssao_view(),
-            &camera_light_bind_group_layout,
         );
         let ground = post_process::Ground::new(
             &device,
             surface_format,
             texture_buffer_pool.get_depth_view(),
-            &camera_light_bind_group_layout,
+            &camera_bind_group_layout,
             0.,
         );
         let ssao = post_process::SSAO::new(
@@ -354,7 +322,7 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_old_depth_view(),
             texture_buffer_pool.get_filtered_depth_view(),
             texture_buffer_pool.get_filtered_depth_mip_views(),
-            &camera_light_bind_group_layout,
+            &camera_bind_group_layout,
         );
         let should_resize = settings.fit_camera_on_start;
         InnerGraphicalState {
@@ -376,11 +344,9 @@ impl InnerGraphicalState {
             camera_controller,
             camera_buffer,
             camera_uniform,
-            light_uniform,
-            light_buffer,
             jitter_buffer,
-            camera_light_bind_group_layout,
-            camera_light_bind_group,
+            camera_bind_group_layout,
+            camera_bind_group,
             picker,
             //time: std::time::Instant::now(),
             dirty: true,
@@ -520,7 +486,7 @@ impl InnerGraphicalState {
                 &self.device,
                 self.texture_buffer_pool.get_albedo_view(),
                 self.texture_buffer_pool.get_normals_view(),
-                self.texture_buffer_pool.get_depth_view(),
+                self.texture_buffer_pool.get_filtered_depth_view(),
                 self.texture_buffer_pool.get_denoised_ssao_view(),
             );
             self.ssao.resize(
@@ -555,15 +521,6 @@ impl InnerGraphicalState {
             &self.camera_buffer,
             0,
             bytemuck::cast_slice(&[self.camera_uniform]),
-        );
-
-        // Update the light
-        // TODO other optional light behaviors
-        self.light_uniform.position = self.camera.get_position();
-        self.queue.write_buffer(
-            &self.light_buffer,
-            0,
-            bytemuck::cast_slice(&[self.light_uniform]),
         );
 
         let mut changed = self.dirty;
@@ -635,7 +592,7 @@ impl InnerGraphicalState {
                 &mut encoder,
                 &self.texture_buffer_pool.get_picker_view(),
                 &self.texture_buffer_pool.get_depth_view(),
-                &self.camera_light_bind_group,
+                &self.camera_bind_group,
                 &self.surfaces,
                 &self.clouds,
                 &self.segments,
@@ -767,7 +724,7 @@ impl InnerGraphicalState {
                 timestamp_writes: None,
             });
 
-            material_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+            material_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
             //order matters!
             //cloud discard so no depth test
@@ -793,7 +750,7 @@ impl InnerGraphicalState {
                 &self.queue,
                 &mut encoder,
                 &self.profiler,
-                &self.camera_light_bind_group,
+                &self.camera_bind_group,
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
                 self.texture_buffer_pool.get_denoised_ssao_view(),
@@ -820,7 +777,6 @@ impl InnerGraphicalState {
                 timestamp_writes: None,
             });
 
-            pbr_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
             self.pbr_renderer.render(&mut pbr_render_pass);
             drop(pbr_render_pass);
             drop(scope);
@@ -848,13 +804,13 @@ impl InnerGraphicalState {
                         timestamp_writes: None,
                     },
                 );
-                shadow_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                shadow_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
                 for surface in self.surfaces.values() {
                     surface.render_shadow(&mut shadow_render_pass);
                 }
 
                 drop(shadow_render_pass);
-                self.ground.blur(&mut scope, &self.camera_light_bind_group);
+                self.ground.blur(&mut scope, &self.camera_bind_group);
                 let mut ground_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Shadow Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -877,7 +833,7 @@ impl InnerGraphicalState {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                ground_render_pass.set_bind_group(0, &self.camera_light_bind_group, &[]);
+                ground_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
                 self.ground.render(&mut ground_render_pass);
                 drop(ground_render_pass);
             }
@@ -1117,7 +1073,7 @@ impl InnerGraphicalState {
                     name,
                     field.upgrade(
                         &self.device,
-                        &self.camera_light_bind_group_layout,
+                        &self.camera_bind_group_layout,
                         &self.picker.bind_group_layout,
                         self.config.format,
                     ),
@@ -1132,7 +1088,7 @@ impl InnerGraphicalState {
                     name,
                     field.upgrade(
                         &self.device,
-                        &self.camera_light_bind_group_layout,
+                        &self.camera_bind_group_layout,
                         &self.picker.bind_group_layout,
                         self.config.format,
                     ),
@@ -1147,7 +1103,7 @@ impl InnerGraphicalState {
                     name,
                     field.upgrade(
                         &self.device,
-                        &self.camera_light_bind_group_layout,
+                        &self.camera_bind_group_layout,
                         &self.picker.bind_group_layout,
                         self.config.format,
                     ),
@@ -1438,7 +1394,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             state.0.camera.build_proj(),
                             &state.0.device,
                             &state.0.queue,
-                            &state.0.camera_light_bind_group_layout,
+                            &state.0.camera_bind_group_layout,
                             state.0.config.format,
                             &mut state.0.dirty,
                         );

@@ -231,7 +231,7 @@ impl UI {
         proj: glam::Mat4,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
@@ -282,7 +282,7 @@ impl UI {
                                     ui,
                                     device,
                                     queue,
-                                    camera_light_bind_group_layout,
+                                    camera_bind_group_layout,
                                     color_format,
                                     refresh_screen,
                                 );
@@ -314,7 +314,7 @@ impl UI {
                                     ui,
                                     device,
                                     queue,
-                                    camera_light_bind_group_layout,
+                                    camera_bind_group_layout,
                                     color_format,
                                     refresh_screen,
                                 );
@@ -350,7 +350,7 @@ impl UI {
                                     ui,
                                     device,
                                     queue,
-                                    camera_light_bind_group_layout,
+                                    camera_bind_group_layout,
                                     color_format,
                                     refresh_screen,
                                 );

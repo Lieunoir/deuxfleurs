@@ -25,7 +25,7 @@ impl<
         transform: &TransformSettings,
         settings: &Settings,
         data: Option<&Data>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let fixed = Fixed::initialize(device, geometry);
@@ -42,7 +42,7 @@ impl<
             &transform_uniform,
             &settings_uniform,
             data_uniform.as_ref(),
-            camera_light_bind_group_layout,
+            camera_bind_group_layout,
             counter_bind_group_layout,
         );
         //TODO can be factored
@@ -78,7 +78,7 @@ impl<
         device: &wgpu::Device,
         data: Option<&Data>,
         settings: &Settings,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) {
         self.pipeline.rebuild(
             device,
@@ -87,7 +87,7 @@ impl<
             &self.transform_uniform,
             &self.settings_uniform,
             self.data_uniform.as_ref(),
-            camera_light_bind_group_layout,
+            camera_bind_group_layout,
         );
     }
 }
@@ -120,7 +120,7 @@ pub trait RenderPipeline {
         tansform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self;
 
@@ -132,7 +132,7 @@ pub trait RenderPipeline {
         transform_uniform: &DataUniform,
         settings_uniform: &DataUniform,
         data_uniform: Option<&DataUniform>,
-        camera_light_bind_group_layout: &wgpu::BindGroupLayout,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
     );
 }
 

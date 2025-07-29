@@ -58,9 +58,10 @@ impl TextureBufferPool {
         texture_size: wgpu::Extent3d,
         color_format: wgpu::TextureFormat,
     ) -> Self {
+        let ssao_downscale_factor = 1;
         let half_size = wgpu::Extent3d {
-            width: (texture_size.width / 2).max(1),
-            height: (texture_size.height / 2).max(1),
+            width: (texture_size.width / ssao_downscale_factor).max(1),
+            height: (texture_size.height / ssao_downscale_factor).max(1),
             depth_or_array_layers: 1,
         };
         let depth = device.create_texture(&wgpu::TextureDescriptor {

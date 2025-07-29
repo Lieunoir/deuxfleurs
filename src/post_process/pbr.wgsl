@@ -1,30 +1,14 @@
-struct CameraUniform {
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view_inv: mat4x4<f32>,
-}
-
-struct Light {
-    position: vec3<f32>,
-    color: vec3<f32>,
-}
-
 @group(0) @binding(0)
-var<uniform> camera: CameraUniform;
-@group(0) @binding(1)
-var<uniform> light: Light;
-
-@group(1) @binding(0)
 var t_a: texture_2d<f32>;
-@group(1) @binding(1)
+@group(0) @binding(1)
 var t_n: texture_2d<f32>;
-@group(1) @binding(2)
+@group(0) @binding(2)
 var t_d: texture_2d<f32>;
-@group(1) @binding(3)
+@group(0) @binding(3)
 var s: sampler;
-@group(1) @binding(4)
+@group(0) @binding(4)
 var t_v: texture_2d<f32>;
-@group(1) @binding(5)
+@group(0) @binding(5)
 var s_v: sampler;
 
 struct VertexOutput {
@@ -77,13 +61,25 @@ fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32> {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-fn world_from_screen_coord(coord: vec2<f32>, depth_sample: f32) -> vec3<f32> {
-    // reconstruct world-space position from the screen coordinate.
-    let posClip = vec4(coord.x * 2.0 - 1.0, 1.0 - 2.0 * coord.y, depth_sample, 1.0);
-    let posWorldW = camera.view_inv * posClip;
-    let posWorld = posWorldW.xyz / posWorldW.www;
-    return posWorld;
+const tan_pi_0125 = sqrt(3. - 2. * sqrt(2.));
+//const tan_pi_0125 = tan(PI / 8.);
+
+fn view_from_screen_coord(coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
+   // reconstruct view-space position from the screen coordinate and view space depth.
+    return vec3<f32>(
+        - (vec2<f32>(2. * 0.90225565, -2.) * coord + vec2<f32>(-1. * 0.90225565, 1.)) * linear_depth_sample * tan_pi_0125, // * znear * zfar / (znear - zfar)
+        linear_depth_sample
+    );
 }
+
+/*
+fn normalized_view_from_screen_coord(coord: vec2<f32>) -> vec3<f32> {
+    // reconstruct view-space position from the screen coordinate and view space depth.
+    return normalize(vec3<f32>(
+        (vec2<f32>(2. * 0.90225565, -2.) * coord + vec2<f32>(-1. * 0.90225565, 1.)) * tan_pi_0125,
+        -1.
+    ));
+}*/
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
@@ -92,48 +88,41 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
     if albedo.w < 0.01 {
         discard;
     }
-    let buffer_size = textureDimensions(t_d);
-    let depth = textureSample(t_d, s, fcoords.xy / vec2<f32>(buffer_size)).x;
-    let position = world_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size), depth);
-    let normal = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
+    let buffer_size = textureDimensions(t_a);
+    let depth = textureSampleLevel(t_d, s, fcoords.xy / vec2<f32>(buffer_size), 0.).x;
+    let position = view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size), depth);
+    //let position = normalized_view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size));
+    var normal = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
     let visibility = textureSample(t_v, s_v, fcoords.xy / vec2<f32>(buffer_size)).x;
-    let view_dir = normalize(camera.view_pos.xyz - position);
+    let view_dir = - position;
+    //normal = select(-normal, normal, dot(normal, view_dir) > 0.);
 
     let F0 = vec3<f32>(0.04, 0.04, 0.04);
     let kd = 1.;
 
-    let up = normalize(vec3<f32>(
-        camera.view_proj[0].y,
-        camera.view_proj[1].y,
-        camera.view_proj[2].y
-    ));
-    let right = normalize(vec3<f32>(
-        camera.view_proj[0].x,
-        camera.view_proj[1].x,
-        camera.view_proj[2].x
-    ));
-    let forward = normalize(vec3<f32>(
-        camera.view_proj[0].z,
-        camera.view_proj[1].z,
-        camera.view_proj[2].z
-    ));
+    let up = vec3<f32>(0., 1., 0.);
+    let right = vec3<f32>(-1., 0., 0.);
+    let forward = vec3<f32>(0., 0., -1.);
+    //let up = normalize(position + vec3<f32>(0., 1., 0.));
+    //let right = normalize(position + vec3<f32>(-1., 0., 0.));
+    //let forward = normalize(position + vec3<f32>(0., 0., -1.));
+
+    let light_color = vec3<f32>(1.);
     let light_dir = normalize(right - up - forward);
-	//let light_dir = normalize(light.position - position);
     let half_dir = normalize(view_dir + light_dir);
     let D = DistributionGGX(normal, half_dir, albedo.w);
     let F = fresnelSchlick(dot(half_dir, normal), F0);
     let G = GeometrySmith(normal, view_dir, light_dir, albedo.w);
     let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
-    var result = 0.55 * (kd * albedo.xyz + PI * f_ct) * light.color * max(dot(normal, light_dir), 0.0);
+    var result = 0.55 * (kd * albedo.xyz + PI * f_ct) * light_color * max(dot(normal, light_dir), 0.0);
 
     let light_dir_2 = normalize(-right + up - forward);
-	//let light_dir_2 = normalize(vec3<f32>(1., 1., -1.));
     let half_dir_2 = normalize(view_dir + light_dir_2);
     let D2 = DistributionGGX(normal, half_dir_2, albedo.w);
     let F2 = fresnelSchlick(dot(half_dir_2, normal), F0);
     let G2 = GeometrySmith(normal, view_dir, light_dir_2, albedo.w);
     let f_ct_2 = D2 * F2 * G2 / (4. * dot(view_dir, normal) * dot(light_dir_2, normal));
-    result += 1.6 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_2), 0.0);
+    result += 1.6 * (kd * albedo.xyz + PI * f_ct_2) * light_color * max(dot(normal, light_dir_2), 0.0);
 
     let light_dir_3 = normalize(right + up + forward);
     let half_dir_3 = normalize(view_dir + light_dir_3);
@@ -141,7 +130,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
     let F3 = fresnelSchlick(dot(half_dir_3, normal), F0);
     let G3 = GeometrySmith(normal, view_dir, light_dir_3, albedo.w);
     let f_ct_3 = D3 * F3 * G3 / (4. * dot(view_dir, normal) * dot(light_dir_3, normal));
-    result += 1.4 * (kd * albedo.xyz + PI * f_ct_2) * light.color * max(dot(normal, light_dir_3), 0.0);
+    result += 1.4 * (kd * albedo.xyz + PI * f_ct_3) * light_color * max(dot(normal, light_dir_3), 0.0);
 
     result *= 1.2 * visibility;
 
@@ -160,5 +149,6 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
     let a = v * (v + 0.0245786) - 0.000090537;
     let b = v * (0.983729 * v + 0.4329510) + 0.238081;
     return vec4<f32>(clamp(m2 * (a / b), vec3(0.0), vec3(1.0)), 1.0);
-    //return vec4<f32>(result, 1.0);
+    //return vec4<f32>(vec3<f32>(f_ct_3), 1.0);
+    //return vec4<f32>(normal, 1.0);
 }

@@ -1,18 +1,12 @@
 struct CameraUniform {
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
+    view: mat4x4<f32>,
     view_inv: mat4x4<f32>,
-}
-
-struct Light {
-    position: vec3<f32>,
-    color: vec3<f32>,
 }
 
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
-@group(0) @binding(1)
-var<uniform> light: Light;
 
 struct OldCamera {
     view_proj: mat4x4<f32>,
@@ -45,7 +39,7 @@ fn vs_main(
 fn unpack_edges(packedValIn: f32) -> vec4<f32> {
     let packedVal = u32(packedValIn * 255.5);
     var edgesLRTB: vec4<f32>;
-    edgesLRTB.x = f32((packedVal >> 6) & 0x03) / 3.0;          // there's really no need for mask (as it's an 8 bit input) but I'll leave it in so it doesn't cause any trouble in the future
+    edgesLRTB.x = f32((packedVal >> 6) & 0x03) / 3.0;
     edgesLRTB.y = f32((packedVal >> 4) & 0x03) / 3.0;
     edgesLRTB.z = f32((packedVal >> 2) & 0x03) / 3.0;
     edgesLRTB.w = f32((packedVal >> 0) & 0x03) / 3.0;
@@ -69,20 +63,20 @@ fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
     let recovered_clip = recovered_clip_w.xyz / recovered_clip_w.www;
     let recovered_uv = vec2<f32>(0.5 * recovered_clip.x + 0.5, - 0.5 * recovered_clip.y + 0.5);
     let old_ao = textureSample(history, s, recovered_uv).x;
-    let old_depth_sample = textureSample(old_depth, s, recovered_uv).x;
-    let weight = select(0., 1., (old_depth_sample - recovered_clip.z) / old_depth_sample < 0.00001);
+    let old_depth_sample = exp(textureSample(old_depth, s, recovered_uv).x);
+    let weight = select(0., 1., (old_depth_sample - recovered_clip.z) / old_depth_sample < 0.001);
     return vec2<f32>(old_ao, weight);
 }
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
-    let buffer_size = textureDimensions(source_ao);
+    let buffer_size = textureDimensions(depth);
     let gather_offset = - vec2<f32>(0.25) / vec2<f32>(buffer_size);
-    let gatherCenter = 0.5 * fcoords.xy / vec2<f32>(buffer_size) + gather_offset;
+    let gatherCenter = fcoords.xy / vec2<f32>(buffer_size) + gather_offset;
 
-    var previous_ao = get_previous_value(0.5 * fcoords.xy / vec2<f32>(buffer_size));
+    var previous_ao = get_previous_value(fcoords.xy / vec2<f32>(buffer_size));
 
-    let blurAmount = 1.2f / 10.;
+    let blurAmount = 1.2f;
     let diagWeight = 0.65 * 0.5;
 
     // gather edge and visibility quads, used later
@@ -167,6 +161,38 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     previous_ao.x = min(max_ssao, previous_ao.x);
     previous_ao.x = max(min_ssao, previous_ao.x);
     weight *= previous_ao.y;
+
+
+    /*
+    let depth_value = exp(textureSampleLevel(depth, s, fcoords.xy / vec2<f32>(buffer_size), 0.).x);
+    let depth_c = exp(textureSampleLevel(depth, s, fcoords.xy / vec2<f32>(buffer_size), 1.).x);
+    let depth_l = exp(textureSampleLevel(depth, s, fcoords.xy / vec2<f32>(buffer_size), 1., vec2<i32>(-1, 0)).x);
+    let depth_t = exp(textureSampleLevel(depth, s, fcoords.xy / vec2<f32>(buffer_size), 1., vec2<i32>(0, 1)).x);
+    let depth_r = exp(textureSampleLevel(depth, s, fcoords.xy / vec2<f32>(buffer_size), 1., vec2<i32>(1, 0)).x);
+    let depth_b = exp(textureSampleLevel(depth, s, fcoords.xy / vec2<f32>(buffer_size), 1., vec2<i32>(0, -1)).x);
+
+    let ao_c = exp(textureSample(source_ao, s, fcoords.xy / vec2<f32>(buffer_size)).x);
+    let ao_l = exp(textureSample(source_ao, s, fcoords.xy / vec2<f32>(buffer_size), vec2<i32>(-1, 0)).x);
+    let ao_t = exp(textureSample(source_ao, s, fcoords.xy / vec2<f32>(buffer_size), vec2<i32>(0, 1)).x);
+    let ao_r = exp(textureSample(source_ao, s, fcoords.xy / vec2<f32>(buffer_size), vec2<i32>(1, 0)).x);
+    let ao_b = exp(textureSample(source_ao, s, fcoords.xy / vec2<f32>(buffer_size), vec2<i32>(0, -1)).x);
+    let depth_d_c = abs(depth_c - depth_value);
+    let depth_d_l = abs(depth_l - depth_value);
+    let depth_d_t = abs(depth_t - depth_value);
+    let depth_d_r = abs(depth_r - depth_value);
+    let depth_d_b = abs(depth_b - depth_value);
+    var closest_depth_d = depth_d_c;
+    var closest_ao = ao_c;
+    closest_ao = select(closest_ao, ao_l, depth_d_l < closest_depth_d);
+    closest_depth_d = select(closest_depth_d, depth_d_l, depth_d_l < closest_depth_d);
+    closest_ao = select(closest_ao, ao_t, depth_d_t < closest_depth_d);
+    closest_depth_d = select(closest_depth_d, depth_d_t, depth_d_t < closest_depth_d);
+    closest_ao = select(closest_ao, ao_r, depth_d_r < closest_depth_d);
+    closest_depth_d = select(closest_depth_d, depth_d_r, depth_d_r < closest_depth_d);
+    closest_ao = select(closest_ao, ao_b, depth_d_b < closest_depth_d);
+    closest_depth_d = select(closest_depth_d, depth_d_b, depth_d_b < closest_depth_d);
+    return previous_ao.y * previous_ao.x + (1. - previous_ao.y) * closest_ao;
+    */
 
     return weight * previous_ao.x + (1. - weight) * blurred_ao;
 }
