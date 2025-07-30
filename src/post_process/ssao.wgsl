@@ -162,10 +162,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let sin_n = sign_n * fast_sqrt(1. - cos_n * cos_n);
         let cos_n_plus_pi_2 = -sin_n;
         let cos_n_minus_pi_2 = sin_n;
-        //var cos_h1 = cos_n_plus_pi_2;
-        //var cos_h2 = cos_n_minus_pi_2;
-        var cos_h1: f32;
-        var cos_h2: f32;
+        var cos_h1 = cos_n_plus_pi_2;
+        var cos_h2 = cos_n_minus_pi_2;
 
         for (var j: u32 = 0; j < samples_per_slice; j += 1) {
             let step_noise = fract(noise.y + f32(i + j * samples_per_slice) * 0.6180339887498948482);
@@ -198,13 +196,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
             let l_s_2 = saturate(d_s_2_norm * world_radius_mul - 5.);
             let dot_s_1 = mix(dot(d_s_1, view_dir), cos_n_plus_pi_2, l_s_1);
             let dot_s_2 = mix(dot(d_s_2, view_dir), cos_n_minus_pi_2, l_s_2);
-            if j == 0 {
-                cos_h1 = dot_s_1;
-                cos_h2 = dot_s_2;
-            } else {
-                cos_h1 = max(cos_h1, dot_s_1);
-                cos_h2 = max(cos_h2, dot_s_2);
-            }
+            cos_h1 = max(cos_h1, dot_s_1);
+            cos_h2 = max(cos_h2, dot_s_2);
         }
 
         let h1p = fast_acos(cos_h1);
