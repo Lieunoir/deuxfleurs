@@ -35,7 +35,7 @@ const tan_pi_0125 = 0.41421356237;
 fn view_from_screen_coord(coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
     return vec3<f32>(
-        - (vec2<f32>(2. * 0.90225565, -2.) * coord + vec2<f32>(-1. * 0.90225565, 1.)) * linear_depth_sample * tan_pi_0125,
+        (vec2<f32>(- 2. * 0.90225565 * tan_pi_0125, 2. * tan_pi_0125) * coord + vec2<f32>(1. * 0.90225565 * tan_pi_0125, - 1. * tan_pi_0125)) * linear_depth_sample,
         linear_depth_sample
     );
 }
@@ -89,10 +89,10 @@ struct FragmentOutput {
     @location(0) ssao: f32,
     @location(1) edges: f32,
 }
-const kernel_size: u32 = 2u;
-const samples_per_slice = 2u;
-const phi_mul = PI / f32(kernel_size);
-const vis_scale = 0.25 / f32(kernel_size);
+const kernel_size = 2.;
+const samples_per_slice = 2.;
+const phi_mul = PI / kernel_size;
+const vis_scale = 0.25 / kernel_size;
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
@@ -139,14 +139,14 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let world_distance = linearize_depth(1.);
     let world_radius_mul = 10. / world_distance;
     //let world_radius = 0.02 * world_distance;
-    let wanted_screen_radius = 2. * world_distance * pix_dif / depth;
-    let radius = vec2<f32>(
-        64. * min(wanted_screen_radius.x, pix_dif.x),
-        64. * min(wanted_screen_radius.y, pix_dif.y),
+    let wanted_screen_radius = 2. * world_distance / depth;
+    let radius = 64. * pix_dif * vec2<f32>(
+        min(wanted_screen_radius.x, 1.),
+        min(wanted_screen_radius.y, 1.),
     );
     //let radius = min(min(0.005 / camera_distance, 30. * pix_dif.x), 30. * pix_dif.y);
-    for (var i: u32 = 0; i < kernel_size; i += 1) {
-        let phi = (noise.x + f32(i)) * phi_mul;
+    for (var i = 0.; i < kernel_size; i += 1.) {
+        let phi = (noise.x + i) * phi_mul;
         let cos_phi = cos(phi);
         let sin_phi = sin(phi);
         //let sin_phi = fast_sqrt(1. - cos_phi * cos_phi);
@@ -157,17 +157,19 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let projected_normal_len = length(projected_normal);
         let ortho_direction_v = cross(projected_normal, slice_plane_normal);
         let sign_n = sign(dot(view_dir, ortho_direction_v));
-        let cos_n = dot(view_dir, projected_normal) / projected_normal_len;
+        let cos_n_scaled = dot(view_dir, projected_normal);
+        let cos_n = cos_n_scaled / projected_normal_len;
         let n = sign_n * fast_acos(cos_n);
         let sin_n = sign_n * fast_sqrt(1. - cos_n * cos_n);
         let cos_n_plus_pi_2 = -sin_n;
         let cos_n_minus_pi_2 = sin_n;
         var cos_h1 = cos_n_plus_pi_2;
         var cos_h2 = cos_n_minus_pi_2;
+        var local_visibility = 2. * cos_n_scaled;
 
-        for (var j: u32 = 0; j < samples_per_slice; j += 1) {
-            let step_noise = fract(noise.y + f32(i + j * samples_per_slice) * 0.6180339887498948482);
-            let sample_offset = pow((step_noise + f32(j)) / f32(samples_per_slice), 2.) * dir;
+        for (var j = 0.; j < samples_per_slice; j += 1.) {
+            let step_noise = fract(noise.y + (i + j * samples_per_slice) * 0.6180339887498948482f);
+            let sample_offset = pow((step_noise + j) / samples_per_slice, 2.) * dir;
 
             let sample_offset_length = length(sample_offset * buffer_size);
             let mip_level = clamp(log2(sample_offset_length) - 3.3, 0., 4.);
@@ -206,19 +208,11 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         //let h2p = n + min(h2 - n, PI * 0.5);
         let vis_1 = - cos(2. * h1p - n) + 2. * h1p * sin_n;
         let vis_2 = - cos(2. * h2p - n) + 2. * h2p * sin_n;
-        let local_visibility = projected_normal_len * (vis_1 + vis_2 + 2. * cos_n);
+        local_visibility += projected_normal_len * (vis_1 + vis_2);
         visibility += local_visibility;
     }
 
     var scaled_visibility = pow(0.25 * visibility / f32(kernel_size), 1.35);
-
-    /*
-    if abs(dpdx(depth)) < 0.0000002 {
-        scaled_visibility -= dpdx(scaled_visibility) * (f32(coords.x & 1) - 0.5);
-    }
-    if abs(dpdy(depth)) < 0.0000002 {
-        scaled_visibility -= dpdy(scaled_visibility) * (f32(coords.y & 1) - 0.5);
-    }*/
     out.ssao = scaled_visibility;
     return out;
 }
