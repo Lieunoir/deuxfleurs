@@ -70,7 +70,7 @@ fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
     let old_ao = textureSample(history, s, recovered_uv).x;
     let linear_old_depth_sample = textureSampleLevel(old_depth, s, recovered_uv, 0.).x;
     let old_depth_sample = delinearize_depth(linear_old_depth_sample);
-    let weight = select(0., 0.9, abs(linear_old_depth_sample - recovered_clip_z) < 0.005);
+    let weight = select(0., 1., abs(linear_old_depth_sample - recovered_clip_z) < 0.005);
     return vec2<f32>(old_ao, weight);
 }
 

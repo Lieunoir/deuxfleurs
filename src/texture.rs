@@ -13,7 +13,6 @@ pub const FILTERED_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16F
 pub const FILTERED_DEPTH_MIP_LEVEL_COUNT: u32 = 5;
 
 pub struct TextureBufferPool {
-    size: wgpu::Extent3d,
     // concerned by super sampling
     // custom formats
     // picking should be concerned by aa, so could be moved?
@@ -171,26 +170,13 @@ impl TextureBufferPool {
         let denoised_ssao_view_pong =
             denoised_ssao_pong.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let old_depth = device.create_texture(&wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: FILTERED_DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            label: Some("filtered_depth_texture"),
-            view_formats: &[],
-        });
-        let old_depth_view = old_depth.create_view(&wgpu::TextureViewDescriptor::default());
         let filtered_depth_descriptor = wgpu::TextureDescriptor {
             size: texture_size,
             mip_level_count: FILTERED_DEPTH_MIP_LEVEL_COUNT,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: FILTERED_DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::COPY_SRC,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             label: Some("filtered_depth_texture"),
             view_formats: &[],
         };
@@ -229,7 +215,6 @@ impl TextureBufferPool {
         };
         let output_buffer = device.create_buffer(&output_buffer_desc);
         Self {
-            size: texture_size,
             albedo_or_picking,
             albedo_view,
             picking_view,
@@ -303,10 +288,6 @@ impl TextureBufferPool {
 
     pub fn get_denoiser_edges_view(&self) -> &wgpu::TextureView {
         &self.denoiser_edges_view
-    }
-
-    pub fn get_ssao_size(&self) -> &wgpu::Extent3d {
-        &self.size
     }
 
     pub fn get_filtered_depth_mip_views_ping(

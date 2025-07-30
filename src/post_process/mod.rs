@@ -1,6 +1,7 @@
 use crate::camera::Camera;
 use crate::texture;
 use crate::util;
+use wgpu::include_spirv_raw;
 use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
 use wgpu_profiler::GpuProfiler;
