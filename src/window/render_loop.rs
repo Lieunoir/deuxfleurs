@@ -295,8 +295,7 @@ impl InnerGraphicalState {
             surface_format,
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
-            texture_buffer_pool.get_denoised_ssao_view_ping(),
-            texture_buffer_pool.get_denoised_ssao_view_pong(),
+            texture_buffer_pool.get_upscaled_ssao_view(),
         );
         let ground = post_process::Ground::new(
             &device,
@@ -311,14 +310,10 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_normals_view(),
             texture_buffer_pool.get_ssao_view(),
             texture_buffer_pool.get_denoiser_edges_view(),
-            texture_buffer_pool.get_denoised_ssao_view_ping(),
-            texture_buffer_pool.get_denoised_ssao_view_pong(),
+            texture_buffer_pool.get_denoised_ssao_view(),
             texture_buffer_pool.get_depth_view(),
-            texture_buffer_pool.get_filtered_depth_view_ping(),
-            texture_buffer_pool.get_filtered_depth_mip_views_ping(),
-            texture_buffer_pool.get_filtered_depth_view_pong(),
-            texture_buffer_pool.get_filtered_depth_mip_views_pong(),
-            &camera_bind_group_layout,
+            texture_buffer_pool.get_filtered_depth_view(),
+            texture_buffer_pool.get_filtered_depth_mip_views(),
         );
         let should_resize = settings.fit_camera_on_start;
         InnerGraphicalState {
@@ -482,21 +477,17 @@ impl InnerGraphicalState {
                 &self.device,
                 self.texture_buffer_pool.get_albedo_view(),
                 self.texture_buffer_pool.get_normals_view(),
-                self.texture_buffer_pool.get_denoised_ssao_view_ping(),
-                self.texture_buffer_pool.get_denoised_ssao_view_pong(),
+                self.texture_buffer_pool.get_upscaled_ssao_view(),
             );
             self.ssao.resize(
                 &self.device,
                 self.texture_buffer_pool.get_normals_view(),
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
-                self.texture_buffer_pool.get_denoised_ssao_view_ping(),
-                self.texture_buffer_pool.get_denoised_ssao_view_pong(),
+                self.texture_buffer_pool.get_denoised_ssao_view(),
                 self.texture_buffer_pool.get_depth_view(),
-                self.texture_buffer_pool.get_filtered_depth_view_ping(),
-                self.texture_buffer_pool.get_filtered_depth_mip_views_ping(),
-                self.texture_buffer_pool.get_filtered_depth_view_pong(),
-                self.texture_buffer_pool.get_filtered_depth_mip_views_pong(),
+                self.texture_buffer_pool.get_filtered_depth_view(),
+                self.texture_buffer_pool.get_filtered_depth_mip_views(),
             );
         }
     }
@@ -740,7 +731,7 @@ impl InnerGraphicalState {
             drop(material_render_pass);
             drop(scope);
 
-            let ping = self.ssao.render(
+            self.ssao.render(
                 &self.camera,
                 self.settings.ssao_enabled,
                 self.settings.ssao_slice_per_pixel,
@@ -748,13 +739,11 @@ impl InnerGraphicalState {
                 &self.queue,
                 &mut encoder,
                 &self.profiler,
-                &self.camera_bind_group,
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
-                self.texture_buffer_pool.get_denoised_ssao_view_ping(),
-                self.texture_buffer_pool.get_denoised_ssao_view_pong(),
-                self.texture_buffer_pool.get_filtered_depth_mip_views_ping(),
-                self.texture_buffer_pool.get_filtered_depth_mip_views_pong(),
+                self.texture_buffer_pool.get_denoised_ssao_view(),
+                self.texture_buffer_pool.get_upscaled_ssao_view(),
+                self.texture_buffer_pool.get_filtered_depth_mip_views(),
             );
             let mut scope = self.profiler.scope("PBR", &mut encoder);
             let mut pbr_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -772,7 +761,7 @@ impl InnerGraphicalState {
                 timestamp_writes: None,
             });
 
-            self.pbr_renderer.render(&mut pbr_render_pass, ping);
+            self.pbr_renderer.render(&mut pbr_render_pass);
             drop(pbr_render_pass);
             drop(scope);
             if self.settings.shadow {

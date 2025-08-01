@@ -90,8 +90,8 @@ struct FragmentOutput {
     @location(1) edges: f32,
 }
 
-const kernel_size = 3.;
-const samples_per_slice = 4.;
+const kernel_size = 4.;
+const samples_per_slice = 3.;
 const phi_mul = PI / kernel_size;
 const vis_scale = 0.25 / kernel_size;
 const max_radius_pix = 64. / sample_factor;
