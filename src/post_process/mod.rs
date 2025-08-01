@@ -1052,11 +1052,11 @@ impl SSAO {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(filtered_depth_view_ping),
+                    resource: wgpu::BindingResource::TextureView(filtered_depth_view_pong),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::TextureView(filtered_depth_view_pong),
+                    resource: wgpu::BindingResource::TextureView(filtered_depth_view_ping),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
