@@ -157,8 +157,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let sin_n = sin_n_scaled * projected_normal_len_inv;
         let cos_n_plus_pi_2 = -sin_n;
         let cos_n_minus_pi_2 = sin_n;
-        var cos_h1 = cos_n_plus_pi_2;
-        var cos_h2 = cos_n_minus_pi_2;
+        var cos_h1 = 0.;
+        var cos_h2 = 0.;
 
         for (var j = 0.; j < samples_per_slice; j += 1.) {
             let step_noise = fract(noise.y + (i + j * samples_per_slice) * 0.6180339887498948482f);
@@ -192,8 +192,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
             //let l_s_2 = saturate((d_s_2_norm - world_radius) * 5. / world_radius);
             let l_s_1 = saturate(world_radius_mul / d_s_1_norm_inv - 5.);
             let l_s_2 = saturate(world_radius_mul / d_s_2_norm_inv - 5.);
-            let dot_s_1 = mix(dot(d_s_1, view_dir), cos_n_plus_pi_2, l_s_1);
-            let dot_s_2 = mix(dot(d_s_2, view_dir), cos_n_minus_pi_2, l_s_2);
+            let dot_s_1 = mix(dot(d_s_1, normal), cos_n_plus_pi_2, l_s_1);
+            let dot_s_2 = mix(dot(d_s_2, normal), cos_n_minus_pi_2, l_s_2);
             //let dot_s_1 = dot(d_s_1, view_dir);
             //let dot_s_2 = dot(d_s_2, view_dir);
             cos_h1 = max(cos_h1, dot_s_1);
