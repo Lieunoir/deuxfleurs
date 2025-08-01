@@ -82,18 +82,10 @@ const c_offset = array(
     vec2<f32>(0., 0.),
     vec2<f32>(0., 1.),
     vec2<f32>(1., 0.),
-    vec2<f32>(0., -1.),
-    vec2<f32>(-1., 0.),
     vec2<f32>(1., 1.),
-    vec2<f32>(1., -1.),
-    vec2<f32>(-1., 1.),
-    vec2<f32>(-1., -1.),
 );
 
-fn JoinedBilateralUpsample(p: vec2<f32>, buffer_size: vec2<f32>) -> f32 { // based on: https://johanneskopf.de/publications/jbu/paper/FinalPaper_0185.pdf
-  //           https://bartwronski.com/2019/09/22/local-linear-models-guided-filter/
-  //		   https://www.shadertoy.com/view/MllSzX
-
+fn JoinedBilateralUpsample(p: vec2<f32>, buffer_size: vec2<f32>) -> f32 {
     let half_p = 0.5 * p;
     let c_textureSize = buffer_size;
     let c_texelSize = 2.0 / c_textureSize;
@@ -109,21 +101,11 @@ fn JoinedBilateralUpsample(p: vec2<f32>, buffer_size: vec2<f32>) -> f32 { // bas
     let Z1 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[1], 1.0).r;
     let Z2 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[2], 1.0).r;
     let Z3 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[3], 1.0).r;
-    let Z4 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[4], 1.0).r;
-    let Z5 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[5], 1.0).r;
-    let Z6 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[6], 1.0).r;
-    let Z7 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[7], 1.0).r;
-    let Z8 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[8], 1.0).r;
 
     let tex0 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[0], 0.0).r;
     let tex1 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[1], 0.0).r;
     let tex2 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[2], 0.0).r;
     let tex3 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[3], 0.0).r;
-    let tex4 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[4], 0.0).r;
-    let tex5 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[5], 0.0).r;
-    let tex6 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[6], 0.0).r;
-    let tex7 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[7], 0.0).r;
-    let tex8 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[8], 0.0).r;
 
     let sigmaV = 0.002;
     //    wXX = bilateral gaussian weight from depth * bilinear weight
@@ -131,17 +113,10 @@ fn JoinedBilateralUpsample(p: vec2<f32>, buffer_size: vec2<f32>) -> f32 { // bas
     let w1 = gaussian(sigmaV, abs(I - Z1));
     let w2 = gaussian(sigmaV, abs(I - Z2));
     let w3 = gaussian(sigmaV, abs(I - Z3));
-    let w4 = gaussian(sigmaV, abs(I - Z4));
-    let w5 = gaussian(sigmaV, abs(I - Z5));
-    let w6 = gaussian(sigmaV, abs(I - Z6));
-    let w7 = gaussian(sigmaV, abs(I - Z7));
-    let w8 = gaussian(sigmaV, abs(I - Z8));
 
-    let tot_weight = (w0 + w1 + w2 + w3 + w4 + w5 + w6 + w7 + w8);
-    let weighted_res = (w0 * tex0 + w1 * tex1 + w2 * tex2 + w3 * tex3 + w4 * tex4 + w5 * tex5 + w6 * tex6 + w7 * tex7 + w8 * tex8) / tot_weight;
-    //return select(tex0, weighted_res, tot_weight > 0.01);
+    let tot_weight = (w0 + w1 + w2 + w3);
+    let weighted_res = (w0 * tex0 + w1 * tex1 + w2 * tex2 + w3 * tex3) / tot_weight;
     return weighted_res;
-    //return tex00;
 }
 
 @fragment

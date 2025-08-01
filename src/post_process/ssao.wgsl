@@ -94,7 +94,7 @@ const kernel_size = 3.;
 const samples_per_slice = 4.;
 const phi_mul = PI / kernel_size;
 const vis_scale = 0.25 / kernel_size;
-const max_radius_pix = 64;
+const max_radius_pix = 64. / sample_factor;
 override max_mip_level: f32 = 0;
 
 @fragment
