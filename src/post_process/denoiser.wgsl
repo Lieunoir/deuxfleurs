@@ -74,8 +74,58 @@ fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
     return vec2<f32>(old_ao, weight);
 }
 
+fn gaussian(sigma: f32, x: f32) -> f32 {
+    return exp(-(x * x) / (2.0 * sigma * sigma));
+}
+
+const c_offset = array(
+    vec2<f32>(0., 0.),
+    vec2<f32>(0., 1.),
+    vec2<f32>(1., 0.),
+    vec2<f32>(1., 1.)
+);
+
+fn JoinedBilateralUpsample(p: vec2<f32>, buffer_size: vec2<f32>) -> f32 { // based on: https://johanneskopf.de/publications/jbu/paper/FinalPaper_0185.pdf
+  //           https://bartwronski.com/2019/09/22/local-linear-models-guided-filter/
+  //		   https://www.shadertoy.com/view/MllSzX
+
+    let half_p = 0.5 * p;
+    let c_textureSize = buffer_size;
+    let c_texelSize = 2.0 / c_textureSize;
+    var pixel = half_p * c_textureSize;// + 0.5;
+    //var pixel = p * buffer_size;
+    let f = fract(pixel);
+    //pixel = (floor(pixel) / c_textureSize) - vec2<f32>(c_texelSize / 2.0);
+    pixel = p - vec2<f32>(c_texelSize / 2.0);
+
+    let I = textureSampleLevel(depth, s, p, 0.0).r;
+
+    let Z00 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[0], 1.0).r;
+    let Z01 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[1], 1.0).r;
+    let Z10 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[2], 1.0).r;
+    let Z11 = textureSampleLevel(depth, s, pixel + c_texelSize * c_offset[3], 1.0).r;
+
+    let tex00 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[0], 0.0).r;
+    let tex01 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[1], 0.0).r;
+    let tex10 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[2], 0.0).r;
+    let tex11 = textureSampleLevel(source_ao, s, pixel + c_texelSize * c_offset[3], 0.0).r;
+
+    let sigmaV = 0.002;
+    //    wXX = bilateral gaussian weight from depth * bilinear weight
+    let w00 = gaussian(sigmaV, abs(I - Z00)) * (f.x) * (f.y);
+    let w01 = gaussian(sigmaV, abs(I - Z01)) * (f.x) * (1. - f.y);
+    let w10 = gaussian(sigmaV, abs(I - Z10)) * (1. - f.x) * (f.y);
+    let w11 = gaussian(sigmaV, abs(I - Z11)) * (1. - f.x) * (1. - f.y);
+
+    return (w00 * tex00 + w01 * tex01 + w10 * tex10 + w11 * tex11) / (w00 + w01 + w10 + w11);
+    //return tex00;
+}
+
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
+    let buffer_size = vec2<f32>(textureDimensions(depth));
+    return JoinedBilateralUpsample(fcoords.xy / buffer_size, buffer_size);
+    /*
     let buffer_size_inv = 1. / vec2<f32>(textureDimensions(depth));
     let gather_offset = - vec2<f32>(0.25) * buffer_size_inv;
     let gatherCenter = fcoords.xy * buffer_size_inv + gather_offset;
@@ -192,4 +242,5 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     */
 
     return weight * previous_ao.x + (1. - weight) * blurred_ao;
+    */
 }
