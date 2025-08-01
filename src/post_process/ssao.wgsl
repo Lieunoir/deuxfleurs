@@ -129,6 +129,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let normal_sample = textureLoad(t_n, coords, 0).xyz;
     let normal = normalize(normal_sample * 2. - vec3<f32>(1.));
     let view_dir = normalize(-position);
+    let n_cross_v = cross(normal, view_dir);
     let cos_n_scaled = dot(view_dir, normal);
 
     //if abs(normal_sample[0]) + abs(normal_sample[1]) + abs(normal_sample[2]) < 0.01 {
@@ -153,12 +154,9 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let world_dir = vec3<f32>(cos_phi, sin_phi, 0.);
         let slice_plane_normal = normalize(cross(view_dir, world_dir));
         let n_dot_pn = dot(normal, slice_plane_normal);
-        let projected_normal = normal - n_dot_pn * slice_plane_normal;
-        let projected_normal_len_inv = inverseSqrt(1. - n_dot_pn * n_dot_pn);
+        //let projected_normal_len_inv = inverseSqrt(1. - n_dot_pn * n_dot_pn);
+        let projected_normal_len_inv = inverseSqrt(1. - pow(dot(world_dir, n_cross_v), 2.) / (1. - pow(dot(view_dir, world_dir), 2.)));
         let cos_n = cos_n_scaled * projected_normal_len_inv;
-        //let projected_normal_len_inv = cos_n / cos_n_scaled;
-        //let sin_n_scaled = dot(view_dir, cross(projected_normal, slice_plane_normal));
-        //let sin_n_scaled = dot(view_cross_n, slice_plane_normal);
         let sin_n_scaled = dot(normal, world_dir) - dot(view_dir, world_dir) * cos_n_scaled;
         let sin_n = sin_n_scaled * projected_normal_len_inv;
         let cos_n_plus_pi_2 = -sin_n;
