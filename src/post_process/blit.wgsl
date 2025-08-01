@@ -23,6 +23,8 @@ var r_color: texture_2d<f32>;
 var r_sampler: sampler;
 
 @fragment
-fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(r_color, r_sampler, vertex.tex_coords);
+fn fs_main(vertex: VertexOutput) -> @location(0) f32 {
+    let gathered = textureGather(0, r_color, r_sampler, vertex.tex_coords);
+    //return min(min(min(gathered.x, gathered.y), gathered.z), gathered.w);
+    return max(max(max(gathered.x, gathered.y), gathered.z), gathered.w);
 }
