@@ -1,7 +1,6 @@
 use crate::camera::Camera;
 use crate::texture;
 use crate::util;
-use wgpu::include_spirv_raw;
 use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
 use wgpu_profiler::GpuProfiler;
@@ -853,18 +852,19 @@ fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::T
         mip_level_count: 1, // We'll talk about this a little later
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::R32Uint,
+        format: wgpu::TextureFormat::R16Uint,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         label: Some("hilbert_noise"),
         view_formats: &[],
     });
 
+    const BYTE_PER_ENTRY: usize = size_of::<u16>();
     let level = 6;
-    let mut buffer = [0; 64 * 64 * 4];
+    let mut buffer = [0; 64 * 64 * BYTE_PER_ENTRY];
     for i in 0..64 {
         for j in 0..64 {
             let mut p = (i, j);
-            let mut d = 0_u32;
+            let mut d = 0_u16;
             for k in 0..6 {
                 let n_i = level - k - 1;
                 let n = n_i as u32;
@@ -880,10 +880,8 @@ fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::T
                     p.1 = temp;
                 }
             }
-            buffer[((i * 64 + j) * 4 + 0) as usize] = d.to_ne_bytes()[0];
-            buffer[((i * 64 + j) * 4 + 1) as usize] = d.to_ne_bytes()[1];
-            buffer[((i * 64 + j) * 4 + 2) as usize] = d.to_ne_bytes()[2];
-            buffer[((i * 64 + j) * 4 + 3) as usize] = d.to_ne_bytes()[3];
+            buffer[(i * 64 + j) as usize * BYTE_PER_ENTRY + 0] = d.to_ne_bytes()[0];
+            buffer[(i * 64 + j) as usize * BYTE_PER_ENTRY + 1] = d.to_ne_bytes()[1];
         }
     }
 
@@ -897,7 +895,7 @@ fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::T
         &buffer,
         wgpu::TexelCopyBufferLayout {
             offset: 0,
-            bytes_per_row: Some(4 * 64),
+            bytes_per_row: Some(BYTE_PER_ENTRY as u32 * 64),
             rows_per_image: Some(64),
         },
         texture_size,
@@ -1449,7 +1447,13 @@ impl SSAO {
                         write_mask: wgpu::ColorWrites::ALL,
                     }),
                 ],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: &[(
+                        "max_mip_level",
+                        (texture::FILTERED_DEPTH_MIP_LEVEL_COUNT - 1) as f64,
+                    )],
+                    ..Default::default()
+                },
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,

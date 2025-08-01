@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 pub(crate) trait Vertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
 }
@@ -164,21 +162,16 @@ pub fn create_picker_pipeline(
     offset: Option<u32>,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(shader);
-    let constants = match offset {
-        Some(offset) => {
-            let mut map = HashMap::new();
-            map.insert(String::from("offset"), offset as f64);
-            map
-        }
-        None => HashMap::new(),
-    };
+
+    let offset = offset.map(|offset| ("offset", offset as f64));
+    let constants = offset.as_slice();
 
     let compilation_options_v = wgpu::PipelineCompilationOptions {
-        constants: &constants,
+        constants: constants,
         ..Default::default()
     };
     let compilation_options_f = wgpu::PipelineCompilationOptions {
-        constants: &constants,
+        constants: constants,
         ..Default::default()
     };
 
@@ -240,14 +233,8 @@ pub fn create_quad_picker_pipeline(
     offset: Option<u32>,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(shader);
-    let constants = match offset {
-        Some(offset) => {
-            let mut map = HashMap::new();
-            map.insert(String::from("offset"), offset as f64);
-            map
-        }
-        None => HashMap::new(),
-    };
+    let offset = offset.map(|offset| ("offset", offset as f64));
+    let constants = offset.as_slice();
 
     let compilation_options_v = wgpu::PipelineCompilationOptions {
         constants: &constants,

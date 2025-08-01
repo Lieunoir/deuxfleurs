@@ -1,5 +1,6 @@
 use crate::picker::Picker;
 use crate::window::RunningState;
+use egui::epaint::CornerRadiusF32;
 use egui::style::{WidgetVisuals, Widgets};
 use egui::text::LayoutJob;
 use egui::{
@@ -9,7 +10,6 @@ use egui::{
 use egui::{Response, Widget};
 use egui_wgpu::{Renderer, ScreenDescriptor};
 use egui_winit::State;
-use epaint::CornerRadiusF32;
 use indexmap::IndexMap;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;

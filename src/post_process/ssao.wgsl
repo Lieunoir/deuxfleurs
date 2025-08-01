@@ -93,6 +93,8 @@ const kernel_size = 2.;
 const samples_per_slice = 2.;
 const phi_mul = PI / kernel_size;
 const vis_scale = 0.25 / kernel_size;
+const max_radius_pix = 64;
+override max_mip_level: f32 = 0;
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
@@ -127,6 +129,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let normal_sample = textureLoad(t_n, coords, 0).xyz;
     let normal = normalize(normal_sample * 2. - vec3<f32>(1.));
     let view_dir = normalize(-position);
+    let cos_n_scaled = dot(view_dir, normal);
 
     //if abs(normal_sample[0]) + abs(normal_sample[1]) + abs(normal_sample[2]) < 0.01 {
 	//    discard;
@@ -140,39 +143,38 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let world_radius_mul = 10. / world_distance;
     //let world_radius = 0.02 * world_distance;
     let wanted_screen_radius = 2. * world_distance / depth;
-    let radius = 64. * pix_dif * vec2<f32>(
-        min(wanted_screen_radius.x, 1.),
-        min(wanted_screen_radius.y, 1.),
-    );
-    //let radius = min(min(0.005 / camera_distance, 30. * pix_dif.x), 30. * pix_dif.y);
+    let radius = max_radius_pix * min(wanted_screen_radius, 1.);
     for (var i = 0.; i < kernel_size; i += 1.) {
         let phi = (noise.x + i) * phi_mul;
         let cos_phi = cos(phi);
         let sin_phi = sin(phi);
         //let sin_phi = fast_sqrt(1. - cos_phi * cos_phi);
-        let dir = vec2<f32>(cos_phi, -sin_phi) * radius;
+        let dir = vec2<f32>(cos_phi, -sin_phi);
         let world_dir = vec3<f32>(cos_phi, sin_phi, 0.);
         let slice_plane_normal = normalize(cross(view_dir, world_dir));
-        let projected_normal = normal - dot(normal, slice_plane_normal) * slice_plane_normal;
-        let projected_normal_len = length(projected_normal);
-        let ortho_direction_v = cross(projected_normal, slice_plane_normal);
-        let sign_n = sign(dot(view_dir, ortho_direction_v));
-        let cos_n_scaled = dot(view_dir, projected_normal);
-        let cos_n = cos_n_scaled / projected_normal_len;
-        let n = sign_n * fast_acos(cos_n);
-        let sin_n = sign_n * fast_sqrt(1. - cos_n * cos_n);
+        let n_dot_pn = dot(normal, slice_plane_normal);
+        let projected_normal = normal - n_dot_pn * slice_plane_normal;
+        let projected_normal_len_inv = inverseSqrt(1. - n_dot_pn * n_dot_pn);
+        let cos_n = cos_n_scaled * projected_normal_len_inv;
+        //let projected_normal_len_inv = cos_n / cos_n_scaled;
+        //let sin_n_scaled = dot(view_dir, cross(projected_normal, slice_plane_normal));
+        //let sin_n_scaled = dot(view_cross_n, slice_plane_normal);
+        let sin_n_scaled = dot(normal, world_dir) - dot(view_dir, world_dir) * cos_n_scaled;
+        let sin_n = sin_n_scaled * projected_normal_len_inv;
         let cos_n_plus_pi_2 = -sin_n;
         let cos_n_minus_pi_2 = sin_n;
         var cos_h1 = cos_n_plus_pi_2;
         var cos_h2 = cos_n_minus_pi_2;
-        var local_visibility = 2. * cos_n_scaled;
 
         for (var j = 0.; j < samples_per_slice; j += 1.) {
             let step_noise = fract(noise.y + (i + j * samples_per_slice) * 0.6180339887498948482f);
-            let sample_offset = pow((step_noise + j) / samples_per_slice, 2.) * dir;
-
-            let sample_offset_length = length(sample_offset * buffer_size);
-            let mip_level = clamp(log2(sample_offset_length) - 3.3, 0., 4.);
+            let sample_offset_length = pow((step_noise + j) / samples_per_slice, 2.) * radius;
+            // compile time version, so mip_level is known at compile time too
+            let sample_offset_length_approx = pow((0.5 + j) / samples_per_slice, 2.) * max_radius_pix;
+            let sample_offset = sample_offset_length * pix_dif * dir;
+            //let mip_level = clamp(log2(sample_offset_length_approx) - 3.3, 0., max_mip_level);
+            //let mip_level = max_mip_level;
+            let mip_level = 0.;
 
             let sample_coords_1 = vec2<f32>(origin + sample_offset);
             let sample_coords_2 = vec2<f32>(origin - sample_offset);
@@ -184,32 +186,43 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
             let dir_1 = sample_1 - position;
             let dir_2 = sample_2 - position;
 
-            let d_s_1_norm = length(dir_1);
-            let d_s_2_norm = length(dir_2);
+            let d_s_1_norm_inv = inverseSqrt(dot(dir_1, dir_1));
+            let d_s_2_norm_inv = inverseSqrt(dot(dir_2, dir_2));
 
-            let d_s_1 = dir_1 / d_s_1_norm;
-            let d_s_2 = dir_2 / d_s_2_norm;
+            let d_s_1 = dir_1 * d_s_1_norm_inv;
+            let d_s_2 = dir_2 * d_s_2_norm_inv;
 
             // (d - 0.02 * world_distance) * 5. / (0.02 * world_distance)
             // = (d / (0.02 * world_distance) - 1.) * 5.)
             //let l_s_1 = saturate((d_s_1_norm - world_radius) * 5. / world_radius);
             //let l_s_2 = saturate((d_s_2_norm - world_radius) * 5. / world_radius);
-            let l_s_1 = saturate(d_s_1_norm * world_radius_mul - 5.);
-            let l_s_2 = saturate(d_s_2_norm * world_radius_mul - 5.);
+            let l_s_1 = saturate(world_radius_mul / d_s_1_norm_inv - 5.);
+            let l_s_2 = saturate(world_radius_mul / d_s_2_norm_inv - 5.);
             let dot_s_1 = mix(dot(d_s_1, view_dir), cos_n_plus_pi_2, l_s_1);
             let dot_s_2 = mix(dot(d_s_2, view_dir), cos_n_minus_pi_2, l_s_2);
             cos_h1 = max(cos_h1, dot_s_1);
             cos_h2 = max(cos_h2, dot_s_2);
         }
 
-        let h1p = fast_acos(cos_h1);
-        let h2p = -fast_acos(cos_h2);
-        //let h1p = n + max(h1 - n, -PI * 0.5);
-        //let h2p = n + min(h2 - n, PI * 0.5);
-        let vis_1 = - cos(2. * h1p - n) + 2. * h1p * sin_n;
-        let vis_2 = - cos(2. * h2p - n) + 2. * h2p * sin_n;
-        local_visibility += projected_normal_len * (vis_1 + vis_2);
-        visibility += local_visibility;
+        //let h1p = fast_acos(cos_h1);
+        //let h2p = -fast_acos(cos_h2);
+        ////let h1p = n + max(h1 - n, -PI * 0.5);
+        ////let h2p = n + min(h2 - n, PI * 0.5);
+        //let vis_1 = - cos(2. * h1p - n) + 2. * h1p * sin_n;
+        //let vis_2 = - cos(2. * h2p - n) + 2. * h2p * sin_n;
+        //local_visibility += (vis_1 + vis_2) / projected_normal_len_inv;
+        let sin_h1_squared = 1. - cos_h1 * cos_h1;
+        let sin_h2_squared = 1. - cos_h2 * cos_h2;
+        // fast_sqrt here gives bad precision
+        let sin_h1 = sqrt(sin_h1_squared);
+        let sin_h2 = - sqrt(sin_h2_squared);
+        let h1_p_h2_unsigned = fast_acos(cos_h1 * cos_h2 - sin_h1 * sin_h2);
+        let h1_p_h2 = select(-h1_p_h2_unsigned, h1_p_h2_unsigned, cos_h1 < cos_h2);
+        // cos(2. * h1p - n) = cos(2. * h1p) cos(n) + sin(2 * h1p) sin(n)
+        //                   = (1. - 2 sin(h1p)^2) cos(n) + 2 cos(h1p) sin(h1p) sin(n)
+        let vis_1 = sin_h1 * (sin_h1 * cos_n_scaled - cos_h1 * sin_n_scaled);
+        let vis_2 = sin_h2 * (sin_h2 * cos_n_scaled - cos_h2 * sin_n_scaled);
+        visibility += 2. * (vis_1 + vis_2 + h1_p_h2 * sin_n_scaled);
     }
 
     var scaled_visibility = pow(0.25 * visibility / f32(kernel_size), 1.35);

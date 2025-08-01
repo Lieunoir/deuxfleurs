@@ -61,8 +61,6 @@ impl InnerGraphicalState {
             },
         };
         let window = window.map(Arc::new);
-        // The instance is a handle to our GPU
-        // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             #[cfg(not(target_arch = "wasm32"))]
             backends: wgpu::Backends::PRIMARY,
@@ -84,26 +82,22 @@ impl InnerGraphicalState {
 
         // Select a device to use
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    memory_hints: wgpu::MemoryHints::MemoryUsage,
-                    required_features: GpuProfiler::ALL_WGPU_TIMER_FEATURES,
-                    // WebGL doesn't support all of wgpu's features, so if
-                    // we're building for the web we'll have to disable some.
-                    required_limits: if cfg!(target_arch = "wasm32") {
-                        let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
-                        limits.max_texture_dimension_2d = adapter.limits().max_texture_dimension_2d;
-                        limits.max_buffer_size = adapter.limits().max_buffer_size;
-                        limits
-                    } else {
-                        let mut limits = wgpu::Limits::default();
-                        limits.max_buffer_size = adapter.limits().max_buffer_size;
-                        limits
-                    },
+            .request_device(&wgpu::DeviceDescriptor {
+                label: None,
+                memory_hints: wgpu::MemoryHints::MemoryUsage,
+                required_features: GpuProfiler::ALL_WGPU_TIMER_FEATURES,
+                required_limits: if cfg!(target_arch = "wasm32") {
+                    let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
+                    limits.max_texture_dimension_2d = adapter.limits().max_texture_dimension_2d;
+                    limits.max_buffer_size = adapter.limits().max_buffer_size;
+                    limits
+                } else {
+                    let mut limits = wgpu::Limits::default();
+                    limits.max_buffer_size = adapter.limits().max_buffer_size;
+                    limits
                 },
-                None,
-            )
+                trace: wgpu::Trace::Off,
+            })
             .await
             .unwrap();
 

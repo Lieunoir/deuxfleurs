@@ -2,9 +2,9 @@ use crate::Settings;
 use crate::shape::{Context, DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
 use egui::Shape;
+use egui::epaint::RectShape;
 use egui::{Color32, Pos2};
 use egui_plot::{Bar, BarChart, CoordinatesFormatter, Plot};
-use epaint::RectShape;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 
