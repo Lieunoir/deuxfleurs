@@ -152,11 +152,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         //let sin_phi = fast_sqrt(1. - cos_phi * cos_phi);
         let dir = vec2<f32>(cos_phi, -sin_phi);
         let world_dir = vec3<f32>(cos_phi, sin_phi, 0.);
-        let slice_plane_normal = normalize(cross(view_dir, world_dir));
-        let n_dot_pn = dot(normal, slice_plane_normal);
-        //let projected_normal_len_inv = inverseSqrt(1. - n_dot_pn * n_dot_pn);
         let projected_normal_len_inv = inverseSqrt(1. - pow(dot(world_dir, n_cross_v), 2.) / (1. - pow(dot(view_dir, world_dir), 2.)));
-        let cos_n = cos_n_scaled * projected_normal_len_inv;
         let sin_n_scaled = dot(normal, world_dir) - dot(view_dir, world_dir) * cos_n_scaled;
         let sin_n = sin_n_scaled * projected_normal_len_inv;
         let cos_n_plus_pi_2 = -sin_n;
@@ -198,6 +194,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
             let l_s_2 = saturate(world_radius_mul / d_s_2_norm_inv - 5.);
             let dot_s_1 = mix(dot(d_s_1, view_dir), cos_n_plus_pi_2, l_s_1);
             let dot_s_2 = mix(dot(d_s_2, view_dir), cos_n_minus_pi_2, l_s_2);
+            //let dot_s_1 = dot(d_s_1, view_dir);
+            //let dot_s_2 = dot(d_s_2, view_dir);
             cos_h1 = max(cos_h1, dot_s_1);
             cos_h2 = max(cos_h2, dot_s_2);
         }
@@ -209,15 +207,14 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         //let vis_1 = - cos(2. * h1p - n) + 2. * h1p * sin_n;
         //let vis_2 = - cos(2. * h2p - n) + 2. * h2p * sin_n;
         //local_visibility += (vis_1 + vis_2) / projected_normal_len_inv;
-        let sin_h1_squared = 1. - cos_h1 * cos_h1;
-        let sin_h2_squared = 1. - cos_h2 * cos_h2;
         // fast_sqrt here gives bad precision
-        let sin_h1 = sqrt(sin_h1_squared);
-        let sin_h2 = - sqrt(sin_h2_squared);
+        let sin_h1 = sqrt(1. - cos_h1 * cos_h1);
+        let sin_h2 = - sqrt(1. - cos_h2 * cos_h2);
         let h1_p_h2_unsigned = fast_acos(cos_h1 * cos_h2 - sin_h1 * sin_h2);
         let h1_p_h2 = select(-h1_p_h2_unsigned, h1_p_h2_unsigned, cos_h1 < cos_h2);
         // cos(2. * h1p - n) = cos(2. * h1p) cos(n) + sin(2 * h1p) sin(n)
         //                   = (1. - 2 sin(h1p)^2) cos(n) + 2 cos(h1p) sin(h1p) sin(n)
+        // sin(h) * sin(h - n)
         let vis_1 = sin_h1 * (sin_h1 * cos_n_scaled - cos_h1 * sin_n_scaled);
         let vis_2 = sin_h2 * (sin_h2 * cos_n_scaled - cos_h2 * sin_n_scaled);
         visibility += 2. * (vis_1 + vis_2 + h1_p_h2 * sin_n_scaled);
