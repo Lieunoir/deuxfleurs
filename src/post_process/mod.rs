@@ -1795,12 +1795,6 @@ impl SSAO {
             render_pass.set_pipeline(&self.denoiser_pipeline);
             render_pass.draw(0..4, 0..1);
             drop(render_pass);
-            let proj = camera.build_view_view_projection_matrix().1;
-            queue.write_buffer(
-                &self.denoiser_buffer,
-                0,
-                bytemuck::cast_slice(&[proj.to_cols_array()]),
-            );
             self.ping = !self.ping;
             !self.ping
         } else if !self.cleared {
@@ -1829,5 +1823,14 @@ impl SSAO {
         } else {
             self.ping
         }
+    }
+
+    pub fn post_render(&mut self, queue: &wgpu::Queue, camera: &Camera) {
+        let proj = camera.build_view_view_projection_matrix().1;
+        queue.write_buffer(
+            &self.denoiser_buffer,
+            0,
+            bytemuck::cast_slice(&[proj.to_cols_array()]),
+        );
     }
 }

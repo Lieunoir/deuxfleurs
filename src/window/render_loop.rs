@@ -906,6 +906,7 @@ impl InnerGraphicalState {
         self.profiler
             .process_finished_frame(self.queue.get_timestamp_period());
 
+        self.ssao.post_render(&self.queue, &self.camera);
         event_loop_proxy.map(|proxy| {
             self.picker.post_render(
                 proxy,
