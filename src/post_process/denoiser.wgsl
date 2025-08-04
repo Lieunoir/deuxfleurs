@@ -142,6 +142,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
 
     let blurred_ao = sum / sumWeight;
 
+    /*
     var min_ssao = ssaoValue;
     min_ssao = select(min_ssao, min(min_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
     min_ssao = select(min_ssao, min(min_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
@@ -157,6 +158,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     weight = select(weight, 0.5 * (blurred_ao - previous_ao.x), min_ssao > previous_ao.x);
     previous_ao.x = min(max_ssao, previous_ao.x);
     previous_ao.x = max(min_ssao, previous_ao.x);
+    */
     weight *= previous_ao.y;
 
 
