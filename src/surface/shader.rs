@@ -111,10 +111,10 @@ struct MaterialOutput {{
 @fragment
 fn fs_main(in: VertexOutput) -> MaterialOutput {{
     // We use the special function `textureSample` to combine the texture data with coords
-    //let view_dir = normalize(camera.view_pos.xyz - in.world_position);
-    //let normal = select(in.world_normal, -in.world_normal, dot(in.world_normal, view_dir) < 0.);
-    //let normal = select(in.world_normal, -in.world_normal, dot(in.world_normal, vec3<f32>(1.)) < 0.);
-    let normal = in.world_normal;
+    let view_dir = (camera.view * vec4<f32>(normalize(camera.view_pos.xyz - in.world_position), 0.)).xyz;
+    let normal = select(in.world_normal, -in.world_normal, dot(in.world_normal, view_dir) < 0.);
+    //let normal = select(-in.world_normal, in.world_normal, dot(in.world_normal, vec3<f32>(0., 0., 1.)) > 0.);
+    //let normal = in.world_normal;
 
     //var data_color = in.color;
     var data_color = settings.color;
@@ -125,9 +125,7 @@ fn fs_main(in: VertexOutput) -> MaterialOutput {{
 
     var out: MaterialOutput;
     out.albedo = vec4<f32>(data_color, 0.6);
-    //out.normal = vec4<f32>((normal + vec3<f32>(256. / 255.)) * 255. / 256. / 2., 0.);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
-    //out.normal = vec4<f32>(normal, 0.);
 
     return out;
 }}"
