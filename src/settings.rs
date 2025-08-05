@@ -4,6 +4,7 @@ use egui::DragValue;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU8;
 use wgpu::Color;
+pub use wgpu::PowerPreference;
 
 /// Global rendering settings
 #[derive(Clone)]
@@ -18,7 +19,8 @@ pub struct Settings {
     pub rerender: bool,
     /// Number of frame used in temporal anti aliasing, `None` disables taa
     ///
-    /// TAA is crudely applied for a number of fixed frames when the scene stops changing
+    /// TAA is only crudely applied for a number of fixed frames when the scene stops changing.
+    /// Defaults to 16 frames.
     pub taa: Option<NonZeroU8>,
     /// Ground shadow
     pub shadow: bool,
@@ -31,6 +33,14 @@ pub struct Settings {
     pub ssao_enabled: bool,
     pub ssao_slice_per_pixel: u8,
     pub ssao_sample_per_slice: u8,
+    /// When rendering headless, render n frames instead of only one to leverage temporal
+    /// accumulation (roundabout way to supersample screenshots).
+    pub headless_frame_per_screenshot: NonZeroU8,
+    /// Preference for which rendering device will be obtained. Defaults to None, taking the
+    /// first device presented.
+    ///
+    /// Only read when `run` is called, changing the value has no effect after.
+    pub power_preference: PowerPreference,
 }
 
 impl Default for Settings {
@@ -53,6 +63,8 @@ impl Default for Settings {
             ssao_enabled: true,
             ssao_slice_per_pixel: 2,
             ssao_sample_per_slice: 2,
+            headless_frame_per_screenshot: NonZeroU8::new(16).unwrap(),
+            power_preference: PowerPreference::None,
         }
     }
 }

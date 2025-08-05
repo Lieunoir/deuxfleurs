@@ -73,7 +73,7 @@ impl InnerGraphicalState {
             .map(|window| instance.create_surface(Arc::clone(&window)).unwrap());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::None,
+                power_preference: settings.power_preference,
                 compatible_surface: surface.as_ref(),
                 force_fallback_adapter: false,
             })
@@ -924,7 +924,9 @@ impl InnerGraphicalState {
         // When in headless mode, we have to make sure a image can be copied from
         if self.surface.is_none() {
             self.update();
-            self.render(None, None, true).unwrap();
+            for _ in 0..self.settings.headless_frame_per_screenshot.get() {
+                self.render(None, None, true).unwrap();
+            }
         }
 
         let mut encoder = self
