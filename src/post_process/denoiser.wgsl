@@ -47,11 +47,12 @@ fn unpack_edges(packedValIn: f32) -> vec4<f32> {
     return saturate(edgesLRTB);
 }
 
-fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight: ptr<function, f32>) {
+fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight: ptr<function, f32>, sum_squared: ptr<function, f32>) {
     let weight = edgeValue;
 
-    *sum += (weight * ssaoValue);
+    *sum += weight * ssaoValue;
     *sumWeight += weight;
+    *sum_squared += weight * ssaoValue * ssaoValue;
 }
 
 fn delinearize_depth(depth: f32) -> f32 {
@@ -69,8 +70,8 @@ fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
     let recovered_uv = vec2<f32>(0.5 * recovered_clip.x + 0.5, - 0.5 * recovered_clip.y + 0.5);
     let old_ao = textureSample(history, s, recovered_uv).x;
     let linear_old_depth_sample = textureSampleLevel(old_depth, s, recovered_uv, 0.).x;
-    let old_depth_sample = delinearize_depth(linear_old_depth_sample);
-    let weight = select(0., 1., abs(linear_old_depth_sample - recovered_clip_z) < 0.005);
+    let weight = select(0., 1., abs(1. - linear_old_depth_sample / recovered_clip_z) < 0.005);
+    //let weight = 1.;
     return vec2<f32>(old_ao, weight);
 }
 
@@ -129,36 +130,43 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
 
     var sumWeight = blurAmount;
     var sum = ssaoValue * sumWeight;
+    var sum_squared = ssaoValue * ssaoValue * sumWeight;
 
-    add_sample(ssaoValueL, edgesC_LRTB.x, &sum, &sumWeight);
-    add_sample(ssaoValueR, edgesC_LRTB.y, &sum, &sumWeight);
-    add_sample(ssaoValueT, edgesC_LRTB.z, &sum, &sumWeight);
-    add_sample(ssaoValueB, edgesC_LRTB.w, &sum, &sumWeight);
+    add_sample(ssaoValueL, edgesC_LRTB.x, &sum, &sumWeight, &sum_squared);
+    add_sample(ssaoValueR, edgesC_LRTB.y, &sum, &sumWeight, &sum_squared);
+    add_sample(ssaoValueT, edgesC_LRTB.z, &sum, &sumWeight, &sum_squared);
+    add_sample(ssaoValueB, edgesC_LRTB.w, &sum, &sumWeight, &sum_squared);
 
-    add_sample(ssaoValueTL, weightTL, &sum, &sumWeight);
-    add_sample(ssaoValueTR, weightTR, &sum, &sumWeight);
-    add_sample(ssaoValueBL, weightBL, &sum, &sumWeight);
-    add_sample(ssaoValueBR, weightBR, &sum, &sumWeight);
+    add_sample(ssaoValueTL, weightTL, &sum, &sumWeight, &sum_squared);
+    add_sample(ssaoValueTR, weightTR, &sum, &sumWeight, &sum_squared);
+    add_sample(ssaoValueBL, weightBL, &sum, &sumWeight, &sum_squared);
+    add_sample(ssaoValueBR, weightBR, &sum, &sumWeight, &sum_squared);
 
     let blurred_ao = sum / sumWeight;
 
-    /*
-    var min_ssao = ssaoValue;
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
-    min_ssao = select(min_ssao, min(min_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
-    var max_ssao = ssaoValue;
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
-    max_ssao = select(max_ssao, max(max_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
+    //let avg_ssao = (ssaoValue + ssaoValueL + ssaoValueB + ssaoValueR + ssaoValueT) * 0.2;
+    //let avg_squared_ssao = (ssaoValue * ssaoValue + ssaoValueL * ssaoValueL + ssaoValueB * ssaoValueB + ssaoValueR * ssaoValueR + ssaoValueT * ssaoValueT) * 0.2;
+    let avg_ssao = blurred_ao;
+    let avg_squared_ssao = sum_squared / sumWeight;
+    let std_diff = sqrt(avg_squared_ssao - avg_ssao * avg_ssao);
+    let min_ssao = avg_ssao - std_diff;
+    let max_ssao = avg_ssao + std_diff;
+
+    //var min_ssao = ssaoValue;
+    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
+    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
+    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
+    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
+    //var max_ssao = ssaoValue;
+    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
+    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
+    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
+    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
     var weight = 0.9;
-    weight = select(weight, 0.5 * (previous_ao.x - blurred_ao), max_ssao < previous_ao.x);
-    weight = select(weight, 0.5 * (blurred_ao - previous_ao.x), min_ssao > previous_ao.x);
+    //weight = select(weight, 0.5 * (previous_ao.x - blurred_ao), max_ssao < previous_ao.x);
+    //weight = select(weight, 0.5 * (blurred_ao - previous_ao.x), min_ssao > previous_ao.x);
     previous_ao.x = min(max_ssao, previous_ao.x);
     previous_ao.x = max(min_ssao, previous_ao.x);
-    */
     weight *= previous_ao.y;
 
 
