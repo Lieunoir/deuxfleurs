@@ -98,7 +98,7 @@ const sin_phi_mul = sin(phi_mul);
 const cos_2_phi_mul = cos(2. * phi_mul);
 const sin_2_phi_mul = sin(2. * phi_mul);
 const vis_scale = 0.25 / kernel_size;
-const max_radius_pix = 32. / sample_factor;
+const max_radius_pix = 128. / sample_factor;
 override max_mip_level: f32 = 0.;
 
 fn get_sample(origin: vec2<f32>, position: vec3<f32>, view_dir: vec3<f32>, cos_n_plus_pi_2: f32, noise: f32, iter_i: f32, iter_j: f32, dir: vec2<f32>, radius: f32, pix_dif: vec2<f32>, world_radius_mul: f32) -> vec2<f32> {
@@ -177,7 +177,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     // GTAO
     var visibility = 0.0;
     let world_distance = linearize_depth(1.);
-    let world_radius_mul = 10. / world_distance;
+    let world_radius_mul = - 100. / world_distance;
     let wanted_screen_radius = 2. * world_distance / depth;
     let radius = max_radius_pix * min(wanted_screen_radius, 1.);
     let cos_phi_init = cos(noise.x * phi_mul);

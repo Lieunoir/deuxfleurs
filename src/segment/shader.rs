@@ -5,12 +5,12 @@ macro_rules! SHADER { () => {"
 struct CameraUniform {{
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-    view: mat4x4<f32>,
+    view: mat3x3<f32>,
 }}
 
 struct TransformUniform {{
     model: mat4x4<f32>,
-    normal: mat4x4<f32>,
+    normal: mat3x3<f32>,
 }}
 
 struct Jitter {{
@@ -63,19 +63,22 @@ fn vs_main(
     {}
 ) -> VertexOutput {{
     let model_matrix = transform.model;
-    //let center_vector = (model_matrix * vec4<f32>(pos.position_2 - pos.position_1, 1.)).xyz;
-    let center_vector = pos.position_2 - pos.position_1;
+    let world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
+    let world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
+    let center_vector = world_pos_2 - world_pos_1;
+    //let center_vector = pos.position_2 - pos.position_1;
 
     //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    let view_axis = normalize((model_matrix * vec4<f32>(pos.position_1, 1.)).xyz - camera.view_pos.xyz);
+    let view_axis = normalize(world_pos_1 - camera.view_pos.xyz);
     let camera_up = normalize(cross(center_vector, view_axis));
-    let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len), 1.)).xyz;
+    let det = determinant(transform.normal);
+    let world_position = world_pos_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len / pow(det, 1. / 3.));
     let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
-    out.world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
-    out.world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
+    out.world_pos_1 = world_pos_1;
+    out.world_pos_2 = world_pos_2;
     out.world_pos = world_position;
     let t = 0.5 * (model.position.x + 1.);
 
@@ -135,7 +138,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
     var out: FragOutput;
 
 	let pos = ro + t.x * rd;
-	let normal = normalize((camera.view * vec4<f32>(cylNormal(pos, a, b, r), 0.)).xyz);
+	let normal = normalize(camera.view * cylNormal(pos, a, b, r));
 
     {}
 
@@ -203,12 +206,11 @@ pub const CYLINDER_PICKER_SHADER: &str = "
 struct CameraUniform {
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-    view: mat4x4<f32>,
 }
 
 struct TransformUniform {
     model: mat4x4<f32>,
-    normal: mat4x4<f32>,
+    normal: mat3x3<f32>,
 }
 
 struct CounterUniform {
@@ -260,19 +262,21 @@ fn vs_main(
     pos: PosInput,
 ) -> VertexOutput {
     let model_matrix = transform.model;
-    //let center_vector = (model_matrix * vec4<f32>(pos.position_2 - pos.position_1, 1.)).xyz;
-    let center_vector = pos.position_2 - pos.position_1;
+    let world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
+    let world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
+    let center_vector = world_pos_2 - world_pos_1;
+    //let center_vector = pos.position_2 - pos.position_1;
 
     //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
     let view_axis = normalize((model_matrix * vec4<f32>(pos.position_1, 1.)).xyz - camera.view_pos.xyz);
     let camera_up = normalize(cross(center_vector, view_axis));
-    //let camera_up = normalize(vec3<f32>(camera.view_proj.x.y, camera.view_proj.y.y, camera.view_proj.z.y));
-    let world_position = (model_matrix * vec4<f32>(pos.position_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len), 1.)).xyz;
+    let det = determinant(transform.normal);
+    let world_position = world_pos_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len / pow(det, 1. / 3.));
     out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
-    out.world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
-    out.world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
+    out.world_pos_1 = world_pos_1;
+    out.world_pos_2 = world_pos_2;
     out.world_pos = world_position;
     out.index = counter.count + pos.index + offset;
     let t = 0.5 * (model.position.x + 1.);
@@ -330,7 +334,6 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 
 	let pos = ro + t.x * rd;
 
-	let normal = normalize((camera.view * vec4<f32>(cylNormal(pos, a, b, r), 0.)).xyz);
     let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;
     let res = in.index;

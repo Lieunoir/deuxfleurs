@@ -318,7 +318,6 @@ impl InnerGraphicalState {
             texture_buffer_pool.get_filtered_depth_mip_views_ping(),
             texture_buffer_pool.get_filtered_depth_view_pong(),
             texture_buffer_pool.get_filtered_depth_mip_views_pong(),
-            &camera_bind_group_layout,
         );
         let should_resize = settings.fit_camera_on_start;
         InnerGraphicalState {
@@ -365,7 +364,9 @@ impl InnerGraphicalState {
         for surface in self.surfaces.values() {
             if surface.shown() {
                 for p in surface.geometry().get_positions() {
-                    let p = glam::Mat4::from_cols_array_2d(&surface.transform.get_transform())
+                    let p = &surface
+                        .transform
+                        .get_transform()
                         .project_point3((*p).into());
                     if p[1] < min_y {
                         min_y = p[1];
@@ -376,8 +377,7 @@ impl InnerGraphicalState {
         for cloud in self.clouds.values() {
             if cloud.shown() {
                 for p in cloud.geometry().get_positions() {
-                    let p = glam::Mat4::from_cols_array_2d(&cloud.transform.get_transform())
-                        .project_point3((*p).into());
+                    let p = &cloud.transform.get_transform().project_point3((*p).into());
                     if p[1] < min_y {
                         min_y = p[1];
                     }
@@ -387,7 +387,9 @@ impl InnerGraphicalState {
         for segment in self.segments.values() {
             if segment.shown() {
                 for p in segment.geometry().get_positions() {
-                    let p = glam::Mat4::from_cols_array_2d(&segment.transform.get_transform())
+                    let p = &segment
+                        .transform
+                        .get_transform()
                         .project_point3((*p).into());
                     if p[1] < min_y {
                         min_y = p[1];
@@ -513,8 +515,10 @@ impl InnerGraphicalState {
         // Sync local app state with camera
         self.camera_controller
             .update_camera(&mut self.camera, &self.settings);
-        self.camera_uniform
-            .update_view_proj(&self.camera, &self.sbv, self.ground.level);
+        let reprojection =
+            self.camera_uniform
+                .update_view_proj(&self.camera, &self.sbv, self.ground.level);
+        self.ssao.update_reprojection(&self.queue, reprojection);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
@@ -748,7 +752,6 @@ impl InnerGraphicalState {
                 &self.queue,
                 &mut encoder,
                 &self.profiler,
-                &self.camera_bind_group,
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
                 self.texture_buffer_pool.get_denoised_ssao_view_ping(),
@@ -906,7 +909,6 @@ impl InnerGraphicalState {
         self.profiler
             .process_finished_frame(self.queue.get_timestamp_period());
 
-        self.ssao.post_render(&self.queue, &self.camera);
         event_loop_proxy.map(|proxy| {
             self.picker.post_render(
                 proxy,

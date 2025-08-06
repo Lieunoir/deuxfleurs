@@ -5,7 +5,7 @@ struct CameraUniform {
 
 struct TransformUniform {
     model: mat4x4<f32>,
-    normal: mat4x4<f32>,
+    normal: mat3x3<f32>,
 }
 
 struct CounterUniform {
@@ -61,7 +61,8 @@ fn vs_main(
     let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
     let camera_up = normalize(vec3<f32>(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
     let center = (model_matrix * vec4<f32>(data.position, 1.)).xyz;
-    let world_position = (model_matrix * vec4<f32>(data.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len, 1.)).xyz;
+    let det = determinant(transform.normal);
+    let world_position = center + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len / pow(det, 1. / 3.);
     out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.world_pos = world_position;
     out.center = center;

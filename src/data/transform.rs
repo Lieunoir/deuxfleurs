@@ -19,16 +19,9 @@ pub struct TransformSettings {
 }
 
 impl TransformSettings {
-    pub fn get_transform(&self) -> [[f32; 4]; 4] {
-        let model_m =
-            DMat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation);
-        let mut model: [[f32; 4]; 4] = [[0.; 4]; 4];
-        for (row_m, row) in model_m.to_cols_array_2d().into_iter().zip(model.iter_mut()) {
-            for (v_m, v) in row_m.into_iter().zip(row.iter_mut()) {
-                *v = v_m as f32;
-            }
-        }
-        model
+    pub fn get_transform(&self) -> Mat4 {
+        DMat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+            .as_mat4()
     }
 
     pub fn set_transform(&mut self, transform: [[f32; 4]; 4]) {
@@ -40,17 +33,17 @@ impl TransformSettings {
     }
 
     pub fn to_raw(&self) -> TransformRaw {
-        let mut normal: [[f32; 3]; 3] = [[0.; 3]; 3];
         let model = self.get_transform();
-        for (row, row_orig) in normal.iter_mut().zip(model) {
-            *row = row_orig[0..3].try_into().unwrap();
-        }
-        let mut normal = glam::Mat3::from_cols_array_2d(&normal);
+        let mut normal = glam::Mat3A::from_mat4(model);
         normal = normal.inverse().transpose();
-        let normal = glam::Mat4::from_mat3(normal);
+        let normal_raw = [
+            [normal.x_axis.x, normal.x_axis.y, normal.x_axis.z, 0.],
+            [normal.y_axis.x, normal.y_axis.y, normal.y_axis.z, 0.],
+            [normal.z_axis.x, normal.z_axis.y, normal.z_axis.z, 0.],
+        ];
         TransformRaw {
-            model,
-            normal: normal.to_cols_array_2d(),
+            model: model.to_cols_array_2d(),
+            normal: normal_raw,
         }
     }
 
@@ -69,10 +62,8 @@ impl TransformSettings {
                 let mut max_z = std::f32::MIN;
 
                 let model = self.get_transform();
-
-                let transfo_matrix = glam::Mat4::from_cols_array_2d(&model);
                 for position in positions {
-                    let position = transfo_matrix.project_point3((*position).into());
+                    let position = model.project_point3((*position).into());
                     if position[0] < min_x {
                         min_x = position[0];
                     }
@@ -108,10 +99,8 @@ impl TransformSettings {
                 let mut max_z = std::f32::MIN;
 
                 let model = self.get_transform();
-
-                let transfo_matrix = glam::Mat4::from_cols_array_2d(&model);
                 for vertex in positions {
-                    let position = transfo_matrix.project_point3((*vertex).into());
+                    let position = model.project_point3((*vertex).into());
 
                     if position[0] < min_x {
                         min_x = position[0];
@@ -140,7 +129,7 @@ impl TransformSettings {
                 let box_center_y = (max_y + min_y) / 2.;
                 let box_center_z = (max_z + min_z) / 2.;
                 self.scale *= scale as f64;
-                let model_center = transfo_matrix * glam::Vec4::new(0., 0., 0., 1.);
+                let model_center = model * glam::Vec4::new(0., 0., 0., 1.);
                 let model_center = model_center.xyz() / model_center.w;
                 self.translation += glam::DVec3::from_array([
                     -((1. - scale) * (box_center_x + model_center.x)) as f64,
@@ -236,8 +225,8 @@ impl TransformSettings {
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct TransformRaw {
     model: [[f32; 4]; 4],
-    //Actually 3x3 but mat4 for alignment
-    normal: [[f32; 4]; 4],
+    //3x3 fixed by alignment
+    normal: [[f32; 4]; 3],
 }
 
 impl TransformRaw {

@@ -1,12 +1,12 @@
 struct CameraUniform {
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-    view: mat4x4<f32>,
+    view: mat3x3<f32>,
 }
 
 struct TransformUniform {
     model: mat4x4<f32>,
-    normal: mat4x4<f32>,
+    normal: mat3x3<f32>,
 }
 
 struct SettingsUniform {
@@ -51,7 +51,6 @@ fn vs_main(
     vector_i: VectorInput,
 ) -> VertexOutput {
     let model_matrix = transform.model;
-    let normal_matrix = transform.normal;
 
     let world_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
     // Do we want to scale a vector field if we scale its attached mesh?
@@ -67,8 +66,8 @@ fn vs_main(
 
     let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
     let arrow_axis = world_vector_arrow;
-    let right_axis = (model_matrix * vec4<f32>(normalize(cross(view_axis, arrow_axis)), 0.)).xyz;
-    let depth_axis = (model_matrix * vec4<f32>(-normalize(cross(arrow_axis, right_axis)), 0.)).xyz;
+    let right_axis = normalize(cross(view_axis, arrow_axis));
+    let depth_axis = -normalize(cross(arrow_axis, right_axis));
     let radius = min(length(depth_axis), length(right_axis));
     //Change this for fully scaled arrows
     //out.radius = radius * 0.1;
@@ -183,7 +182,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {
     let traced = select(traced_1, traced_2, traced_1.x < 0. || (traced_2.x < traced_1.x && traced_2.x > 0.));
 
     let pos = ro + traced.x * rd;
-    let normal = normalize((camera.view * vec4<f32>(traced.yzw, 0.)).xyz);
+    let normal = normalize(camera.view * traced.yzw);
     out.albedo = vec4<f32>(settings.color, 0.1);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2., 0.);
     let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);

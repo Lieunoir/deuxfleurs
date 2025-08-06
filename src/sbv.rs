@@ -92,8 +92,7 @@ impl SBV {
         ]
     }
 
-    pub fn transform(&self, transform: &[[f32; 4]; 4]) -> Self {
-        let transform = glam::Mat4::from_cols_array_2d(transform);
+    pub fn transform(&self, transform: &glam::Mat4) -> Self {
         let center = transform.project_point3(self.center.into()).into();
 
         let volume = transform.x_axis.truncate().length().max(

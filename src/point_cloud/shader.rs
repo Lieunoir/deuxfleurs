@@ -3,14 +3,14 @@ use crate::shader;
 
 macro_rules! SHADER { () => {"
 struct CameraUniform {{
-view_pos: vec4<f32>,
+    view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-    view: mat4x4<f32>,
+    view: mat3x3<f32>,
 }}
 
 struct TransformUniform {{
     model: mat4x4<f32>,
-    normal: mat4x4<f32>,
+    normal: mat3x3<f32>,
 }}
 
 struct Jitter {{
@@ -65,11 +65,13 @@ fn vs_main(
 
     let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
     let camera_up = normalize(vec3<f32>(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
-    let world_position = (model_matrix * vec4<f32>(pos.position + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len, 1.)).xyz;
+    let center = (model_matrix * vec4<f32>(pos.position, 1.)).xyz;
+    let det = determinant(transform.normal);
+    let world_position = center + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len / pow(det, 1. / 3.);
     let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     out.world_pos = world_position;
-    out.center = (model_matrix * vec4<f32>(pos.position, 1.)).xyz;
+    out.center = center;
     // Set output
     {}
     return out;
@@ -110,7 +112,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
         discard;
     }}
 	let pos = ro + t.x * rd;
-	let normal = normalize((camera.view * vec4<f32>(pos - ce, 0.)).xyz);
+	let normal = normalize(camera.view * (pos - ce));
 
     {}
 

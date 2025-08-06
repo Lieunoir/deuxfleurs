@@ -12,7 +12,7 @@ macro_rules! SHADER {
 struct CameraUniform {{
     view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
-    view: mat4x4<f32>,
+    view: mat3x3<f32>,
 }}
 
 struct Jitter {{
@@ -21,7 +21,7 @@ struct Jitter {{
 
 struct TransformUniform {{
     model: mat4x4<f32>,
-    normal: mat4x4<f32>,
+    normal: mat3x3<f32>,
 }}
 
 struct SettingsUniform {{
@@ -111,7 +111,7 @@ struct MaterialOutput {{
 @fragment
 fn fs_main(in: VertexOutput) -> MaterialOutput {{
     // We use the special function `textureSample` to combine the texture data with coords
-    let view_dir = (camera.view * vec4<f32>(normalize(camera.view_pos.xyz - in.world_position), 0.)).xyz;
+    let view_dir = camera.view * (camera.view_pos.xyz - in.world_position);
     let normal = select(in.world_normal, -in.world_normal, dot(in.world_normal, view_dir) < 0.);
     //let normal = select(-in.world_normal, in.world_normal, dot(in.world_normal, vec3<f32>(0., 0., 1.)) > 0.);
     //let normal = in.world_normal;
@@ -288,10 +288,10 @@ const FLAT_NORMAL_INTERPOLATION: &str = "
     var normal = normalize(cross(tan_x, tan_y));
 ";*/
 const FLAT_NORMAL_INTERPOLATION: &str = "
-    out.world_normal = normalize((normal_matrix * vec4<f32>(model.face_normal.xyz, 0.0)).xyz);
+    out.world_normal = normalize(normal_matrix * model.face_normal.xyz);
 ";
 const SMOOTH_NORMAL_INTERPOLATION: &str = "
-    out.world_normal = normalize((normal_matrix * vec4<f32>(model.normal.xyz, 0.0)).xyz);
+    out.world_normal = normalize(normal_matrix * model.normal.xyz);
 ";
 
 const WITH_EDGE_SHADER: &str = "

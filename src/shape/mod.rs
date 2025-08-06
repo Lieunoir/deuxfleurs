@@ -93,7 +93,7 @@ impl<Geometry, Renderer, Settings, Data, AttachedGeometry>
     }
 
     pub fn get_transform(&self) -> [[f32; 4]; 4] {
-        self.transform.get_transform()
+        self.transform.get_transform().to_cols_array_2d()
     }
 }
 

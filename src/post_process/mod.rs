@@ -1130,7 +1130,6 @@ impl SSAO {
         filtered_depth_view_pong: &wgpu::TextureView,
         filtered_depth_mip_views_pong: &[wgpu::TextureView;
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let frame_index = 0;
         let frame_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1479,7 +1478,7 @@ impl SSAO {
         let denoiser_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("SSAO denoiser Pipeline Layout"),
-                bind_group_layouts: &[&camera_bind_group_layout, &denoiser_bind_group_layout],
+                bind_group_layouts: &[&denoiser_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -1647,7 +1646,6 @@ impl SSAO {
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         profiler: &GpuProfiler,
-        camera_bind_group: &wgpu::BindGroup,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
         denoised_ssao_view_ping: &wgpu::TextureView,
@@ -1786,11 +1784,10 @@ impl SSAO {
                     timestamp_writes: None,
                 },
             );
-            render_pass.set_bind_group(0, camera_bind_group, &[]);
             if self.ping {
-                render_pass.set_bind_group(1, &self.denoiser_bind_group_ping, &[]);
+                render_pass.set_bind_group(0, &self.denoiser_bind_group_ping, &[]);
             } else {
-                render_pass.set_bind_group(1, &self.denoiser_bind_group_pong, &[]);
+                render_pass.set_bind_group(0, &self.denoiser_bind_group_pong, &[]);
             }
             render_pass.set_pipeline(&self.denoiser_pipeline);
             render_pass.draw(0..4, 0..1);
@@ -1825,12 +1822,11 @@ impl SSAO {
         }
     }
 
-    pub fn post_render(&mut self, queue: &wgpu::Queue, camera: &Camera) {
-        let proj = camera.build_view_view_projection_matrix().1;
+    pub fn update_reprojection(&mut self, queue: &wgpu::Queue, reproj: glam::Mat4) {
         queue.write_buffer(
             &self.denoiser_buffer,
             0,
-            bytemuck::cast_slice(&[proj.to_cols_array()]),
+            bytemuck::cast_slice(&[reproj.to_cols_array()]),
         );
     }
 }

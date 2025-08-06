@@ -108,8 +108,7 @@ impl Camera {
 pub struct CameraUniform {
     view_position: [f32; 4],
     pub(crate) view_proj: [[f32; 4]; 4],
-    pub(crate) view: [[f32; 4]; 4],
-    pub(crate) view_proj_inv: [[f32; 4]; 4],
+    pub(crate) view: [[f32; 4]; 3],
     floor_bb: [f32; 4],
     floor_proj: [[f32; 4]; 4],
 }
@@ -118,25 +117,48 @@ impl CameraUniform {
     pub fn new() -> Self {
         Self {
             view_position: [0.0; 4],
-            view: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            view: [[0.; 4]; 3],
             view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
-            view_proj_inv: glam::Mat4::IDENTITY.to_cols_array_2d(),
             floor_bb: [0.0; 4],
             floor_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &Camera, sbv: &SBV, level: f32) {
+    pub fn update_view_proj(&mut self, camera: &Camera, sbv: &SBV, level: f32) -> glam::Mat4 {
         // We're using Vector4 because ofthe camera_uniform 16 byte spacing requirement
         self.view_position = camera.eye.extend(1.).into();
         let (view, view_proj) = camera.build_view_view_projection_matrix();
         let view_mat_3 = glam::Mat3::from_mat4(view);
-        let view_inv_trans = glam::Mat4::from_mat3(view_mat_3.inverse().transpose());
-        //let view_inv_trans = glam::Mat4::from_mat3(view_mat_3);
-        self.view = view_inv_trans.to_cols_array_2d();
+        let view_inv_trans = view_mat_3.inverse().transpose();
+        let view_raw = [
+            [
+                view_inv_trans.x_axis.x,
+                view_inv_trans.x_axis.y,
+                view_inv_trans.x_axis.z,
+                0.,
+            ],
+            [
+                view_inv_trans.y_axis.x,
+                view_inv_trans.y_axis.y,
+                view_inv_trans.y_axis.z,
+                0.,
+            ],
+            [
+                view_inv_trans.z_axis.x,
+                view_inv_trans.z_axis.y,
+                view_inv_trans.z_axis.z,
+                0.,
+            ],
+        ];
+        self.view = view_raw;
+        let old_view_proj = glam::Mat4::from_cols_array_2d(&self.view_proj);
         self.view_proj = view_proj.to_cols_array_2d();
-        let view_proj_inv = view_proj.inverse();
-        self.view_proj_inv = view_proj_inv.to_cols_array_2d();
+        let view_proj_inv_d = view_proj.as_dmat4().inverse();
+        let view_proj_inv = view_proj_inv_d.as_mat4();
+        // double precision is needed here
+        let reproject_d = old_view_proj.as_dmat4() * view_proj_inv_d;
+        let reproject = reproject_d.as_mat4();
+
         //let orig : cgmath::Vector4<f32> = self.view_position.into();
         let mut min_x = f32::MAX;
         let mut min_z = f32::MAX;
@@ -237,6 +259,7 @@ impl CameraUniform {
             glam::Mat4::orthographic_rh(d_x, -d_x, -d_z, d_z, -camera.zfar, 2. * camera.zfar);
         self.floor_bb = [min_x, min_z, max_x - min_x, max_z - min_z];
         self.floor_proj = (proj * view).to_cols_array_2d();
+        reproject
     }
 }
 
