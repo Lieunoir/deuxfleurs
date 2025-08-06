@@ -1,5 +1,6 @@
 use crate::Settings;
 use crate::attachment::internal::AttachmentPosition;
+use crate::camera::Camera;
 use crate::data::TransformSettings;
 use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
 use crate::sbv::SBV;
@@ -141,6 +142,7 @@ where
     pub(crate) fn upgrade<Fixed, DataB, Pipeline>(
         self,
         device: &wgpu::Device,
+        camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Shape<
@@ -175,6 +177,7 @@ where
                     name,
                     field.init(
                         device,
+                        camera,
                         camera_bind_group_layout,
                         &renderer.transform_uniform.bind_group_layout,
                     ),

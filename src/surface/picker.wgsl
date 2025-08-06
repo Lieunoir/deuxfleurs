@@ -1,7 +1,6 @@
 struct CameraUniform {
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
 }
 
 struct TransformUniform {
@@ -44,13 +43,13 @@ fn vs_main(
 ) -> VertexOutput {
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
-    let model_matrix = transform.model;
+    let model_matrix = camera.view * transform.model;
 
     out.face_index = counter.count + model.face_index / 3;
 
     // We set the \"position\" by using the `clip_position` property
     // We multiply it by the camera position matrix and the instance position matrix
-    out.clip_position = camera.view_proj * model_matrix * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.proj * model_matrix * vec4<f32>(model.position, 1.0);
     return out;
 }
 

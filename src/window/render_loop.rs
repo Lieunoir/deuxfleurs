@@ -240,6 +240,7 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
+                        &camera,
                         &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
@@ -254,6 +255,7 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
+                        &camera,
                         &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
@@ -267,6 +269,7 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
+                        &camera,
                         &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
@@ -513,11 +516,12 @@ impl InnerGraphicalState {
 
     pub(crate) fn update(&mut self) -> bool {
         // Sync local app state with camera
+        let old_camera = self.camera.clone();
         self.camera_controller
             .update_camera(&mut self.camera, &self.settings);
-        let reprojection =
-            self.camera_uniform
-                .update_view_proj(&self.camera, &self.sbv, self.ground.level);
+        self.camera_uniform
+            .update_view_proj(&self.camera, &self.sbv, self.ground.level);
+        let reprojection = self.camera.get_reprojection_from(&old_camera);
         self.ssao.update_reprojection(&self.queue, reprojection);
         self.queue.write_buffer(
             &self.camera_buffer,
@@ -808,7 +812,7 @@ impl InnerGraphicalState {
                 }
 
                 drop(shadow_render_pass);
-                self.ground.blur(&mut scope, &self.camera_bind_group);
+                self.ground.blur(&mut scope);
                 let mut ground_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Shadow Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {

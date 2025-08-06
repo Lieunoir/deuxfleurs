@@ -33,8 +33,8 @@ impl TransformSettings {
     }
 
     pub fn to_raw(&self) -> TransformRaw {
-        let model = self.get_transform();
-        let mut normal = glam::Mat3A::from_mat4(model);
+        let world = self.get_transform();
+        let mut normal = glam::Mat3A::from_mat4(world);
         normal = normal.inverse().transpose();
         let normal_raw = [
             [normal.x_axis.x, normal.x_axis.y, normal.x_axis.z, 0.],
@@ -42,8 +42,12 @@ impl TransformSettings {
             [normal.z_axis.x, normal.z_axis.y, normal.z_axis.z, 0.],
         ];
         TransformRaw {
-            model: model.to_cols_array_2d(),
-            normal: normal_raw,
+            world: world.to_cols_array_2d(),
+            world_normal: normal_raw,
+            scaling: self.scale.x as f32,
+            _pad0: 0.,
+            _pad1: 0.,
+            _pad2: 0.,
         }
     }
 
@@ -224,14 +228,18 @@ impl TransformSettings {
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct TransformRaw {
-    model: [[f32; 4]; 4],
+    world: [[f32; 4]; 4],
     //3x3 fixed by alignment
-    normal: [[f32; 4]; 3],
+    world_normal: [[f32; 4]; 3],
+    scaling: f32,
+    _pad0: f32,
+    _pad1: f32,
+    _pad2: f32,
 }
 
 impl TransformRaw {
-    pub fn get_model(&self) -> [[f32; 4]; 4] {
-        self.model
+    pub fn get_world(&self) -> [[f32; 4]; 4] {
+        self.world
     }
 }
 

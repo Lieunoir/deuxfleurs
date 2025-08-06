@@ -1,7 +1,6 @@
 struct CameraUniform {
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
     min_bb: vec2<f32>,
     max_bb: vec2<f32>,
 }
@@ -36,7 +35,7 @@ fn vs_main(
     var out: VertexOutput;
     let world_pos = vec4<f32>(camera.min_bb.x + pos[index].x * camera.max_bb.x, level.level, camera.min_bb.y + pos[index].y * camera.max_bb.y, 1.);
 
-    out.clip_position = camera.view_proj * world_pos;
+    out.clip_position = camera.proj * camera.view * world_pos;
     out.tex_coords = vec2<f32>(pos[index].x, 1. - pos[index].y);
     return out;
 }

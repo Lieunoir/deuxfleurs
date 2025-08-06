@@ -3,14 +3,14 @@ use crate::shader;
 
 macro_rules! SHADER { () => {"
 struct CameraUniform {{
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
 }}
 
 struct TransformUniform {{
     model: mat4x4<f32>,
     normal: mat3x3<f32>,
+    scale: f32,
 }}
 
 struct Jitter {{
@@ -49,7 +49,7 @@ struct PosInput {{
 
 struct VertexOutput {{
     @builtin(position) clip_position: vec4<f32>,
-	@location(0) world_pos: vec3<f32>,
+	@location(0) view_pos: vec3<f32>,
 	@location(1) center: vec3<f32>,
     {}
 }};
@@ -60,17 +60,16 @@ fn vs_main(
     pos: PosInput,
     {}
 ) -> VertexOutput {{
-    let model_matrix = transform.model;
+    let model_matrix = camera.view * transform.model;
     var out: VertexOutput;
 
-    let camera_right = normalize(vec3<f32>(camera.view_proj[0].x, camera.view_proj[1].x, camera.view_proj[2].x));
-    let camera_up = normalize(vec3<f32>(camera.view_proj[0].y, camera.view_proj[1].y, camera.view_proj[2].y));
+    let camera_right = vec3<f32>(1., 0., 0.);
+    let camera_up = vec3<f32>(0., 1., 0.);
     let center = (model_matrix * vec4<f32>(pos.position, 1.)).xyz;
-    let det = determinant(transform.normal);
-    let world_position = center + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len / pow(det, 1. / 3.);
-    let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
+    let view_position = center + (model.position.x * camera_right + model.position.y * camera_up) * settings.radius * settings.char_len * transform.scale;
+    let clip_pos = camera.proj * vec4<f32>(view_position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
-    out.world_pos = world_position;
+    out.view_pos = view_position;
     out.center = center;
     // Set output
     {}
@@ -96,11 +95,10 @@ struct FragOutput {{
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragOutput {{
-    let ro = camera.view_pos.xyz;
-	let rd = normalize(in.world_pos - camera.view_pos.xyz);
+    let ro = vec3<f32>(0.);
+	let rd = normalize(in.view_pos);
     let ce = in.center;
-    let det = determinant(transform.normal);
-    let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
+    let r = settings.radius * settings.char_len * transform.scale;
     //let pa = in.orig_position;
     //let pb1 = in.orig_position + 0.5 * in.arrow * 0.1;
     //let pb2 = in.orig_position + in.arrow * 0.1;
@@ -112,11 +110,11 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
         discard;
     }}
 	let pos = ro + t.x * rd;
-	let normal = normalize(camera.view * (pos - ce));
+	let normal = normalize(pos - ce);
 
     {}
 
-    let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+    let clip_space_pos = camera.proj * vec4<f32>(pos, 1.);
 	out.albedo = vec4<f32>(lambertian, 0.3);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;

@@ -1,7 +1,6 @@
 struct CameraUniform {
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
 }
 
 struct TransformUniform {
@@ -39,7 +38,7 @@ struct VectorInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) world_pos: vec3<f32>,
+    @location(0) view_pos: vec3<f32>,
     @location(1) orig_position: vec3<f32>,
     @location(2) arrow: vec3<f32>,
     @location(3) radius: f32,
@@ -50,22 +49,22 @@ fn vs_main(
     model: VertexInput,
     vector_i: VectorInput,
 ) -> VertexOutput {
-    let model_matrix = transform.model;
+    let model_matrix = camera.view * transform.model;
 
-    let world_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
+    let view_vector_pos = (model_matrix * vec4<f32>(vector_i.orig_position, 1.)).xyz;
     // Do we want to scale a vector field if we scale its attached mesh?
-    let world_vector_arrow_t = (model_matrix * vec4<f32>(vector_i.orig_position + vector_i.arrow, 1.)).xyz - world_vector_pos;
-    let arrow_ampl = length(world_vector_arrow_t);
-    let world_vector_arrow = normalize(world_vector_arrow_t);
+    let view_vector_arrow_t = (model_matrix * vec4<f32>(vector_i.arrow, 0.)).xyz;
+    let arrow_ampl = length(view_vector_arrow_t);
+    let view_vector_arrow = normalize(view_vector_arrow_t);
 
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    out.orig_position = world_vector_pos;
-    out.arrow = world_vector_arrow * settings.magnitude * settings.char_l * arrow_ampl;
+    out.orig_position = view_vector_pos;
+    out.arrow = view_vector_arrow * settings.magnitude * settings.char_l * arrow_ampl;
 
-    let view_axis = normalize(world_vector_pos - camera.view_pos.xyz);
-    let arrow_axis = world_vector_arrow;
+    let view_axis = normalize(view_vector_pos);
+    let arrow_axis = view_vector_arrow;
     let right_axis = normalize(cross(view_axis, arrow_axis));
     let depth_axis = -normalize(cross(arrow_axis, right_axis));
     let radius = min(length(depth_axis), length(right_axis));
@@ -75,7 +74,7 @@ fn vs_main(
 
     let rotation_mat = mat3x3<f32>(
         right_axis,
-        world_vector_arrow,
+        view_vector_arrow,
         depth_axis
     );
 
@@ -84,9 +83,9 @@ fn vs_main(
     //corrected_pos.y = corrected_pos.y * arrow_ampl;
     corrected_pos = corrected_pos * arrow_ampl;
 
-    let position = rotation_mat * corrected_pos * settings.magnitude * settings.char_l + world_vector_pos;
-    out.world_pos = position;
-    let clip_pos = camera.view_proj * vec4<f32>(position, 1.0);
+    let position = rotation_mat * corrected_pos * settings.magnitude * settings.char_l + view_vector_pos;
+    out.view_pos = position;
+    let clip_pos = camera.proj * vec4<f32>(position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     return out;
 }
@@ -166,8 +165,8 @@ struct FragOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragOutput {
-    let ro = camera.view_pos.xyz;
-    let rd = normalize(in.world_pos - camera.view_pos.xyz);
+    let ro = vec3<f32>(0.);
+    let rd = normalize(in.view_pos);
     let pa = in.orig_position;
     let pb1 = in.orig_position + 0.5 * in.arrow;
     let pb2 = in.orig_position + in.arrow;
@@ -182,10 +181,10 @@ fn fs_main(in: VertexOutput) -> FragOutput {
     let traced = select(traced_1, traced_2, traced_1.x < 0. || (traced_2.x < traced_1.x && traced_2.x > 0.));
 
     let pos = ro + traced.x * rd;
-    let normal = normalize(camera.view * traced.yzw);
+    let normal = normalize(traced.yzw);
     out.albedo = vec4<f32>(settings.color, 0.1);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2., 0.);
-    let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+    let clip_space_pos = camera.proj * vec4<f32>(pos, 1.);
     out.depth = clip_space_pos.z / clip_space_pos.w;
     return out;
 }

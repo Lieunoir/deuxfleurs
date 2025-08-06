@@ -684,7 +684,7 @@ impl Ground {
 
         let blur_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
-            bind_group_layouts: &[camera_bind_group_layout, &material_bind_group_layout],
+            bind_group_layouts: &[&material_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -755,7 +755,7 @@ impl Ground {
         render_pass.draw(0..4, 0..1);
     }
 
-    fn first_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_bind_group: &wgpu::BindGroup) {
+    fn first_pass(&self, encoder: &mut wgpu::CommandEncoder) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Horizontal Blur Shadow Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -771,8 +771,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
-        render_pass.set_bind_group(0, camera_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.h_blur_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.h_blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
         drop(render_pass);
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -790,12 +789,11 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
-        render_pass.set_bind_group(0, camera_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.low_blur_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.low_blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
     }
 
-    fn second_pass(&self, encoder: &mut wgpu::CommandEncoder, camera_bind_group: &wgpu::BindGroup) {
+    fn second_pass(&self, encoder: &mut wgpu::CommandEncoder) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Horizontal Blur Shadow Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -811,8 +809,7 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
-        render_pass.set_bind_group(0, camera_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.low_h_blur_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.low_h_blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
         drop(render_pass);
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -830,14 +827,13 @@ impl Ground {
             timestamp_writes: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
-        render_pass.set_bind_group(0, camera_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.blur_bind_group, &[]);
+        render_pass.set_bind_group(0, &self.blur_bind_group, &[]);
         render_pass.draw(0..4, 0..1);
     }
 
-    pub fn blur(&self, encoder: &mut wgpu::CommandEncoder, camera_bind_group: &wgpu::BindGroup) {
-        self.first_pass(encoder, camera_bind_group);
-        self.second_pass(encoder, camera_bind_group);
+    pub fn blur(&self, encoder: &mut wgpu::CommandEncoder) {
+        self.first_pass(encoder);
+        self.second_pass(encoder);
     }
 }
 

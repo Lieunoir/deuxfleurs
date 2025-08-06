@@ -1,7 +1,6 @@
 struct CameraUniform {
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
     min_bb: vec2<f32>,
     max_bb: vec2<f32>,
     shadow_proj: mat4x4<f32>,

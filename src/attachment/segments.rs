@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     attachment::internal::AttachmentPosition,
+    camera::Camera,
     data::internal::DataUniformBuilder,
     segment::{DisplaySegment, PCSettings, UninitedSegment},
     settings::Settings,
@@ -77,11 +78,13 @@ impl NewAttachedGeometry for NewSegments {
     fn init(
         self,
         device: &wgpu::Device,
+        camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self::UpgradedAttachedGeometry {
         let inner = self.inner.upgrade(
             device,
+            camera,
             camera_bind_group_layout,
             transform_bind_group_layout, //Lie
         );

@@ -10,9 +10,8 @@ macro_rules! SHADER {
 
 // Define any uniforms we expect from app
 struct CameraUniform {{
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
 }}
 
 struct Jitter {{
@@ -60,8 +59,8 @@ struct VertexOutput {{
     @builtin(position) clip_position: vec4<f32>,
     // These are \"custom\" properties we can create to pass down
     // In this case, we pass the color down
-    @location(0) world_normal: vec3<f32>,
-    @location(1) world_position: vec3<f32>,
+    @location(0) view_normal: vec3<f32>,
+    @location(1) view_position: vec3<f32>,
     @location(2) barycentric_coords: vec3<f32>,
     {}
 }};
@@ -71,16 +70,21 @@ fn vs_main(
     model: VertexInput,
     {}
 ) -> VertexOutput {{
-    let model_matrix = transform.model;
-    let normal_matrix = camera.view * transform.normal;
+    let model_matrix = camera.view * transform.model;
+    let camera_normal_view = mat3x3<f32>(
+        camera.view[0].xyz,
+        camera.view[1].xyz,
+        camera.view[2].xyz,
+        );
+    let normal_matrix = camera_normal_view * transform.normal;
 
     // We define the output we want to send over to frag shader
     var out: VertexOutput;
 
     // smooth normals
     {}
-    let world_position: vec4<f32> = model_matrix * vec4<f32>(model.position, 1.0);
-    out.world_position = world_position.xyz;
+    let view_position: vec4<f32> = model_matrix * vec4<f32>(model.position, 1.0);
+    out.view_position = view_position.xyz;
 
     // output assignement
     {}
@@ -97,7 +101,7 @@ fn vs_main(
 
     // We set the \"position\" by using the `clip_position` property
     // We multiply it by the camera position matrix and the instance position matrix
-    let clip_pos = camera.view_proj * model_matrix * vec4<f32>(model.position, 1.0);
+    let clip_pos = camera.proj * model_matrix * vec4<f32>(model.position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     return out;
 }}
@@ -110,11 +114,8 @@ struct MaterialOutput {{
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> MaterialOutput {{
-    // We use the special function `textureSample` to combine the texture data with coords
-    let view_dir = camera.view * (camera.view_pos.xyz - in.world_position);
-    let normal = select(in.world_normal, -in.world_normal, dot(in.world_normal, view_dir) < 0.);
-    //let normal = select(-in.world_normal, in.world_normal, dot(in.world_normal, vec3<f32>(0., 0., 1.)) > 0.);
-    //let normal = in.world_normal;
+    let view_dir = - in.view_position;
+    let normal = select(in.view_normal, -in.view_normal, dot(in.view_normal, view_dir) < 0.);
 
     //var data_color = in.color;
     var data_color = settings.color;
@@ -288,10 +289,10 @@ const FLAT_NORMAL_INTERPOLATION: &str = "
     var normal = normalize(cross(tan_x, tan_y));
 ";*/
 const FLAT_NORMAL_INTERPOLATION: &str = "
-    out.world_normal = normalize(normal_matrix * model.face_normal.xyz);
+    out.view_normal = normalize(normal_matrix * model.face_normal.xyz);
 ";
 const SMOOTH_NORMAL_INTERPOLATION: &str = "
-    out.world_normal = normalize(normal_matrix * model.normal.xyz);
+    out.view_normal = normalize(normal_matrix * model.normal.xyz);
 ";
 
 const WITH_EDGE_SHADER: &str = "

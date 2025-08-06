@@ -1,16 +1,6 @@
-struct CameraUniform {
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
-    min_bb: vec2<f32>,
-    max_bb: vec2<f32>,
-}
-
 @group(0) @binding(0)
-var<uniform> camera: CameraUniform;
-@group(1) @binding(0)
 var t_a: texture_2d<f32>;
-@group(1) @binding(1)
+@group(0) @binding(1)
 var s: sampler;
 
 struct VertexOutput {

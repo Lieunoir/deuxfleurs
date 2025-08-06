@@ -7,6 +7,7 @@ use crate::{
         NewPoints, NewSegments, NewVectorField, Points, Segments, VectorField, VectorFieldSettings,
         internal::AttachmentPosition,
     },
+    camera::Camera,
     point_cloud::PCSettings,
     segment::PCSettings as SegmentSettings,
     shape::{AttachedGeometry, GraphicalContext, NewAttachedGeometry},
@@ -135,22 +136,26 @@ impl NewAttachedGeometry for NewSurfaceAttachment {
     fn init(
         self,
         device: &wgpu::Device,
+        camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self::UpgradedAttachedGeometry {
         match self {
             NewSurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.init(
                 device,
+                camera,
                 camera_bind_group_layout,
                 transform_bind_group_layout,
             )),
             NewSurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.init(
                 device,
+                camera,
                 camera_bind_group_layout,
                 transform_bind_group_layout,
             )),
             NewSurfaceAttachment::Segments(p) => SurfaceAttachment::Segments(p.init(
                 device,
+                camera,
                 camera_bind_group_layout,
                 transform_bind_group_layout,
             )),

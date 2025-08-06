@@ -1,4 +1,5 @@
 use crate::attachment::internal::AttachmentPosition;
+use crate::camera::Camera;
 use crate::data::*;
 use crate::shape::AttachedGeometry;
 use crate::shape::Context;
@@ -429,6 +430,7 @@ impl NewAttachedGeometry for NewVectorField {
     fn init(
         self,
         device: &wgpu::Device,
+        _camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self::UpgradedAttachedGeometry {

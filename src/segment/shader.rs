@@ -3,14 +3,14 @@ use crate::shader;
 
 macro_rules! SHADER { () => {"
 struct CameraUniform {{
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
-    view: mat3x3<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
 }}
 
 struct TransformUniform {{
     model: mat4x4<f32>,
     normal: mat3x3<f32>,
+    scale: f32,
 }}
 
 struct Jitter {{
@@ -49,9 +49,9 @@ struct PosInput {{
 
 struct VertexOutput {{
     @builtin(position) clip_position: vec4<f32>,
-	@location(0) world_pos_1: vec3<f32>,
-	@location(1) world_pos_2: vec3<f32>,
-	@location(2) world_pos: vec3<f32>,
+	@location(0) view_pos_1: vec3<f32>,
+	@location(1) view_pos_2: vec3<f32>,
+	@location(2) view_pos: vec3<f32>,
     // Data Ouput
     {}
 }};
@@ -62,24 +62,23 @@ fn vs_main(
     pos: PosInput,
     {}
 ) -> VertexOutput {{
-    let model_matrix = transform.model;
-    let world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
-    let world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
-    let center_vector = world_pos_2 - world_pos_1;
+    let model_matrix = camera.view * transform.model;
+    let view_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
+    let view_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
+    let center_vector = view_pos_2 - view_pos_1;
     //let center_vector = pos.position_2 - pos.position_1;
 
     //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    let view_axis = normalize(world_pos_1 - camera.view_pos.xyz);
+    let view_axis = normalize(view_pos_1);
     let camera_up = normalize(cross(center_vector, view_axis));
-    let det = determinant(transform.normal);
-    let world_position = world_pos_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len / pow(det, 1. / 3.));
-    let clip_pos = camera.view_proj * vec4<f32>(world_position, 1.0);
+    let view_position = view_pos_1 + 0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len * transform.scale;
+    let clip_pos = camera.proj * vec4<f32>(view_position, 1.0);
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
-    out.world_pos_1 = world_pos_1;
-    out.world_pos_2 = world_pos_2;
-    out.world_pos = world_position;
+    out.view_pos_1 = view_pos_1;
+    out.view_pos_2 = view_pos_2;
+    out.view_pos = view_position;
     let t = 0.5 * (model.position.x + 1.);
 
     // Output set
@@ -127,10 +126,10 @@ struct FragOutput {{
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragOutput {{
-    let ro = camera.view_pos.xyz;
-	let rd = normalize(in.world_pos - camera.view_pos.xyz);
-	let a = in.world_pos_1;
-	let b = in.world_pos_2;
+    let ro = vec3<f32>(0.);
+	let rd = normalize(in.view_pos);
+	let a = in.view_pos_1;
+	let b = in.view_pos_2;
     let det = determinant(transform.normal);
     let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
 	let t = cylIntersect(ro, rd, a, b, r);
@@ -138,11 +137,11 @@ fn fs_main(in: VertexOutput) -> FragOutput {{
     var out: FragOutput;
 
 	let pos = ro + t.x * rd;
-	let normal = normalize(camera.view * cylNormal(pos, a, b, r));
+	let normal = cylNormal(pos, a, b, r);
 
     {}
 
-    let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+    let clip_space_pos = camera.proj * vec4<f32>(pos, 1.);
 	out.albedo = vec4<f32>(lambertian, 0.3);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2. , 0.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;
@@ -204,13 +203,14 @@ struct DataInput {
 
 pub const CYLINDER_PICKER_SHADER: &str = "
 struct CameraUniform {
-    view_pos: vec4<f32>,
-    view_proj: mat4x4<f32>,
+    view: mat4x4<f32>,
+    proj: mat4x4<f32>,
 }
 
 struct TransformUniform {
     model: mat4x4<f32>,
     normal: mat3x3<f32>,
+    scale: f32,
 }
 
 struct CounterUniform {
@@ -248,9 +248,9 @@ struct PosInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-	@location(0) world_pos_1: vec3<f32>,
-	@location(1) world_pos_2: vec3<f32>,
-	@location(2) world_pos: vec3<f32>,
+	@location(0) view_pos_1: vec3<f32>,
+	@location(1) view_pos_2: vec3<f32>,
+	@location(2) view_pos: vec3<f32>,
     @location(3) index: u32,
 };
 
@@ -261,23 +261,22 @@ fn vs_main(
     model: VertexInput,
     pos: PosInput,
 ) -> VertexOutput {
-    let model_matrix = transform.model;
-    let world_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
-    let world_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
-    let center_vector = world_pos_2 - world_pos_1;
+    let model_matrix = camera.view * transform.model;
+    let view_pos_1 = (model_matrix * vec4<f32>(pos.position_1, 1.)).xyz;
+    let view_pos_2 = (model_matrix * vec4<f32>(pos.position_2, 1.)).xyz;
+    let center_vector = view_pos_2 - view_pos_1;
     //let center_vector = pos.position_2 - pos.position_1;
 
     //// We define the output we want to send over to frag shader
     var out: VertexOutput;
 
-    let view_axis = normalize((model_matrix * vec4<f32>(pos.position_1, 1.)).xyz - camera.view_pos.xyz);
+    let view_axis = normalize(view_pos_1);
     let camera_up = normalize(cross(center_vector, view_axis));
-    let det = determinant(transform.normal);
-    let world_position = world_pos_1 + (0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len / pow(det, 1. / 3.));
-    out.clip_position = camera.view_proj * vec4<f32>(world_position, 1.0);
-    out.world_pos_1 = world_pos_1;
-    out.world_pos_2 = world_pos_2;
-    out.world_pos = world_position;
+    let view_position = view_pos_1 + 0.5*(model.position.x + 1.) * center_vector + model.position.y * camera_up * settings.radius * settings.char_len * transform.scale;
+    out.clip_position = camera.proj * vec4<f32>(view_position, 1.0);
+    out.view_pos_1 = view_pos_1;
+    out.view_pos_2 = view_pos_2;
+    out.view_pos = view_position;
     out.index = counter.count + pos.index + offset;
     let t = 0.5 * (model.position.x + 1.);
     return out;
@@ -322,19 +321,18 @@ struct FragOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> FragOutput {
-    let ro = camera.view_pos.xyz;
-	let rd = normalize(in.world_pos - camera.view_pos.xyz);
-	let a = in.world_pos_1;
-	let b = in.world_pos_2;
-    let det = determinant(transform.normal);
-    let r = settings.radius * settings.char_len / pow(det, 1. / 3.);
+    let ro = vec3<f32>(0.);
+	let rd = normalize(in.view_pos);
+	let a = in.view_pos_1;
+	let b = in.view_pos_2;
+    let r = settings.radius * settings.char_len * transform.scale;
 	let t = cylIntersect(ro, rd, a, b, r);
 
     var out: FragOutput;
 
 	let pos = ro + t.x * rd;
 
-    let clip_space_pos = camera.view_proj * vec4<f32>(pos, 1.);
+    let clip_space_pos = camera.proj * vec4<f32>(pos, 1.);
 	out.depth = clip_space_pos.z / clip_space_pos.w;
     let res = in.index;
     // webgl dosen't support rendering to u32, so we have to resort to this

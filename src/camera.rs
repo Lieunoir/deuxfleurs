@@ -51,11 +51,11 @@ impl Camera {
         (self.eye.into(), self.target.into(), self.up.into())
     }
 
-    pub fn build_view_view_projection_matrix(&self) -> (glam::Mat4, glam::Mat4) {
+    pub fn build_view_projection(&self) -> glam::Mat4 {
         let view = glam::Mat4::look_at_rh(self.eye, self.target, self.up);
         let proj =
             glam::Mat4::perspective_rh(self.fovy / 180. * PI, self.aspect, self.znear, self.zfar);
-        (view, proj * view)
+        proj * view
     }
 
     pub fn build_view(&self) -> glam::Mat4 {
@@ -100,15 +100,23 @@ impl Camera {
             self.set_from_camera(new_c);
         }
     }
+
+    pub fn get_reprojection_from(&self, old_camera: &Camera) -> glam::Mat4 {
+        let old_view_proj = old_camera.build_view_projection();
+        let view_proj = self.build_view_projection();
+        let view_proj_inv_d = view_proj.as_dmat4().inverse();
+        // double precision is needed here
+        let reproject_d = old_view_proj.as_dmat4() * view_proj_inv_d;
+        reproject_d.as_mat4()
+    }
 }
 
 // Camera matrices for GPU computations
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
-    view_position: [f32; 4],
-    pub(crate) view_proj: [[f32; 4]; 4],
-    pub(crate) view: [[f32; 4]; 3],
+    pub(crate) view: [[f32; 4]; 4],
+    pub(crate) proj: [[f32; 4]; 4],
     floor_bb: [f32; 4],
     floor_proj: [[f32; 4]; 4],
 }
@@ -116,48 +124,21 @@ pub struct CameraUniform {
 impl CameraUniform {
     pub fn new() -> Self {
         Self {
-            view_position: [0.0; 4],
-            view: [[0.; 4]; 3],
-            view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            view: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
             floor_bb: [0.0; 4],
             floor_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &Camera, sbv: &SBV, level: f32) -> glam::Mat4 {
-        // We're using Vector4 because ofthe camera_uniform 16 byte spacing requirement
-        self.view_position = camera.eye.extend(1.).into();
-        let (view, view_proj) = camera.build_view_view_projection_matrix();
-        let view_mat_3 = glam::Mat3::from_mat4(view);
-        let view_inv_trans = view_mat_3.inverse().transpose();
-        let view_raw = [
-            [
-                view_inv_trans.x_axis.x,
-                view_inv_trans.x_axis.y,
-                view_inv_trans.x_axis.z,
-                0.,
-            ],
-            [
-                view_inv_trans.y_axis.x,
-                view_inv_trans.y_axis.y,
-                view_inv_trans.y_axis.z,
-                0.,
-            ],
-            [
-                view_inv_trans.z_axis.x,
-                view_inv_trans.z_axis.y,
-                view_inv_trans.z_axis.z,
-                0.,
-            ],
-        ];
-        self.view = view_raw;
-        let old_view_proj = glam::Mat4::from_cols_array_2d(&self.view_proj);
-        self.view_proj = view_proj.to_cols_array_2d();
+    pub fn update_view_proj(&mut self, camera: &Camera, sbv: &SBV, level: f32) {
+        let view = camera.build_view();
+        let proj = camera.build_proj();
+        let view_proj = proj * view;
+        self.view = view.to_cols_array_2d();
+        self.proj = proj.to_cols_array_2d();
         let view_proj_inv_d = view_proj.as_dmat4().inverse();
         let view_proj_inv = view_proj_inv_d.as_mat4();
-        // double precision is needed here
-        let reproject_d = old_view_proj.as_dmat4() * view_proj_inv_d;
-        let reproject = reproject_d.as_mat4();
 
         //let orig : cgmath::Vector4<f32> = self.view_position.into();
         let mut min_x = f32::MAX;
@@ -259,7 +240,6 @@ impl CameraUniform {
             glam::Mat4::orthographic_rh(d_x, -d_x, -d_z, d_z, -camera.zfar, 2. * camera.zfar);
         self.floor_bb = [min_x, min_z, max_x - min_x, max_z - min_z];
         self.floor_proj = (proj * view).to_cols_array_2d();
-        reproject
     }
 }
 

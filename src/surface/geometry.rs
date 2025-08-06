@@ -1046,11 +1046,12 @@ impl DisplaySurface {
         let v1 = v1.extend(1.);
         let v2 = v2.extend(1.);
         let v3 = v3.extend(1.);
-        let model = glam::Mat4::from_cols_array_2d(&self.transform.to_raw().get_model());
-        let camera = camera.build_view_view_projection_matrix().1;
-        let v1 = camera * model * v1;
-        let v2 = camera * model * v2;
-        let v3 = camera * model * v3;
+        let view_proj = camera.build_view_projection();
+        let transformation =
+            view_proj * glam::Mat4::from_cols_array_2d(&self.transform.to_raw().get_world());
+        let v1 = transformation * v1;
+        let v2 = transformation * v2;
+        let v3 = transformation * v3;
         let w1 = v1.w;
         let w2 = v2.w;
         let w3 = v3.w;
