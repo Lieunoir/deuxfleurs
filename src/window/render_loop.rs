@@ -522,7 +522,8 @@ impl InnerGraphicalState {
         self.camera_uniform
             .update_view_proj(&self.camera, &self.sbv, self.ground.level);
         let reprojection = self.camera.get_reprojection_from(&old_camera);
-        self.ssao.update_reprojection(&self.queue, reprojection);
+        self.ssao
+            .update_reprojection(&self.queue, &self.camera, reprojection);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
@@ -749,11 +750,7 @@ impl InnerGraphicalState {
             drop(scope);
 
             let ping = self.ssao.render(
-                &self.camera,
                 self.settings.ssao_enabled,
-                self.settings.ssao_slice_per_pixel,
-                self.settings.ssao_sample_per_slice,
-                &self.queue,
                 &mut encoder,
                 &self.profiler,
                 self.texture_buffer_pool.get_ssao_view(),

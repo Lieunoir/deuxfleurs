@@ -1,3 +1,15 @@
+struct Parameters {
+    reprojection: mat4x4<f32>,
+    depth_mul: f32,
+    depth_add: f32,
+    x_mul: f32,
+    x_add: f32,
+    y_mul: f32,
+    y_add: f32,
+    frame_index: u32,
+    _pad: u32,
+}
+
 @group(0) @binding(0)
 var source_ao: texture_2d<f32>;
 @group(0) @binding(1)
@@ -11,7 +23,8 @@ var old_depth: texture_2d<f32>;
 @group(0) @binding(5)
 var s: sampler;
 @group(0) @binding(6)
-var<uniform> reprojection: mat4x4<f32>;
+var<uniform> param: Parameters;
+
 
 const pos = array(vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
 
@@ -42,17 +55,17 @@ fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight
 }
 
 fn delinearize_depth(depth: f32) -> f32 {
-    return 0.0008740438 / depth + 1.0001;
+    return param.depth_mul / depth - param.depth_add;
 }
 
 fn linearize_depth(depth: f32) -> f32 {
-    return 0.0008740438 / (- 1.0001 + depth);
+    return param.depth_mul / (param.depth_add + depth);
 }
 
 fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
     let depth_value = delinearize_depth(textureSampleLevel(depth, s, uv, 0.).x);
     let pos_clip = vec4(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
-    let recovered_clip_w = reprojection * pos_clip;
+    let recovered_clip_w = param.reprojection * pos_clip;
     //let recovered_clip_z = - recovered_clip_w.w;
     let recovered_clip = recovered_clip_w.xyz / recovered_clip_w.www;
     let recovered_clip_z = linearize_depth(recovered_clip.z);

@@ -1,12 +1,13 @@
 struct Parameters {
-    frame_offset: u32,
-    slices: u32,
-    samples: u32,
-    _pad3: u32,
-    depth_linearize_mul: f32,
-    depth_linearize_add: f32,
-    _pad4: u32,
-    _pad5: u32,
+    reprojection: mat4x4<f32>,
+    depth_mul: f32,
+    depth_add: f32,
+    x_mul: f32,
+    x_add: f32,
+    y_mul: f32,
+    y_add: f32,
+    frame_index: u32,
+    _pad: u32,
 }
 
 @group(0) @binding(0)
@@ -30,18 +31,16 @@ fn vs_main(
 }
 
 const PI: f32 = 3.14159265359;
-const tan_pi_0125 = 0.41421356237;
-
 fn view_from_screen_coord(coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
     return vec3<f32>(
-        (vec2<f32>(- 2. * 0.90225565 * tan_pi_0125, 2. * tan_pi_0125) * coord + vec2<f32>(1. * 0.90225565 * tan_pi_0125, - 1. * tan_pi_0125)) * linear_depth_sample,
+        (vec2<f32>(param.x_mul, param.y_mul) * coord + vec2<f32>(param.x_add, param.y_add)) * linear_depth_sample,
         linear_depth_sample
     );
 }
 
 fn linearize_depth(depth: f32) -> f32 {
-    return param.depth_linearize_mul / (param.depth_linearize_add + depth);
+    return param.depth_mul / (param.depth_add + depth);
 }
 
 fn fast_sqrt(x: f32) -> f32 {
@@ -62,7 +61,7 @@ const a2: f32 = 1.0 / (g * g);
 // mapping each pixel to a hilbert curve index, then taking a value from the Roberts R2 quasirandom sequence for it
 fn hilbert_r2_blue_noisef(p: vec2<u32>) -> vec2<f32> {
     var x = textureLoad(hilbert, vec2<u32>(p.x % 64, p.y % 64), 0).x;
-    x += param.frame_offset;
+    x += param.frame_index;
     return vec2<f32>(fract(0.5 + vec2<f32>(a1, a2) * f32(x)));
 }
 

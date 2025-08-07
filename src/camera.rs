@@ -41,6 +41,20 @@ impl Camera {
         (zmul, zadd)
     }
 
+    pub fn get_uv_to_view_x_mul_add(&self) -> (f32, f32) {
+        let tan = f32::tan(self.fovy / 180. * PI);
+        let mul = -2. * self.aspect * tan;
+        let add = self.aspect * tan;
+        (mul, add)
+    }
+
+    pub fn get_uv_to_view_y_mul_add(&self) -> (f32, f32) {
+        let tan = f32::tan(self.fovy / 180. * PI);
+        let mul = 2. * tan;
+        let add = -tan;
+        (mul, add)
+    }
+
     pub fn set_from_eye_target_up(&mut self, eye: [f32; 3], target: [f32; 3], up: [f32; 3]) {
         self.eye = eye.into();
         self.target = target.into();

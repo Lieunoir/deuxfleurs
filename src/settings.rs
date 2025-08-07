@@ -31,8 +31,6 @@ pub struct Settings {
     pub default_color_map: Colors,
     pub fit_camera_on_start: bool,
     pub ssao_enabled: bool,
-    pub ssao_slice_per_pixel: u8,
-    pub ssao_sample_per_slice: u8,
     /// When rendering headless, render n frames instead of only one to leverage temporal
     /// accumulation (roundabout way to supersample screenshots).
     pub headless_frame_per_screenshot: NonZeroU8,
@@ -61,8 +59,6 @@ impl Default for Settings {
             default_color_map: Colors::Viridis,
             fit_camera_on_start: true,
             ssao_enabled: true,
-            ssao_slice_per_pixel: 2,
-            ssao_sample_per_slice: 2,
             headless_frame_per_screenshot: NonZeroU8::new(16).unwrap(),
             power_preference: PowerPreference::None,
         }
@@ -103,28 +99,6 @@ impl Settings {
                 );
             });
             if ui.checkbox(&mut self.ssao_enabled, "SSAO").changed() {
-                *refresh_screen = true;
-            }
-            let mut value = self.ssao_slice_per_pixel as f32;
-            ui.add(
-                DragValue::new(&mut value)
-                    .range(0..=16)
-                    .prefix("Slice per pixel: "),
-            );
-            let value = value as u8;
-            if self.ssao_slice_per_pixel != value {
-                self.ssao_slice_per_pixel = value;
-                *refresh_screen = true;
-            }
-            let mut value = self.ssao_sample_per_slice as f32;
-            ui.add(
-                DragValue::new(&mut value)
-                    .range(0..=16)
-                    .prefix("Sample per slice: "),
-            );
-            let value = value as u8;
-            if self.ssao_sample_per_slice != value {
-                self.ssao_sample_per_slice = value;
                 *refresh_screen = true;
             }
         });
