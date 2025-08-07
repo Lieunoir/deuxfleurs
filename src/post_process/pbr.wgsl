@@ -1,13 +1,20 @@
+struct Params {
+    x_mul: f32,
+    x_add: f32,
+    y_mul: f32,
+    y_add: f32,
+}
+
 @group(0) @binding(0)
 var t_a: texture_2d<f32>;
 @group(0) @binding(1)
 var t_n: texture_2d<f32>;
 @group(0) @binding(2)
-var s: sampler;
-@group(0) @binding(3)
 var t_v: texture_2d<f32>;
+@group(0) @binding(3)
+var s: sampler;
 @group(0) @binding(4)
-var s_v: sampler;
+var<uniform> param: Params;
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
@@ -62,9 +69,9 @@ fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32> {
 
 fn normalized_view_from_screen_coord(coord: vec2<f32>) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
-    return normalize(vec3<f32>(
-        (vec2<f32>(2. * 0.90225565, -2.) * coord + vec2<f32>(-1. * 0.90225565, 1.)) * tan_pi_0125,
-        -1.
+    return - normalize(vec3<f32>(
+        vec2<f32>(param.x_mul, param.y_mul) * coord + vec2<f32>(param.x_add, param.y_add),
+        1.
     ));
 }
 
@@ -78,7 +85,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
     let buffer_size = textureDimensions(t_a);
     let position = normalized_view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size));
     var normal = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
-    let visibility = textureSample(t_v, s_v, fcoords.xy / vec2<f32>(buffer_size)).x;
+    let visibility = textureSample(t_v, s, fcoords.xy / vec2<f32>(buffer_size)).x;
     let view_dir = - position;
     //normal = select(-normal, normal, dot(normal, view_dir) > 0.);
 

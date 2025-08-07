@@ -184,8 +184,8 @@ impl TextureCopy {
 }
 
 pub struct PBR {
+    params: wgpu::Buffer,
     sampler: wgpu::Sampler,
-    visibility_sampler: wgpu::Sampler,
     material_bind_group_ping: wgpu::BindGroup,
     material_bind_group_pong: wgpu::BindGroup,
     material_bind_group_layout: wgpu::BindGroupLayout,
@@ -196,11 +196,20 @@ impl PBR {
     pub fn resize(
         &mut self,
         device: &wgpu::Device,
+        camera: &Camera,
+        queue: &wgpu::Queue,
         albedo_view: &wgpu::TextureView,
         normals_view: &wgpu::TextureView,
         denoised_ssao_view_ping: &wgpu::TextureView,
         denoised_ssao_view_pong: &wgpu::TextureView,
     ) {
+        let (x_mul, x_add) = camera.get_uv_to_view_x_mul_add();
+        let (y_mul, y_add) = camera.get_uv_to_view_y_mul_add();
+        queue.write_buffer(
+            &self.params,
+            0,
+            bytemuck::cast_slice(&[x_mul, x_add, y_mul, y_add]),
+        );
         self.material_bind_group_ping = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.material_bind_group_layout,
             entries: &[
@@ -214,15 +223,15 @@ impl PBR {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
                     resource: wgpu::BindingResource::TextureView(denoised_ssao_view_ping),
                 },
                 wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&self.visibility_sampler),
+                    resource: self.params.as_entire_binding(),
                 },
             ],
             label: Some("pbr_material_bind_group_ping"),
@@ -240,15 +249,15 @@ impl PBR {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
                     resource: wgpu::BindingResource::TextureView(denoised_ssao_view_pong),
                 },
                 wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&self.visibility_sampler),
+                    resource: self.params.as_entire_binding(),
                 },
             ],
             label: Some("pbr_material_bind_group_pong"),
@@ -257,12 +266,22 @@ impl PBR {
 
     pub fn new(
         device: &wgpu::Device,
+        camera: &Camera,
         color_format: wgpu::TextureFormat,
         albedo_view: &wgpu::TextureView,
         normals_view: &wgpu::TextureView,
         denoised_ssao_view_ping: &wgpu::TextureView,
         denoised_ssao_view_pong: &wgpu::TextureView,
     ) -> Self {
+        let (x_mul, x_add) = camera.get_uv_to_view_x_mul_add();
+        let (y_mul, y_add) = camera.get_uv_to_view_y_mul_add();
+
+        let params = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("PBR Params Buffer"),
+            contents: bytemuck::cast_slice(&[x_mul, x_add, y_mul, y_add]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -270,15 +289,6 @@ impl PBR {
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let visibility_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
 
@@ -308,24 +318,28 @@ impl PBR {
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            //sample_type: wgpu::TextureSampleType::Depth,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        },
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            //sample_type: wgpu::TextureSampleType::Depth,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 4,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
                         count: None,
                     },
                 ],
@@ -345,15 +359,15 @@ impl PBR {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
                     resource: wgpu::BindingResource::TextureView(denoised_ssao_view_ping),
                 },
                 wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&visibility_sampler),
+                    resource: params.as_entire_binding(),
                 },
             ],
             label: Some("pbr_material_bind_group_ping"),
@@ -371,15 +385,15 @@ impl PBR {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
                     resource: wgpu::BindingResource::TextureView(denoised_ssao_view_pong),
                 },
                 wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&visibility_sampler),
+                    resource: params.as_entire_binding(),
                 },
             ],
             label: Some("pbr_material_bind_group_pong"),
@@ -404,8 +418,8 @@ impl PBR {
         );
 
         Self {
+            params,
             sampler,
-            visibility_sampler,
             material_bind_group_ping,
             material_bind_group_pong,
             material_bind_group_layout,

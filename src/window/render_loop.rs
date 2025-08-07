@@ -295,6 +295,7 @@ impl InnerGraphicalState {
         );
         let pbr_renderer = post_process::PBR::new(
             &device,
+            &camera,
             surface_format,
             texture_buffer_pool.get_albedo_view(),
             texture_buffer_pool.get_normals_view(),
@@ -485,6 +486,8 @@ impl InnerGraphicalState {
             );
             self.pbr_renderer.resize(
                 &self.device,
+                &self.camera,
+                &self.queue,
                 self.texture_buffer_pool.get_albedo_view(),
                 self.texture_buffer_pool.get_normals_view(),
                 self.texture_buffer_pool.get_denoised_ssao_view_ping(),
