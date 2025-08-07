@@ -525,8 +525,13 @@ impl InnerGraphicalState {
         self.camera_uniform
             .update_view_proj(&self.camera, &self.sbv, self.ground.level);
         let reprojection = self.camera.get_reprojection_from(&old_camera);
-        self.ssao
-            .update_reprojection(&self.queue, &self.camera, reprojection);
+        self.ssao.update_reprojection(
+            &self.queue,
+            &self.camera,
+            reprojection,
+            self.config.width,
+            self.config.height,
+        );
         self.queue.write_buffer(
             &self.camera_buffer,
             0,

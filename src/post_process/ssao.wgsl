@@ -7,7 +7,8 @@ struct Parameters {
     y_mul: f32,
     y_add: f32,
     frame_index: u32,
-    _pad: u32,
+    world_distance: f32,
+    pix_dif: vec2<f32>,
 }
 
 @group(0) @binding(0)
@@ -34,13 +35,9 @@ const PI: f32 = 3.14159265359;
 fn view_from_screen_coord(coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
     return vec3<f32>(
-        (vec2<f32>(param.x_mul, param.y_mul) * coord + vec2<f32>(param.x_add, param.y_add)) * linear_depth_sample,
-        linear_depth_sample
-    );
-}
-
-fn linearize_depth(depth: f32) -> f32 {
-    return param.depth_mul / (param.depth_add + depth);
+        vec2<f32>(param.x_mul, param.y_mul) * coord + vec2<f32>(param.x_add, param.y_add),
+        1.
+    ) * linear_depth_sample;
 }
 
 fn fast_sqrt(x: f32) -> f32 {
@@ -59,8 +56,8 @@ const a1: f32 = 1.0 / g;
 const a2: f32 = 1.0 / (g * g);
 
 // mapping each pixel to a hilbert curve index, then taking a value from the Roberts R2 quasirandom sequence for it
-fn hilbert_r2_blue_noisef(p: vec2<u32>) -> vec2<f32> {
-    var x = textureLoad(hilbert, vec2<u32>(p.x % 64, p.y % 64), 0).x;
+fn hilbert_r2_blue_noisef(p: vec2<i32>) -> vec2<f32> {
+    var x = textureLoad(hilbert, vec2<i32>(p.x % 64, p.y % 64), 0).x;
     x += param.frame_index;
     return vec2<f32>(fract(0.5 + vec2<f32>(a1, a2) * f32(x)));
 }
@@ -136,9 +133,8 @@ fn get_sample(origin: vec2<f32>, position: vec3<f32>, view_dir: vec3<f32>, cos_n
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     var out: FragmentOutput;
-    let buffer_size = vec2<f32>(textureDimensions(t_d));
-    let pix_dif = vec2<f32>(1.) / buffer_size;
-    let coords = vec2<u32>(floor(fcoords.xy * sample_factor));
+    let pix_dif = param.pix_dif;
+    let coords = vec2<i32>(floor(fcoords.xy * sample_factor));
     let noise = hilbert_r2_blue_noisef(coords);
     let origin = sample_factor * fcoords.xy * pix_dif;
     let gather_offset = - vec2<f32>(0.25) * pix_dif;
@@ -175,7 +171,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
 
     // GTAO
     var visibility = 0.0;
-    let world_distance = linearize_depth(1.);
+    let world_distance = param.world_distance;
     let world_radius_mul = - 100. / world_distance;
     let wanted_screen_radius = 2. * world_distance / depth;
     let radius = max_radius_pix * min(wanted_screen_radius, 1.);

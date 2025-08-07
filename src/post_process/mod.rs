@@ -951,7 +951,10 @@ struct SSAOParams {
     y_mul: f32,
     y_add: f32,
     frame_index: u32,
-    _pad: u32,
+    world_distance: f32,
+    pix_size: [f32; 2],
+    _pad0: u32,
+    _pad1: u32,
 }
 
 impl SSAO {
@@ -1170,7 +1173,10 @@ impl SSAO {
             y_mul: 1.,
             y_add: 0.,
             frame_index,
-            _pad: 0,
+            world_distance: 1.,
+            pix_size: [1.; 2],
+            _pad0: 0,
+            _pad1: 0,
         };
         let ssao_commons = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("SSAO Common Buffer"),
@@ -1859,10 +1865,15 @@ impl SSAO {
         queue: &wgpu::Queue,
         camera: &Camera,
         reproj: glam::Mat4,
+        width: u32,
+        height: u32,
     ) {
         let (depth_mul, depth_add) = camera.get_linearize_z_mul_add();
         let (x_mul, x_add) = camera.get_uv_to_view_x_mul_add();
         let (y_mul, y_add) = camera.get_uv_to_view_y_mul_add();
+        let world_distance = depth_mul / (1. + depth_add);
+        let pix_size_x = 1. / width as f32;
+        let pix_size_y = 1. / height as f32;
         let params = SSAOParams {
             reprojection: reproj.to_cols_array_2d(),
             depth_mul,
@@ -1872,7 +1883,10 @@ impl SSAO {
             y_mul,
             y_add,
             frame_index: self.frame_index,
-            _pad: 0,
+            world_distance,
+            pix_size: [pix_size_x, pix_size_y],
+            _pad0: 0,
+            _pad1: 0,
         };
         queue.write_buffer(&self.ssao_commons, 0, bytemuck::cast_slice(&[params]));
     }

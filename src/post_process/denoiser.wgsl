@@ -7,7 +7,8 @@ struct Parameters {
     y_mul: f32,
     y_add: f32,
     frame_index: u32,
-    _pad: u32,
+    world_distance: f32,
+    pix_dif: vec2<f32>,
 }
 
 @group(0) @binding(0)
@@ -79,9 +80,8 @@ fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
-    let buffer_size_inv = 1. / vec2<f32>(textureDimensions(depth));
-    let gather_offset = - vec2<f32>(0.25) * buffer_size_inv;
-    let gatherCenter = fcoords.xy * buffer_size_inv + gather_offset;
+    let buffer_size_inv = param.pix_dif;
+    let gatherCenter = (fcoords.xy - vec2<f32>(0.25)) * buffer_size_inv;
 
     var previous_ao = get_previous_value(fcoords.xy * buffer_size_inv);
 
