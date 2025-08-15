@@ -145,27 +145,13 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
 
     let blurred_ao = sum / sumWeight;
 
-    //let avg_ssao = (ssaoValue + ssaoValueL + ssaoValueB + ssaoValueR + ssaoValueT) * 0.2;
-    //let avg_squared_ssao = (ssaoValue * ssaoValue + ssaoValueL * ssaoValueL + ssaoValueB * ssaoValueB + ssaoValueR * ssaoValueR + ssaoValueT * ssaoValueT) * 0.2;
     let avg_ssao = blurred_ao;
     let avg_squared_ssao = sum_squared / sumWeight;
     let std_diff = sqrt(avg_squared_ssao - avg_ssao * avg_ssao);
     let min_ssao = avg_ssao - std_diff;
     let max_ssao = avg_ssao + std_diff;
 
-    //var min_ssao = ssaoValue;
-    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
-    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
-    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
-    //min_ssao = select(min_ssao, min(min_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
-    //var max_ssao = ssaoValue;
-    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueL), edgesC_LRTB.x > 0.8);
-    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueR), edgesC_LRTB.y > 0.8);
-    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueT), edgesC_LRTB.z > 0.8);
-    //max_ssao = select(max_ssao, max(max_ssao, ssaoValueB), edgesC_LRTB.w > 0.8);
     var weight = 0.9;
-    //weight = select(weight, 0.5 * (previous_ao.x - blurred_ao), max_ssao < previous_ao.x);
-    //weight = select(weight, 0.5 * (blurred_ao - previous_ao.x), min_ssao > previous_ao.x);
     previous_ao.x = min(max_ssao, previous_ao.x);
     previous_ao.x = max(min_ssao, previous_ao.x);
     weight *= previous_ao.y;

@@ -2,7 +2,7 @@ use crate::util::BufferDimensions;
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SHADOW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-pub const ALBEDO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+pub const ALBEDO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgb10a2Unorm;
 pub const NORMALS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 // Same as albedo
 pub const PICKER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -18,11 +18,11 @@ pub struct TextureBufferPool {
     // picking should be concerned by aa, so could be moved?
     depth: wgpu::Texture,
     depth_view: wgpu::TextureView,
-    albedo_or_picking: wgpu::Texture,
-    picking_view: wgpu::TextureView,
+    albedo: wgpu::Texture,
     albedo_view: wgpu::TextureView,
-    normals: wgpu::Texture,
+    normals_or_picking: wgpu::Texture,
     normals_view: wgpu::TextureView,
+    picking_view: wgpu::TextureView,
 
     // Could be used as blend_render_target too using uniform alpha?
     // not concerned by super sampling
@@ -73,7 +73,18 @@ impl TextureBufferPool {
             view_formats: &[],
         });
         let depth_view = depth.create_view(&wgpu::TextureViewDescriptor::default());
-        let albedo_or_picking = device.create_texture(&wgpu::TextureDescriptor {
+        let albedo = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: ALBEDO_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("albedo_texture"),
+            view_formats: &[],
+        });
+        let albedo_view = albedo.create_view(&wgpu::TextureViewDescriptor::default());
+        let normals_or_picking = device.create_texture(&wgpu::TextureDescriptor {
             size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
@@ -82,22 +93,11 @@ impl TextureBufferPool {
             usage: wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::COPY_SRC,
-            label: Some("picking_or_albedo_texture"),
+            label: Some("picking_or_normals_pbr_texture"),
             view_formats: &[],
         });
-        let albedo_view = albedo_or_picking.create_view(&wgpu::TextureViewDescriptor::default());
-        let picking_view = albedo_or_picking.create_view(&wgpu::TextureViewDescriptor::default());
-        let normals = device.create_texture(&wgpu::TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: Some("normals_pbr_texture"),
-            view_formats: &[],
-        });
-        let normals_view = normals.create_view(&wgpu::TextureViewDescriptor::default());
+        let picking_view = normals_or_picking.create_view(&wgpu::TextureViewDescriptor::default());
+        let normals_view = normals_or_picking.create_view(&wgpu::TextureViewDescriptor::default());
         let screenshot_or_blend_stored = device.create_texture(&wgpu::TextureDescriptor {
             size: texture_size,
             mip_level_count: 1,
@@ -215,10 +215,10 @@ impl TextureBufferPool {
         };
         let output_buffer = device.create_buffer(&output_buffer_desc);
         Self {
-            albedo_or_picking,
+            albedo,
             albedo_view,
             picking_view,
-            normals,
+            normals_or_picking,
             normals_view,
             screenshot_or_blend_stored,
             screenshot_view,
@@ -339,7 +339,7 @@ impl TextureBufferPool {
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
                 aspect: wgpu::TextureAspect::All,
-                texture: &self.albedo_or_picking,
+                texture: &self.normals_or_picking,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },

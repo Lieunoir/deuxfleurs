@@ -39,16 +39,6 @@ const FORWARD = vec3<f32>(0., 0., -1.);
 const LIGHT_DIR = (RIGHT - UP - FORWARD) / sqrt(3.);
 const LIGHT_DIR_2 = (-RIGHT + UP - FORWARD) / sqrt(3.);
 const LIGHT_DIR_3 = (RIGHT + UP + FORWARD) / sqrt(3.);
-const M1 = mat3x3<f32>(
-    0.59719, 0.07600, 0.02840,
-    0.35458, 0.90834, 0.13383,
-    0.04823, 0.01566, 0.83777,
-);
-const M2 = mat3x3<f32>(
-    1.60475, -0.10208, -0.00327,
-    -0.53108, 1.10813, -0.07276,
-    -0.07367, -0.00605, 1.07602,
-);
 
 // PBR functions taken from https://learnopengl.com/PBR/Theory
 fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {
@@ -80,6 +70,23 @@ fn normalized_view_from_screen_coord(coord: vec2<f32>) -> vec3<f32> {
         vec2<f32>(param.x_mul, param.y_mul) * coord + vec2<f32>(param.x_add, param.y_add),
         1.
     ));
+}
+
+const K_S = 0.8 - F0.x;
+const K_D = 0.15;
+
+fn tone_map(rgb: vec3<f32>) -> vec3<f32> {
+    let x = min(min(rgb.x, rgb.y), rgb.z);
+    let f = select(0.04, x - x * x / (4. * 0.04), x <= 2. * 0.04);
+    let color = rgb - vec3<f32>(f);
+    let p = max(max(color.x, color.y), color.z);
+    let p_n = 1. - ((1. - K_S) * (1. - K_S)) / (p + 1. - 2. * K_S);
+    let g = 1. / (K_D * (p - p_n) + 1.);
+    let res = select(
+        color,
+        color * p_n / p * g + vec3<f32>(p_n) * (1. - g),
+        p > K_S);
+    return res;
 }
 
 @fragment
@@ -122,9 +129,5 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
 
     result *= 1.2 * visibility;
 
-	//Tone mapping
-    let v = M1 * result;
-    let a = v * (v + 0.0245786) - 0.000090537;
-    let b = v * (0.983729 * v + 0.4329510) + 0.238081;
-    return vec4<f32>(clamp(M2 * (a / b), vec3(0.0), vec3(1.0)), 1.0);
+    return vec4<f32>(tone_map(result), 1.0);
 }

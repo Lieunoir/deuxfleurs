@@ -182,7 +182,7 @@ fn fs_main(in: VertexOutput) -> FragOutput {
 
     let pos = ro + traced.x * rd;
     let normal = normalize(traced.yzw);
-    out.albedo = vec4<f32>(settings.color, 0.1);
+    out.albedo = vec4<f32>(settings.color, 0.3);
     out.normal = vec4<f32>((normal + vec3<f32>(1.)) / 2., 0.);
     let clip_space_pos = camera.proj * vec4<f32>(pos, 1.);
     out.depth = clip_space_pos.z / clip_space_pos.w;
