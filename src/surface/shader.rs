@@ -101,7 +101,7 @@ fn vs_main(
 
     // We set the \"position\" by using the `clip_position` property
     // We multiply it by the camera position matrix and the instance position matrix
-    let clip_pos = camera.proj * model_matrix * vec4<f32>(model.position, 1.0);
+    let clip_pos = camera.proj * view_position;
     out.clip_position = clip_pos + jitter.jitter * clip_pos.w;
     return out;
 }}

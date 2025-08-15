@@ -852,31 +852,35 @@ impl Ground {
 }
 
 fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
+    const LEVEL: usize = 4;
+    //const TEXTURE_ROW_SIZE: usize = 2usize.pow(LEVEL as u32);
+    //const TEXTURE_COL_SIZE: usize = 2usize.pow(LEVEL as u32);
+    const TEXTURE_ROW_SIZE: usize = 16;
+    const TEXTURE_COL_SIZE: usize = 16;
     let texture_size = wgpu::Extent3d {
-        width: 64,
-        height: 64,
+        width: TEXTURE_ROW_SIZE as u32,
+        height: TEXTURE_COL_SIZE as u32,
         depth_or_array_layers: 1,
     };
     let hilbert_noise = device.create_texture(&wgpu::TextureDescriptor {
         size: texture_size,
-        mip_level_count: 1, // We'll talk about this a little later
+        mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::R16Uint,
+        format: wgpu::TextureFormat::R8Uint,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         label: Some("hilbert_noise"),
         view_formats: &[],
     });
+    const BYTE_PER_ENTRY: usize = size_of::<u8>();
 
-    const BYTE_PER_ENTRY: usize = size_of::<u16>();
-    let level = 6;
-    let mut buffer = [0; 64 * 64 * BYTE_PER_ENTRY];
-    for i in 0..64 {
-        for j in 0..64 {
+    let mut buffer = [0; TEXTURE_ROW_SIZE * TEXTURE_COL_SIZE * BYTE_PER_ENTRY];
+    for i in 0..TEXTURE_COL_SIZE {
+        for j in 0..TEXTURE_ROW_SIZE {
             let mut p = (i, j);
-            let mut d = 0_u16;
-            for k in 0..6 {
-                let n_i = level - k - 1;
+            let mut d = 0;
+            for k in 0..LEVEL {
+                let n_i = LEVEL - k - 1;
                 let n = n_i as u32;
                 let r = ((p.0 >> n) & 1, (p.1 >> n) & 1);
                 d += ((3 * r.0) ^ r.1) << (2 * n);
@@ -890,8 +894,10 @@ fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::T
                     p.1 = temp;
                 }
             }
-            buffer[(i * 64 + j) as usize * BYTE_PER_ENTRY + 0] = d.to_ne_bytes()[0];
-            buffer[(i * 64 + j) as usize * BYTE_PER_ENTRY + 1] = d.to_ne_bytes()[1];
+            for k in 0..BYTE_PER_ENTRY {
+                buffer[(i * TEXTURE_ROW_SIZE + j) as usize * BYTE_PER_ENTRY + k] =
+                    d.to_ne_bytes()[k];
+            }
         }
     }
 
@@ -905,8 +911,8 @@ fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::T
         &buffer,
         wgpu::TexelCopyBufferLayout {
             offset: 0,
-            bytes_per_row: Some(BYTE_PER_ENTRY as u32 * 64),
-            rows_per_image: Some(64),
+            bytes_per_row: Some(BYTE_PER_ENTRY as u32 * TEXTURE_ROW_SIZE as u32),
+            rows_per_image: Some(TEXTURE_COL_SIZE as u32),
         },
         texture_size,
     );
@@ -918,6 +924,7 @@ pub struct SSAO {
     ssao_commons: wgpu::Buffer,
     hilbert_noise: wgpu::TextureView,
     sampler: wgpu::Sampler,
+    noise_sampler: wgpu::Sampler,
     depth_mip_sampler: wgpu::Sampler,
     depth_bind_group_ping: wgpu::BindGroup,
     depth_bind_group_pong: wgpu::BindGroup,
@@ -951,7 +958,7 @@ struct SSAOParams {
     y_mul: f32,
     y_add: f32,
     frame_index: u32,
-    world_distance: f32,
+    world_distance_inv: f32,
     pix_size: [f32; 2],
     _pad0: u32,
     _pad1: u32,
@@ -998,6 +1005,10 @@ impl SSAO {
                     binding: 4,
                     resource: wgpu::BindingResource::TextureView(&self.hilbert_noise),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&self.noise_sampler),
+                },
             ],
             label: Some("ssao_bind_group"),
         });
@@ -1023,6 +1034,10 @@ impl SSAO {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: wgpu::BindingResource::TextureView(&self.hilbert_noise),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&self.noise_sampler),
                 },
             ],
             label: Some("ssao_bind_group"),
@@ -1172,8 +1187,8 @@ impl SSAO {
             x_add: 0.,
             y_mul: 1.,
             y_add: 0.,
-            frame_index,
-            world_distance: 1.,
+            frame_index: 289 * (frame_index % 64),
+            world_distance_inv: 1.,
             pix_size: [1.; 2],
             _pad0: 0,
             _pad1: 0,
@@ -1191,6 +1206,16 @@ impl SSAO {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        let noise_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
 
@@ -1251,6 +1276,12 @@ impl SSAO {
                             view_dimension: wgpu::TextureViewDimension::D2,
                             sample_type: wgpu::TextureSampleType::Uint,
                         },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                         count: None,
                     },
                 ],
@@ -1354,6 +1385,10 @@ impl SSAO {
                     binding: 4,
                     resource: wgpu::BindingResource::TextureView(&hilbert_noise),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&noise_sampler),
+                },
             ],
             label: Some("ssao_bind_group_ping"),
         });
@@ -1380,6 +1415,10 @@ impl SSAO {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: wgpu::BindingResource::TextureView(&hilbert_noise),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&noise_sampler),
                 },
             ],
             label: Some("ssao_bind_group_pong"),
@@ -1672,6 +1711,7 @@ impl SSAO {
         Self {
             ssao_commons,
             sampler,
+            noise_sampler,
             depth_mip_sampler,
             hilbert_noise,
             depth_bind_group_ping,
@@ -1710,6 +1750,8 @@ impl SSAO {
              texture::FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
     ) -> bool {
         if ssao_enabled {
+            self.cleared = false;
+            self.frame_index += 1;
             let mut scope = profiler.scope("SSAO", encoder);
             let filtered_depth_mip_views = if self.ping {
                 filtered_depth_mip_views_ping
@@ -1764,8 +1806,6 @@ impl SSAO {
                 render_pass.set_pipeline(&self.depth_filter_pipeline);
                 render_pass.draw(0..4, 0..1);
             }
-            self.cleared = false;
-            self.frame_index += 1;
             let mut render_pass = scope.scoped_render_pass(
                 "SSAO Primary",
                 wgpu::RenderPassDescriptor {
@@ -1871,7 +1911,7 @@ impl SSAO {
         let (depth_mul, depth_add) = camera.get_linearize_z_mul_add();
         let (x_mul, x_add) = camera.get_uv_to_view_x_mul_add();
         let (y_mul, y_add) = camera.get_uv_to_view_y_mul_add();
-        let world_distance = depth_mul / (1. + depth_add);
+        let world_distance_inv = (1. + depth_add) / depth_mul;
         let pix_size_x = 1. / width as f32;
         let pix_size_y = 1. / height as f32;
         let params = SSAOParams {
@@ -1882,8 +1922,8 @@ impl SSAO {
             x_add,
             y_mul,
             y_add,
-            frame_index: self.frame_index,
-            world_distance,
+            frame_index: 289 * (self.frame_index % 64),
+            world_distance_inv,
             pix_size: [pix_size_x, pix_size_y],
             _pad0: 0,
             _pad1: 0,

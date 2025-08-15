@@ -32,5 +32,5 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) f32 {
-    return param.depth_mul / (param.depth_add + textureLoad(t_copy, vec2<i32>(floor(in.clip_position.xy)), 0).x);
+    return param.depth_mul / (param.depth_add + textureLoad(t_copy, vec2<i32>(in.clip_position.xy), 0).x);
 }

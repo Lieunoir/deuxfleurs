@@ -32,7 +32,13 @@ fn vs_main(
 }
 
 const PI: f32 = 3.14159265359;
-const tan_pi_0125 = 0.41421356237;
+const F0 = vec3<f32>(0.04, 0.04, 0.04);
+const UP = vec3<f32>(0., 1., 0.);
+const RIGHT = vec3<f32>(-1., 0., 0.);
+const FORWARD = vec3<f32>(0., 0., -1.);
+const LIGHT_DIR = (RIGHT - UP - FORWARD) / sqrt(3.);
+const LIGHT_DIR_2 = (-RIGHT + UP - FORWARD) / sqrt(3.);
+const LIGHT_DIR_3 = (RIGHT + UP + FORWARD) / sqrt(3.);
 
 // PBR functions taken from https://learnopengl.com/PBR/Theory
 fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {
@@ -42,7 +48,7 @@ fn DistributionGGX(N: vec3<f32>, H: vec3<f32>, a: f32) -> f32 {
 
     let nom = a2;
     var denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
+    denom = denom * denom;
 
     return nom / denom;
 }
@@ -54,22 +60,13 @@ fn GeometrySchlickGGX(NdotV: f32, k: f32) -> f32 {
     return nom / denom;
 }
 
-fn GeometrySmith(N: vec3<f32>, V: vec3<f32>, L: vec3<f32>, k: f32) -> f32 {
-    let NdotV = max(dot(N, V), 0.0);
-    let NdotL = max(dot(N, L), 0.0);
-    let ggx1 = GeometrySchlickGGX(NdotV, k);
-    let ggx2 = GeometrySchlickGGX(NdotL, k);
-
-    return ggx1 * ggx2;
-}
-
-fn fresnelSchlick(cosTheta: f32, F0: vec3<f32>) -> vec3<f32> {
+fn fresnelSchlick(cosTheta: f32) -> vec3<f32> {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 fn normalized_view_from_screen_coord(coord: vec2<f32>) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
-    return - normalize(vec3<f32>(
+    return normalize(vec3<f32>(
         vec2<f32>(param.x_mul, param.y_mul) * coord + vec2<f32>(param.x_add, param.y_add),
         1.
     ));
@@ -77,49 +74,41 @@ fn normalized_view_from_screen_coord(coord: vec2<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) vec4<f32> {
-    let coords = vec2<i32>(floor(fcoords.xy));
+    let coords = vec2<i32>(fcoords.xy);
     let albedo = textureLoad(t_a, coords, 0);
     if albedo.w < 0.01 {
         discard;
     }
     let buffer_size = textureDimensions(t_a);
-    let position = normalized_view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size));
-    var normal = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
-    let visibility = textureSample(t_v, s, fcoords.xy / vec2<f32>(buffer_size)).x;
-    let view_dir = - position;
-    //normal = select(-normal, normal, dot(normal, view_dir) > 0.);
+    let view_dir = normalized_view_from_screen_coord(fcoords.xy / vec2<f32>(buffer_size));
+    let normal = normalize(textureLoad(t_n, coords, 0).xyz * 2. - vec3<f32>(1.));
+    let visibility = textureLoad(t_v, coords, 0).x;
 
-    let F0 = vec3<f32>(0.04, 0.04, 0.04);
-    let kd = 1.;
+    let kd = 1. * albedo.xyz;
+    let k = albedo.w;
 
-    let up = vec3<f32>(0., 1., 0.);
-    let right = vec3<f32>(-1., 0., 0.);
-    let forward = vec3<f32>(0., 0., -1.);
+    let n_dot_v = max(dot(normal, view_dir), 0.);
+    let f = fresnelSchlick(dot(view_dir, normal));
+    let ggx1 = GeometrySchlickGGX(n_dot_v, k);
+    let f_ct_fact = select(vec3<f32>(0.), ggx1 * f / (4. * n_dot_v), n_dot_v > 0.);
 
-    let light_color = vec3<f32>(1.);
-    let light_dir = normalize(right - up - forward);
-    let half_dir = normalize(view_dir + light_dir);
-    let D = DistributionGGX(normal, half_dir, albedo.w);
-    let F = fresnelSchlick(dot(half_dir, normal), F0);
-    let G = GeometrySmith(normal, view_dir, light_dir, albedo.w);
-    let f_ct = D * F * G / (4. * dot(view_dir, normal) * dot(light_dir, normal));
-    var result = 0.55 * (kd * albedo.xyz + PI * f_ct) * light_color * max(dot(normal, light_dir), 0.0);
+    let half_dir = normalize(view_dir + LIGHT_DIR);
+    let d = DistributionGGX(normal, half_dir, k);
+    let ggx2 = GeometrySchlickGGX(max(dot(view_dir, LIGHT_DIR), 0.), k);
+    let f_ct = d * f_ct_fact * ggx2;
+    var result = 0.55 * (kd * max(dot(normal, LIGHT_DIR), 0.0) + f_ct);
 
-    let light_dir_2 = normalize(-right + up - forward);
-    let half_dir_2 = normalize(view_dir + light_dir_2);
-    let D2 = DistributionGGX(normal, half_dir_2, albedo.w);
-    let F2 = fresnelSchlick(dot(half_dir_2, normal), F0);
-    let G2 = GeometrySmith(normal, view_dir, light_dir_2, albedo.w);
-    let f_ct_2 = D2 * F2 * G2 / (4. * dot(view_dir, normal) * dot(light_dir_2, normal));
-    result += 1.6 * (kd * albedo.xyz + PI * f_ct_2) * light_color * max(dot(normal, light_dir_2), 0.0);
+    let half_dir_2 = normalize(view_dir + LIGHT_DIR_2);
+    let d2 = DistributionGGX(normal, half_dir_2, albedo.w);
+    let ggx2_2 = GeometrySchlickGGX(max(dot(view_dir, LIGHT_DIR_2), 0.), k);
+    let f_ct_2 = d2 * f_ct_fact * ggx2_2;
+    result += 1.6 * (kd * max(dot(normal, LIGHT_DIR_2), 0.0) + f_ct_2);
 
-    let light_dir_3 = normalize(right + up + forward);
-    let half_dir_3 = normalize(view_dir + light_dir_3);
-    let D3 = DistributionGGX(normal, half_dir_3, albedo.w);
-    let F3 = fresnelSchlick(dot(half_dir_3, normal), F0);
-    let G3 = GeometrySmith(normal, view_dir, light_dir_3, albedo.w);
-    let f_ct_3 = D3 * F3 * G3 / (4. * dot(view_dir, normal) * dot(light_dir_3, normal));
-    result += 1.4 * (kd * albedo.xyz + PI * f_ct_3) * light_color * max(dot(normal, light_dir_3), 0.0);
+    let half_dir_3 = normalize(view_dir + LIGHT_DIR_3);
+    let d3 = DistributionGGX(normal, half_dir_3, albedo.w);
+    let ggx2_3 = GeometrySchlickGGX(max(dot(view_dir, LIGHT_DIR_3), 0.), k);
+    let f_ct_3 = d3 * f_ct_fact * ggx2_3;
+    result += 1.4 * (kd * max(dot(normal, LIGHT_DIR_3), 0.0) + f_ct_3);
 
     result *= 1.2 * visibility;
 

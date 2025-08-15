@@ -7,7 +7,7 @@ struct Parameters {
     y_mul: f32,
     y_add: f32,
     frame_index: u32,
-    world_distance: f32,
+    world_distance_inv: f32,
     pix_dif: vec2<f32>,
 }
 
@@ -21,6 +21,9 @@ var s: sampler;
 var<uniform> param: Parameters;
 @group(0) @binding(4)
 var hilbert: texture_2d<u32>;
+@group(0) @binding(5)
+var noise_s: sampler;
+
 
 const pos = array(vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
 
@@ -32,10 +35,10 @@ fn vs_main(
 }
 
 const PI: f32 = 3.14159265359;
-fn view_from_screen_coord(coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
+fn view_from_screen_coord(local_param: Parameters, coord: vec2<f32>, linear_depth_sample: f32) -> vec3<f32> {
     // reconstruct view-space position from the screen coordinate and view space depth.
     return vec3<f32>(
-        vec2<f32>(param.x_mul, param.y_mul) * coord + vec2<f32>(param.x_add, param.y_add),
+        vec2<f32>(local_param.x_mul, local_param.y_mul) * coord + vec2<f32>(local_param.x_add, local_param.y_add),
         1.
     ) * linear_depth_sample;
 }
@@ -52,15 +55,8 @@ fn fast_acos(x: f32) -> f32 {
 }
 
 const g : f32= 1.32471795724474602596;
-const a1: f32 = 1.0 / g;
-const a2: f32 = 1.0 / (g * g);
-
-// mapping each pixel to a hilbert curve index, then taking a value from the Roberts R2 quasirandom sequence for it
-fn hilbert_r2_blue_noisef(p: vec2<i32>) -> vec2<f32> {
-    var x = textureLoad(hilbert, vec2<i32>(p.x % 64, p.y % 64), 0).x;
-    x += param.frame_index;
-    return vec2<f32>(fract(0.5 + vec2<f32>(a1, a2) * f32(x)));
-}
+const a1: f32 = 1. - 1.0 / g;
+const a2: f32 = 1. - 1.0 / (g * g);
 
 fn calculate_edges(centerZ: f32, leftZ: f32, rightZ: f32, topZ: f32, bottomZ: f32) -> vec4<f32> {
     var edgesLRTB = vec4<f32>(leftZ, rightZ, topZ, bottomZ) - centerZ;
@@ -70,7 +66,7 @@ fn calculate_edges(centerZ: f32, leftZ: f32, rightZ: f32, topZ: f32, bottomZ: f3
     let edgesLRTBSlopeAdjusted = edgesLRTB + vec4<f32>(slopeLR, -slopeLR, slopeTB, -slopeTB);
     edgesLRTB = min(abs(edgesLRTB), abs(edgesLRTBSlopeAdjusted));
     //remember: centerZ < 0.
-    return vec4<f32>(saturate((1.25 + edgesLRTB / (centerZ * 0.011))));
+    return vec4<f32>(saturate((1.25 + edgesLRTB / (centerZ * 0.0011))));
 }
 
 // packing/unpacking for edges; 2 bits per edge mean 4 gradient values (0, 0.33, 0.66, 1) for smoother transitions!
@@ -97,8 +93,20 @@ const vis_scale = 0.25 / kernel_size;
 const max_radius_pix = 128. / sample_factor;
 override max_mip_level: f32 = 0.;
 
-fn get_sample(origin: vec2<f32>, position: vec3<f32>, view_dir: vec3<f32>, cos_n_plus_pi_2: f32, noise: f32, iter_i: f32, iter_j: f32, dir: vec2<f32>, radius: f32, pix_dif: vec2<f32>, world_radius_mul: f32) -> vec2<f32> {
-    let step_noise = fract(noise + (iter_i + iter_j * samples_per_slice) * 0.6180339887498948482f);
+const phi1 = 2654435769u;
+const phi2 = vec2<u32>(3242174889u, 2447445413u);
+
+fn float01(x: u32) -> f32 {
+    return f32(x) * (1.0 / 4294967296.0);
+}
+
+fn v2_float01(x: vec2<u32>) -> vec2<f32> {
+    return vec2<f32>(x) * (1.0 / 4294967296.0);
+}
+
+fn get_sample(local_param: Parameters, origin: vec2<f32>, position: vec3<f32>, view_dir: vec3<f32>, cos_n_plus_pi_2: f32, noise: u32, iter_i: f32, iter_j: f32, dir: vec2<f32>, radius: f32, pix_dif: vec2<f32>, world_radius_mul: f32) -> vec2<f32> {
+    let step_noise = float01(noise + phi1 * u32(iter_i * samples_per_slice + iter_j));
+    //let step_noise = fract(noise + (iter_i * samples_per_slice + iter_j) * 0.6180339887498948482f);
     let sample_offset_length = (step_noise + iter_j) / samples_per_slice * radius;
     // compile time version, so mip_level is known at compile time too
     let sample_offset_length_approx = (0.5 + iter_j) / samples_per_slice * max_radius_pix;
@@ -112,8 +120,8 @@ fn get_sample(origin: vec2<f32>, position: vec3<f32>, view_dir: vec3<f32>, cos_n
     let sample_depth_1 = textureSampleLevel(t_d, s, sample_coords_1, mip_level).x;
     let sample_depth_2 = textureSampleLevel(t_d, s, sample_coords_2, mip_level).x;
 
-    let sample_1 = view_from_screen_coord(sample_coords_1, sample_depth_1);
-    let sample_2 = view_from_screen_coord(sample_coords_2, sample_depth_2);
+    let sample_1 = view_from_screen_coord(local_param, sample_coords_1, sample_depth_1);
+    let sample_2 = view_from_screen_coord(local_param, sample_coords_2, sample_depth_2);
     let dir_1 = sample_1 - position;
     let dir_2 = sample_2 - position;
 
@@ -132,11 +140,17 @@ fn get_sample(origin: vec2<f32>, position: vec3<f32>, view_dir: vec3<f32>, cos_n
 
 @fragment
 fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
+    let local_param = param;
     var out: FragmentOutput;
-    let pix_dif = param.pix_dif;
-    let coords = vec2<i32>(floor(fcoords.xy * sample_factor));
-    let noise = hilbert_r2_blue_noisef(coords);
+    let pix_dif = local_param.pix_dif;
+    let frame_index = local_param.frame_index;
     let origin = sample_factor * fcoords.xy * pix_dif;
+    let normal_sample = textureSampleLevel(t_n, s, origin, 0.).xyz;
+    let coords = vec2<u32>(fcoords.xy);
+    //if ((coords.x + coords.y) % 2 == frame_index % 2) {
+    //    discard;
+    //}
+    var noise_x = textureLoad(hilbert, coords % 16, 0).x;
     let gather_offset = - vec2<f32>(0.25) * pix_dif;
     let values_ul = textureGather(0, t_d, s, origin + gather_offset);
     let values_br = textureGather(0, t_d, s, origin + gather_offset, vec2<i32>(1, 1));
@@ -158,8 +172,7 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let packed_edges = pack_edges(edgesLRTB);
     out.edges = packed_edges;
 
-    let position = view_from_screen_coord(origin, depth);
-    let normal_sample = textureLoad(t_n, coords, 0).xyz;
+    let position = view_from_screen_coord(local_param, origin, depth);
     let normal = normalize(normal_sample * 2. - vec3<f32>(1.));
     let view_dir = normalize(-position);
     let n_cross_v = cross(normal, view_dir);
@@ -171,12 +184,16 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
 
     // GTAO
     var visibility = 0.0;
-    let world_distance = param.world_distance;
-    let world_radius_mul = - 100. / world_distance;
-    let wanted_screen_radius = 2. * world_distance / depth;
+    let world_radius_mul = - 100. * local_param.world_distance_inv;
+    let wanted_screen_radius = 2. / (depth * local_param.world_distance_inv);
     let radius = max_radius_pix * min(wanted_screen_radius, 1.);
-    let cos_phi_init = cos(noise.x * phi_mul);
-    let sin_phi_init = sin(noise.x * phi_mul);
+
+    noise_x += local_param.frame_index;
+    let noise = phi2 * noise_x;
+    //let noise = vec2<f32>(fract(0.5 + vec2<f32>(a1, a2) * noise_x));
+    let phi_init = float01(noise.x) * phi_mul;
+    let cos_phi_init = cos(phi_init);
+    let sin_phi_init = sin(phi_init);
     //for (var i = 0.; i < kernel_size; i += 1.)
         {
         let cos_phi = cos_phi_init;
@@ -190,13 +207,13 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let cos_n_minus_pi_2 = sin_n;
         var cos_h1 = cos_n_plus_pi_2;
         var cos_h2 = cos_n_minus_pi_2;
-        let cos_0 = get_sample(origin, position, view_dir, cos_n_plus_pi_2, noise.y, 0., 0., dir, radius, pix_dif, world_radius_mul);
+        let cos_0 = get_sample(local_param, origin, position, view_dir, cos_n_plus_pi_2, noise.y, 0., 0., dir, radius, pix_dif, world_radius_mul);
         cos_h1 = max(cos_0.x, cos_h1);
         cos_h2 = max(cos_0.y, cos_h2);
-        let cos_1 = get_sample(origin, position, view_dir, cos_n_plus_pi_2, noise.y, 0., 1., dir, radius, pix_dif, world_radius_mul);
+        let cos_1 = get_sample(local_param, origin, position, view_dir, cos_n_plus_pi_2, noise.y, 0., 1., dir, radius, pix_dif, world_radius_mul);
         cos_h1 = max(cos_1.x, cos_h1);
         cos_h2 = max(cos_1.y, cos_h2);
-        let cos_2 = get_sample(origin, position, view_dir, cos_n_plus_pi_2, noise.y, 0., 2., dir, radius, pix_dif, world_radius_mul);
+        let cos_2 = get_sample(local_param, origin, position, view_dir, cos_n_plus_pi_2, noise.y, 0., 2., dir, radius, pix_dif, world_radius_mul);
         cos_h1 = max(cos_2.x, cos_h1);
         cos_h2 = max(cos_2.y, cos_h2);
         // fast_sqrt here gives bad precision
@@ -224,13 +241,13 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
         let cos_n_minus_pi_2 = sin_n;
         var cos_h1 = cos_n_plus_pi_2;
         var cos_h2 = cos_n_minus_pi_2;
-        let cos_0 = get_sample(origin, position, view_dir, cos_n_plus_pi_2, noise.y, 1., 0., dir, radius, pix_dif, world_radius_mul);
+        let cos_0 = get_sample(local_param, origin, position, view_dir, cos_n_plus_pi_2, noise.y, 1., 0., dir, radius, pix_dif, world_radius_mul);
         cos_h1 = max(cos_0.x, cos_h1);
         cos_h2 = max(cos_0.y, cos_h2);
-        let cos_1 = get_sample(origin, position, view_dir, cos_n_plus_pi_2, noise.y, 1., 1., dir, radius, pix_dif, world_radius_mul);
+        let cos_1 = get_sample(local_param, origin, position, view_dir, cos_n_plus_pi_2, noise.y, 1., 1., dir, radius, pix_dif, world_radius_mul);
         cos_h1 = max(cos_1.x, cos_h1);
         cos_h2 = max(cos_1.y, cos_h2);
-        let cos_2 = get_sample(origin, position, view_dir, cos_n_plus_pi_2, noise.y, 1., 2., dir, radius, pix_dif, world_radius_mul);
+        let cos_2 = get_sample(local_param, origin, position, view_dir, cos_n_plus_pi_2, noise.y, 1., 2., dir, radius, pix_dif, world_radius_mul);
         cos_h1 = max(cos_2.x, cos_h1);
         cos_h2 = max(cos_2.y, cos_h2);
         // fast_sqrt here gives bad precision

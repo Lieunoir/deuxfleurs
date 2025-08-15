@@ -42,14 +42,14 @@ impl Camera {
     }
 
     pub fn get_uv_to_view_x_mul_add(&self) -> (f32, f32) {
-        let tan = f32::tan(self.fovy / 180. * PI);
+        let tan = f32::tan(0.5 * self.fovy / 180. * PI);
         let mul = -2. * self.aspect * tan;
         let add = self.aspect * tan;
         (mul, add)
     }
 
     pub fn get_uv_to_view_y_mul_add(&self) -> (f32, f32) {
-        let tan = f32::tan(self.fovy / 180. * PI);
+        let tan = f32::tan(0.5 * self.fovy / 180. * PI);
         let mul = 2. * tan;
         let add = -tan;
         (mul, add)

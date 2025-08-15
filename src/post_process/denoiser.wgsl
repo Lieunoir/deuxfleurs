@@ -67,7 +67,6 @@ fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
     let depth_value = delinearize_depth(textureSampleLevel(depth, s, uv, 0.).x);
     let pos_clip = vec4(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
     let recovered_clip_w = param.reprojection * pos_clip;
-    //let recovered_clip_z = - recovered_clip_w.w;
     let recovered_clip = recovered_clip_w.xyz / recovered_clip_w.www;
     let recovered_clip_z = linearize_depth(recovered_clip.z);
     let recovered_uv = vec2<f32>(0.5 * recovered_clip.x + 0.5, - 0.5 * recovered_clip.y + 0.5);
@@ -170,6 +169,5 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     previous_ao.x = min(max_ssao, previous_ao.x);
     previous_ao.x = max(min_ssao, previous_ao.x);
     weight *= previous_ao.y;
-
-    return weight * previous_ao.x + (1. - weight) * blurred_ao;
+    return (weight * previous_ao.x + (1. - weight) * blurred_ao);
 }
