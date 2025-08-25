@@ -74,17 +74,19 @@ fn normalized_view_from_screen_coord(coord: vec2<f32>) -> vec3<f32> {
 
 const K_S = 0.8 - F0.x;
 const K_D = 0.15;
+const ONE_4F0 = 1. / (4. * F0.x);
 
+//Khronos PBR neutral
 fn tone_map(rgb: vec3<f32>) -> vec3<f32> {
     let x = min(min(rgb.x, rgb.y), rgb.z);
-    let f = select(0.04, x - x * x / (4. * 0.04), x <= 2. * 0.04);
+    let f = select(F0.x, x - x * x * ONE_4F0, x <= 2. * F0.x);
     let color = rgb - vec3<f32>(f);
     let p = max(max(color.x, color.y), color.z);
     let p_n = 1. - ((1. - K_S) * (1. - K_S)) / (p + 1. - 2. * K_S);
     let g = 1. / (K_D * (p - p_n) + 1.);
     let res = select(
         color,
-        color * p_n / p * g + vec3<f32>(p_n) * (1. - g),
+        mix(vec3<f32>(p_n), color * p_n / p, g),
         p > K_S);
     return res;
 }

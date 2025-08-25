@@ -66,7 +66,7 @@ fn calculate_edges(centerZ: f32, leftZ: f32, rightZ: f32, topZ: f32, bottomZ: f3
     let edgesLRTBSlopeAdjusted = edgesLRTB + vec4<f32>(slopeLR, -slopeLR, slopeTB, -slopeTB);
     edgesLRTB = min(abs(edgesLRTB), abs(edgesLRTBSlopeAdjusted));
     //remember: centerZ < 0.
-    return vec4<f32>(saturate((1.25 + edgesLRTB / (centerZ * 0.0011))));
+    return vec4<f32>(saturate((1.25 + edgesLRTB / (centerZ * 0.011))));
 }
 
 // packing/unpacking for edges; 2 bits per edge mean 4 gradient values (0, 0.33, 0.66, 1) for smoother transitions!

@@ -49,7 +49,6 @@ fn unpack_edges(packedValIn: f32) -> vec4<f32> {
 
 fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight: ptr<function, f32>, sum_squared: ptr<function, f32>) {
     let weight = edgeValue;
-
     *sum += weight * ssaoValue;
     *sumWeight += weight;
     *sum_squared += weight * ssaoValue * ssaoValue;
