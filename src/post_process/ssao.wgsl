@@ -95,13 +95,14 @@ override max_mip_level: f32 = 0.;
 
 const phi1 = 2654435769u;
 const phi2 = vec2<u32>(3242174889u, 2447445413u);
+const u_to_f_c = 1.0 / 4294967296.0;
 
 fn float01(x: u32) -> f32 {
-    return f32(x) * (1.0 / 4294967296.0);
+    return f32(x) * u_to_f_c;
 }
 
 fn v2_float01(x: vec2<u32>) -> vec2<f32> {
-    return vec2<f32>(x) * (1.0 / 4294967296.0);
+    return vec2<f32>(x) * u_to_f_c;
 }
 
 fn get_sample(local_param: Parameters, origin: vec2<f32>, position: vec3<f32>, view_dir: vec3<f32>, cos_n_plus_pi_2: f32, noise: u32, iter_i: f32, iter_j: f32, dir: vec2<f32>, radius: f32, pix_dif: vec2<f32>, world_radius_mul: f32) -> vec2<f32> {
@@ -135,6 +136,8 @@ fn get_sample(local_param: Parameters, origin: vec2<f32>, position: vec3<f32>, v
     let l_s_2 = saturate(world_radius_mul / d_s_2_norm_inv - 5.);
     let dot_s_1 = mix(dot(d_s_1, view_dir), cos_n_plus_pi_2, l_s_1);
     let dot_s_2 = mix(dot(d_s_2, view_dir), -cos_n_plus_pi_2, l_s_2);
+    //let dot_s_1 = dot(d_s_1, view_dir);
+    //let dot_s_2 = dot(d_s_2, view_dir);
     return vec2<f32>(dot_s_1, dot_s_2);
 }
 
@@ -145,8 +148,8 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     let pix_dif = local_param.pix_dif;
     let frame_index = local_param.frame_index;
     let origin = sample_factor * fcoords.xy * pix_dif;
-    let normal_sample = textureSampleLevel(t_n, s, origin, 0.).xyz;
     let coords = vec2<u32>(fcoords.xy);
+    let normal_sample = textureLoad(t_n, coords, 0).xyz;
     //if ((coords.x + coords.y) % 2 == frame_index % 2) {
     //    discard;
     //}

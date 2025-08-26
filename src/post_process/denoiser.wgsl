@@ -88,18 +88,18 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
 
     // gather edge and visibility quads, used later
     let edgesQ0 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(0, 0));
-    let edgesQ1 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(2, 0));
-    let edgesQ2 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(1, 2));
+    let edgesQ1 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(1, 1));
+    //let edgesQ2 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(1, 2));
 
     let visQ0 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(0, 0));
-    let visQ1 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 0));
+    let visQ1 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 2));
     let visQ2 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(0, 2));
     let visQ3 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 2));
 
     let edgesL_LRTB = unpack_edges(edgesQ0.x);
     let edgesT_LRTB = unpack_edges(edgesQ0.z);
-    let edgesR_LRTB = unpack_edges(edgesQ1.x);
-    let edgesB_LRTB = unpack_edges(edgesQ2.w);
+    let edgesR_LRTB = unpack_edges(edgesQ1.z);
+    let edgesB_LRTB = unpack_edges(edgesQ1.x);
     var edgesC_LRTB = unpack_edges(edgesQ0.y);
 
     // Edges aren't perfectly symmetrical: edge detection algorithm does not guarantee that a left edge on the right pixel will match the right edge on the left pixel (although
