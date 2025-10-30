@@ -31,9 +31,10 @@ pub struct Settings {
     pub default_color_map: Colors,
     pub fit_camera_on_start: bool,
     pub ssao_enabled: bool,
-    /// When rendering headless, render n frames instead of only one to leverage temporal
-    /// accumulation (roundabout way to supersample screenshots).
-    pub headless_frame_per_screenshot: NonZeroU8,
+    /// When rendering headless, or when the scene was just updated,
+    /// render n frames instead of only one to leverage temporal
+    /// accumulation for AA (roundabout way to supersample screenshots).
+    pub minimum_frame_per_screenshot: NonZeroU8,
     /// Preference for which rendering device will be obtained. Defaults to None, taking the
     /// first device presented.
     ///
@@ -59,7 +60,7 @@ impl Default for Settings {
             default_color_map: Colors::Viridis,
             fit_camera_on_start: true,
             ssao_enabled: true,
-            headless_frame_per_screenshot: NonZeroU8::new(16).unwrap(),
+            minimum_frame_per_screenshot: NonZeroU8::new(16).unwrap(),
             power_preference: PowerPreference::None,
         }
     }

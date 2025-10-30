@@ -616,11 +616,15 @@ impl InnerGraphicalState {
             deltas
         });
 
-        let output = self
-            .surface
-            .as_ref()
-            .map(|surface| surface.get_current_texture())
-            .transpose()?;
+        // Hack for screenshot frames
+        let output = if event_loop_proxy.is_some() {
+            self.surface
+                .as_ref()
+                .map(|surface| surface.get_current_texture())
+                .transpose()?
+        } else {
+            None
+        };
 
         let view = output.as_ref().map(|o| {
             o.texture
@@ -630,7 +634,8 @@ impl InnerGraphicalState {
         let mut request_redraw = !self.settings.lazy_draw;
         // Render, as opposed as simply getting the last stored frame
         let mut render = self.settings.rerender;
-        let mut store_render = self.surface.is_none();
+        //let mut store_render = self.surface.is_none();
+        let mut store_render = event_loop_proxy.is_none();
         // ^ Three possibilities:
         // *  (true, false): continuously rendering
         // *  (true, true): scene hasn't changed, rendering more for TAA
@@ -929,11 +934,12 @@ impl InnerGraphicalState {
     }
 
     fn render_screenshot(&mut self) -> wgpu::SubmissionIndex {
-        // When in headless mode, we have to make sure a image can be copied from
-        if self.surface.is_none() {
+        // When in headless mode, or when continuously updating,
+        // we have to make sure an image can be copied from
+        if self.surface.is_none() || self.taa_counter == 0 {
             self.update();
-            for _ in 0..self.settings.headless_frame_per_screenshot.get() {
-                self.render(None, None, true).unwrap();
+            for i in 0..self.settings.minimum_frame_per_screenshot.get() {
+                self.render(None, None, i == 0).unwrap();
             }
         }
 
