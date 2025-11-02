@@ -1,6 +1,7 @@
 use crate::Settings;
-use crate::shape::{Context, DataMut, DataMutTrait};
+use crate::shape::{DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
+use crate::window::ContextHolder;
 use egui::Shape;
 use egui::epaint::RectShape;
 use egui::{Color32, Pos2};
@@ -670,7 +671,7 @@ impl UiDataElement for ColorMap {
 
 pub type ColorMapMut<'a, Ctxt> = DataMut<'a, &'a mut ColorMap, Ctxt>;
 
-impl<'a, Ctxt: Context> ColorMapMut<'a, Ctxt>
+impl<'a, S: ContextHolder> ColorMapMut<'a, S>
 where
     Self: DataMutTrait,
 {

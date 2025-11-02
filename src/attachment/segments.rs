@@ -11,6 +11,7 @@ use crate::{
         AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
         ShapeGeometry, ShapeSettings,
     },
+    window::{ContextHolder, InnerGraphicalState},
 };
 
 #[derive(Clone)]
@@ -27,7 +28,10 @@ pub struct Segments {
     position: AttachmentPosition,
 }
 
-impl<'a> AttachedGeometry<&'a mut Settings> for NewSegments {
+impl<S> AttachedGeometry<S> for NewSegments
+where
+    for<'a> S: ContextHolder<Context<'a> = &'a mut Settings, TransformLayout = ()>,
+{
     type Args = (Vec<u32>, (Vec<[f32; 3]>, Vec<[u32; 2]>));
     type Settings<'b> = &'b mut PCSettings;
 
@@ -36,7 +40,7 @@ impl<'a> AttachedGeometry<&'a mut Settings> for NewSegments {
         args: Self::Args,
         position: AttachmentPosition,
         characteristic_l: f32,
-        _context: &mut &'a mut Settings,
+        _context: &mut &'_ mut Settings,
         _transform_layout: &(),
     ) -> Self {
         let inner = UninitedSegment::new_bare(name, args.1, Some(characteristic_l));
@@ -105,7 +109,7 @@ impl NewAttachedGeometry for NewSegments {
     }
 }
 
-impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
+impl AttachedGeometry<InnerGraphicalState> for Segments {
     type Args = (Vec<u32>, (Vec<[f32; 3]>, Vec<[u32; 2]>));
     type Settings<'b> = &'b mut PCSettings;
 
@@ -114,7 +118,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
         args: Self::Args,
         position: AttachmentPosition,
         characteristic_l: f32,
-        context: &mut GraphicalContext<'a>,
+        context: &mut GraphicalContext<'_>,
         _transform_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         *context.refresh_screen = true;
@@ -169,7 +173,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for Segments {
     where
         'c: 'd,
     {
-        if self.inner.geometry().get_total_elements() > 0 {
+        if self.inner.geometry.get_total_elements() > 0 {
             self.inner.renderer.render_attached(render_pass);
         }
     }

@@ -5,6 +5,7 @@ use crate::types::{Color, Scalar};
 use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
+use crate::window::ContextHolder;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::include_wgsl;
@@ -554,9 +555,9 @@ pub type DisplayPointCloud = PointCloud<PointCloudRenderer, EmptyAttached>;
 pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
     ShapeMut<'a, PointCloud<Renderer, AttachedData>, Context>;
 
-impl<'a, Renderer, AttachedData, Ctxt: Context> PointCloudMut<'a, Renderer, AttachedData, Ctxt>
+impl<Renderer, AttachedData, S: ContextHolder> PointCloudMut<'_, Renderer, AttachedData, S>
 where
-    PointCloud<Renderer, AttachedData>: ShapeTrait<Ctxt, Data = PointCloudData>,
+    PointCloud<Renderer, AttachedData>: ShapeTrait<S, Data = PointCloudData>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {
@@ -574,14 +575,14 @@ where
         self
     }
 
-    pub fn add_scalar<S: Scalar>(
+    pub fn add_scalar(
         &mut self,
         name: impl Into<String>,
-        datas: S,
-    ) -> ColorMapMut<'_, Ctxt> {
+        datas: impl Scalar,
+    ) -> ColorMapMut<'_, S> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        let settings = ColorMap::new(&datas, self.context.get_settings());
+        let settings = ColorMap::new(&datas, S::get_settings(&self.context));
         self.add_data(name.into(), PointCloudData::Scalar(datas, settings))
             .convert(|data| {
                 if let PointCloudData::Scalar(_, settings) = data {
@@ -592,7 +593,7 @@ where
             })
     }
 
-    pub fn add_colors<C: Color>(&mut self, name: impl Into<String>, datas: C) {
+    pub fn add_colors(&mut self, name: impl Into<String>, datas: impl Color) {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         self.add_data(name.into(), PointCloudData::Color(datas));

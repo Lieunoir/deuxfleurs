@@ -2,11 +2,16 @@ use crate::data::TransformSettings;
 use crate::data::internal::{DataUniform, DataUniformBuilder};
 
 pub struct Renderer<Fixed, DataB, Pipeline> {
+    // Buffers which won't be modified after init
     pub(crate) fixed: Fixed,
+    // Buffers modified depending on displayed data
     pub(crate) data_buffer: DataB,
+    // Pipeline, may be modifed depending on data, data settings or shape settings
     pub(crate) pipeline: Pipeline,
+    // Common shape uniforms
     pub(crate) transform_uniform: DataUniform,
     pub(crate) settings_uniform: DataUniform,
+    // Uniforms modified depending on displayed data and data settings
     pub(crate) data_uniform: Option<DataUniform>,
 }
 

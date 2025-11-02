@@ -6,6 +6,7 @@ use crate::types::{Color, Scalar};
 use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
+use crate::window::ContextHolder;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::include_wgsl;
@@ -842,9 +843,9 @@ pub type DisplaySegment = Segment<SegmentRenderer, EmptyAttached>;
 pub type SegmentMut<'a, Renderer, AttachedData, Context> =
     ShapeMut<'a, Segment<Renderer, AttachedData>, Context>;
 
-impl<'a, Renderer, AttachedData, Ctxt: Context> SegmentMut<'a, Renderer, AttachedData, Ctxt>
+impl<Renderer, AttachedData, S: ContextHolder> SegmentMut<'_, Renderer, AttachedData, S>
 where
-    Segment<Renderer, AttachedData>: ShapeTrait<Ctxt, Data = SegmentData>,
+    Segment<Renderer, AttachedData>: ShapeTrait<S, Data = SegmentData>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {
@@ -861,14 +862,14 @@ where
         self
     }
 
-    pub fn add_scalar<S: Scalar>(
+    pub fn add_scalar(
         &mut self,
         name: impl Into<String>,
-        datas: S,
-    ) -> ColorMapMut<'_, Ctxt> {
+        datas: impl Scalar,
+    ) -> ColorMapMut<'_, S> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
-        let settings = ColorMap::new(&datas, self.context.get_settings());
+        let settings = ColorMap::new(&datas, S::get_settings(&self.context));
         self.add_data(name.into(), SegmentData::Scalar(datas, settings))
             .convert(|data| {
                 if let SegmentData::Scalar(_, settings) = data {
@@ -879,7 +880,7 @@ where
             })
     }
 
-    pub fn add_colors<C: Color>(&mut self, name: impl Into<String>, datas: C) {
+    pub fn add_colors(&mut self, name: impl Into<String>, datas: impl Color) {
         let datas = datas.into();
         assert!(datas.len() == self.geometry().positions.len());
         self.add_data(name.into(), SegmentData::Color(datas));

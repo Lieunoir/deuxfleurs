@@ -14,6 +14,7 @@ use crate::types::{SurfaceIndices, Vertices2D};
 use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
+use crate::window::ContextHolder;
 use num_traits::cast::ToPrimitive;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -1090,14 +1091,14 @@ impl DisplaySurface {
 pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
     ShapeMut<'a, Surface<Renderer, AttachedData>, Context>;
 
-impl<'a, 'b, Renderer, AttachedData, Ctxt: Context> SurfaceMut<'a, Renderer, AttachedData, Ctxt>
+impl<'a: 'b, 'b, Renderer, AttachedData, S: ContextHolder> SurfaceMut<'a, Renderer, AttachedData, S>
 where
     AttachedData: AttachedGeometry<
-            Ctxt,
+            S,
             Settings<'b> = SurfaceAttachmentSettings<'b>,
             Args = SurfaceAttachmentArgs,
-        > + 'b,
-    Surface<Renderer, AttachedData>: ShapeTrait<Ctxt, Data = SurfaceData, Attached = AttachedData>,
+        >,
+    Surface<Renderer, AttachedData>: ShapeTrait<S, Data = SurfaceData, Attached = AttachedData>,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.inner.settings.show_edges != show_edges {
@@ -1115,14 +1116,14 @@ where
         self
     }
 
-    pub fn add_face_scalar<S: Scalar>(
-        &'b mut self,
+    pub fn add_face_scalar(
+        &mut self,
         name: impl Into<String>,
-        datas: S,
-    ) -> ColorMapMut<'b, Ctxt> {
+        datas: impl Scalar,
+    ) -> ColorMapMut<'_, S> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.indices.size());
-        let new_settings = ColorMap::new(&datas, self.context.get_settings());
+        let new_settings = ColorMap::new(&datas, S::get_settings(&self.context));
         self.add_data(name.into(), SurfaceData::FaceScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::FaceScalar(_, settings) = data {
@@ -1133,14 +1134,14 @@ where
             })
     }
 
-    pub fn add_edge_scalar<S: Scalar>(
-        &'b mut self,
+    pub fn add_edge_scalar(
+        &mut self,
         name: impl Into<String>,
-        datas: S,
-    ) -> ColorMapMut<'b, Ctxt> {
+        datas: impl Scalar,
+    ) -> ColorMapMut<'_, S> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.face_to_edge.num_edges as usize);
-        let new_settings = ColorMap::new(&datas, self.context.get_settings());
+        let new_settings = ColorMap::new(&datas, S::get_settings(&self.context));
         self.add_data(name.into(), SurfaceData::EdgeScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::EdgeScalar(_, settings) = data {
@@ -1151,14 +1152,14 @@ where
             })
     }
 
-    pub fn add_vertex_scalar<S: Scalar>(
-        &'b mut self,
+    pub fn add_vertex_scalar(
+        &mut self,
         name: impl Into<String>,
-        datas: S,
-    ) -> VertexScalarSettingsMut<'b, Ctxt> {
+        datas: impl Scalar,
+    ) -> VertexScalarSettingsMut<'_, S> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
-        let new_settings = VertexScalarSettings::new(&datas, self.context.get_settings());
+        let new_settings = VertexScalarSettings::new(&datas, S::get_settings(&self.context));
         self.add_data(name.into(), SurfaceData::VertexScalar(datas, new_settings))
             .convert(|data| {
                 if let SurfaceData::VertexScalar(_, settings) = data {
@@ -1169,11 +1170,11 @@ where
             })
     }
 
-    pub fn add_uv_map<UV: Vertices2D>(
-        &'b mut self,
+    pub fn add_uv_map(
+        &mut self,
         name: impl Into<String>,
-        datas: UV,
-    ) -> UVMapSettingsMut<'b, Ctxt> {
+        datas: impl Vertices2D,
+    ) -> UVMapSettingsMut<'_, S> {
         let datas = datas.into();
         assert!(datas.len() == self.geometry.vertices.len());
         self.add_data(
@@ -1189,11 +1190,11 @@ where
         })
     }
 
-    pub fn add_corner_uv_map<UV: Vertices2D>(
-        &'b mut self,
+    pub fn add_corner_uv_map(
+        &mut self,
         name: impl Into<String>,
-        datas: UV,
-    ) -> UVMapSettingsMut<'b, Ctxt> {
+        datas: impl Vertices2D,
+    ) -> UVMapSettingsMut<'_, S> {
         let datas = datas.into();
         assert!(datas.len() == 3 * self.geometry.indices.size());
         self.add_data(
@@ -1209,7 +1210,7 @@ where
         })
     }
 
-    pub fn add_vertex_color<C: Color>(&mut self, name: impl Into<String>, colors: C) {
+    pub fn add_vertex_color(&mut self, name: impl Into<String>, colors: impl Color) {
         let colors = colors.into();
         assert!(colors.len() == self.geometry.vertices.len());
         self.add_data(name.into(), SurfaceData::Color(colors));
@@ -1219,7 +1220,7 @@ where
         &'b mut self,
         name: impl Into<String>,
         vertices: Vec<u32>,
-    ) -> PointsSettingsMut<'b, Ctxt> {
+    ) -> PointsSettingsMut<'b, S> {
         if let Some(max) = vertices.iter().max() {
             assert!(*max < self.geometry.vertices.len() as u32);
         }
@@ -1235,11 +1236,11 @@ where
             })
     }
 
-    pub fn add_vertex_vector_field<V: Vertices>(
+    pub fn add_vertex_vector_field(
         &'b mut self,
         name: impl Into<String>,
-        vectors: V,
-    ) -> VectorFieldSettingsMut<'b, Ctxt> {
+        vectors: impl Vertices,
+    ) -> VectorFieldSettingsMut<'b, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
@@ -1251,11 +1252,11 @@ where
             })
     }
 
-    pub fn add_face_vector_field<V: Vertices>(
+    pub fn add_face_vector_field(
         &'b mut self,
         name: impl Into<String>,
-        vectors: V,
-    ) -> VectorFieldSettingsMut<'b, Ctxt> {
+        vectors: impl Vertices,
+    ) -> VectorFieldSettingsMut<'b, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.indices.size());
         let offsets: Vec<[f32; 3]> = self
@@ -1286,11 +1287,11 @@ where
             })
     }
 
-    pub fn add_edge_vector_field<V: Vertices>(
+    pub fn add_edge_vector_field(
         &'b mut self,
         name: impl Into<String>,
-        vectors: V,
-    ) -> VectorFieldSettingsMut<'b, Ctxt> {
+        vectors: impl Vertices,
+    ) -> VectorFieldSettingsMut<'b, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.face_to_edge.num_edges as usize);
         let mut offsets = vec![[0., 0., 0.]; self.geometry.face_to_edge.num_edges as usize];
@@ -1322,7 +1323,7 @@ where
         &'b mut self,
         name: impl Into<String>,
         mut edges: Vec<u32>,
-    ) -> SegmentsSettingsMut<'b, Ctxt> {
+    ) -> SegmentsSettingsMut<'b, S> {
         if let Some(max) = edges.iter().max() {
             assert!(*max < self.geometry.face_to_edge.num_edges);
         }

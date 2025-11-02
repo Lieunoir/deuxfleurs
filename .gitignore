@@ -2,5 +2,6 @@
 /dist
 /src/main.rs
 .zed/
+/ssao
 TODO
 screenshot_*.png

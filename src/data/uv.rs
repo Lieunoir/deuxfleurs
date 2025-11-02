@@ -1,5 +1,6 @@
-use crate::shape::{Context, DataMut, DataMutTrait};
+use crate::shape::{DataMut, DataMutTrait};
 use crate::ui::UiDataElement;
+use crate::window::ContextHolder;
 use egui::Widget;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -70,7 +71,7 @@ impl UiDataElement for UVMapSettings {
 
 pub type UVMapSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut UVMapSettings, Ctxt>;
 
-impl<'a, Ctxt: Context> UVMapSettingsMut<'a, Ctxt>
+impl<'a, S: ContextHolder> UVMapSettingsMut<'a, S>
 where
     Self: DataMutTrait,
 {

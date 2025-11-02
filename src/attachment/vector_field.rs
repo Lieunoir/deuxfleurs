@@ -2,7 +2,6 @@ use crate::attachment::internal::AttachmentPosition;
 use crate::camera::Camera;
 use crate::data::*;
 use crate::shape::AttachedGeometry;
-use crate::shape::Context;
 use crate::shape::{DataMut, DataMutTrait};
 
 use crate::shape::GraphicalContext;
@@ -11,6 +10,8 @@ use crate::texture;
 use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
+use crate::window::ContextHolder;
+use crate::window::InnerGraphicalState;
 use egui::Widget;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -72,7 +73,7 @@ impl VectorFieldSettings {
 
 pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VectorFieldSettings, Ctxt>;
 
-impl<'a, Ctxt: Context> VectorFieldSettingsMut<'a, Ctxt>
+impl<'a, 'b, S: ContextHolder> VectorFieldSettingsMut<'a, S>
 where
     Self: DataMutTrait,
 {
@@ -295,7 +296,10 @@ impl VectorField {
     }
 }
 
-impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
+impl<S> AttachedGeometry<S> for NewVectorField
+where
+    for<'a> S: ContextHolder<Context<'a> = &'a mut crate::Settings, TransformLayout = ()>,
+{
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
     type Settings<'b> = &'b mut VectorFieldSettings;
 
@@ -304,7 +308,7 @@ impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
         args: Self::Args,
         position: AttachmentPosition,
         characteristic_l: f32,
-        _context: &mut &'a mut crate::Settings,
+        _context: &mut &mut crate::Settings,
         _transform_layout: &(),
     ) -> Self {
         let (vectors, offsets) = args;
@@ -326,7 +330,7 @@ impl<'a> AttachedGeometry<&'a mut crate::Settings> for NewVectorField {
     }
 }
 
-impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
+impl AttachedGeometry<InnerGraphicalState> for VectorField {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
     type Settings<'b> = &'b mut VectorFieldSettings;
 
@@ -335,7 +339,7 @@ impl<'a> AttachedGeometry<GraphicalContext<'a>> for VectorField {
         args: Self::Args,
         position: AttachmentPosition,
         characteristic_l: f32,
-        context: &mut GraphicalContext<'a>,
+        context: &mut GraphicalContext<'_>,
         transform_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         *context.refresh_screen = true;

@@ -1,11 +1,11 @@
 use crate::Settings;
 use crate::data::Colors;
 use crate::data::{internal::*, *};
-use crate::shape::Context;
 use crate::shape::DataMut;
 use crate::shape::DataMutTrait;
 use crate::types::SurfaceIndices;
 use crate::ui::UiDataElement;
+use crate::window::ContextHolder;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
@@ -44,7 +44,7 @@ impl VertexScalarSettings {
 
 pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VertexScalarSettings, Ctxt>;
 
-impl<'a, Ctxt: Context> VertexScalarSettingsMut<'a, Ctxt>
+impl<'a, S: ContextHolder> VertexScalarSettingsMut<'a, S>
 where
     Self: DataMutTrait,
 {

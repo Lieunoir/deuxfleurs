@@ -1,18 +1,23 @@
-use crate::{attachment::internal::AttachmentPosition, camera::Camera};
+use crate::{
+    Settings,
+    attachment::internal::AttachmentPosition,
+    camera::Camera,
+    window::{ContextHolder, InnerBareState, InnerGraphicalState},
+};
 
-use super::{Context, DataUniformBuilder, GraphicalContext};
+use super::DataUniformBuilder;
 
-pub struct DataMut<'a, T, Ctxt: Context> {
+pub struct DataMut<'a, T, S: ContextHolder> {
     pub(crate) inner: T,
-    pub(crate) context: &'a mut Ctxt,
-    pub(crate) uniform: Ctxt::DataUniform<'a>,
+    pub(crate) context: S::Context<'a>,
+    pub(crate) uniform: S::DataUniform<'a>,
 }
 
-pub type UninitedData<'a, 'b, T> = DataMut<'b, T, &'a mut crate::Settings>;
-pub type DisplayData<'a, 'b, T> = DataMut<'b, T, GraphicalContext<'a>>;
+pub type UninitedData<'a, T, U> = DataMut<'a, T, InnerBareState<U>>;
+pub type DisplayData<'a, T> = DataMut<'a, T, InnerGraphicalState>;
 
-impl<'a, T, Ctxt: Context> DataMut<'a, T, Ctxt> {
-    pub(crate) fn convert<U, F: FnOnce(T) -> U>(self, f: F) -> DataMut<'a, U, Ctxt> {
+impl<'a, T, S: ContextHolder> DataMut<'a, T, S> {
+    pub(crate) fn convert<U, F: FnOnce(T) -> U>(self, f: F) -> DataMut<'a, U, S> {
         DataMut {
             inner: f(self.inner),
             uniform: self.uniform,
@@ -25,11 +30,14 @@ pub trait DataMutTrait {
     fn update_data_settings(&mut self);
 }
 
-impl<'a, 'b, T> DataMutTrait for UninitedData<'a, 'b, T> {
+impl<T, S> DataMutTrait for DataMut<'_, T, S>
+where
+    for<'a> S: ContextHolder<Context<'a> = &'a mut Settings>,
+{
     fn update_data_settings(&mut self) {}
 }
 
-impl<'a, 'b, T> DataMutTrait for DisplayData<'a, 'b, T>
+impl<T> DataMutTrait for DisplayData<'_, T>
 where
     T: DataUniformBuilder,
 {
@@ -54,7 +62,7 @@ pub trait NewAttachedGeometry {
     fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self;
 }
 
-impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
+impl<S: ContextHolder> AttachedGeometry<S> for () {
     type Args = ();
     type Settings<'a> = &'a mut ();
 
@@ -63,8 +71,8 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for () {
         _args: Self::Args,
         _position: AttachmentPosition,
         _characteristic_l: f32,
-        _context: &mut Ctxt,
-        _transform_layout: &Ctxt::TransformLayout,
+        _context: &mut S::Context<'_>,
+        _transform_layout: &S::TransformLayout,
     ) -> Self {
         ()
     }
@@ -100,7 +108,7 @@ impl NewAttachedGeometry for () {
     }
 }
 
-impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
+impl<S: ContextHolder> AttachedGeometry<S> for EmptyAttached {
     type Args = ();
     type Settings<'a> = &'a mut ();
 
@@ -109,8 +117,8 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
         _args: Self::Args,
         _position: AttachmentPosition,
         _characteristic_l: f32,
-        _context: &mut Ctxt,
-        _transform_layout: &Ctxt::TransformLayout,
+        _context: &mut S::Context<'_>,
+        _transform_layout: &S::TransformLayout,
     ) -> Self {
         EmptyAttached(())
     }
@@ -126,13 +134,13 @@ impl<Ctxt: Context> AttachedGeometry<Ctxt> for EmptyAttached {
     fn move_elements(&mut self, _queue: &wgpu::Queue, _indices: &[u32], _pos: &[[f32; 3]]) {}
 }
 
-pub trait ShapeSettings: DataUniformBuilder {
+pub trait ShapeSettings: DataUniformBuilder + Clone {
     fn new(name: &str, characteristic_length: f32) -> Self;
 
     fn draw_ui(&mut self, ui: &mut egui::Ui, rebuild_pipeline: &mut bool) -> bool;
 }
 
-pub trait ShapeGeometry {
+pub trait ShapeGeometry: Clone {
     type Args;
 
     fn new(args: Self::Args) -> Self;
@@ -154,7 +162,7 @@ pub trait ShapeGeometry {
     fn get_characteristic_length(&self) -> f32;
 }
 
-pub trait AttachedGeometry<Ctxt: Context> {
+pub trait AttachedGeometry<S: ContextHolder> {
     type Args;
     type Settings<'a>
     where
@@ -165,8 +173,8 @@ pub trait AttachedGeometry<Ctxt: Context> {
         args: Self::Args,
         _position: AttachmentPosition,
         characteristic_l: f32,
-        context: &mut Ctxt,
-        transform_layout: &Ctxt::TransformLayout,
+        context: &mut S::Context<'_>,
+        transform_layout: &S::TransformLayout,
     ) -> Self;
 
     fn shown(&self) -> bool {
