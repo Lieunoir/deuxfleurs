@@ -13,8 +13,7 @@ bytemuck = { version = "1.12.1", features = ["derive"] }
 cfg-if = "1.0.0"
 glam = { version = "0.30", features = ["serde"] }
 egui = "0.32"
-#transform-gizmo-egui = "0.6"
-transform-gizmo-egui = { path = "../transform-gizmo/crates/transform-gizmo-egui" }
+transform-gizmo-egui = "0.7"
 egui-wgpu = { version = "0.32", features = ["winit"] }
 egui-winit = { version = "0.32", default-features = false }
 egui_plot = "0.33"
