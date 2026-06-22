@@ -319,12 +319,9 @@ where
                                 self.shown_data = None;
                                 None
                             };
-                            self.renderer
-                                .build_data_buffer(device, &self.geometry, data);
-                            self.renderer
-                                .set_data_uniform(data.map(|d| d.build_uniform(device)).flatten());
-                            self.renderer.rebuild_pipeline(
+                            self.renderer.build_data_buffer(
                                 device,
+                                &self.geometry,
                                 data,
                                 &self.settings,
                                 camera_bind_group_layout,
@@ -334,6 +331,7 @@ where
                     })
                 })
                 .body(|ui| {
+                    // Triggered on ui settings change
                     if data.draw_ui(ui) && active {
                         if let Some(data_uniform) = self.renderer.get_data_uniform() {
                             data.refresh_buffer(queue, data_uniform);
@@ -537,7 +535,7 @@ where
     ) -> DataMut<'a, &'a mut Self::Data, InnerBareState<U>> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
-        old_data.map(|old| data.apply_settings(old));
+        old_data.map(|old| data.apply_previous_settings(old));
         DataMut {
             inner: data,
             uniform: (),
@@ -574,7 +572,7 @@ impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, AttachedG> ShapeTrait<Inn
 where
     AttachedG: AttachedGeometry<InnerGraphicalState>,
     Geometry: ShapeGeometry,
-    Data: DataUniformBuilder + DataSettings,
+    Data: DataSettings,
     Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
@@ -641,14 +639,9 @@ where
         if self.shown_data != name {
             self.shown_data = name;
             let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
-            self.renderer
-                .build_data_buffer(context.device, &self.geometry, data);
-            data.map(|d| {
-                self.renderer
-                    .set_data_uniform(d.build_uniform(context.device))
-            });
-            self.renderer.rebuild_pipeline(
+            self.renderer.build_data_buffer(
                 context.device,
+                &self.geometry,
                 data,
                 &self.settings,
                 context.camera_bind_group_layout,
@@ -665,15 +658,11 @@ where
     ) -> DataMut<'a, &'a mut Self::Data, InnerGraphicalState> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
-        old_data.map(|old| data.apply_settings(old));
+        old_data.map(|old| data.apply_previous_settings(old));
         if self.shown_data.as_ref() == Some(&name) {
-            self.renderer
-                .build_data_buffer(context.device, &self.geometry, Some(data));
-            self.renderer
-                .set_data_uniform(data.build_uniform(context.device));
-            // Previously shown data can have same name but different type, thus requiring pipeline rebuild
-            self.renderer.rebuild_pipeline(
+            self.renderer.build_data_buffer(
                 context.device,
+                &self.geometry,
                 Some(data),
                 &self.settings,
                 context.camera_bind_group_layout,

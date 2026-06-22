@@ -1,4 +1,4 @@
-use crate::ui::UiDataElement;
+use crate::data::internal::{DataSettings, DataUniformBuilder};
 use glam::{Mat4, Vec4Swizzles};
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -255,7 +255,17 @@ impl Default for TransformSettings {
     }
 }
 
-impl UiDataElement for TransformSettings {
+impl DataUniformBuilder for TransformSettings {
+    fn build_uniform(&self, device: &wgpu::Device) -> Option<super::internal::DataUniform> {
+        self.to_raw().build_uniform(device)
+    }
+
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &super::internal::DataUniform) {
+        self.to_raw().refresh_buffer(queue, data_uniform);
+    }
+}
+
+impl DataSettings for TransformSettings {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         ui.horizontal(|ui| {
@@ -270,5 +280,9 @@ impl UiDataElement for TransformSettings {
             }
         });
         changed
+    }
+
+    fn apply_previous_settings(&mut self, previous: Self) {
+        *self = previous;
     }
 }

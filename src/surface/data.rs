@@ -4,7 +4,6 @@ use crate::data::{internal::*, *};
 use crate::shape::DataMut;
 use crate::shape::DataMutTrait;
 use crate::types::SurfaceIndices;
-use crate::ui::UiDataElement;
 use crate::window::ContextHolder;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -32,30 +31,8 @@ impl VertexScalarSettings {
         }
     }
 
-    pub(crate) fn recycle(&mut self, old: Self) {
-        self.isoline = old.isoline;
-        self.colormap.recycle(old.colormap);
-    }
-
     pub fn set_isolines(&mut self, isolines: f32) {
         self.isoline.isoline_number = isolines;
-    }
-}
-
-pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VertexScalarSettings, Ctxt>;
-
-impl<'a, S: ContextHolder> VertexScalarSettingsMut<'a, S>
-where
-    Self: DataMutTrait,
-{
-    pub fn set_isolines(&mut self, number: f32) {
-        self.inner.isoline.isoline_number = number;
-        self.update_data_settings();
-    }
-
-    pub fn set_colormap(&mut self, colormap: Colors) {
-        self.inner.colormap.colors = colormap;
-        self.update_data_settings();
     }
 }
 
@@ -80,6 +57,39 @@ impl DataUniformBuilder for VertexScalarSettings {
     }
 }
 
+impl DataSettings for VertexScalarSettings {
+    fn apply_previous_settings(&mut self, previous: Self) {
+        self.isoline.apply_previous_settings(previous.isoline);
+        self.colormap.apply_previous_settings(previous.colormap);
+    }
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut changed = false;
+        ui.horizontal_wrapped(|ui| {
+            changed |= self.isoline.draw_ui(ui);
+            changed |= self.colormap.draw_ui(ui);
+        });
+        changed
+    }
+}
+
+pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VertexScalarSettings, Ctxt>;
+
+impl<S: ContextHolder> VertexScalarSettingsMut<'_, S>
+where
+    Self: DataMutTrait,
+{
+    pub fn set_isolines(&mut self, number: f32) {
+        self.inner.isoline.isoline_number = number;
+        self.update_data_settings();
+    }
+
+    pub fn set_colormap(&mut self, colormap: Colors) {
+        self.inner.colormap.colors = colormap;
+        self.update_data_settings();
+    }
+}
+
 #[derive(Clone)]
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub enum SurfaceData {
@@ -91,31 +101,12 @@ pub enum SurfaceData {
     UVCornerMap(Vec<[f32; 2]>, UVMapSettings),
 }
 
-impl DataSettings for SurfaceData {
-    fn apply_settings(&mut self, other: Self) {
-        match (self, other) {
-            (SurfaceData::FaceScalar(_, set1), SurfaceData::FaceScalar(_, set2)) => {
-                set1.recycle(set2)
-            }
-            (SurfaceData::VertexScalar(_, set1), SurfaceData::VertexScalar(_, set2)) => {
-                set1.recycle(set2)
-            }
-            (SurfaceData::EdgeScalar(_, set1), SurfaceData::EdgeScalar(_, set2)) => {
-                set1.recycle(set2)
-            }
-            (SurfaceData::UVMap(_, set1), SurfaceData::UVMap(_, set2)) => *set1 = set2,
-            (SurfaceData::UVCornerMap(_, set1), SurfaceData::UVCornerMap(_, set2)) => *set1 = set2,
-            _ => (),
-        }
-    }
-}
-
 impl DataUniformBuilder for SurfaceData {
     fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
         match self {
             SurfaceData::VertexScalar(_, uniform) => uniform.build_uniform(device),
-            SurfaceData::FaceScalar(_, uniform) => uniform.get_value().build_uniform(device),
-            SurfaceData::EdgeScalar(_, uniform) => uniform.get_value().build_uniform(device),
+            SurfaceData::FaceScalar(_, uniform) => uniform.build_uniform(device),
+            SurfaceData::EdgeScalar(_, uniform) => uniform.build_uniform(device),
             SurfaceData::UVMap(_, uniform) => uniform.build_uniform(device),
             SurfaceData::UVCornerMap(_, uniform) => uniform.build_uniform(device),
             // Maybe use empty uniform instead of none?
@@ -126,12 +117,8 @@ impl DataUniformBuilder for SurfaceData {
     fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
         match self {
             SurfaceData::VertexScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
-            SurfaceData::FaceScalar(_, uniform) => {
-                uniform.get_value().refresh_buffer(queue, data_uniform)
-            }
-            SurfaceData::EdgeScalar(_, uniform) => {
-                uniform.get_value().refresh_buffer(queue, data_uniform)
-            }
+            SurfaceData::FaceScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
+            SurfaceData::EdgeScalar(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
             SurfaceData::UVMap(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
             SurfaceData::UVCornerMap(_, uniform) => uniform.refresh_buffer(queue, data_uniform),
             _ => (),
@@ -139,23 +126,33 @@ impl DataUniformBuilder for SurfaceData {
     }
 }
 
-impl UiDataElement for SurfaceData {
+impl DataSettings for SurfaceData {
+    fn apply_previous_settings(&mut self, previous: Self) {
+        match (self, previous) {
+            (SurfaceData::FaceScalar(_, set1), SurfaceData::FaceScalar(_, set2)) => {
+                set1.apply_previous_settings(set2)
+            }
+            (SurfaceData::VertexScalar(_, set1), SurfaceData::VertexScalar(_, set2)) => {
+                set1.apply_previous_settings(set2)
+            }
+            (SurfaceData::EdgeScalar(_, set1), SurfaceData::EdgeScalar(_, set2)) => {
+                set1.apply_previous_settings(set2)
+            }
+            (SurfaceData::UVMap(_, set1), SurfaceData::UVMap(_, set2)) => {
+                set1.apply_previous_settings(set2)
+            }
+            (SurfaceData::UVCornerMap(_, set1), SurfaceData::UVCornerMap(_, set2)) => {
+                set1.apply_previous_settings(set2)
+            }
+            _ => (),
+        }
+    }
+
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         match self {
-            SurfaceData::UVMap(_, data_uniform) | SurfaceData::UVCornerMap(_, data_uniform) => {
-                data_uniform.draw_ui(ui)
-            }
-            SurfaceData::VertexScalar(_, data_uniform) => {
-                let mut changed = false;
-                ui.horizontal_wrapped(|ui| {
-                    changed |= data_uniform.isoline.draw_ui(ui);
-                    changed |= data_uniform.colormap.draw_ui(ui);
-                });
-                changed
-            }
-            SurfaceData::FaceScalar(_, data_uniform) | SurfaceData::EdgeScalar(_, data_uniform) => {
-                data_uniform.draw_ui(ui)
-            }
+            SurfaceData::UVMap(_, set) | SurfaceData::UVCornerMap(_, set) => set.draw_ui(ui),
+            SurfaceData::VertexScalar(_, set) => set.draw_ui(ui),
+            SurfaceData::FaceScalar(_, set) | SurfaceData::EdgeScalar(_, set) => set.draw_ui(ui),
             _ => false,
         }
     }

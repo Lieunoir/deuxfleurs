@@ -46,10 +46,6 @@ impl<'a, 'b, 'c> Widget for LoadSurfaceButton<'a, 'b, 'c> {
     }
 }
 
-pub(crate) trait UiDataElement {
-    fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool;
-}
-
 pub(crate) struct UI {
     rpass: Renderer,
     ctx: egui::Context,

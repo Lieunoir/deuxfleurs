@@ -1,6 +1,6 @@
 use crate::Settings;
+use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
 use crate::shape::{DataMut, DataMutTrait};
-use crate::ui::UiDataElement;
 use crate::window::ContextHolder;
 use egui::Shape;
 use egui::epaint::RectShape;
@@ -174,13 +174,6 @@ impl ColorMap {
             max: self.max as f32,
             _pad: [0; 2],
         }
-    }
-
-    pub(crate) fn recycle(&mut self, other: Self) {
-        self.min = other.min;
-        self.max = other.max;
-        self.colors = other.colors;
-        self.apply_bar_colors();
     }
 }
 
@@ -580,7 +573,17 @@ pub fn windowing_ui(
     response
 }
 
-impl UiDataElement for ColorMap {
+impl DataUniformBuilder for ColorMap {
+    fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
+        self.get_value().build_uniform(device)
+    }
+
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
+        self.get_value().refresh_buffer(queue, data_uniform);
+    }
+}
+
+impl DataSettings for ColorMap {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         egui::ComboBox::from_id_salt("ColorMap")
@@ -667,11 +670,18 @@ impl UiDataElement for ColorMap {
         }
         changed
     }
+
+    fn apply_previous_settings(&mut self, previous: Self) {
+        self.min = previous.min;
+        self.max = previous.max;
+        self.colors = previous.colors;
+        self.apply_bar_colors();
+    }
 }
 
 pub type ColorMapMut<'a, Ctxt> = DataMut<'a, &'a mut ColorMap, Ctxt>;
 
-impl<'a, S: ContextHolder> ColorMapMut<'a, S>
+impl<S: ContextHolder> ColorMapMut<'_, S>
 where
     Self: DataMutTrait,
 {

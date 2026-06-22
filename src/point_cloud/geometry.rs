@@ -2,7 +2,6 @@ use crate::data::{internal::*, *};
 use crate::shape::*;
 use crate::texture;
 use crate::types::{Color, Scalar};
-use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use crate::window::ContextHolder;
@@ -21,15 +20,13 @@ pub enum PointCloudData {
 }
 
 impl DataSettings for PointCloudData {
-    fn apply_settings(&mut self, other: Self) {
+    fn apply_previous_settings(&mut self, other: Self) {
         match (self, other) {
             (PointCloudData::Scalar(_, set1), PointCloudData::Scalar(_, set2)) => *set1 = set2,
             _ => (),
         }
     }
-}
 
-impl UiDataElement for PointCloudData {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         match self {
             PointCloudData::Scalar(_, settings) => settings.draw_ui(ui),

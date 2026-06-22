@@ -18,8 +18,6 @@ pub use uv::UVMapSettingsMut;
 pub(crate) mod internal {
     use wgpu::util::DeviceExt;
 
-    use crate::ui::UiDataElement;
-
     pub struct DataUniform {
         pub bind_group_layout: wgpu::BindGroupLayout,
         pub bind_group: wgpu::BindGroup,
@@ -31,8 +29,10 @@ pub(crate) mod internal {
         fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform);
     }
 
-    pub trait DataSettings: DataUniformBuilder + UiDataElement + Clone {
-        fn apply_settings(&mut self, other: Self);
+    pub trait DataSettings: DataUniformBuilder + Clone {
+        fn apply_previous_settings(&mut self, previous: Self);
+
+        fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool;
     }
 
     impl<T> DataUniformBuilder for T

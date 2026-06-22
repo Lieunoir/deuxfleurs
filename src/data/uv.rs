@@ -1,5 +1,5 @@
+use crate::data::internal::DataSettings;
 use crate::shape::{DataMut, DataMutTrait};
-use crate::ui::UiDataElement;
 use crate::window::ContextHolder;
 use egui::Widget;
 #[cfg(feature = "saves")]
@@ -27,7 +27,7 @@ impl Default for UVMapSettings {
     }
 }
 
-impl UiDataElement for UVMapSettings {
+impl DataSettings for UVMapSettings {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         //ui.add(egui::Slider::new(&mut self.frequency, 0.0..=100.0).text("Period"));
@@ -67,11 +67,15 @@ impl UiDataElement for UVMapSettings {
         self.color_2 = color_2.to_array();
         changed
     }
+
+    fn apply_previous_settings(&mut self, previous: Self) {
+        *self = previous;
+    }
 }
 
 pub type UVMapSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut UVMapSettings, Ctxt>;
 
-impl<'a, S: ContextHolder> UVMapSettingsMut<'a, S>
+impl<S: ContextHolder> UVMapSettingsMut<'_, S>
 where
     Self: DataMutTrait,
 {

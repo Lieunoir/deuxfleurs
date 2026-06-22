@@ -1,4 +1,4 @@
-use crate::ui::UiDataElement;
+use crate::data::internal::DataSettings;
 use egui::Widget;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -21,7 +21,7 @@ impl Default for IsolineSettings {
     }
 }
 
-impl UiDataElement for IsolineSettings {
+impl DataSettings for IsolineSettings {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         ui.horizontal(|ui| {
@@ -31,5 +31,9 @@ impl UiDataElement for IsolineSettings {
                 .changed();
         });
         changed
+    }
+
+    fn apply_previous_settings(&mut self, previous: Self) {
+        *self = previous;
     }
 }

@@ -1,4 +1,4 @@
-use crate::ui::UiDataElement;
+use crate::data::internal::DataSettings;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
@@ -57,7 +57,7 @@ impl Default for ColorSettings {
     }
 }
 
-impl UiDataElement for ColorSettings {
+impl DataSettings for ColorSettings {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut mesh_color = egui::Rgba::from_rgba_unmultiplied(
             self.color[0],
@@ -76,5 +76,9 @@ impl UiDataElement for ColorSettings {
         });
         self.color = mesh_color.to_array();
         changed
+    }
+
+    fn apply_previous_settings(&mut self, previous: Self) {
+        *self = previous;
     }
 }

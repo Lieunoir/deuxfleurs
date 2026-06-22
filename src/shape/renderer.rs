@@ -61,10 +61,6 @@ impl<
         }
     }
 
-    pub(crate) fn set_data_uniform(&mut self, data_uniform: Option<DataUniform>) {
-        self.data_uniform = data_uniform;
-    }
-
     pub(crate) fn get_data_uniform(&mut self) -> Option<&DataUniform> {
         self.data_uniform.as_ref()
     }
@@ -74,8 +70,12 @@ impl<
         device: &wgpu::Device,
         geometry: &Geometry,
         data: Option<&Data>,
+        settings: &Settings,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) {
         self.data_buffer = DataB::new(device, geometry, data);
+        self.data_uniform = data.map(|d| d.build_uniform(device)).flatten();
+        self.rebuild_pipeline(device, data, settings, camera_bind_group_layout);
     }
 
     pub(crate) fn rebuild_pipeline(

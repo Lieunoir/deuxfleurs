@@ -19,7 +19,6 @@ use crate::surface::{
 use crate::texture::TextureBufferPool;
 use crate::types::SurfaceIndices;
 use crate::types::*;
-use crate::ui::UiDataElement;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
 use pollster::FutureExt;
@@ -253,9 +252,9 @@ where
         DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
     >,
     for<'a> Attached: AttachedGeometry<InnerGraphicalState>,
-    Geometry: ShapeGeometry + Clone,
-    Data: DataUniformBuilder + DataSettings + UiDataElement + Clone,
-    Settings: ShapeSettings + Clone,
+    Geometry: ShapeGeometry,
+    Data: DataSettings,
+    Settings: ShapeSettings,
     Fixed: FixedRenderer<Geometry = Geometry>,
     DataB: DataBuffer<Data = Data, Geometry = Geometry>,
     Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,

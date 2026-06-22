@@ -1,13 +1,12 @@
 use crate::attachment::internal::AttachmentPosition;
 use crate::camera::Camera;
+use crate::data::internal::DataSettings;
 use crate::data::*;
 use crate::shape::AttachedGeometry;
-use crate::shape::{DataMut, DataMutTrait};
-
 use crate::shape::GraphicalContext;
 use crate::shape::NewAttachedGeometry;
+use crate::shape::{DataMut, DataMutTrait};
 use crate::texture;
-use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use crate::window::ContextHolder;
@@ -73,7 +72,7 @@ impl VectorFieldSettings {
 
 pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VectorFieldSettings, Ctxt>;
 
-impl<'a, 'b, S: ContextHolder> VectorFieldSettingsMut<'a, S>
+impl<S: ContextHolder> VectorFieldSettingsMut<'_, S>
 where
     Self: DataMutTrait,
 {

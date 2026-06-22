@@ -11,7 +11,6 @@ use crate::surface::{NewSurfaceAttachment, SurfaceAttachment};
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
 use crate::types::{SurfaceIndices, Vertices2D};
-use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use crate::window::ContextHolder;

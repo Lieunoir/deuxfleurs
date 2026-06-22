@@ -1,4 +1,4 @@
-use crate::ui::UiDataElement;
+use crate::data::internal::DataSettings;
 use egui::Widget;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ impl Radius {
     }
 }
 
-impl UiDataElement for Radius {
+impl DataSettings for Radius {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
         ui.horizontal(|ui| {
@@ -50,5 +50,9 @@ impl UiDataElement for Radius {
                 .changed();
         });
         changed
+    }
+
+    fn apply_previous_settings(&mut self, previous: Self) {
+        *self = previous;
     }
 }

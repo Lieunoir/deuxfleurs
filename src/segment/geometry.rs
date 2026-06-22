@@ -3,7 +3,6 @@ use crate::picker::SegmentPicked;
 use crate::shape::*;
 use crate::texture;
 use crate::types::{Color, Scalar};
-use crate::ui::UiDataElement;
 use crate::util;
 use crate::util::Vertex;
 use crate::window::ContextHolder;
@@ -20,19 +19,19 @@ pub enum SegmentData {
 }
 
 impl DataSettings for SegmentData {
-    fn apply_settings(&mut self, other: Self) {
-        match (self, other) {
-            (SegmentData::Scalar(_, set1), SegmentData::Scalar(_, set2)) => *set1 = set2,
-            _ => (),
-        }
-    }
-}
-
-impl UiDataElement for SegmentData {
     fn draw_ui(&mut self, ui: &mut egui::Ui) -> bool {
         match self {
             SegmentData::Scalar(_, settings) => settings.draw_ui(ui),
             SegmentData::Color(_) => false,
+        }
+    }
+
+    fn apply_previous_settings(&mut self, other: Self) {
+        match (self, other) {
+            (SegmentData::Scalar(_, set1), SegmentData::Scalar(_, set2)) => {
+                set1.apply_previous_settings(set2)
+            }
+            _ => (),
         }
     }
 }
