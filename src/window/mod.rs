@@ -44,14 +44,6 @@ extern "C" {
     fn save_state(filename: &str, data: &[u8]);
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct JitterUniform {
-    x: f32,
-    y: f32,
-    _padding: [u32; 2],
-}
-
 pub trait ContextHolder {
     type Context<'a>;
     type ExtendedContext<'a>;
@@ -206,7 +198,7 @@ where
         let (container, mut context, _) = self.get_container_mut();
         if container.contains_key(&name) {
             let shape = container.get_mut(&name).unwrap();
-            shape.replace(args, &mut context);
+            Desc::replace(shape, args, &mut context);
             ShapeMut {
                 inner: shape,
                 context,
@@ -262,7 +254,7 @@ where
         // This could be better with Polonius
         if container.contains_key(&name) {
             let shape = container.get_mut(&name).unwrap();
-            if !shape.replace(args, &mut context) {
+            if !Desc::replace(shape, args, &mut context) {
                 *should_resize = true;
                 *counters_dirty = true;
                 if let Some((picked_name, _picked)) = picked
@@ -327,6 +319,14 @@ where
             *counters_dirty = true;
         }
     }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct JitterUniform {
+    x: f32,
+    y: f32,
+    _padding: [u32; 2],
 }
 
 /// Holds the application state. Starting point to add visualization datas.

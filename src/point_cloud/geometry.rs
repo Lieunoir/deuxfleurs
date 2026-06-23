@@ -568,8 +568,7 @@ pub type PointCloudMut<'a, S> = ShapeMut<'a, PointCloud<S>, S>;
 
 impl<S: ContextHolder> PointCloudMut<'_, S>
 where
-    PointCloudDesc: ShapeDescriptor<S>,
-    PointCloud<S>: ShapeTrait<S, Desc = PointCloudDesc>,
+    PointCloudDesc: ShapeTrait<S>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {

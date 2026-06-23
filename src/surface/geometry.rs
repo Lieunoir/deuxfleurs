@@ -1107,8 +1107,7 @@ pub type SurfaceMut<'a, S> = ShapeMut<'a, Surface<S>, S>;
 
 impl<'a: 'b, 'b, S: ContextHolder> SurfaceMut<'a, S>
 where
-    SurfaceDesc: ShapeDescriptor<S>,
-    Surface<S>: ShapeTrait<S, Desc = SurfaceDesc>,
+    SurfaceDesc: ShapeTrait<S>,
     <SurfaceDesc as ShapeDescriptor<S>>::AttachedGeometry: AttachedGeometry<
             S,
             Settings<'b> = SurfaceAttachmentSettings<'b>,

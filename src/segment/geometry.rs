@@ -858,8 +858,7 @@ pub type SegmentMut<'a, S> = ShapeMut<'a, Segment<S>, S>;
 
 impl<S: ContextHolder> SegmentMut<'_, S>
 where
-    SegmentDesc: ShapeDescriptor<S>,
-    Segment<S>: ShapeTrait<S, Desc = SegmentDesc>,
+    SegmentDesc: ShapeTrait<S>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {
