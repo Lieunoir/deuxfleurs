@@ -13,7 +13,7 @@ use crate::types::{Color, Scalar, Vertices};
 use crate::types::{SurfaceIndices, Vertices2D};
 use crate::util;
 use crate::util::Vertex;
-use crate::window::ContextHolder;
+use crate::window::{ContextHolder, InnerBareState, InnerGraphicalState};
 use num_traits::cast::ToPrimitive;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
@@ -922,11 +922,27 @@ impl Render for SurfaceRenderer {
     }
 }
 
-pub type Surface<Renderer, AttachedData> =
-    Shape<SurfaceGeometry, Renderer, SurfaceSettings, SurfaceData, AttachedData>;
+pub struct SurfaceDesc;
 
-pub type UninitedSurface = Surface<(), NewSurfaceAttachment>;
-pub type DisplaySurface = Surface<SurfaceRenderer, SurfaceAttachment>;
+impl InvariantShapeDescriptor for SurfaceDesc {
+    type Data = SurfaceData;
+    type Geometry = SurfaceGeometry;
+    type Settings = SurfaceSettings;
+}
+
+impl ShapeDescriptor<InnerBareState> for SurfaceDesc {
+    type Renderer = ();
+    type AttachedGeometry = NewSurfaceAttachment;
+}
+
+impl ShapeDescriptor<InnerGraphicalState> for SurfaceDesc {
+    type Renderer = SurfaceRenderer;
+    type AttachedGeometry = SurfaceAttachment;
+}
+
+pub type Surface<S> = Shape<S, SurfaceDesc>;
+pub type UninitedSurface = Surface<InnerBareState>;
+pub type DisplaySurface = Surface<InnerGraphicalState>;
 
 impl DisplaySurface {
     pub(crate) fn get_element(
@@ -1087,17 +1103,17 @@ impl DisplaySurface {
     }
 }
 
-pub type SurfaceMut<'a, Renderer, AttachedData, Context> =
-    ShapeMut<'a, Surface<Renderer, AttachedData>, Context>;
+pub type SurfaceMut<'a, S> = ShapeMut<'a, Surface<S>, S>;
 
-impl<'a: 'b, 'b, Renderer, AttachedData, S: ContextHolder> SurfaceMut<'a, Renderer, AttachedData, S>
+impl<'a: 'b, 'b, S: ContextHolder> SurfaceMut<'a, S>
 where
-    AttachedData: AttachedGeometry<
+    SurfaceDesc: ShapeDescriptor<S>,
+    Surface<S>: ShapeTrait<S, Desc = SurfaceDesc>,
+    <SurfaceDesc as ShapeDescriptor<S>>::AttachedGeometry: AttachedGeometry<
             S,
             Settings<'b> = SurfaceAttachmentSettings<'b>,
             Args = SurfaceAttachmentArgs,
         >,
-    Surface<Renderer, AttachedData>: ShapeTrait<S, Data = SurfaceData, Attached = AttachedData>,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.inner.settings.show_edges != show_edges {

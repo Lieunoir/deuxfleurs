@@ -13,7 +13,7 @@ pub struct DataMut<'a, T, S: ContextHolder> {
     pub(crate) uniform: S::DataUniform<'a>,
 }
 
-pub type UninitedData<'a, T, U> = DataMut<'a, T, InnerBareState<U>>;
+pub type UninitedData<'a, T> = DataMut<'a, T, InnerBareState>;
 pub type DisplayData<'a, T> = DataMut<'a, T, InnerGraphicalState>;
 
 impl<'a, T, S: ContextHolder> DataMut<'a, T, S> {
@@ -162,7 +162,7 @@ pub trait ShapeGeometry: Clone {
     fn get_characteristic_length(&self) -> f32;
 }
 
-pub trait AttachedGeometry<S: ContextHolder> {
+pub trait AttachedGeometry<S: ContextHolder + ?Sized> {
     type Args;
     type Settings<'a>
     where

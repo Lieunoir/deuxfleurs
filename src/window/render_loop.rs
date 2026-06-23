@@ -1204,7 +1204,6 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
             }
 
             let init = self.init_state.take().unwrap();
-            self.callback = Some(init.0.callback);
             self.state = Some(
                 RunningState::new(
                     init.0.surfaces,
@@ -1406,7 +1405,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             state.0.config.format,
                             &mut state.0.dirty,
                         );
-                        ui.draw_callback(state, &mut self.callback.as_mut().unwrap());
+                        ui.draw_callback(state, &mut self.callback);
                         let scene_changed = state.update();
                         //actual rendering
                         match state.render(Some(&self.proxy), Some(ui), scene_changed) {

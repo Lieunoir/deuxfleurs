@@ -1,46 +1,39 @@
+use crate::Settings;
 use crate::camera::{Camera, CameraController, CameraUniform};
-use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
+use crate::data::internal::DataUniform;
 use crate::picker::{self, Picked};
-use crate::point_cloud::{
-    DisplayPointCloud, PointCloud, PointCloudDataBuffer, PointCloudFixedRenderer, PointCloudMut,
-    PointCloudPipeline, UninitedPointCloud,
-};
+use crate::point_cloud::geometry::PointCloudDesc;
+use crate::point_cloud::{DisplayPointCloud, PointCloud, PointCloudMut, UninitedPointCloud};
 use crate::post_process;
 use crate::sbv::SBV;
 use crate::screenshot;
-use crate::segment::{
-    DisplaySegment, Segment, SegmentDataBuffer, SegmentFixedRenderer, SegmentMut, SegmentPipeline,
-    UninitedSegment,
+use crate::segment::geometry::SegmentDesc;
+use crate::segment::{DisplaySegment, Segment, SegmentMut, UninitedSegment};
+use crate::shape::{
+    DataBuffer, DisplayShape, FixedRenderer, GraphicalContext, InvariantShapeDescriptor,
+    NewAttachedGeometry, Render, RenderPipeline, Renderer, Shape, ShapeDescriptor, ShapeGeometry,
+    ShapeMut, UninitedShape,
 };
-use crate::surface::{
-    DisplaySurface, NewSurfaceAttachment, Surface, SurfaceAttachment, SurfaceDataBuffer,
-    SurfaceFixedRenderer, SurfaceMut, SurfacePipeline, UninitedSurface,
-};
+use crate::surface::geometry::SurfaceDesc;
+use crate::surface::{DisplaySurface, Surface, SurfaceMut, UninitedSurface};
 use crate::texture::TextureBufferPool;
 use crate::types::SurfaceIndices;
 use crate::types::*;
+use egui;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
+use indexmap::IndexMap;
 use pollster::FutureExt;
+use rand::rngs::SmallRng;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
-#[cfg(target_arch = "wasm32")]
-use web_sys::Clipboard;
-use wgpu_profiler::GpuProfiler;
-
-use crate::Settings;
-use crate::shape::{
-    AttachedGeometry, DataBuffer, DisplayShape, EmptyAttached, FixedRenderer, GraphicalContext,
-    NewAttachedGeometry, Render, RenderPipeline, Renderer, Shape, ShapeGeometry, ShapeMut,
-    ShapeSettings, UninitedShape,
-};
-use egui;
-use indexmap::IndexMap;
-use rand::rngs::SmallRng;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use web_sys::Clipboard;
+use wgpu_profiler::GpuProfiler;
 use winit::event_loop::EventLoopProxy;
 use winit::{event_loop::EventLoop, window::Window};
 mod render_loop;
@@ -59,27 +52,30 @@ struct JitterUniform {
     _padding: [u32; 2],
 }
 
-pub trait ContextHolderTypes {
+pub trait ContextHolder {
     type Context<'a>;
     type ExtendedContext<'a>;
-    type SurfaceRenderer;
-    type SurfaceAttachedData;
-    type PointCloudRenderer;
-    type PointCloudAttachedData;
-    type SegmentRenderer;
-    type SegmentAttachedData;
     type DataUniform<'a>;
     type TransformLayout;
+
+    fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings;
+
+    fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b>;
 }
 
 //Can't be merged with above type due to https://github.com/rust-lang/rust/issues/87479
-pub trait ContextHolder: ContextHolderTypes {
+pub trait ContainersHolder: ContextHolder
+where
+    SurfaceDesc: ShapeDescriptor<Self>,
+    PointCloudDesc: ShapeDescriptor<Self>,
+    SegmentDesc: ShapeDescriptor<Self>,
+{
     fn get_containers_mut(
         &mut self,
     ) -> (
-        &mut IndexMap<String, Surface<Self::SurfaceRenderer, Self::SurfaceAttachedData>>,
-        &mut IndexMap<String, PointCloud<Self::PointCloudRenderer, Self::PointCloudAttachedData>>,
-        &mut IndexMap<String, Segment<Self::SegmentRenderer, Self::SegmentAttachedData>>,
+        &mut IndexMap<String, Surface<Self>>,
+        &mut IndexMap<String, PointCloud<Self>>,
+        &mut IndexMap<String, Segment<Self>>,
         Self::Context<'_>,
         Self::ExtendedContext<'_>,
     );
@@ -87,17 +83,18 @@ pub trait ContextHolder: ContextHolderTypes {
     fn get_containers(
         &self,
     ) -> (
-        &IndexMap<String, Surface<Self::SurfaceRenderer, Self::SurfaceAttachedData>>,
-        &IndexMap<String, PointCloud<Self::PointCloudRenderer, Self::PointCloudAttachedData>>,
-        &IndexMap<String, Segment<Self::SegmentRenderer, Self::SegmentAttachedData>>,
+        &IndexMap<String, Surface<Self>>,
+        &IndexMap<String, PointCloud<Self>>,
+        &IndexMap<String, Segment<Self>>,
     );
-
-    fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings;
-
-    fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b>;
 }
 
-pub trait ContainerContextGiver<Shape>: ContextHolder {
+pub trait ContainerContextGiver<Shape>: ContainersHolder
+where
+    SurfaceDesc: ShapeDescriptor<Self>,
+    PointCloudDesc: ShapeDescriptor<Self>,
+    SegmentDesc: ShapeDescriptor<Self>,
+{
     fn get_container_mut(
         &mut self,
     ) -> (
@@ -109,13 +106,16 @@ pub trait ContainerContextGiver<Shape>: ContextHolder {
     fn get_container(&self) -> &IndexMap<String, Shape>;
 }
 
-impl<State: ContextHolder>
-    ContainerContextGiver<Surface<State::SurfaceRenderer, State::SurfaceAttachedData>> for State
+impl<State: ContainersHolder> ContainerContextGiver<Surface<State>> for State
+where
+    SurfaceDesc: ShapeDescriptor<State>,
+    PointCloudDesc: ShapeDescriptor<State>,
+    SegmentDesc: ShapeDescriptor<State>,
 {
     fn get_container_mut(
         &mut self,
     ) -> (
-        &mut IndexMap<String, Surface<State::SurfaceRenderer, State::SurfaceAttachedData>>,
+        &mut IndexMap<String, Surface<State>>,
         Self::Context<'_>,
         Self::ExtendedContext<'_>,
     ) {
@@ -123,21 +123,21 @@ impl<State: ContextHolder>
         (surf, ctxt, ectxt)
     }
 
-    fn get_container(
-        &self,
-    ) -> &IndexMap<String, Surface<State::SurfaceRenderer, State::SurfaceAttachedData>> {
+    fn get_container(&self) -> &IndexMap<String, Surface<State>> {
         self.get_containers().0
     }
 }
 
-impl<State: ContextHolder>
-    ContainerContextGiver<PointCloud<State::PointCloudRenderer, State::PointCloudAttachedData>>
-    for State
+impl<State: ContainersHolder> ContainerContextGiver<PointCloud<State>> for State
+where
+    SurfaceDesc: ShapeDescriptor<State>,
+    PointCloudDesc: ShapeDescriptor<State>,
+    SegmentDesc: ShapeDescriptor<State>,
 {
     fn get_container_mut(
         &mut self,
     ) -> (
-        &mut IndexMap<String, PointCloud<State::PointCloudRenderer, State::PointCloudAttachedData>>,
+        &mut IndexMap<String, PointCloud<State>>,
         Self::Context<'_>,
         Self::ExtendedContext<'_>,
     ) {
@@ -145,21 +145,21 @@ impl<State: ContextHolder>
         (pc, ctxt, ectxt)
     }
 
-    fn get_container(
-        &self,
-    ) -> &IndexMap<String, PointCloud<State::PointCloudRenderer, State::PointCloudAttachedData>>
-    {
+    fn get_container(&self) -> &IndexMap<String, PointCloud<State>> {
         self.get_containers().1
     }
 }
 
-impl<State: ContextHolder>
-    ContainerContextGiver<Segment<State::SegmentRenderer, State::SegmentAttachedData>> for State
+impl<State: ContainersHolder> ContainerContextGiver<Segment<State>> for State
+where
+    SurfaceDesc: ShapeDescriptor<State>,
+    PointCloudDesc: ShapeDescriptor<State>,
+    SegmentDesc: ShapeDescriptor<State>,
 {
     fn get_container_mut(
         &mut self,
     ) -> (
-        &mut IndexMap<String, Segment<State::SegmentRenderer, State::SegmentAttachedData>>,
+        &mut IndexMap<String, Segment<State>>,
         Self::Context<'_>,
         Self::ExtendedContext<'_>,
     ) {
@@ -167,14 +167,17 @@ impl<State: ContextHolder>
         (seg, ctxt, ectxt)
     }
 
-    fn get_container(
-        &self,
-    ) -> &IndexMap<String, Segment<State::SegmentRenderer, State::SegmentAttachedData>> {
+    fn get_container(&self) -> &IndexMap<String, Segment<State>> {
         self.get_containers().2
     }
 }
 
-pub trait GeometryHolder<Shape>: ContainerContextGiver<Shape> + Sized {
+pub trait GeometryHolder<Shape>: ContainerContextGiver<Shape> + Sized
+where
+    SurfaceDesc: ShapeDescriptor<Self>,
+    PointCloudDesc: ShapeDescriptor<Self>,
+    SegmentDesc: ShapeDescriptor<Self>,
+{
     type Args;
 
     fn register(&mut self, name: String, args: Self::Args) -> ShapeMut<'_, Shape, Self>;
@@ -186,22 +189,19 @@ pub trait GeometryHolder<Shape>: ContainerContextGiver<Shape> + Sized {
     fn remove_shape(&mut self, name: &str);
 }
 
-impl<Geometry, Settings, Data, Attached, U: FnMut(&mut egui::Ui, &mut RunningState)>
-    GeometryHolder<UninitedShape<Geometry, Settings, Data, Attached>> for InnerBareState<U>
+impl<Desc> GeometryHolder<UninitedShape<Desc>> for InnerBareState
 where
-    for<'a> Attached: AttachedGeometry<InnerBareState<U>> + NewAttachedGeometry,
-    InnerBareState<U>: ContainerContextGiver<UninitedShape<Geometry, Settings, Data, Attached>>,
-    Geometry: ShapeGeometry,
-    Settings: DataUniformBuilder + ShapeSettings,
-    Data: DataSettings,
+    Desc: ShapeDescriptor<InnerBareState, Renderer = ()>,
+    Desc::AttachedGeometry: NewAttachedGeometry,
+    InnerBareState: ContainerContextGiver<UninitedShape<Desc>>,
 {
-    type Args = Geometry::Args;
+    type Args = <<Desc as InvariantShapeDescriptor>::Geometry as ShapeGeometry>::Args;
 
     fn register(
         &mut self,
         name: String,
         args: Self::Args,
-    ) -> ShapeMut<'_, UninitedShape<Geometry, Settings, Data, Attached>, Self> {
+    ) -> ShapeMut<'_, UninitedShape<Desc>, Self> {
         use crate::shape::ShapeTrait;
         let (container, mut context, _) = self.get_container_mut();
         if container.contains_key(&name) {
@@ -221,10 +221,7 @@ where
         }
     }
 
-    fn get_shape_mut(
-        &mut self,
-        name: &str,
-    ) -> Option<ShapeMut<'_, UninitedShape<Geometry, Settings, Data, Attached>, Self>> {
+    fn get_shape_mut(&mut self, name: &str) -> Option<ShapeMut<'_, UninitedShape<Desc>, Self>> {
         let (container, context, _) = self.get_container_mut();
         container.get_mut(name).map(|shape| ShapeMut {
             inner: shape,
@@ -232,10 +229,7 @@ where
         })
     }
 
-    fn get_shape(
-        &self,
-        name: &str,
-    ) -> Option<&'_ UninitedShape<Geometry, Settings, Data, Attached>> {
+    fn get_shape(&self, name: &str) -> Option<&'_ UninitedShape<Desc>> {
         self.get_container().get(name)
     }
 
@@ -244,33 +238,23 @@ where
     }
 }
 
-impl<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>
-    GeometryHolder<DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>>
-    for InnerGraphicalState
+impl<Desc, Fixed, DataB, Pipeline> GeometryHolder<DisplayShape<Desc>> for InnerGraphicalState
 where
-    InnerGraphicalState: ContainerContextGiver<
-        DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-    >,
-    for<'a> Attached: AttachedGeometry<InnerGraphicalState>,
-    Geometry: ShapeGeometry,
-    Data: DataSettings,
-    Settings: ShapeSettings,
-    Fixed: FixedRenderer<Geometry = Geometry>,
-    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
+    Desc: ShapeDescriptor<InnerGraphicalState, Renderer = Renderer<Fixed, DataB, Pipeline>>,
+    Fixed: FixedRenderer<Geometry = Desc::Geometry>,
+    DataB: DataBuffer<Data = Desc::Data, Geometry = Desc::Geometry>,
+    Pipeline:
+        RenderPipeline<Settings = Desc::Settings, Data = Desc::Data, Geometry = Desc::Geometry>,
     Renderer<Fixed, DataB, Pipeline>: Render,
+    InnerGraphicalState: ContainerContextGiver<DisplayShape<Desc>>,
 {
-    type Args = Geometry::Args;
+    type Args = <<Desc as InvariantShapeDescriptor>::Geometry as ShapeGeometry>::Args;
 
     fn register(
         &mut self,
         name: String,
         args: Self::Args,
-    ) -> ShapeMut<
-        '_,
-        DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-        InnerGraphicalState,
-    > {
+    ) -> ShapeMut<'_, DisplayShape<Desc>, InnerGraphicalState> {
         use crate::shape::ShapeTrait;
         let (container, mut context, (should_resize, counters_dirty, picked)) =
             self.get_container_mut();
@@ -318,13 +302,7 @@ where
     fn get_shape_mut(
         &mut self,
         name: &str,
-    ) -> Option<
-        ShapeMut<
-            '_,
-            DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>,
-            InnerGraphicalState,
-        >,
-    > {
+    ) -> Option<ShapeMut<'_, DisplayShape<Desc>, InnerGraphicalState>> {
         let (container, context, _) = self.get_container_mut();
         container.get_mut(name).map(|shape| ShapeMut {
             inner: shape,
@@ -332,10 +310,7 @@ where
         })
     }
 
-    fn get_shape(
-        &self,
-        name: &str,
-    ) -> Option<&DisplayShape<Geometry, Fixed, DataB, Pipeline, Settings, Data, Attached>> {
+    fn get_shape(&self, name: &str) -> Option<&DisplayShape<Desc>> {
         self.get_container().get(name)
     }
 
@@ -407,27 +382,35 @@ pub struct InnerGraphicalState {
     profiler: GpuProfiler,
 }
 
-impl ContextHolderTypes for InnerGraphicalState {
+impl ContextHolder for InnerGraphicalState {
     type Context<'a> = GraphicalContext<'a>;
     type ExtendedContext<'a> = (&'a mut bool, &'a mut bool, &'a mut Option<(String, Picked)>);
-    type SurfaceRenderer = Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>;
-    type SurfaceAttachedData = SurfaceAttachment;
-    type PointCloudRenderer =
-        Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>;
-    type PointCloudAttachedData = EmptyAttached;
-    type SegmentRenderer = Renderer<SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline>;
-    type SegmentAttachedData = EmptyAttached;
     type DataUniform<'a> = &'a Option<DataUniform>;
     type TransformLayout = wgpu::BindGroupLayout;
+
+    fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
+        ctxt.settings
+    }
+
+    fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b> {
+        GraphicalContext {
+            settings: ctxt.settings,
+            device: ctxt.device,
+            queue: ctxt.queue,
+            camera_bind_group_layout: ctxt.camera_bind_group_layout,
+            counter_bind_group_layout: ctxt.counter_bind_group_layout,
+            refresh_screen: ctxt.refresh_screen,
+        }
+    }
 }
 
-impl ContextHolder for InnerGraphicalState {
+impl ContainersHolder for InnerGraphicalState {
     fn get_containers(
         &self,
     ) -> (
-        &IndexMap<String, Surface<Self::SurfaceRenderer, Self::SurfaceAttachedData>>,
-        &IndexMap<String, PointCloud<Self::PointCloudRenderer, Self::PointCloudAttachedData>>,
-        &IndexMap<String, Segment<Self::SegmentRenderer, Self::SegmentAttachedData>>,
+        &IndexMap<String, Surface<Self>>,
+        &IndexMap<String, PointCloud<Self>>,
+        &IndexMap<String, Segment<Self>>,
     ) {
         (&self.surfaces, &self.clouds, &self.segments)
     }
@@ -435,9 +418,9 @@ impl ContextHolder for InnerGraphicalState {
     fn get_containers_mut(
         &mut self,
     ) -> (
-        &mut IndexMap<String, Surface<Self::SurfaceRenderer, Self::SurfaceAttachedData>>,
-        &mut IndexMap<String, PointCloud<Self::PointCloudRenderer, Self::PointCloudAttachedData>>,
-        &mut IndexMap<String, Segment<Self::SegmentRenderer, Self::SegmentAttachedData>>,
+        &mut IndexMap<String, Surface<Self>>,
+        &mut IndexMap<String, PointCloud<Self>>,
+        &mut IndexMap<String, Segment<Self>>,
         Self::Context<'_>,
         Self::ExtendedContext<'_>,
     ) {
@@ -459,21 +442,6 @@ impl ContextHolder for InnerGraphicalState {
                 &mut self.picker.picked_item,
             ),
         )
-    }
-
-    fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
-        ctxt.settings
-    }
-
-    fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b> {
-        GraphicalContext {
-            settings: ctxt.settings,
-            device: ctxt.device,
-            queue: ctxt.queue,
-            camera_bind_group_layout: ctxt.camera_bind_group_layout,
-            counter_bind_group_layout: ctxt.counter_bind_group_layout,
-            refresh_screen: ctxt.refresh_screen,
-        }
     }
 }
 
@@ -534,13 +502,12 @@ impl StateTrait for InnerGraphicalState {
     }
 }
 
-pub struct InnerBareState<T: FnMut(&mut egui::Ui, &mut RunningState)> {
+pub struct InnerBareState {
     pub(crate) surfaces: IndexMap<String, UninitedSurface>,
     pub(crate) clouds: IndexMap<String, UninitedPointCloud>,
     pub(crate) segments: IndexMap<String, UninitedSegment>,
     pub settings: Settings,
     pub camera: Camera,
-    pub(crate) callback: T,
 }
 
 #[cfg(feature = "saves")]
@@ -554,26 +521,28 @@ pub(crate) struct InnerBareStateSerde {
     pub(crate) ground_level: f32,
 }
 
-impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContextHolderTypes for InnerBareState<T> {
+impl ContextHolder for InnerBareState {
     type Context<'a> = &'a mut Settings;
     type ExtendedContext<'a> = ();
-    type SurfaceRenderer = ();
-    type SurfaceAttachedData = NewSurfaceAttachment;
-    type PointCloudRenderer = ();
-    type PointCloudAttachedData = ();
-    type SegmentRenderer = ();
-    type SegmentAttachedData = ();
     type DataUniform<'a> = ();
     type TransformLayout = ();
+
+    fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
+        ctxt
+    }
+
+    fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b> {
+        ctxt
+    }
 }
 
-impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContextHolder for InnerBareState<T> {
+impl ContainersHolder for InnerBareState {
     fn get_containers(
         &self,
     ) -> (
-        &IndexMap<String, Surface<Self::SurfaceRenderer, Self::SurfaceAttachedData>>,
-        &IndexMap<String, PointCloud<Self::PointCloudRenderer, Self::PointCloudAttachedData>>,
-        &IndexMap<String, Segment<Self::SegmentRenderer, Self::SegmentAttachedData>>,
+        &IndexMap<String, Surface<Self>>,
+        &IndexMap<String, PointCloud<Self>>,
+        &IndexMap<String, Segment<Self>>,
     ) {
         (&self.surfaces, &self.clouds, &self.segments)
     }
@@ -581,9 +550,9 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContextHolder for InnerBareStat
     fn get_containers_mut(
         &mut self,
     ) -> (
-        &mut IndexMap<String, Surface<Self::SurfaceRenderer, Self::SurfaceAttachedData>>,
-        &mut IndexMap<String, PointCloud<Self::PointCloudRenderer, Self::PointCloudAttachedData>>,
-        &mut IndexMap<String, Segment<Self::SegmentRenderer, Self::SegmentAttachedData>>,
+        &mut IndexMap<String, Surface<Self>>,
+        &mut IndexMap<String, PointCloud<Self>>,
+        &mut IndexMap<String, Segment<Self>>,
         Self::Context<'_>,
         Self::ExtendedContext<'_>,
     ) {
@@ -595,17 +564,9 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ContextHolder for InnerBareStat
             (),
         )
     }
-
-    fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
-        ctxt
-    }
-
-    fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b> {
-        ctxt
-    }
 }
 
-impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateTrait for InnerBareState<T> {
+impl StateTrait for InnerBareState {
     #[cfg(feature = "saves")]
     fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()> {
         let bared: InnerBareStateSerde = serde_cbor::from_slice(data).map_err(|_| ())?;
@@ -652,25 +613,13 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateTrait for InnerBareState<T
 }
 
 pub trait StateTrait:
-    GeometryHolder<
-        Surface<
-            <Self as ContextHolderTypes>::SurfaceRenderer,
-            <Self as ContextHolderTypes>::SurfaceAttachedData,
-        >,
-        Args = (SurfaceIndices, Vec<[f32; 3]>),
-    > + GeometryHolder<
-        PointCloud<
-            <Self as ContextHolderTypes>::PointCloudRenderer,
-            <Self as ContextHolderTypes>::PointCloudAttachedData,
-        >,
-        Args = Vec<[f32; 3]>,
-    > + GeometryHolder<
-        Segment<
-            <Self as ContextHolderTypes>::SegmentRenderer,
-            <Self as ContextHolderTypes>::SegmentAttachedData,
-        >,
-        Args = (Vec<[f32; 3]>, Vec<[u32; 2]>),
-    >
+    GeometryHolder<Surface<Self>, Args = (SurfaceIndices, Vec<[f32; 3]>)>
+    + GeometryHolder<PointCloud<Self>, Args = Vec<[f32; 3]>>
+    + GeometryHolder<Segment<Self>, Args = (Vec<[f32; 3]>, Vec<[u32; 2]>)>
+where
+    SurfaceDesc: ShapeDescriptor<Self>,
+    PointCloudDesc: ShapeDescriptor<Self>,
+    SegmentDesc: ShapeDescriptor<Self>,
 {
     #[cfg(feature = "saves")]
     fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()>;
@@ -689,7 +638,12 @@ pub trait StateTrait:
 
 pub struct State<T>(pub(crate) T);
 
-impl<T: StateTrait> State<T> {
+impl<T: StateTrait> State<T>
+where
+    SurfaceDesc: ShapeDescriptor<T>,
+    PointCloudDesc: ShapeDescriptor<T>,
+    SegmentDesc: ShapeDescriptor<T>,
+{
     pub(crate) fn new_inner(inner: T) -> Self {
         Self(inner)
     }
@@ -704,30 +658,21 @@ impl<T: StateTrait> State<T> {
         name: impl Into<String>,
         vertices: V,
         indices: I,
-    ) -> SurfaceMut<'_, T::SurfaceRenderer, T::SurfaceAttachedData, T> {
+    ) -> SurfaceMut<'_, T> {
         self.0
             .register(name.into(), (indices.into(), vertices.into()))
     }
 
-    pub fn get_surface_mut(
-        &'_ mut self,
-        name: &str,
-    ) -> Option<SurfaceMut<'_, T::SurfaceRenderer, T::SurfaceAttachedData, T>> {
+    pub fn get_surface_mut(&'_ mut self, name: &str) -> Option<SurfaceMut<'_, T>> {
         self.0.get_shape_mut(name)
     }
 
-    pub fn get_surface(
-        &self,
-        name: &str,
-    ) -> Option<&Surface<T::SurfaceRenderer, T::SurfaceAttachedData>> {
+    pub fn get_surface(&self, name: &str) -> Option<&Surface<T>> {
         self.0.get_shape(name)
     }
 
     pub fn remove_surface(&mut self, name: &str) {
-        <T as GeometryHolder<Surface<T::SurfaceRenderer, T::SurfaceAttachedData>>>::remove_shape(
-            &mut self.0,
-            name,
-        );
+        <T as GeometryHolder<Surface<T>>>::remove_shape(&mut self.0, name);
     }
 
     /// Register a new point cloud. If an existing one with same number of points
@@ -739,29 +684,20 @@ impl<T: StateTrait> State<T> {
         &'_ mut self,
         name: impl Into<String>,
         positions: V,
-    ) -> PointCloudMut<'_, T::PointCloudRenderer, T::PointCloudAttachedData, T> {
+    ) -> PointCloudMut<'_, T> {
         self.0.register(name.into(), positions.into())
     }
 
-    pub fn get_point_cloud_mut(
-        &'_ mut self,
-        name: &str,
-    ) -> Option<PointCloudMut<'_, T::PointCloudRenderer, T::PointCloudAttachedData, T>> {
+    pub fn get_point_cloud_mut(&'_ mut self, name: &str) -> Option<PointCloudMut<'_, T>> {
         self.0.get_shape_mut(name)
     }
 
-    pub fn get_point_cloud(
-        &self,
-        name: &str,
-    ) -> Option<&PointCloud<T::PointCloudRenderer, T::PointCloudAttachedData>> {
+    pub fn get_point_cloud(&self, name: &str) -> Option<&PointCloud<T>> {
         self.0.get_shape(name)
     }
 
     pub fn remove_point_cloud(&mut self, name: &str) {
-        <T as GeometryHolder<PointCloud<T::PointCloudRenderer, T::PointCloudAttachedData>>>::remove_shape(
-                &mut self.0,
-                name,
-            );
+        <T as GeometryHolder<PointCloud<T>>>::remove_shape(&mut self.0, name);
     }
 
     /// Register a list of segments. If an existing one with same number of points
@@ -778,30 +714,21 @@ impl<T: StateTrait> State<T> {
         name: impl Into<String>,
         positions: V,
         connections: Vec<[u32; 2]>,
-    ) -> SegmentMut<'_, T::SegmentRenderer, T::SegmentAttachedData, T> {
+    ) -> SegmentMut<'_, T> {
         self.0
             .register(name.into(), (positions.into(), connections))
     }
 
-    pub fn get_segment_mut(
-        &'_ mut self,
-        name: &str,
-    ) -> Option<SegmentMut<'_, T::SegmentRenderer, T::SegmentAttachedData, T>> {
+    pub fn get_segment_mut(&'_ mut self, name: &str) -> Option<SegmentMut<'_, T>> {
         self.0.get_shape_mut(name)
     }
 
-    pub fn get_segment(
-        &self,
-        name: &str,
-    ) -> Option<&Segment<T::SegmentRenderer, T::SegmentAttachedData>> {
+    pub fn get_segment(&self, name: &str) -> Option<&Segment<T>> {
         self.0.get_shape(name)
     }
 
     pub fn remove_segment(&mut self, name: &str) {
-        <T as GeometryHolder<Segment<T::SegmentRenderer, T::SegmentAttachedData>>>::remove_shape(
-            &mut self.0,
-            name,
-        );
+        <T as GeometryHolder<Segment<T>>>::remove_shape(&mut self.0, name);
     }
 
     /// Load app state from given file content.
@@ -864,9 +791,9 @@ impl<T: StateTrait> State<T> {
 }
 
 /// Starting point to build the app.
-pub type InitialState<T> = State<InnerBareState<T>>;
+pub type InitialState = State<InnerBareState>;
 
-impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
+impl InitialState {
     /// Show the window and start the app.
     ///
     /// In wasm, `width` and `height` are ignored and css is used to define the dimensions
@@ -891,7 +818,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     /// # }
     /// ```
     pub fn run<S: Into<String>>(self, width: u32, height: u32, id: Option<S>) {
-        StateWrapper::run(self, width, height, id.map(Into::into));
+        self.run_with_callback(width, height, id, |_, _| ());
     }
 
     /// Run the app without a window. Allows running the app in environment where no
@@ -933,27 +860,14 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
     ///
     /// Passes an [`egui::Ui`] and a [`RunningState`] arguments which can be
     /// used to add UI elements and modify state accordingly.
-    pub fn with_callback<U: FnMut(&mut egui::Ui, &mut RunningState)>(
+    pub fn run_with_callback<S: Into<String>, U: FnMut(&mut egui::Ui, &mut RunningState)>(
         self,
+        width: u32,
+        height: u32,
+        id: Option<S>,
         callback: U,
-    ) -> InitialState<U> {
-        let InnerBareState {
-            surfaces,
-            clouds,
-            segments,
-            settings,
-            camera,
-            ..
-        } = self.0;
-        let inner = InnerBareState {
-            surfaces,
-            clouds,
-            segments,
-            settings,
-            callback,
-            camera,
-        };
-        InitialState::new_inner(inner)
+    ) {
+        StateWrapper::run(self, width, height, id.map(Into::into), callback);
     }
 }
 
@@ -961,11 +875,11 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> InitialState<T> {
 pub type RunningState = State<InnerGraphicalState>;
 
 struct StateWrapper<T: FnMut(&mut egui::Ui, &mut RunningState)> {
-    init_state: Option<InitialState<T>>,
+    init_state: Option<InitialState>,
     state: Option<RunningState>,
     ui: Option<crate::ui::UI>,
     clipboard: Option<Clipboard>,
-    callback: Option<T>,
+    callback: T,
     id: String,
     width: u32,
     height: u32,
@@ -1052,7 +966,7 @@ impl RunningState {
 }
 
 impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
-    fn run(init_state: InitialState<T>, width: u32, height: u32, id: Option<String>) {
+    fn run(init_state: InitialState, width: u32, height: u32, id: Option<String>, callback: T) {
         let id = id.unwrap_or("deuxfleurs".into());
         #[cfg(target_arch = "wasm32")]
         {
@@ -1073,7 +987,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
             init_state: Some(init_state),
             state: None,
             clipboard: None,
-            callback: None,
+            callback,
             ui: None,
             id,
             width,

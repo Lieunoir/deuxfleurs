@@ -11,7 +11,7 @@ use crate::{
         AttachedGeometry, DataMut, FixedRenderer, GraphicalContext, NewAttachedGeometry,
         ShapeGeometry, ShapeSettings,
     },
-    window::{ContextHolder, InnerGraphicalState},
+    window::{InnerBareState, InnerGraphicalState},
 };
 
 #[derive(Clone)]
@@ -28,10 +28,7 @@ pub struct Points {
     position: AttachmentPosition,
 }
 
-impl<S> AttachedGeometry<S> for NewPoints
-where
-    for<'a> S: ContextHolder<Context<'a> = &'a mut Settings, TransformLayout = ()>,
-{
+impl AttachedGeometry<InnerBareState> for NewPoints {
     type Args = (Vec<u32>, Vec<[f32; 3]>);
     type Settings<'b> = &'b mut PCSettings;
 

@@ -4,7 +4,7 @@ use crate::texture;
 use crate::types::{Color, Scalar};
 use crate::util;
 use crate::util::Vertex;
-use crate::window::ContextHolder;
+use crate::window::{ContextHolder, InnerBareState, InnerGraphicalState};
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::include_wgsl;
@@ -543,18 +543,33 @@ impl Render for PointCloudRenderer {
     }
 }
 
-pub type PointCloud<Renderer, AttachedData> =
-    Shape<PointCloudGeometry, Renderer, PCSettings, PointCloudData, AttachedData>;
+pub struct PointCloudDesc;
 
-pub type UninitedPointCloud = PointCloud<(), ()>;
-pub type DisplayPointCloud = PointCloud<PointCloudRenderer, EmptyAttached>;
+impl InvariantShapeDescriptor for PointCloudDesc {
+    type Data = PointCloudData;
+    type Geometry = PointCloudGeometry;
+    type Settings = PCSettings;
+}
 
-pub type PointCloudMut<'a, Renderer, AttachedData, Context> =
-    ShapeMut<'a, PointCloud<Renderer, AttachedData>, Context>;
+impl ShapeDescriptor<InnerBareState> for PointCloudDesc {
+    type Renderer = ();
+    type AttachedGeometry = ();
+}
 
-impl<Renderer, AttachedData, S: ContextHolder> PointCloudMut<'_, Renderer, AttachedData, S>
+impl ShapeDescriptor<InnerGraphicalState> for PointCloudDesc {
+    type Renderer = PointCloudRenderer;
+    type AttachedGeometry = EmptyAttached;
+}
+
+pub type PointCloud<S> = Shape<S, PointCloudDesc>;
+pub type UninitedPointCloud = PointCloud<InnerBareState>;
+pub type DisplayPointCloud = PointCloud<InnerGraphicalState>;
+pub type PointCloudMut<'a, S> = ShapeMut<'a, PointCloud<S>, S>;
+
+impl<S: ContextHolder> PointCloudMut<'_, S>
 where
-    PointCloud<Renderer, AttachedData>: ShapeTrait<S, Data = PointCloudData>,
+    PointCloudDesc: ShapeDescriptor<S>,
+    PointCloud<S>: ShapeTrait<S, Desc = PointCloudDesc>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {

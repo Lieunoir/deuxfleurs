@@ -5,7 +5,7 @@ use crate::texture;
 use crate::types::{Color, Scalar};
 use crate::util;
 use crate::util::Vertex;
-use crate::window::ContextHolder;
+use crate::window::{ContextHolder, InnerBareState, InnerGraphicalState};
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use wgpu::include_wgsl;
@@ -833,18 +833,33 @@ impl Render for SegmentRenderer {
     }
 }
 
-pub type Segment<Renderer, AttachedData> =
-    Shape<SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData>;
+pub struct SegmentDesc;
 
-pub type UninitedSegment = Segment<(), ()>;
-pub type DisplaySegment = Segment<SegmentRenderer, EmptyAttached>;
+impl InvariantShapeDescriptor for SegmentDesc {
+    type Data = SegmentData;
+    type Geometry = SegmentGeometry;
+    type Settings = PCSettings;
+}
 
-pub type SegmentMut<'a, Renderer, AttachedData, Context> =
-    ShapeMut<'a, Segment<Renderer, AttachedData>, Context>;
+impl ShapeDescriptor<InnerBareState> for SegmentDesc {
+    type Renderer = ();
+    type AttachedGeometry = ();
+}
 
-impl<Renderer, AttachedData, S: ContextHolder> SegmentMut<'_, Renderer, AttachedData, S>
+impl ShapeDescriptor<InnerGraphicalState> for SegmentDesc {
+    type Renderer = SegmentRenderer;
+    type AttachedGeometry = EmptyAttached;
+}
+
+pub type Segment<S> = Shape<S, SegmentDesc>;
+pub type UninitedSegment = Segment<InnerBareState>;
+pub type DisplaySegment = Segment<InnerGraphicalState>;
+pub type SegmentMut<'a, S> = ShapeMut<'a, Segment<S>, S>;
+
+impl<S: ContextHolder> SegmentMut<'_, S>
 where
-    Segment<Renderer, AttachedData>: ShapeTrait<S, Data = SegmentData>,
+    SegmentDesc: ShapeDescriptor<S>,
+    Segment<S>: ShapeTrait<S, Desc = SegmentDesc>,
 {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {

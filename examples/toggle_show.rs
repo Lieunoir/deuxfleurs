@@ -15,15 +15,13 @@ pub async fn run() {
     // Load the mesh and register it in state:
     let (v, f) = load_mesh("examples/assets/bunnyhead.obj").await.unwrap();
     handle.register_surface("bunny", v, f);
-
-    // Toggle between shown or not on button pressed
-    let handle = handle.with_callback(|ui, state| {
+    // Run the app
+    handle.run_with_callback(1080, 720, Some("deuxfleurs-demo"), |ui, state| {
+        // Toggle between shown or not on button pressed
         if ui.add(egui::Button::new("Toggle shown")).clicked() {
             let mut surface = state.get_surface_mut("bunny").unwrap();
             let shown = surface.shown();
             surface.show(!shown);
         }
     });
-    // Run the app
-    handle.run(1080, 720, Some("deuxfleurs-demo"));
 }

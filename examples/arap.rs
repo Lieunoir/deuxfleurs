@@ -35,7 +35,7 @@ fn main() {
     let mut handle = deuxfleurs::init();
     handle.register_surface("Spot", spot_v, spot_f);
 
-    let handle = handle.with_callback(|ui, state| {
+    handle.run_with_callback(1080, 720, Some("deuxfleurs"), |ui, state| {
         ui.heading("Arap edition");
 
         ui.label("First select a vertex, then click on the add constraint button.");
@@ -53,7 +53,7 @@ fn main() {
 
         ui.label(
             "Once at least two constraints are set: select a constrained vertex, \
-            check 'Edition Gizmo' and move the vertex using the gizmo.",
+                    check 'Edition Gizmo' and move the vertex using the gizmo.",
         );
 
         // Iterate the solver
@@ -64,8 +64,6 @@ fn main() {
             state.register_surface("Spot", vertices, indices);
         }
     });
-
-    handle.run(1080, 720, Some("deuxfleurs"));
 }
 
 struct Arap {

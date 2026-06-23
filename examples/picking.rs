@@ -19,7 +19,8 @@ pub async fn run() {
 
     let mut last_selected = None;
     let mut last_selected_geometry = "".into();
-    let handle = handle.with_callback(|ui, state| {
+
+    handle.run_with_callback(1080, 720, Some("deuxfleurs"), |ui, state| {
         ui.label("Click on spot!");
         if let Some((surface_name, item)) = state.get_picked().clone() {
             if last_selected.as_ref() != Some(&item) || last_selected_geometry != *surface_name {
@@ -50,6 +51,4 @@ pub async fn run() {
             }
         }
     });
-
-    handle.run(1080, 720, Some("deuxfleurs"));
 }
