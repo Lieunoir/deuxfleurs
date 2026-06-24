@@ -1,6 +1,7 @@
-use crate::Settings;
 use crate::camera::{Camera, CameraController, CameraUniform};
+use crate::data::TransformSettings;
 use crate::data::internal::DataUniform;
+use crate::data::internal::DataUniformBuilder;
 use crate::picker::{self, Picked};
 use crate::point_cloud::geometry::PointCloudDesc;
 use crate::point_cloud::{DisplayPointCloud, PointCloud, PointCloudMut, UninitedPointCloud};
@@ -9,16 +10,17 @@ use crate::sbv::SBV;
 use crate::screenshot;
 use crate::segment::geometry::SegmentDesc;
 use crate::segment::{DisplaySegment, Segment, SegmentMut, UninitedSegment};
+use crate::shape::renderer::{DataBuffer, FixedRenderer};
 use crate::shape::{
-    DataBuffer, DisplayShape, FixedRenderer, GraphicalContext, InvariantShapeDescriptor,
-    NewAttachedGeometry, Render, RenderPipeline, Renderer, Shape, ShapeDescriptor, ShapeGeometry,
-    ShapeMut, UninitedShape,
+    DisplayShape, GraphicalContext, InvariantShapeDescriptor, NewAttachedGeometry, Render,
+    RenderPipeline, Renderer, Shape, ShapeDescriptor, ShapeGeometry, ShapeMut, UninitedShape,
 };
 use crate::surface::geometry::SurfaceDesc;
 use crate::surface::{DisplaySurface, Surface, SurfaceMut, UninitedSurface};
 use crate::texture::TextureBufferPool;
 use crate::types::SurfaceIndices;
 use crate::types::*;
+use crate::{Settings, settings};
 use egui;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
@@ -48,14 +50,62 @@ pub trait ContextHolder {
     type Context<'a>;
     type ExtendedContext<'a>;
     type DataUniform<'a>;
-    type TransformLayout;
+    type TransformLayout; //Renamed to ShapeContext?
+    type Renderer<Desc: InvariantShapeDescriptor + ?Sized>;
 
     fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings;
 
     fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b>;
+
+    fn notify_refresh_screen(ctxt: &mut Self::Context<'_>, refresh: bool);
+
+    fn update_transform<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        transform: &TransformSettings,
+        ctxt: &Self::Context<'_>,
+    );
+
+    fn update_settings<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    );
+
+    fn build_renderer<Desc: InvariantShapeDescriptor + ?Sized>(
+        geometry: &Desc::Geometry,
+        transform: &TransformSettings,
+        settings: &Desc::Settings,
+        data: Option<&Desc::Data>,
+        ctxt: &Self::Context<'_>,
+    ) -> Self::Renderer<Desc>;
+
+    fn rebuild_fixed_buffer<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        geometry: &Desc::Geometry,
+        ctxt: &Self::Context<'_>,
+    );
+
+    fn rebuild_data_buffer<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        geometry: &Desc::Geometry,
+        data: Option<&Desc::Data>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    );
+
+    fn rebuild_pipeline<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        data: Option<&Desc::Data>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    );
+
+    fn get_renderer_data_uniform<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &'_ Self::Renderer<Desc>,
+    ) -> Self::DataUniform<'_>;
 }
 
-//Can't be merged with above type due to https://github.com/rust-lang/rust/issues/87479
+//Can't be merged with ContextHolder type due to https://github.com/rust-lang/rust/issues/87479
 pub trait ContainersHolder: ContextHolder
 where
     SurfaceDesc: ShapeDescriptor<Self>,
@@ -183,7 +233,7 @@ where
 
 impl<Desc> GeometryHolder<UninitedShape<Desc>> for InnerBareState
 where
-    Desc: ShapeDescriptor<InnerBareState, Renderer = ()>,
+    Desc: ShapeDescriptor<InnerBareState>,
     Desc::AttachedGeometry: NewAttachedGeometry,
     InnerBareState: ContainerContextGiver<UninitedShape<Desc>>,
 {
@@ -230,14 +280,10 @@ where
     }
 }
 
-impl<Desc, Fixed, DataB, Pipeline> GeometryHolder<DisplayShape<Desc>> for InnerGraphicalState
+impl<Desc> GeometryHolder<DisplayShape<Desc>> for InnerGraphicalState
 where
-    Desc: ShapeDescriptor<InnerGraphicalState, Renderer = Renderer<Fixed, DataB, Pipeline>>,
-    Fixed: FixedRenderer<Geometry = Desc::Geometry>,
-    DataB: DataBuffer<Data = Desc::Data, Geometry = Desc::Geometry>,
-    Pipeline:
-        RenderPipeline<Settings = Desc::Settings, Data = Desc::Data, Geometry = Desc::Geometry>,
-    Renderer<Fixed, DataB, Pipeline>: Render,
+    Desc: ShapeDescriptor<InnerGraphicalState>,
+    Renderer<Desc>: Render,
     InnerGraphicalState: ContainerContextGiver<DisplayShape<Desc>>,
 {
     type Args = <<Desc as InvariantShapeDescriptor>::Geometry as ShapeGeometry>::Args;
@@ -387,6 +433,7 @@ impl ContextHolder for InnerGraphicalState {
     type ExtendedContext<'a> = (&'a mut bool, &'a mut bool, &'a mut Option<(String, Picked)>);
     type DataUniform<'a> = &'a Option<DataUniform>;
     type TransformLayout = wgpu::BindGroupLayout;
+    type Renderer<Desc: InvariantShapeDescriptor + ?Sized> = Renderer<Desc>;
 
     fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
         ctxt.settings
@@ -401,6 +448,85 @@ impl ContextHolder for InnerGraphicalState {
             counter_bind_group_layout: ctxt.counter_bind_group_layout,
             refresh_screen: ctxt.refresh_screen,
         }
+    }
+
+    fn notify_refresh_screen(ctxt: &mut Self::Context<'_>, refresh: bool) {
+        *ctxt.refresh_screen |= refresh;
+    }
+
+    fn update_transform<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        transform: &TransformSettings,
+        ctxt: &Self::Context<'_>,
+    ) {
+        transform
+            .to_raw()
+            .refresh_buffer(ctxt.queue, &this.transform_uniform);
+    }
+
+    fn update_settings<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    ) {
+        settings.refresh_buffer(ctxt.queue, &this.settings_uniform);
+    }
+
+    fn build_renderer<Desc: InvariantShapeDescriptor + ?Sized>(
+        geometry: &Desc::Geometry,
+        transform: &TransformSettings,
+        settings: &Desc::Settings,
+        data: Option<&Desc::Data>,
+        ctxt: &Self::Context<'_>,
+    ) -> Self::Renderer<Desc> {
+        Self::Renderer::<Desc>::new(
+            ctxt.device,
+            geometry,
+            transform,
+            settings,
+            data,
+            ctxt.camera_bind_group_layout,
+            ctxt.counter_bind_group_layout,
+        )
+    }
+
+    fn rebuild_fixed_buffer<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        geometry: &Desc::Geometry,
+        ctxt: &Self::Context<'_>,
+    ) {
+        this.rebuild_fixed_buffer(ctxt.device, geometry);
+    }
+
+    fn rebuild_data_buffer<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        geometry: &Desc::Geometry,
+        data: Option<&Desc::Data>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    ) {
+        this.rebuild_data_buffer(
+            ctxt.device,
+            geometry,
+            data,
+            settings,
+            ctxt.camera_bind_group_layout,
+        );
+    }
+
+    fn rebuild_pipeline<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &mut Self::Renderer<Desc>,
+        data: Option<&Desc::Data>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    ) {
+        this.rebuild_pipeline(ctxt.device, data, settings, ctxt.camera_bind_group_layout);
+    }
+
+    fn get_renderer_data_uniform<Desc: InvariantShapeDescriptor + ?Sized>(
+        this: &'_ Self::Renderer<Desc>,
+    ) -> Self::DataUniform<'_> {
+        &this.data_uniform
     }
 }
 
@@ -526,6 +652,7 @@ impl ContextHolder for InnerBareState {
     type ExtendedContext<'a> = ();
     type DataUniform<'a> = ();
     type TransformLayout = ();
+    type Renderer<Desc: InvariantShapeDescriptor + ?Sized> = ();
 
     fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
         ctxt
@@ -533,6 +660,62 @@ impl ContextHolder for InnerBareState {
 
     fn reborrow_context<'a: 'b, 'b>(ctxt: &'b mut Self::Context<'a>) -> Self::Context<'b> {
         ctxt
+    }
+
+    fn notify_refresh_screen(_ctxt: &mut Self::Context<'_>, _refresh: bool) {}
+
+    fn update_transform<Desc: InvariantShapeDescriptor + ?Sized>(
+        _this: &mut Self::Renderer<Desc>,
+        _transform: &TransformSettings,
+        _ctxt: &Self::Context<'_>,
+    ) {
+    }
+
+    fn update_settings<Desc: InvariantShapeDescriptor + ?Sized>(
+        _this: &mut Self::Renderer<Desc>,
+        _settings: &Desc::Settings,
+        _ctxt: &Self::Context<'_>,
+    ) {
+    }
+
+    fn build_renderer<Desc: InvariantShapeDescriptor + ?Sized>(
+        _geometry: &Desc::Geometry,
+        _transform: &TransformSettings,
+        _settings: &Desc::Settings,
+        _data: Option<&Desc::Data>,
+        _ctxt: &Self::Context<'_>,
+    ) -> Self::Renderer<Desc> {
+        ()
+    }
+
+    fn rebuild_data_buffer<Desc: InvariantShapeDescriptor + ?Sized>(
+        _this: &mut Self::Renderer<Desc>,
+        _geometry: &Desc::Geometry,
+        _data: Option<&Desc::Data>,
+        _settings: &Desc::Settings,
+        _ctxt: &Self::Context<'_>,
+    ) {
+    }
+
+    fn rebuild_fixed_buffer<Desc: InvariantShapeDescriptor + ?Sized>(
+        _this: &mut Self::Renderer<Desc>,
+        _geometry: &Desc::Geometry,
+        _ctxt: &Self::Context<'_>,
+    ) {
+    }
+
+    fn rebuild_pipeline<Desc: InvariantShapeDescriptor + ?Sized>(
+        _this: &mut Self::Renderer<Desc>,
+        _data: Option<&Desc::Data>,
+        _settings: &Desc::Settings,
+        _ctxt: &Self::Context<'_>,
+    ) {
+    }
+
+    fn get_renderer_data_uniform<Desc: InvariantShapeDescriptor + ?Sized>(
+        _this: &'_ Self::Renderer<Desc>,
+    ) -> Self::DataUniform<'_> {
+        ()
     }
 }
 

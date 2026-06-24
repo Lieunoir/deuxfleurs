@@ -881,7 +881,7 @@ impl RenderPipeline for SurfacePipeline {
     }
 }
 
-type SurfaceRenderer = Renderer<SurfaceFixedRenderer, SurfaceDataBuffer, SurfacePipeline>;
+type SurfaceRenderer = Renderer<SurfaceDesc>;
 
 impl Render for SurfaceRenderer {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -928,15 +928,16 @@ impl InvariantShapeDescriptor for SurfaceDesc {
     type Data = SurfaceData;
     type Geometry = SurfaceGeometry;
     type Settings = SurfaceSettings;
+    type FixedBuffer = SurfaceFixedRenderer;
+    type DataBuffer = SurfaceDataBuffer;
+    type Pipeline = SurfacePipeline;
 }
 
 impl ShapeDescriptor<InnerBareState> for SurfaceDesc {
-    type Renderer = ();
     type AttachedGeometry = NewSurfaceAttachment;
 }
 
 impl ShapeDescriptor<InnerGraphicalState> for SurfaceDesc {
-    type Renderer = SurfaceRenderer;
     type AttachedGeometry = SurfaceAttachment;
 }
 

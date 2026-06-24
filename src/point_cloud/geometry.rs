@@ -487,8 +487,7 @@ impl RenderPipeline for PointCloudPipeline {
     }
 }
 
-type PointCloudRenderer =
-    Renderer<PointCloudFixedRenderer, PointCloudDataBuffer, PointCloudPipeline>;
+type PointCloudRenderer = Renderer<PointCloudDesc>;
 
 impl PointCloudRenderer {
     pub(crate) fn render_attached<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -549,15 +548,16 @@ impl InvariantShapeDescriptor for PointCloudDesc {
     type Data = PointCloudData;
     type Geometry = PointCloudGeometry;
     type Settings = PCSettings;
+    type DataBuffer = PointCloudDataBuffer;
+    type FixedBuffer = PointCloudFixedRenderer;
+    type Pipeline = PointCloudPipeline;
 }
 
 impl ShapeDescriptor<InnerBareState> for PointCloudDesc {
-    type Renderer = ();
     type AttachedGeometry = ();
 }
 
 impl ShapeDescriptor<InnerGraphicalState> for PointCloudDesc {
-    type Renderer = PointCloudRenderer;
     type AttachedGeometry = EmptyAttached;
 }
 
@@ -576,14 +576,12 @@ where
         } else {
             self.inner.settings.radius.set_absolute(radius);
         }
-        self.update_settings(false);
-        self
+        self.update_settings(false)
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
         self.inner.settings.color.color = color;
-        self.update_settings(false);
-        self
+        self.update_settings(false)
     }
 
     pub fn add_scalar(

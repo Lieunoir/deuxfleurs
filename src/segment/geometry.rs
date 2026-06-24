@@ -759,7 +759,7 @@ impl RenderPipeline for SegmentPipeline {
     }
 }
 
-type SegmentRenderer = Renderer<SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline>;
+type SegmentRenderer = Renderer<SegmentDesc>;
 
 impl SegmentRenderer {
     pub(crate) fn render_attached<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
@@ -839,15 +839,16 @@ impl InvariantShapeDescriptor for SegmentDesc {
     type Data = SegmentData;
     type Geometry = SegmentGeometry;
     type Settings = PCSettings;
+    type DataBuffer = SegmentDataBuffer;
+    type FixedBuffer = SegmentFixedRenderer;
+    type Pipeline = SegmentPipeline;
 }
 
 impl ShapeDescriptor<InnerBareState> for SegmentDesc {
-    type Renderer = ();
     type AttachedGeometry = ();
 }
 
 impl ShapeDescriptor<InnerGraphicalState> for SegmentDesc {
-    type Renderer = SegmentRenderer;
     type AttachedGeometry = EmptyAttached;
 }
 
@@ -871,8 +872,7 @@ where
 
     pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
         self.inner.settings.color.color = color;
-        self.update_settings(false);
-        self
+        self.update_settings(false)
     }
 
     pub fn add_scalar(

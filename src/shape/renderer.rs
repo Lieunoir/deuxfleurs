@@ -1,14 +1,15 @@
 use crate::data::TransformSettings;
 use crate::data::internal::{DataUniform, DataUniformBuilder};
+use crate::shape::InvariantShapeDescriptor;
 
-pub struct Renderer<Fixed, DataB, Pipeline> {
+pub struct Renderer<Desc: InvariantShapeDescriptor + ?Sized> {
     // Buffers which won't be modified after init
     // (actually can due to geometry replacement)
-    pub(crate) fixed: Fixed,
+    pub(crate) fixed: Desc::FixedBuffer,
     // Buffers modified depending on displayed data
-    pub(crate) data_buffer: DataB,
+    pub(crate) data_buffer: Desc::DataBuffer,
     // Pipeline, may be modifed depending on data, data settings or shape settings
-    pub(crate) pipeline: Pipeline,
+    pub(crate) pipeline: Desc::Pipeline,
     // Common shape uniforms
     pub(crate) transform_uniform: DataUniform,
     pub(crate) settings_uniform: DataUniform,
@@ -16,26 +17,18 @@ pub struct Renderer<Fixed, DataB, Pipeline> {
     pub(crate) data_uniform: Option<DataUniform>,
 }
 
-impl<
-    Settings: DataUniformBuilder,
-    Data: DataUniformBuilder,
-    Geometry,
-    Fixed: FixedRenderer<Geometry = Geometry>,
-    DataB: DataBuffer<Data = Data, Geometry = Geometry>,
-    Pipeline: RenderPipeline<Settings = Settings, Data = Data, Geometry = Geometry>,
-> Renderer<Fixed, DataB, Pipeline>
-{
+impl<Desc: InvariantShapeDescriptor + ?Sized> Renderer<Desc> {
     pub(crate) fn new(
         device: &wgpu::Device,
-        geometry: &Geometry,
+        geometry: &Desc::Geometry,
         transform: &TransformSettings,
-        settings: &Settings,
-        data: Option<&Data>,
+        settings: &Desc::Settings,
+        data: Option<&Desc::Data>,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        let fixed = Fixed::initialize(device, geometry);
-        let data_buffer = DataB::new(device, geometry, data);
+        let fixed = Desc::FixedBuffer::initialize(device, geometry);
+        let data_buffer = Desc::DataBuffer::new(device, geometry, data);
 
         let transform_uniform = transform.to_raw().build_uniform(device).unwrap();
         let settings_uniform = settings.build_uniform(device).unwrap();
@@ -66,19 +59,23 @@ impl<
         self.data_uniform.as_ref()
     }
 
-    pub(crate) fn build_fixed_buffer(&mut self, device: &wgpu::Device, geometry: &Geometry) {
-        self.fixed = Fixed::initialize(device, geometry)
-    }
-
-    pub(crate) fn build_data_buffer(
+    pub(crate) fn rebuild_fixed_buffer(
         &mut self,
         device: &wgpu::Device,
-        geometry: &Geometry,
-        data: Option<&Data>,
-        settings: &Settings,
+        geometry: &Desc::Geometry,
+    ) {
+        self.fixed = Desc::FixedBuffer::initialize(device, geometry)
+    }
+
+    pub(crate) fn rebuild_data_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        geometry: &Desc::Geometry,
+        data: Option<&Desc::Data>,
+        settings: &Desc::Settings,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) {
-        self.data_buffer = DataB::new(device, geometry, data);
+        self.data_buffer = Desc::DataBuffer::new(device, geometry, data);
         self.data_uniform = data.map(|d| d.build_uniform(device)).flatten();
         self.rebuild_pipeline(device, data, settings, camera_bind_group_layout);
     }
@@ -86,8 +83,8 @@ impl<
     pub(crate) fn rebuild_pipeline(
         &mut self,
         device: &wgpu::Device,
-        data: Option<&Data>,
-        settings: &Settings,
+        data: Option<&Desc::Data>,
+        settings: &Desc::Settings,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) {
         self.pipeline.rebuild(
@@ -146,7 +143,7 @@ pub trait RenderPipeline {
     );
 }
 
-pub(crate) trait Render {
+pub trait Render {
     fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b;
