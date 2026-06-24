@@ -481,7 +481,8 @@ where
 }
 
 pub trait ShapeTrait<S: ContextHolder>: ShapeDescriptor<S> {
-    fn replace(
+    // Return value is true when replaced, false when created
+    fn replace_or_create(
         this: &mut Shape<S, Self>,
         args: <Self::Geometry as ShapeGeometry>::Args,
         context: &mut S::Context<'_>,
@@ -531,7 +532,7 @@ where
     Desc: ShapeDescriptor<InnerBareState, Renderer = ()>,
     Desc::AttachedGeometry: NewAttachedGeometry,
 {
-    fn replace(
+    fn replace_or_create(
         this: &mut UninitedShape<Desc>,
         args: <Desc::Geometry as ShapeGeometry>::Args,
         _context: &mut &mut crate::Settings,
@@ -542,7 +543,7 @@ where
             true
         } else {
             *this = UninitedShape::<Desc>::new_bare_with_geometry(
-                this.name.clone(),
+                std::mem::take(&mut this.name),
                 new_geometry,
                 None,
             );
@@ -638,20 +639,21 @@ where
         RenderPipeline<Settings = Desc::Settings, Data = Desc::Data, Geometry = Desc::Geometry>,
     Renderer<Fixed, DataB, Pipeline>: Render,
 {
-    fn replace(
+    fn replace_or_create(
         this: &mut DisplayShape<Desc>,
         args: <Desc::Geometry as ShapeGeometry>::Args,
         context: &mut GraphicalContext<'_>,
     ) -> bool {
         let new_geometry = <Desc::Geometry as ShapeGeometry>::new(args);
-        if this.geometry().can_be_replaced_by(&new_geometry) {
-            this.renderer.fixed = Fixed::initialize(context.device, &new_geometry);
+        if this.geometry.can_be_replaced_by(&new_geometry) {
+            this.renderer
+                .build_fixed_buffer(context.device, &new_geometry);
             this.geometry = new_geometry;
             this.sbv = SBV::new(this.geometry.get_positions());
             true
         } else {
             *this = DisplayShape::<Desc>::new_with_geometry(
-                this.name.clone(),
+                std::mem::take(&mut this.name),
                 new_geometry,
                 None,
                 context.device,
@@ -685,8 +687,7 @@ where
         name: String,
         context: &mut GraphicalContext<'_>,
     ) {
-        this.data.shift_remove(&name);
-        if this.shown_data == Some(name) {
+        if this.data.shift_remove(&name).is_some() && this.shown_data == Some(name) {
             this.shown_data = None;
             *context.refresh_screen |= this.show;
         }
@@ -697,8 +698,10 @@ where
         name: String,
         context: &mut GraphicalContext<'_>,
     ) {
-        if let Some(data) = this.attached_data.shift_remove(&name) {
-            *context.refresh_screen |= data.shown() && this.show
+        if let Some(data) = this.attached_data.shift_remove(&name)
+            && data.shown()
+        {
+            *context.refresh_screen |= this.show
         }
     }
 
@@ -778,7 +781,7 @@ where
                 name.clone(),
                 args,
                 position,
-                this.geometry().get_characteristic_length(),
+                this.geometry.get_characteristic_length(),
                 &mut context,
                 &this.renderer.transform_uniform.bind_group_layout,
             );

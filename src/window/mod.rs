@@ -198,7 +198,7 @@ where
         let (container, mut context, _) = self.get_container_mut();
         if container.contains_key(&name) {
             let shape = container.get_mut(&name).unwrap();
-            Desc::replace(shape, args, &mut context);
+            Desc::replace_or_create(shape, args, &mut context);
             ShapeMut {
                 inner: shape,
                 context,
@@ -254,7 +254,7 @@ where
         // This could be better with Polonius
         if container.contains_key(&name) {
             let shape = container.get_mut(&name).unwrap();
-            if !Desc::replace(shape, args, &mut context) {
+            if !Desc::replace_or_create(shape, args, &mut context) {
                 *should_resize = true;
                 *counters_dirty = true;
                 if let Some((picked_name, _picked)) = picked

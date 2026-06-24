@@ -3,6 +3,7 @@ use crate::data::internal::{DataUniform, DataUniformBuilder};
 
 pub struct Renderer<Fixed, DataB, Pipeline> {
     // Buffers which won't be modified after init
+    // (actually can due to geometry replacement)
     pub(crate) fixed: Fixed,
     // Buffers modified depending on displayed data
     pub(crate) data_buffer: DataB,
@@ -63,6 +64,10 @@ impl<
 
     pub(crate) fn get_data_uniform(&mut self) -> Option<&DataUniform> {
         self.data_uniform.as_ref()
+    }
+
+    pub(crate) fn build_fixed_buffer(&mut self, device: &wgpu::Device, geometry: &Geometry) {
+        self.fixed = Fixed::initialize(device, geometry)
     }
 
     pub(crate) fn build_data_buffer(
