@@ -1,7 +1,8 @@
 use crate::{
     Settings,
-    attachment::internal::AttachmentPosition,
+    attachment::{GraphicalAttachment, internal::AttachmentPosition},
     camera::Camera,
+    data::internal::DataUniform,
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
 
@@ -56,7 +57,7 @@ pub trait NewAttachedGeometry {
         device: &wgpu::Device,
         camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
-        transform_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_uniform: &DataUniform,
     ) -> Self::UpgradedAttachedGeometry;
 
     fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self;
@@ -72,9 +73,15 @@ impl<S: ContextHolder> AttachedGeometry<S> for () {
         _position: AttachmentPosition,
         _characteristic_l: f32,
         _context: &mut S::Context<'_>,
-        _transform_layout: &S::TransformLayout,
+        _transform_layout: &S::TransformUniform,
     ) -> Self {
         ()
+    }
+
+    fn show(&mut self, _show: bool, _refresh_screen: &mut bool) {}
+
+    fn shown(&self) -> bool {
+        false
     }
 
     fn get_settings(&mut self) -> Self::Settings<'_> {
@@ -84,23 +91,19 @@ impl<S: ContextHolder> AttachedGeometry<S> for () {
     fn get_attached_position(&self) -> &AttachmentPosition {
         &AttachmentPosition::Vertex
     }
-
-    fn move_elements(&mut self, _queue: &wgpu::Queue, _indices: &[u32], _pos: &[[f32; 3]]) {}
 }
 
-pub struct EmptyAttached(());
-
 impl NewAttachedGeometry for () {
-    type UpgradedAttachedGeometry = EmptyAttached;
+    type UpgradedAttachedGeometry = ();
 
     fn init(
         self,
         _device: &wgpu::Device,
         _camera: &Camera,
         _camera_bind_group_layout: &wgpu::BindGroupLayout,
-        _transform_bind_group_layout: &wgpu::BindGroupLayout,
+        _transform_uniform: &DataUniform,
     ) -> Self::UpgradedAttachedGeometry {
-        EmptyAttached(())
+        ()
     }
 
     fn downgrade(_upgraded: &Self::UpgradedAttachedGeometry) -> Self {
@@ -108,30 +111,23 @@ impl NewAttachedGeometry for () {
     }
 }
 
-impl<S: ContextHolder> AttachedGeometry<S> for EmptyAttached {
-    type Args = ();
-    type Settings<'a> = &'a mut ();
-
-    fn new(
-        _name: String,
-        _args: Self::Args,
-        _position: AttachmentPosition,
-        _characteristic_l: f32,
-        _context: &mut S::Context<'_>,
-        _transform_layout: &S::TransformLayout,
-    ) -> Self {
-        EmptyAttached(())
+impl GraphicalAttachment for () {
+    fn draw_ui(
+        &mut self,
+        _ui: &mut egui::Ui,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _camera_bind_group_layout: &wgpu::BindGroupLayout,
+        _color_format: wgpu::TextureFormat,
+        _refresh_screen: &mut bool,
+    ) {
     }
-
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        &mut self.0
-    }
-
-    fn get_attached_position(&self) -> &AttachmentPosition {
-        &AttachmentPosition::Vertex
-    }
-
     fn move_elements(&mut self, _queue: &wgpu::Queue, _indices: &[u32], _pos: &[[f32; 3]]) {}
+    fn render<'c, 'd>(&'c self, _render_pass: &mut wgpu::RenderPass<'d>)
+    where
+        'c: 'd,
+    {
+    }
 }
 
 pub trait ShapeSettings: DataUniformBuilder + Clone {
@@ -174,35 +170,14 @@ pub trait AttachedGeometry<S: ContextHolder + ?Sized> {
         _position: AttachmentPosition,
         characteristic_l: f32,
         context: &mut S::Context<'_>,
-        transform_layout: &S::TransformLayout,
+        transform_layout: &S::TransformUniform,
     ) -> Self;
 
-    fn shown(&self) -> bool {
-        false
-    }
+    fn shown(&self) -> bool;
 
-    fn show(&mut self, _show: bool, _refresh_screen: &mut bool) {}
-
-    fn draw_ui(
-        &mut self,
-        _ui: &mut egui::Ui,
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        _camera_bind_group_layout: &wgpu::BindGroupLayout,
-        _color_format: wgpu::TextureFormat,
-        _refresh_screen: &mut bool,
-    ) {
-    }
-
-    fn render<'c, 'd>(&'c self, _render_pass: &mut wgpu::RenderPass<'d>)
-    where
-        'c: 'd,
-    {
-    }
+    fn show(&mut self, _show: bool, _refresh_screen: &mut bool);
 
     fn get_settings(&mut self) -> Self::Settings<'_>;
 
     fn get_attached_position(&self) -> &AttachmentPosition;
-
-    fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]);
 }

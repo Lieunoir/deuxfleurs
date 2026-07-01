@@ -1,4 +1,5 @@
 use crate::Settings;
+use crate::attachment::GraphicalAttachment;
 use crate::attachment::internal::AttachmentPosition;
 use crate::camera::Camera;
 use crate::data::TransformSettings;
@@ -11,7 +12,7 @@ pub(crate) use renderer::*;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
-mod data;
+pub(crate) mod data;
 pub(crate) mod renderer;
 
 pub struct GraphicalContext<'a> {
@@ -112,39 +113,6 @@ impl<Desc: ShapeDescriptor<InnerBareState>> UninitedShape<Desc>
 where
     Desc::AttachedGeometry: NewAttachedGeometry,
 {
-    pub(crate) fn new_bare(
-        name: String,
-        args: <Desc::Geometry as ShapeGeometry>::Args,
-        char_l: Option<f32>,
-    ) -> Self {
-        let geometry = Desc::Geometry::new(args);
-        Self::new_bare_with_geometry(name, geometry, char_l)
-    }
-
-    pub(crate) fn new_bare_with_geometry(
-        name: String,
-        geometry: Desc::Geometry,
-        char_l: Option<f32>,
-    ) -> Self {
-        let transform = TransformSettings::default();
-        let char_l = char_l.unwrap_or_else(|| geometry.get_characteristic_length());
-        let settings = Desc::Settings::new(&name, char_l);
-        let sbv = SBV::new(geometry.get_positions());
-        Self {
-            geometry,
-            renderer: (),
-            transform,
-            settings,
-            data: IndexMap::new(),
-            attached_data: IndexMap::new(),
-            shown_data: None,
-            name,
-            show: true,
-            sbv,
-            modification_stamp: 0,
-        }
-    }
-
     pub(crate) fn upgrade(
         self,
         device: &wgpu::Device,
@@ -179,7 +147,7 @@ where
                         device,
                         camera,
                         camera_bind_group_layout,
-                        &renderer.transform_uniform.bind_group_layout,
+                        &renderer.transform_uniform,
                     ),
                 )
             })
@@ -205,62 +173,8 @@ impl<Desc> DisplayShape<Desc>
 where
     Desc: ShapeDescriptor<InnerGraphicalState>,
     Renderer<Desc>: Render,
+    Desc::AttachedGeometry: GraphicalAttachment,
 {
-    pub(crate) fn new(
-        name: String,
-        args: <Desc::Geometry as ShapeGeometry>::Args,
-        char_l: Option<f32>,
-        device: &wgpu::Device,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> Self {
-        let geometry = Desc::Geometry::new(args);
-        Self::new_with_geometry(
-            name,
-            geometry,
-            char_l,
-            device,
-            camera_bind_group_layout,
-            counter_bind_group_layout,
-        )
-    }
-
-    pub(crate) fn new_with_geometry(
-        name: String,
-        geometry: Desc::Geometry,
-        char_l: Option<f32>,
-        device: &wgpu::Device,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        counter_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> Self {
-        let transform = TransformSettings::default();
-        let char_l = char_l.unwrap_or_else(|| geometry.get_characteristic_length());
-        let settings = Desc::Settings::new(&name, char_l);
-        let renderer = Renderer::new(
-            device,
-            &geometry,
-            &transform,
-            &settings,
-            None,
-            camera_bind_group_layout,
-            counter_bind_group_layout,
-        );
-        let sbv = SBV::new(geometry.get_positions());
-        Self {
-            geometry,
-            renderer,
-            transform,
-            settings,
-            data: IndexMap::new(),
-            attached_data: IndexMap::new(),
-            shown_data: None,
-            name,
-            show: true,
-            sbv,
-            modification_stamp: 0,
-        }
-    }
-
     pub(crate) fn downgrade(&self) -> UninitedShape<Desc>
     where
         Desc: ShapeDescriptor<
@@ -481,7 +395,7 @@ pub trait ShapeTrait<S: ContextHolder>: ShapeDescriptor<S> {
         let settings = Self::Settings::new(&name, char_l);
         let renderer = S::build_renderer(&geometry, &transform, &settings, None, context);
         let sbv = SBV::new(geometry.get_positions());
-        Shape::<S, Self> {
+        Shape {
             geometry,
             renderer,
             transform,
@@ -664,7 +578,7 @@ where
                 position,
                 this.geometry.get_characteristic_length(),
                 &mut context,
-                &this.renderer.transform_uniform.bind_group_layout,
+                &this.renderer.transform_uniform,
             );
             this.attached_data.insert(name.clone(), geometry);
         }

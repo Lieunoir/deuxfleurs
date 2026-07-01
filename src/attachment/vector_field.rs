@@ -1,6 +1,8 @@
+use crate::attachment::GraphicalAttachment;
 use crate::attachment::internal::AttachmentPosition;
 use crate::camera::Camera;
 use crate::data::internal::DataSettings;
+use crate::data::internal::DataUniform;
 use crate::data::*;
 use crate::shape::AttachedGeometry;
 use crate::shape::GraphicalContext;
@@ -222,7 +224,7 @@ impl VectorField {
     pub fn new(
         device: &wgpu::Device,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
-        transform_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_uniform: &DataUniform,
         NewVectorField {
             position,
             vectors,
@@ -264,7 +266,7 @@ impl VectorField {
             label: Some("Vector Render Pipeline Layout"),
             bind_group_layouts: &[
                 camera_bind_group_layout,
-                transform_bind_group_layout,
+                &transform_uniform.bind_group_layout,
                 &settings_bind_group_layout,
             ],
             push_constant_ranges: &[],
@@ -297,7 +299,7 @@ impl VectorField {
 
 impl<S> AttachedGeometry<S> for NewVectorField
 where
-    for<'a> S: ContextHolder<Context<'a> = &'a mut crate::Settings, TransformLayout = ()>,
+    for<'a> S: ContextHolder<Context<'a> = &'a mut crate::Settings, TransformUniform = ()>,
 {
     type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
     type Settings<'b> = &'b mut VectorFieldSettings;
@@ -314,18 +316,21 @@ where
         NewVectorField::new(name, characteristic_l, position, vectors, offsets)
     }
 
+    fn shown(&self) -> bool {
+        self.settings.show
+    }
+
+    fn show(&mut self, show: bool, refresh_screen: &mut bool) {
+        self.settings.show = show;
+        *refresh_screen = true;
+    }
+
     fn get_settings(&mut self) -> Self::Settings<'_> {
         &mut self.settings
     }
 
     fn get_attached_position(&self) -> &AttachmentPosition {
         &self.position
-    }
-
-    fn move_elements(&mut self, _queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
-        for (index, value) in indices.iter().zip(pos) {
-            self.offsets[*index as usize] = *value;
-        }
     }
 }
 
@@ -339,7 +344,7 @@ impl AttachedGeometry<InnerGraphicalState> for VectorField {
         position: AttachmentPosition,
         characteristic_l: f32,
         context: &mut GraphicalContext<'_>,
-        transform_layout: &wgpu::BindGroupLayout,
+        transform_uniform: &DataUniform,
     ) -> Self {
         *context.refresh_screen = true;
         let (vectors, offsets) = args;
@@ -348,7 +353,7 @@ impl AttachedGeometry<InnerGraphicalState> for VectorField {
         VectorField::new(
             context.device,
             context.camera_bind_group_layout,
-            transform_layout,
+            transform_uniform,
             new_vector_field,
         )
     }
@@ -362,6 +367,16 @@ impl AttachedGeometry<InnerGraphicalState> for VectorField {
         *refresh_screen = true;
     }
 
+    fn get_settings(&mut self) -> Self::Settings<'_> {
+        &mut self.settings
+    }
+
+    fn get_attached_position(&self) -> &AttachmentPosition {
+        &self.position
+    }
+}
+
+impl GraphicalAttachment for VectorField {
     fn draw_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -404,14 +419,6 @@ impl AttachedGeometry<InnerGraphicalState> for VectorField {
         render_pass.draw(0..8, 0..(self.vectors.len() as u32));
     }
 
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        &mut self.settings
-    }
-
-    fn get_attached_position(&self) -> &AttachmentPosition {
-        &self.position
-    }
-
     fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
         for (index, value) in indices.iter().zip(pos) {
             self.offsets[*index as usize] = *value;
@@ -435,14 +442,9 @@ impl NewAttachedGeometry for NewVectorField {
         device: &wgpu::Device,
         _camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
-        transform_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_uniform: &DataUniform,
     ) -> Self::UpgradedAttachedGeometry {
-        VectorField::new(
-            device,
-            camera_bind_group_layout,
-            transform_bind_group_layout,
-            self,
-        )
+        VectorField::new(device, camera_bind_group_layout, transform_uniform, self)
     }
 
     fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {

@@ -12,8 +12,9 @@ use crate::segment::geometry::SegmentDesc;
 use crate::segment::{DisplaySegment, Segment, SegmentMut, UninitedSegment};
 use crate::shape::renderer::{DataBuffer, FixedRenderer};
 use crate::shape::{
-    DisplayShape, GraphicalContext, InvariantShapeDescriptor, NewAttachedGeometry, Render,
-    RenderPipeline, Renderer, Shape, ShapeDescriptor, ShapeGeometry, ShapeMut, UninitedShape,
+    AttachedRenderer, DisplayShape, GraphicalContext, InvariantShapeDescriptor,
+    NewAttachedGeometry, Render, RenderPipeline, Renderer, Shape, ShapeDescriptor, ShapeGeometry,
+    ShapeMut, UninitedShape,
 };
 use crate::surface::geometry::SurfaceDesc;
 use crate::surface::{DisplaySurface, Surface, SurfaceMut, UninitedSurface};
@@ -50,8 +51,9 @@ pub trait ContextHolder {
     type Context<'a>;
     type ExtendedContext<'a>;
     type DataUniform<'a>;
-    type TransformLayout; //Renamed to ShapeContext?
+    type TransformUniform; //Renamed to ShapeContext?
     type Renderer<Desc: InvariantShapeDescriptor + ?Sized>;
+    type AttachedRenderer<Desc: InvariantShapeDescriptor + ?Sized>;
 
     fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings;
 
@@ -103,6 +105,13 @@ pub trait ContextHolder {
     fn get_renderer_data_uniform<Desc: InvariantShapeDescriptor + ?Sized>(
         this: &'_ Self::Renderer<Desc>,
     ) -> Self::DataUniform<'_>;
+
+    fn build_attached_renderer<Desc: InvariantShapeDescriptor + ?Sized>(
+        geometry: &Desc::Geometry,
+        settings: &Desc::Settings,
+        transform: &Self::TransformUniform,
+        ctxt: &Self::Context<'_>,
+    ) -> Self::AttachedRenderer<Desc>;
 }
 
 //Can't be merged with ContextHolder type due to https://github.com/rust-lang/rust/issues/87479
@@ -254,7 +263,7 @@ where
                 context,
             }
         } else {
-            let shape = Shape::new_bare(name.clone(), args, None);
+            let shape = Desc::new(name.clone(), args, None, &mut context);
             container.insert(name.clone(), shape);
             ShapeMut {
                 inner: container.get_mut(&name).unwrap(),
@@ -314,14 +323,7 @@ where
                 context: context,
             }
         } else {
-            let shape = Shape::new(
-                name.clone(),
-                args,
-                None,
-                context.device,
-                context.camera_bind_group_layout,
-                context.counter_bind_group_layout,
-            );
+            let shape = Desc::new(name.clone(), args, None, &mut context);
             container.insert(name.clone(), shape);
             *should_resize = true;
             *counters_dirty = true;
@@ -432,8 +434,9 @@ impl ContextHolder for InnerGraphicalState {
     type Context<'a> = GraphicalContext<'a>;
     type ExtendedContext<'a> = (&'a mut bool, &'a mut bool, &'a mut Option<(String, Picked)>);
     type DataUniform<'a> = &'a Option<DataUniform>;
-    type TransformLayout = wgpu::BindGroupLayout;
+    type TransformUniform = DataUniform;
     type Renderer<Desc: InvariantShapeDescriptor + ?Sized> = Renderer<Desc>;
+    type AttachedRenderer<Desc: InvariantShapeDescriptor + ?Sized> = AttachedRenderer<Desc>;
 
     fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
         ctxt.settings
@@ -527,6 +530,22 @@ impl ContextHolder for InnerGraphicalState {
         this: &'_ Self::Renderer<Desc>,
     ) -> Self::DataUniform<'_> {
         &this.data_uniform
+    }
+
+    fn build_attached_renderer<Desc: InvariantShapeDescriptor + ?Sized>(
+        geometry: &Desc::Geometry,
+        settings: &Desc::Settings,
+        transform: &Self::TransformUniform,
+        ctxt: &Self::Context<'_>,
+    ) -> Self::AttachedRenderer<Desc> {
+        AttachedRenderer::new(
+            ctxt.device,
+            geometry,
+            settings,
+            transform,
+            ctxt.camera_bind_group_layout,
+            ctxt.counter_bind_group_layout,
+        )
     }
 }
 
@@ -651,8 +670,9 @@ impl ContextHolder for InnerBareState {
     type Context<'a> = &'a mut Settings;
     type ExtendedContext<'a> = ();
     type DataUniform<'a> = ();
-    type TransformLayout = ();
+    type TransformUniform = ();
     type Renderer<Desc: InvariantShapeDescriptor + ?Sized> = ();
+    type AttachedRenderer<Desc: InvariantShapeDescriptor + ?Sized> = ();
 
     fn get_settings<'a>(ctxt: &'a Self::Context<'_>) -> &'a Settings {
         ctxt
@@ -715,6 +735,15 @@ impl ContextHolder for InnerBareState {
     fn get_renderer_data_uniform<Desc: InvariantShapeDescriptor + ?Sized>(
         _this: &'_ Self::Renderer<Desc>,
     ) -> Self::DataUniform<'_> {
+        ()
+    }
+
+    fn build_attached_renderer<Desc: InvariantShapeDescriptor + ?Sized>(
+        _geometry: &Desc::Geometry,
+        _settings: &Desc::Settings,
+        _transform: &Self::TransformUniform,
+        _ctxt: &Self::Context<'_>,
+    ) -> Self::AttachedRenderer<Desc> {
         ()
     }
 }

@@ -761,29 +761,20 @@ impl RenderPipeline for SegmentPipeline {
 
 type SegmentRenderer = Renderer<SegmentDesc>;
 
-impl SegmentRenderer {
+impl AttachedRenderer<SegmentDesc> {
     pub(crate) fn render_attached<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
     {
         render_pass.set_bind_group(2, &self.settings_uniform.bind_group, &[]);
-        if let Some(uniform) = &self.data_uniform {
-            render_pass.set_bind_group(3, &uniform.bind_group, &[]);
-        }
         render_pass.set_pipeline(&self.pipeline.sphere_render_pipeline);
         render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.fixed.center_buffer.slice(..));
-        if let Some(data_buffer) = &self.data_buffer.sphere_data_buffer {
-            render_pass.set_vertex_buffer(2, data_buffer.slice(..));
-        }
         render_pass.draw(0..4, 0..(self.fixed.positions_len));
 
         render_pass.set_pipeline(&self.pipeline.cylinder_render_pipeline);
         render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.fixed.cylinder_buffer.slice(..));
-        if let Some(data_buffer) = &self.data_buffer.cylinder_data_buffer {
-            render_pass.set_vertex_buffer(2, data_buffer.slice(..));
-        }
         render_pass.draw(0..4, 0..(self.fixed.connections_len));
     }
 }
@@ -849,7 +840,7 @@ impl ShapeDescriptor<InnerBareState> for SegmentDesc {
 }
 
 impl ShapeDescriptor<InnerGraphicalState> for SegmentDesc {
-    type AttachedGeometry = EmptyAttached;
+    type AttachedGeometry = ();
 }
 
 pub type Segment<S> = Shape<S, SegmentDesc>;

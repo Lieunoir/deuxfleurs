@@ -17,6 +17,12 @@ pub struct Renderer<Desc: InvariantShapeDescriptor + ?Sized> {
     pub(crate) data_uniform: Option<DataUniform>,
 }
 
+pub struct AttachedRenderer<Desc: InvariantShapeDescriptor + ?Sized> {
+    pub(crate) fixed: Desc::FixedBuffer,
+    pub(crate) pipeline: Desc::Pipeline,
+    pub(crate) settings_uniform: DataUniform,
+}
+
 impl<Desc: InvariantShapeDescriptor + ?Sized> Renderer<Desc> {
     pub(crate) fn new(
         device: &wgpu::Device,
@@ -158,5 +164,35 @@ pub trait Render {
     where
         'a: 'b,
     {
+    }
+}
+
+impl<Desc: InvariantShapeDescriptor + ?Sized> AttachedRenderer<Desc> {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        geometry: &Desc::Geometry,
+        settings: &Desc::Settings,
+        transform_uniform: &DataUniform,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
+        counter_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let fixed = Desc::FixedBuffer::initialize(device, geometry);
+        let settings_uniform = settings.build_uniform(device).unwrap();
+        let pipeline = RenderPipeline::new(
+            device,
+            None,
+            geometry,
+            settings,
+            &transform_uniform,
+            &settings_uniform,
+            None,
+            camera_bind_group_layout,
+            counter_bind_group_layout,
+        );
+        Self {
+            fixed,
+            pipeline,
+            settings_uniform,
+        }
     }
 }
