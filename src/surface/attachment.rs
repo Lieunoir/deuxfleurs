@@ -9,9 +9,16 @@ use crate::{
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
 #[cfg(feature = "saves")]
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "saves",
+    serde(bound = "VectorField<S>: Serialize + DeserializeOwned,
+    Points<S>: Serialize + DeserializeOwned,
+    Segments<S>: Serialize + DeserializeOwned,
+")
+)]
 pub enum SurfaceAttachment<S: ContextHolder + ?Sized> {
     VectorField(VectorField<S>),
     Points(Points<S>),

@@ -8,7 +8,7 @@ pub(crate) use data::*;
 use indexmap::IndexMap;
 pub(crate) use renderer::*;
 #[cfg(feature = "saves")]
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::ops::Deref;
 pub(crate) mod data;
 pub(crate) mod renderer;
@@ -33,6 +33,15 @@ pub trait ShapeDescriptor {
 }
 
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "saves",
+    serde(bound = "Desc::Geometry: Serialize + DeserializeOwned,
+        S::Renderer<Desc>: Serialize + DeserializeOwned,
+        Desc::Settings: Serialize + DeserializeOwned,
+        Desc::Data: Serialize + DeserializeOwned,
+        Desc::Attached<S>: Serialize + DeserializeOwned,
+        ")
+)]
 pub struct Shape<S: ContextHolder, Desc: ShapeDescriptor + ?Sized> {
     pub(crate) name: String,
     pub(crate) geometry: Desc::Geometry,
@@ -172,22 +181,15 @@ where
     #[cfg(feature = "saves")]
     pub(crate) fn downgrade(&self) -> UninitedShape<Desc>
     where
-        Desc: ShapeDescriptor<InnerBareState>,
-        <Desc as ShapeDescriptor>::Attached<InnerBareState>: GraphicalAttachedGeometry<
-            UpgradedAttachedGeometry = <Desc as ShapeDescriptor>::AttachedGeometry<
-                InnerGraphicalState,
-            >,
+        Desc: ShapeDescriptor,
+        <Desc as ShapeDescriptor>::Attached<InnerGraphicalState>: GraphicalAttachedGeometry<
+            Downgraded = <Desc as ShapeDescriptor>::Attached<InnerBareState>,
         >,
     {
         let attached_data = self
             .attached_data
             .iter()
-            .map(|(k, v)| {
-                (
-                    k.clone(),
-                    <Desc as ShapeDescriptor<InnerBareState>>::AttachedGeometry::downgrade(&v),
-                )
-            })
+            .map(|(k, v)| (k.clone(), v.downgrade()))
             .collect();
         UninitedShape {
             name: self.name.clone(),

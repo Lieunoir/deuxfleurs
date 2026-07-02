@@ -35,6 +35,7 @@ pub struct VFPipeline {
 }
 
 #[derive(Clone)]
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
 pub struct VFGeometry {
     vectors: Vec<[f32; 3]>,
     offsets: Vec<[f32; 3]>,

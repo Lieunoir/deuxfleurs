@@ -1080,7 +1080,6 @@ impl InnerGraphicalState {
                         &self.device,
                         &self.camera_bind_group_layout,
                         &self.picker.bind_group_layout,
-                        self.config.format,
                     ),
                 )
             })
@@ -1095,7 +1094,6 @@ impl InnerGraphicalState {
                         &self.device,
                         &self.camera_bind_group_layout,
                         &self.picker.bind_group_layout,
-                        self.config.format,
                     ),
                 )
             })
@@ -1110,7 +1108,6 @@ impl InnerGraphicalState {
                         &self.device,
                         &self.camera_bind_group_layout,
                         &self.picker.bind_group_layout,
-                        self.config.format,
                     ),
                 )
             })

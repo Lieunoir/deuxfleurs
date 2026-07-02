@@ -10,6 +10,8 @@ use crate::{
     },
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
+#[cfg(feature = "saves")]
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 pub use vector_field::VectorFieldSettingsMut;
 pub(crate) use vector_field::{VectorField, VectorFieldSettings};
 
@@ -26,6 +28,14 @@ pub(crate) mod internal {
     }
 }
 
+#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "saves",
+    serde(bound = "Desc::Geometry: Serialize + DeserializeOwned,
+        S::AttachedRenderer<Desc>: Serialize + DeserializeOwned,
+        Desc::Settings: Serialize + DeserializeOwned,
+        ")
+)]
 pub struct Attachment<S: ContextHolder + ?Sized, Desc: ShapeDescriptor> {
     show: bool,
     settings: Desc::Settings,
