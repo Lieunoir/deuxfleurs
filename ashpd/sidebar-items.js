@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Error","PortalError","WindowIdentifier"],"fn":["is_sandboxed","register_host_app"],"mod":["desktop","documents","flatpak"],"struct":["ActivationToken","AppID","FilePath"],"type":["Pid","Result"]};

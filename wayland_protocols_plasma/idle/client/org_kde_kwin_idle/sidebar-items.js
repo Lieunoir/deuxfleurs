@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["REQ_GET_IDLE_TIMEOUT_OPCODE","REQ_GET_IDLE_TIMEOUT_SINCE"],"enum":["Event","Request"],"struct":["OrgKdeKwinIdle"]};

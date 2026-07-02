@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["REQ_CREATE_OPCODE","REQ_CREATE_SINCE","REQ_DESTROY_OPCODE","REQ_DESTROY_SINCE","REQ_UNSET_OPCODE","REQ_UNSET_SINCE"],"enum":["Event","Request"],"struct":["OrgKdeKwinShadowManager"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["REQ_GET_EXTENDED_SURFACE_OPCODE","REQ_GET_EXTENDED_SURFACE_SINCE"],"enum":["Event","Request"],"struct":["QtSurfaceExtension"]};

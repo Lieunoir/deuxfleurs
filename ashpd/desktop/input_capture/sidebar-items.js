@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ActivatedBarrier","Capabilities"],"struct":["Activated","Barrier","Deactivated","Disabled","InputCapture","Region","SetPointerBarriersResponse","Zones","ZonesChanged"],"type":["BarrierID"]};

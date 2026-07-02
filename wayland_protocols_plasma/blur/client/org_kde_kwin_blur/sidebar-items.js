@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["REQ_COMMIT_OPCODE","REQ_COMMIT_SINCE","REQ_RELEASE_OPCODE","REQ_RELEASE_SINCE","REQ_SET_REGION_OPCODE","REQ_SET_REGION_SINCE"],"enum":["Event","Request"],"struct":["OrgKdeKwinBlur"]};

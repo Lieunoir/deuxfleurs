@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"trait":["ActiveEventLoopExtWayland","EventLoopBuilderExtWayland","EventLoopExtWayland","MonitorHandleExtWayland","WindowAttributesExtWayland","WindowExtWayland"]};

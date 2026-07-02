@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["__interfaces","_wl_fullscreen_shell","_wl_fullscreen_shell_mode_feedback"]};

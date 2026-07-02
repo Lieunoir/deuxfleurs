@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["AT_FDCWD"],"struct":["AtFlags"]};

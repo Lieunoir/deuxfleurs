@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["capture_channel"],"struct":["CaptureState"],"type":["CaptureReceiver","CaptureSender"]};

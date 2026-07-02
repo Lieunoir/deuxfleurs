@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["android","ios","macos","modifier_supplement","orbital","pump_events","run_on_demand","scancode","startup_notify","wayland","web","windows","x11"]};

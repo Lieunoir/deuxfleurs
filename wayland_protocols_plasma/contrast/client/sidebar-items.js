@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["__interfaces","org_kde_kwin_contrast","org_kde_kwin_contrast_manager"]};

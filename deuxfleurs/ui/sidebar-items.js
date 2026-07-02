@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LoadObjButton"]};
+window.SIDEBAR_ITEMS = {"struct":["LoadSurfaceButton"]};

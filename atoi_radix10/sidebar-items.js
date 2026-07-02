@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["parse","parse_from_str"],"struct":["ParseIntErrorPublic"]};

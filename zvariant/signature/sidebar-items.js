@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Child","Error","Fields","Signature"],"fn":["validate"]};

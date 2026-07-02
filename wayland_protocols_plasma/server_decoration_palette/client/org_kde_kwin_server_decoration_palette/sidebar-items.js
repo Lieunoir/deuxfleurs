@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["REQ_RELEASE_OPCODE","REQ_RELEASE_SINCE","REQ_SET_PALETTE_OPCODE","REQ_SET_PALETTE_SINCE"],"enum":["Event","Request"],"struct":["OrgKdeKwinServerDecorationPalette"]};

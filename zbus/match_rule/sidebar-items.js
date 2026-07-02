@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["PathSpec"],"struct":["Builder","MatchRule","OwnedMatchRule"]};

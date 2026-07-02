@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["Device","UsbDevice","UsbDeviceEvent","UsbError","UsbEvent","UsbProxy"]};

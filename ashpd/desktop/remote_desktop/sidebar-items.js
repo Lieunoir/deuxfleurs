@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Axis","DeviceType","KeyState"],"struct":["RemoteDesktop","SelectedDevices"]};

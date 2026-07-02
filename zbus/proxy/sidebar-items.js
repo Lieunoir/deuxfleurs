@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["CacheProperties","MethodFlags"],"struct":["Builder","OwnerChangedStream","PropertyChanged","PropertyStream","Proxy","SignalStream"],"trait":["Defaults","ProxyImpl"]};

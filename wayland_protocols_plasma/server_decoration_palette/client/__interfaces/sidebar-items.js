@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"static":["ORG_KDE_KWIN_SERVER_DECORATION_PALETTE_INTERFACE","ORG_KDE_KWIN_SERVER_DECORATION_PALETTE_MANAGER_INTERFACE","org_kde_kwin_server_decoration_palette_interface","org_kde_kwin_server_decoration_palette_manager_interface"]};

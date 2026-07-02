@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["__interfaces","org_kde_kwin_appmenu","org_kde_kwin_appmenu_manager"]};

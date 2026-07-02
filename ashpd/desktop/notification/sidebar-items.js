@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ButtonPurpose","Category","DisplayHint","Priority"],"struct":["Action","Button","Notification","NotificationProxy"]};

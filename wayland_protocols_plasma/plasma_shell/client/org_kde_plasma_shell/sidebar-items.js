@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["REQ_GET_SURFACE_OPCODE","REQ_GET_SURFACE_SINCE"],"enum":["Event","Request"],"struct":["OrgKdePlasmaShell"]};

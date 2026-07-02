@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"static":["ZWP_TEXT_INPUT_MANAGER_V2_INTERFACE","ZWP_TEXT_INPUT_V2_INTERFACE","zwp_text_input_manager_v2_interface","zwp_text_input_v2_interface"]};

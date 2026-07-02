@@ -1,11 +1,11 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/segment/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-aa0817cf.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.90.0-nightly (b56aaec52 2025-07-24)" data-channel="nightly" data-search-js="search-fa3e91e5.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-673ee1e0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/segment/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::data::{internal::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/segment/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (4c9d2bfe4 2026-07-01)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/segment/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::data::{internal::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">crate</span>::picker::SegmentPicked;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::shape::<span class="kw-2">*</span>;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::texture;
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::types::{Color, Scalar};
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span><span class="kw">crate</span>::ui::UiDataElement;
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::util;
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::util::Vertex;
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span><span class="kw">crate</span>::util;
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::util::Vertex;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::window::{ContextHolder, InnerBareState, InnerGraphicalState};
 <a href=#9 id=9 data-nosnippet>9</a><span class="attr">#[cfg(feature = <span class="string">"saves"</span>)]
 <a href=#10 id=10 data-nosnippet>10</a></span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>wgpu::include_wgsl;
@@ -19,19 +19,19 @@
 <a href=#19 id=19 data-nosnippet>19</a>}
 <a href=#20 id=20 data-nosnippet>20</a>
 <a href=#21 id=21 data-nosnippet>21</a><span class="kw">impl </span>DataSettings <span class="kw">for </span>SegmentData {
-<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">fn </span>apply_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
-<a href=#23 id=23 data-nosnippet>23</a>        <span class="kw">match </span>(<span class="self">self</span>, other) {
-<a href=#24 id=24 data-nosnippet>24</a>            (SegmentData::Scalar(<span class="kw">_</span>, set1), SegmentData::Scalar(<span class="kw">_</span>, set2)) =&gt; <span class="kw-2">*</span>set1 = set2,
-<a href=#25 id=25 data-nosnippet>25</a>            <span class="kw">_ </span>=&gt; (),
+<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">fn </span>draw_ui(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>egui::Ui) -&gt; bool {
+<a href=#23 id=23 data-nosnippet>23</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#24 id=24 data-nosnippet>24</a>            SegmentData::Scalar(<span class="kw">_</span>, settings) =&gt; settings.draw_ui(ui),
+<a href=#25 id=25 data-nosnippet>25</a>            SegmentData::Color(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 <a href=#26 id=26 data-nosnippet>26</a>        }
 <a href=#27 id=27 data-nosnippet>27</a>    }
-<a href=#28 id=28 data-nosnippet>28</a>}
-<a href=#29 id=29 data-nosnippet>29</a>
-<a href=#30 id=30 data-nosnippet>30</a><span class="kw">impl </span>UiDataElement <span class="kw">for </span>SegmentData {
-<a href=#31 id=31 data-nosnippet>31</a>    <span class="kw">fn </span>draw_ui(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>egui::Ui) -&gt; bool {
-<a href=#32 id=32 data-nosnippet>32</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#33 id=33 data-nosnippet>33</a>            SegmentData::Scalar(<span class="kw">_</span>, settings) =&gt; settings.draw_ui(ui),
-<a href=#34 id=34 data-nosnippet>34</a>            SegmentData::Color(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#28 id=28 data-nosnippet>28</a>
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="kw">fn </span>apply_previous_settings(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
+<a href=#30 id=30 data-nosnippet>30</a>        <span class="kw">match </span>(<span class="self">self</span>, other) {
+<a href=#31 id=31 data-nosnippet>31</a>            (SegmentData::Scalar(<span class="kw">_</span>, set1), SegmentData::Scalar(<span class="kw">_</span>, set2)) =&gt; {
+<a href=#32 id=32 data-nosnippet>32</a>                set1.apply_previous_settings(set2)
+<a href=#33 id=33 data-nosnippet>33</a>            }
+<a href=#34 id=34 data-nosnippet>34</a>            <span class="kw">_ </span>=&gt; (),
 <a href=#35 id=35 data-nosnippet>35</a>        }
 <a href=#36 id=36 data-nosnippet>36</a>    }
 <a href=#37 id=37 data-nosnippet>37</a>}
@@ -561,19 +561,19 @@
 <a href=#561 id=561 data-nosnippet>561</a>        transform_uniform: <span class="kw-2">&amp;</span>DataUniform,
 <a href=#562 id=562 data-nosnippet>562</a>        settings_uniform: <span class="kw-2">&amp;</span>DataUniform,
 <a href=#563 id=563 data-nosnippet>563</a>        data_uniform: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DataUniform&gt;,
-<a href=#564 id=564 data-nosnippet>564</a>        camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#564 id=564 data-nosnippet>564</a>        camera_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
 <a href=#565 id=565 data-nosnippet>565</a>        counter_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
 <a href=#566 id=566 data-nosnippet>566</a>    ) -&gt; <span class="self">Self </span>{
 <a href=#567 id=567 data-nosnippet>567</a>        <span class="kw">let </span>bind_group_layouts = <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = data_uniform {
 <a href=#568 id=568 data-nosnippet>568</a>            <span class="macro">vec!</span>[
-<a href=#569 id=569 data-nosnippet>569</a>                camera_light_bind_group_layout,
+<a href=#569 id=569 data-nosnippet>569</a>                camera_bind_group_layout,
 <a href=#570 id=570 data-nosnippet>570</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
 <a href=#571 id=571 data-nosnippet>571</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
 <a href=#572 id=572 data-nosnippet>572</a>                <span class="kw-2">&amp;</span>uniform.bind_group_layout,
 <a href=#573 id=573 data-nosnippet>573</a>            ]
 <a href=#574 id=574 data-nosnippet>574</a>        } <span class="kw">else </span>{
 <a href=#575 id=575 data-nosnippet>575</a>            <span class="macro">vec!</span>[
-<a href=#576 id=576 data-nosnippet>576</a>                camera_light_bind_group_layout,
+<a href=#576 id=576 data-nosnippet>576</a>                camera_bind_group_layout,
 <a href=#577 id=577 data-nosnippet>577</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
 <a href=#578 id=578 data-nosnippet>578</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
 <a href=#579 id=579 data-nosnippet>579</a>            ]
@@ -588,7 +588,7 @@
 <a href=#588 id=588 data-nosnippet>588</a>            device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
 <a href=#589 id=589 data-nosnippet>589</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Sphere Cloud Picker Render Pipeline Layout"</span>),
 <a href=#590 id=590 data-nosnippet>590</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#591 id=591 data-nosnippet>591</a>                    camera_light_bind_group_layout,
+<a href=#591 id=591 data-nosnippet>591</a>                    camera_bind_group_layout,
 <a href=#592 id=592 data-nosnippet>592</a>                    counter_bind_group_layout,
 <a href=#593 id=593 data-nosnippet>593</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
 <a href=#594 id=594 data-nosnippet>594</a>                    <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
@@ -685,18 +685,18 @@
 <a href=#685 id=685 data-nosnippet>685</a>        transform_uniform: <span class="kw-2">&amp;</span>DataUniform,
 <a href=#686 id=686 data-nosnippet>686</a>        settings_uniform: <span class="kw-2">&amp;</span>DataUniform,
 <a href=#687 id=687 data-nosnippet>687</a>        data_uniform: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DataUniform&gt;,
-<a href=#688 id=688 data-nosnippet>688</a>        camera_light_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#688 id=688 data-nosnippet>688</a>        camera_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
 <a href=#689 id=689 data-nosnippet>689</a>    ) {
 <a href=#690 id=690 data-nosnippet>690</a>        <span class="kw">let </span>bind_group_layouts = <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = data_uniform {
 <a href=#691 id=691 data-nosnippet>691</a>            <span class="macro">vec!</span>[
-<a href=#692 id=692 data-nosnippet>692</a>                camera_light_bind_group_layout,
+<a href=#692 id=692 data-nosnippet>692</a>                camera_bind_group_layout,
 <a href=#693 id=693 data-nosnippet>693</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
 <a href=#694 id=694 data-nosnippet>694</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
 <a href=#695 id=695 data-nosnippet>695</a>                <span class="kw-2">&amp;</span>uniform.bind_group_layout,
 <a href=#696 id=696 data-nosnippet>696</a>            ]
 <a href=#697 id=697 data-nosnippet>697</a>        } <span class="kw">else </span>{
 <a href=#698 id=698 data-nosnippet>698</a>            <span class="macro">vec!</span>[
-<a href=#699 id=699 data-nosnippet>699</a>                camera_light_bind_group_layout,
+<a href=#699 id=699 data-nosnippet>699</a>                camera_bind_group_layout,
 <a href=#700 id=700 data-nosnippet>700</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
 <a href=#701 id=701 data-nosnippet>701</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
 <a href=#702 id=702 data-nosnippet>702</a>            ]
@@ -759,139 +759,135 @@
 <a href=#759 id=759 data-nosnippet>759</a>    }
 <a href=#760 id=760 data-nosnippet>760</a>}
 <a href=#761 id=761 data-nosnippet>761</a>
-<a href=#762 id=762 data-nosnippet>762</a><span class="kw">type </span>SegmentRenderer = Renderer&lt;SegmentFixedRenderer, SegmentDataBuffer, SegmentPipeline&gt;;
+<a href=#762 id=762 data-nosnippet>762</a><span class="kw">type </span>SegmentRenderer = Renderer&lt;SegmentDesc&gt;;
 <a href=#763 id=763 data-nosnippet>763</a>
-<a href=#764 id=764 data-nosnippet>764</a><span class="kw">impl </span>SegmentRenderer {
-<a href=#765 id=765 data-nosnippet>765</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>render_attached&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
+<a href=#764 id=764 data-nosnippet>764</a><span class="kw">impl </span>RenderAttached <span class="kw">for </span>AttachedRenderer&lt;SegmentDesc&gt; {
+<a href=#765 id=765 data-nosnippet>765</a>    <span class="kw">fn </span>render_attached&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
 <a href=#766 id=766 data-nosnippet>766</a>    <span class="kw">where
 <a href=#767 id=767 data-nosnippet>767</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
 <a href=#768 id=768 data-nosnippet>768</a>    {
 <a href=#769 id=769 data-nosnippet>769</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#770 id=770 data-nosnippet>770</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_uniform {
-<a href=#771 id=771 data-nosnippet>771</a>            render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span>uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#772 id=772 data-nosnippet>772</a>        }
-<a href=#773 id=773 data-nosnippet>773</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
-<a href=#774 id=774 data-nosnippet>774</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#775 id=775 data-nosnippet>775</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
-<a href=#776 id=776 data-nosnippet>776</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.sphere_data_buffer {
-<a href=#777 id=777 data-nosnippet>777</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
-<a href=#778 id=778 data-nosnippet>778</a>        }
-<a href=#779 id=779 data-nosnippet>779</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
-<a href=#780 id=780 data-nosnippet>780</a>
-<a href=#781 id=781 data-nosnippet>781</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.cylinder_render_pipeline);
-<a href=#782 id=782 data-nosnippet>782</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#783 id=783 data-nosnippet>783</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.cylinder_buffer.slice(..));
-<a href=#784 id=784 data-nosnippet>784</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.cylinder_data_buffer {
-<a href=#785 id=785 data-nosnippet>785</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
-<a href=#786 id=786 data-nosnippet>786</a>        }
-<a href=#787 id=787 data-nosnippet>787</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.connections_len));
-<a href=#788 id=788 data-nosnippet>788</a>    }
-<a href=#789 id=789 data-nosnippet>789</a>}
-<a href=#790 id=790 data-nosnippet>790</a>
-<a href=#791 id=791 data-nosnippet>791</a><span class="kw">impl </span>Render <span class="kw">for </span>SegmentRenderer {
-<a href=#792 id=792 data-nosnippet>792</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
-<a href=#793 id=793 data-nosnippet>793</a>    <span class="kw">where
-<a href=#794 id=794 data-nosnippet>794</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
-<a href=#795 id=795 data-nosnippet>795</a>    {
-<a href=#796 id=796 data-nosnippet>796</a>        render_pass.set_bind_group(<span class="number">1</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#797 id=797 data-nosnippet>797</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#798 id=798 data-nosnippet>798</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_uniform {
-<a href=#799 id=799 data-nosnippet>799</a>            render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span>uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#800 id=800 data-nosnippet>800</a>        }
-<a href=#801 id=801 data-nosnippet>801</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
-<a href=#802 id=802 data-nosnippet>802</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#803 id=803 data-nosnippet>803</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
-<a href=#804 id=804 data-nosnippet>804</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.sphere_data_buffer {
-<a href=#805 id=805 data-nosnippet>805</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
-<a href=#806 id=806 data-nosnippet>806</a>        }
-<a href=#807 id=807 data-nosnippet>807</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
+<a href=#770 id=770 data-nosnippet>770</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
+<a href=#771 id=771 data-nosnippet>771</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#772 id=772 data-nosnippet>772</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
+<a href=#773 id=773 data-nosnippet>773</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
+<a href=#774 id=774 data-nosnippet>774</a>
+<a href=#775 id=775 data-nosnippet>775</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.cylinder_render_pipeline);
+<a href=#776 id=776 data-nosnippet>776</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#777 id=777 data-nosnippet>777</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.cylinder_buffer.slice(..));
+<a href=#778 id=778 data-nosnippet>778</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.connections_len));
+<a href=#779 id=779 data-nosnippet>779</a>    }
+<a href=#780 id=780 data-nosnippet>780</a>}
+<a href=#781 id=781 data-nosnippet>781</a>
+<a href=#782 id=782 data-nosnippet>782</a><span class="kw">impl </span>Render <span class="kw">for </span>SegmentRenderer {
+<a href=#783 id=783 data-nosnippet>783</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
+<a href=#784 id=784 data-nosnippet>784</a>    <span class="kw">where
+<a href=#785 id=785 data-nosnippet>785</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
+<a href=#786 id=786 data-nosnippet>786</a>    {
+<a href=#787 id=787 data-nosnippet>787</a>        render_pass.set_bind_group(<span class="number">1</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#788 id=788 data-nosnippet>788</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#789 id=789 data-nosnippet>789</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_uniform {
+<a href=#790 id=790 data-nosnippet>790</a>            render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span>uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#791 id=791 data-nosnippet>791</a>        }
+<a href=#792 id=792 data-nosnippet>792</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
+<a href=#793 id=793 data-nosnippet>793</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#794 id=794 data-nosnippet>794</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
+<a href=#795 id=795 data-nosnippet>795</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.sphere_data_buffer {
+<a href=#796 id=796 data-nosnippet>796</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
+<a href=#797 id=797 data-nosnippet>797</a>        }
+<a href=#798 id=798 data-nosnippet>798</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
+<a href=#799 id=799 data-nosnippet>799</a>
+<a href=#800 id=800 data-nosnippet>800</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.cylinder_render_pipeline);
+<a href=#801 id=801 data-nosnippet>801</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#802 id=802 data-nosnippet>802</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.cylinder_buffer.slice(..));
+<a href=#803 id=803 data-nosnippet>803</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.cylinder_data_buffer {
+<a href=#804 id=804 data-nosnippet>804</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
+<a href=#805 id=805 data-nosnippet>805</a>        }
+<a href=#806 id=806 data-nosnippet>806</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.connections_len));
+<a href=#807 id=807 data-nosnippet>807</a>    }
 <a href=#808 id=808 data-nosnippet>808</a>
-<a href=#809 id=809 data-nosnippet>809</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.cylinder_render_pipeline);
-<a href=#810 id=810 data-nosnippet>810</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#811 id=811 data-nosnippet>811</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.cylinder_buffer.slice(..));
-<a href=#812 id=812 data-nosnippet>812</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.cylinder_data_buffer {
-<a href=#813 id=813 data-nosnippet>813</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
-<a href=#814 id=814 data-nosnippet>814</a>        }
-<a href=#815 id=815 data-nosnippet>815</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.connections_len));
-<a href=#816 id=816 data-nosnippet>816</a>    }
-<a href=#817 id=817 data-nosnippet>817</a>
-<a href=#818 id=818 data-nosnippet>818</a>    <span class="kw">fn </span>render_picker&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
-<a href=#819 id=819 data-nosnippet>819</a>    <span class="kw">where
-<a href=#820 id=820 data-nosnippet>820</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
-<a href=#821 id=821 data-nosnippet>821</a>    {
-<a href=#822 id=822 data-nosnippet>822</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#823 id=823 data-nosnippet>823</a>        render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#824 id=824 data-nosnippet>824</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_picker_render_pipeline);
-<a href=#825 id=825 data-nosnippet>825</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#826 id=826 data-nosnippet>826</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
-<a href=#827 id=827 data-nosnippet>827</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
+<a href=#809 id=809 data-nosnippet>809</a>    <span class="kw">fn </span>render_picker&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
+<a href=#810 id=810 data-nosnippet>810</a>    <span class="kw">where
+<a href=#811 id=811 data-nosnippet>811</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
+<a href=#812 id=812 data-nosnippet>812</a>    {
+<a href=#813 id=813 data-nosnippet>813</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#814 id=814 data-nosnippet>814</a>        render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#815 id=815 data-nosnippet>815</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_picker_render_pipeline);
+<a href=#816 id=816 data-nosnippet>816</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#817 id=817 data-nosnippet>817</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
+<a href=#818 id=818 data-nosnippet>818</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
+<a href=#819 id=819 data-nosnippet>819</a>
+<a href=#820 id=820 data-nosnippet>820</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.cylinder_picker_render_pipeline);
+<a href=#821 id=821 data-nosnippet>821</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#822 id=822 data-nosnippet>822</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.cylinder_buffer.slice(..));
+<a href=#823 id=823 data-nosnippet>823</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.connections_len));
+<a href=#824 id=824 data-nosnippet>824</a>    }
+<a href=#825 id=825 data-nosnippet>825</a>}
+<a href=#826 id=826 data-nosnippet>826</a>
+<a href=#827 id=827 data-nosnippet>827</a><span class="kw">pub struct </span>SegmentDesc;
 <a href=#828 id=828 data-nosnippet>828</a>
-<a href=#829 id=829 data-nosnippet>829</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.cylinder_picker_render_pipeline);
-<a href=#830 id=830 data-nosnippet>830</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#831 id=831 data-nosnippet>831</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.cylinder_buffer.slice(..));
-<a href=#832 id=832 data-nosnippet>832</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.connections_len));
-<a href=#833 id=833 data-nosnippet>833</a>    }
-<a href=#834 id=834 data-nosnippet>834</a>}
-<a href=#835 id=835 data-nosnippet>835</a>
-<a href=#836 id=836 data-nosnippet>836</a><span class="kw">pub type </span>Segment&lt;Renderer, AttachedData&gt; =
-<a href=#837 id=837 data-nosnippet>837</a>    Shape&lt;SegmentGeometry, Renderer, PCSettings, SegmentData, AttachedData&gt;;
+<a href=#829 id=829 data-nosnippet>829</a><span class="kw">impl </span>ShapeDescriptor <span class="kw">for </span>SegmentDesc {
+<a href=#830 id=830 data-nosnippet>830</a>    <span class="kw">type </span>Data = SegmentData;
+<a href=#831 id=831 data-nosnippet>831</a>    <span class="kw">type </span>Geometry = SegmentGeometry;
+<a href=#832 id=832 data-nosnippet>832</a>    <span class="kw">type </span>Settings = PCSettings;
+<a href=#833 id=833 data-nosnippet>833</a>    <span class="kw">type </span>DataBuffer = SegmentDataBuffer;
+<a href=#834 id=834 data-nosnippet>834</a>    <span class="kw">type </span>FixedBuffer = SegmentFixedRenderer;
+<a href=#835 id=835 data-nosnippet>835</a>    <span class="kw">type </span>Pipeline = SegmentPipeline;
+<a href=#836 id=836 data-nosnippet>836</a>    <span class="kw">type </span>Attached&lt;S: ContextHolder&gt; = ();
+<a href=#837 id=837 data-nosnippet>837</a>}
 <a href=#838 id=838 data-nosnippet>838</a>
-<a href=#839 id=839 data-nosnippet>839</a><span class="kw">pub type </span>UninitedSegment = Segment&lt;(), ()&gt;;
-<a href=#840 id=840 data-nosnippet>840</a><span class="kw">pub type </span>DisplaySegment = Segment&lt;SegmentRenderer, EmptyAttached&gt;;
-<a href=#841 id=841 data-nosnippet>841</a>
-<a href=#842 id=842 data-nosnippet>842</a><span class="kw">pub type </span>SegmentMut&lt;<span class="lifetime">'a</span>, Renderer, AttachedData, Context&gt; =
-<a href=#843 id=843 data-nosnippet>843</a>    ShapeMut&lt;<span class="lifetime">'a</span>, Segment&lt;Renderer, AttachedData&gt;, Context&gt;;
-<a href=#844 id=844 data-nosnippet>844</a>
-<a href=#845 id=845 data-nosnippet>845</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, Renderer, AttachedData, Ctxt: Context&gt; SegmentMut&lt;<span class="lifetime">'a</span>, Renderer, AttachedData, Ctxt&gt;
-<a href=#846 id=846 data-nosnippet>846</a><span class="kw">where
-<a href=#847 id=847 data-nosnippet>847</a>    </span>Segment&lt;Renderer, AttachedData&gt;: ShapeTrait&lt;Ctxt, Data = SegmentData&gt;,
-<a href=#848 id=848 data-nosnippet>848</a>{
-<a href=#849 id=849 data-nosnippet>849</a>    <span class="kw">pub fn </span>set_radius(<span class="kw-2">&amp;mut </span><span class="self">self</span>, radius: f32, relative: bool) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
-<a href=#850 id=850 data-nosnippet>850</a>        <span class="kw">if </span>relative {
-<a href=#851 id=851 data-nosnippet>851</a>            <span class="self">self</span>.inner.settings.radius.set_relative(radius);
-<a href=#852 id=852 data-nosnippet>852</a>        } <span class="kw">else </span>{
-<a href=#853 id=853 data-nosnippet>853</a>            <span class="self">self</span>.inner.settings.radius.set_absolute(radius);
-<a href=#854 id=854 data-nosnippet>854</a>        }
-<a href=#855 id=855 data-nosnippet>855</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
-<a href=#856 id=856 data-nosnippet>856</a>    }
-<a href=#857 id=857 data-nosnippet>857</a>
-<a href=#858 id=858 data-nosnippet>858</a>    <span class="kw">pub fn </span>set_color(<span class="kw-2">&amp;mut </span><span class="self">self</span>, color: [f32; <span class="number">4</span>]) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
-<a href=#859 id=859 data-nosnippet>859</a>        <span class="self">self</span>.inner.settings.color.color = color;
-<a href=#860 id=860 data-nosnippet>860</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>);
-<a href=#861 id=861 data-nosnippet>861</a>        <span class="self">self
-<a href=#862 id=862 data-nosnippet>862</a>    </span>}
-<a href=#863 id=863 data-nosnippet>863</a>
-<a href=#864 id=864 data-nosnippet>864</a>    <span class="kw">pub fn </span>add_scalar&lt;S: Scalar&gt;(
-<a href=#865 id=865 data-nosnippet>865</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#866 id=866 data-nosnippet>866</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
-<a href=#867 id=867 data-nosnippet>867</a>        datas: S,
-<a href=#868 id=868 data-nosnippet>868</a>    ) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, Ctxt&gt; {
-<a href=#869 id=869 data-nosnippet>869</a>        <span class="kw">let </span>datas = datas.into();
-<a href=#870 id=870 data-nosnippet>870</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#871 id=871 data-nosnippet>871</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, <span class="self">self</span>.context.get_settings());
-<a href=#872 id=872 data-nosnippet>872</a>        <span class="self">self</span>.add_data(name.into(), SegmentData::Scalar(datas, settings))
-<a href=#873 id=873 data-nosnippet>873</a>            .convert(|data| {
-<a href=#874 id=874 data-nosnippet>874</a>                <span class="kw">if let </span>SegmentData::Scalar(<span class="kw">_</span>, settings) = data {
-<a href=#875 id=875 data-nosnippet>875</a>                    settings
-<a href=#876 id=876 data-nosnippet>876</a>                } <span class="kw">else </span>{
-<a href=#877 id=877 data-nosnippet>877</a>                    <span class="macro">panic!</span>()
-<a href=#878 id=878 data-nosnippet>878</a>                }
-<a href=#879 id=879 data-nosnippet>879</a>            })
-<a href=#880 id=880 data-nosnippet>880</a>    }
-<a href=#881 id=881 data-nosnippet>881</a>
-<a href=#882 id=882 data-nosnippet>882</a>    <span class="kw">pub fn </span>add_colors&lt;C: Color&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw">impl </span>Into&lt;String&gt;, datas: C) {
-<a href=#883 id=883 data-nosnippet>883</a>        <span class="kw">let </span>datas = datas.into();
-<a href=#884 id=884 data-nosnippet>884</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#885 id=885 data-nosnippet>885</a>        <span class="self">self</span>.add_data(name.into(), SegmentData::Color(datas));
-<a href=#886 id=886 data-nosnippet>886</a>    }
-<a href=#887 id=887 data-nosnippet>887</a>}
-<a href=#888 id=888 data-nosnippet>888</a>
-<a href=#889 id=889 data-nosnippet>889</a><span class="kw">impl </span>DisplaySegment {
-<a href=#890 id=890 data-nosnippet>890</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_element(<span class="kw-2">&amp;</span><span class="self">self</span>, index: u32) -&gt; SegmentPicked {
-<a href=#891 id=891 data-nosnippet>891</a>        <span class="kw">if </span>index &lt; <span class="self">self</span>.geometry().positions.len() <span class="kw">as </span>u32 {
-<a href=#892 id=892 data-nosnippet>892</a>            SegmentPicked::Point(index)
-<a href=#893 id=893 data-nosnippet>893</a>        } <span class="kw">else </span>{
-<a href=#894 id=894 data-nosnippet>894</a>            SegmentPicked::Edge(index - <span class="self">self</span>.geometry().positions.len() <span class="kw">as </span>u32)
-<a href=#895 id=895 data-nosnippet>895</a>        }
-<a href=#896 id=896 data-nosnippet>896</a>    }
-<a href=#897 id=897 data-nosnippet>897</a>}</code></pre></div></section></main></body></html>
+<a href=#839 id=839 data-nosnippet>839</a><span class="kw">pub type </span>Segment&lt;S&gt; = Shape&lt;S, SegmentDesc&gt;;
+<a href=#840 id=840 data-nosnippet>840</a><span class="kw">pub type </span>UninitedSegment = Segment&lt;InnerBareState&gt;;
+<a href=#841 id=841 data-nosnippet>841</a><span class="kw">pub type </span>DisplaySegment = Segment&lt;InnerGraphicalState&gt;;
+<a href=#842 id=842 data-nosnippet>842</a><span class="kw">pub type </span>SegmentMut&lt;<span class="lifetime">'a</span>, S&gt; = ShapeMut&lt;<span class="lifetime">'a</span>, Segment&lt;S&gt;, S&gt;;
+<a href=#843 id=843 data-nosnippet>843</a>
+<a href=#844 id=844 data-nosnippet>844</a><span class="kw">impl</span>&lt;S: ContextHolder&gt; SegmentMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#845 id=845 data-nosnippet>845</a>    <span class="kw">pub fn </span>set_radius(<span class="kw-2">&amp;mut </span><span class="self">self</span>, radius: f32, relative: bool) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+<a href=#846 id=846 data-nosnippet>846</a>        <span class="kw">if </span>relative {
+<a href=#847 id=847 data-nosnippet>847</a>            <span class="self">self</span>.inner.settings.radius.set_relative(radius);
+<a href=#848 id=848 data-nosnippet>848</a>        } <span class="kw">else </span>{
+<a href=#849 id=849 data-nosnippet>849</a>            <span class="self">self</span>.inner.settings.radius.set_absolute(radius);
+<a href=#850 id=850 data-nosnippet>850</a>        }
+<a href=#851 id=851 data-nosnippet>851</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
+<a href=#852 id=852 data-nosnippet>852</a>    }
+<a href=#853 id=853 data-nosnippet>853</a>
+<a href=#854 id=854 data-nosnippet>854</a>    <span class="kw">pub fn </span>set_color(<span class="kw-2">&amp;mut </span><span class="self">self</span>, color: [f32; <span class="number">4</span>]) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+<a href=#855 id=855 data-nosnippet>855</a>        <span class="self">self</span>.inner.settings.color.color = color;
+<a href=#856 id=856 data-nosnippet>856</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
+<a href=#857 id=857 data-nosnippet>857</a>    }
+<a href=#858 id=858 data-nosnippet>858</a>
+<a href=#859 id=859 data-nosnippet>859</a>    <span class="kw">pub fn </span>add_scalar(
+<a href=#860 id=860 data-nosnippet>860</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#861 id=861 data-nosnippet>861</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
+<a href=#862 id=862 data-nosnippet>862</a>        datas: <span class="kw">impl </span>Scalar,
+<a href=#863 id=863 data-nosnippet>863</a>    ) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#864 id=864 data-nosnippet>864</a>        <span class="kw">let </span>datas = datas.into();
+<a href=#865 id=865 data-nosnippet>865</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
+<a href=#866 id=866 data-nosnippet>866</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, S::get_settings(<span class="kw-2">&amp;</span><span class="self">self</span>.context));
+<a href=#867 id=867 data-nosnippet>867</a>        <span class="self">self</span>.add_data(name.into(), SegmentData::Scalar(datas, settings))
+<a href=#868 id=868 data-nosnippet>868</a>            .convert(|data| {
+<a href=#869 id=869 data-nosnippet>869</a>                <span class="kw">if let </span>SegmentData::Scalar(<span class="kw">_</span>, settings) = data {
+<a href=#870 id=870 data-nosnippet>870</a>                    settings
+<a href=#871 id=871 data-nosnippet>871</a>                } <span class="kw">else </span>{
+<a href=#872 id=872 data-nosnippet>872</a>                    <span class="macro">panic!</span>()
+<a href=#873 id=873 data-nosnippet>873</a>                }
+<a href=#874 id=874 data-nosnippet>874</a>            })
+<a href=#875 id=875 data-nosnippet>875</a>    }
+<a href=#876 id=876 data-nosnippet>876</a>
+<a href=#877 id=877 data-nosnippet>877</a>    <span class="kw">pub fn </span>add_colors(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw">impl </span>Into&lt;String&gt;, datas: <span class="kw">impl </span>Color) {
+<a href=#878 id=878 data-nosnippet>878</a>        <span class="kw">let </span>datas = datas.into();
+<a href=#879 id=879 data-nosnippet>879</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
+<a href=#880 id=880 data-nosnippet>880</a>        <span class="self">self</span>.add_data(name.into(), SegmentData::Color(datas));
+<a href=#881 id=881 data-nosnippet>881</a>    }
+<a href=#882 id=882 data-nosnippet>882</a>}
+<a href=#883 id=883 data-nosnippet>883</a>
+<a href=#884 id=884 data-nosnippet>884</a><span class="kw">impl </span>DisplaySegment {
+<a href=#885 id=885 data-nosnippet>885</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_element(<span class="kw-2">&amp;</span><span class="self">self</span>, index: u32) -&gt; SegmentPicked {
+<a href=#886 id=886 data-nosnippet>886</a>        <span class="kw">if </span>index &lt; <span class="self">self</span>.geometry().positions.len() <span class="kw">as </span>u32 {
+<a href=#887 id=887 data-nosnippet>887</a>            SegmentPicked::Point(index)
+<a href=#888 id=888 data-nosnippet>888</a>        } <span class="kw">else </span>{
+<a href=#889 id=889 data-nosnippet>889</a>            SegmentPicked::Edge(index - <span class="self">self</span>.geometry().positions.len() <span class="kw">as </span>u32)
+<a href=#890 id=890 data-nosnippet>890</a>        }
+<a href=#891 id=891 data-nosnippet>891</a>    }
+<a href=#892 id=892 data-nosnippet>892</a>}
+</code></pre></div></section></main></body></html>
