@@ -13,7 +13,7 @@ pub use wgpu::PowerPreference;
 pub struct Settings {
     //vsync: bool,
     //show_fps: bool,
-    /// Only redraw scene when window requires it
+    /// Only redraw scene when window asks for it
     pub lazy_draw: bool,
     /// Disable storing last redraw in buffer
     pub rerender: bool,

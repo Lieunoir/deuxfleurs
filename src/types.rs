@@ -171,7 +171,6 @@ impl Vertices for &Vec<[f64; 3]> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[cfg(feature = "ndarray")]
 impl Vertices for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 3]> {
@@ -182,7 +181,6 @@ impl Vertices for ndarray::Array2<f32> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[cfg(feature = "ndarray")]
 impl Vertices for ndarray::Array2<f64> {
     fn into(self) -> Vec<[f32; 3]> {
@@ -193,7 +191,6 @@ impl Vertices for ndarray::Array2<f64> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra")))]
 #[cfg(feature = "nalgebra")]
 impl Vertices for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 3]> {
@@ -229,7 +226,6 @@ impl Vertices2D for &Vec<[f64; 2]> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[cfg(feature = "ndarray")]
 impl Vertices2D for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 2]> {
@@ -240,7 +236,6 @@ impl Vertices2D for ndarray::Array2<f32> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra")))]
 #[cfg(feature = "nalgebra")]
 impl Vertices2D for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 2]> {
@@ -270,7 +265,6 @@ impl Scalar for &Vec<f64> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[cfg(feature = "ndarray")]
 impl Scalar for ndarray::Array1<f32> {
     fn into(self) -> Vec<f32> {
@@ -278,7 +272,6 @@ impl Scalar for ndarray::Array1<f32> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[cfg(feature = "ndarray")]
 impl Scalar for ndarray::Array1<f64> {
     fn into(self) -> Vec<f32> {
@@ -286,7 +279,6 @@ impl Scalar for ndarray::Array1<f64> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra")))]
 #[cfg(feature = "nalgebra")]
 impl Scalar for nalgebra::base::DVector<f32> {
     fn into(self) -> Vec<f32> {
@@ -320,7 +312,6 @@ impl Color for Vec<[f32; 3]> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[cfg(feature = "ndarray")]
 impl Color for ndarray::Array2<f32> {
     fn into(self) -> Vec<[f32; 3]> {
@@ -331,7 +322,6 @@ impl Color for ndarray::Array2<f32> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[cfg(feature = "ndarray")]
 impl Color for ndarray::Array2<f64> {
     fn into(self) -> Vec<[f32; 3]> {
@@ -342,7 +332,6 @@ impl Color for ndarray::Array2<f64> {
     }
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra")))]
 #[cfg(feature = "nalgebra")]
 impl Color for nalgebra::base::MatrixXx3<f32> {
     fn into(self) -> Vec<[f32; 3]> {

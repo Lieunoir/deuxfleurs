@@ -8,13 +8,12 @@ use egui::{
 };
 #[cfg(feature = "surface_button")]
 use egui::{Response, Widget};
-use egui_wgpu::{Renderer, ScreenDescriptor};
+use egui_wgpu::{Renderer, RendererOptions, ScreenDescriptor};
 use egui_winit::State;
 use indexmap::IndexMap;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
 
-#[cfg_attr(docsrs, doc(cfg(feature = "surface_button")))]
 #[cfg(feature = "surface_button")]
 /// When clicked, pops an interative window to load a mesh
 pub struct LoadSurfaceButton<'a, 'b, 'c> {
@@ -177,7 +176,13 @@ impl UI {
         target_format: wgpu::TextureFormat,
         scale_factor: f64,
     ) -> Self {
-        let rpass = Renderer::new(device, target_format, None, 1, true);
+        let options = RendererOptions {
+            msaa_samples: 1,
+            dithering: true,
+            depth_stencil_format: None,
+            predictable_texture_filtering: false,
+        };
+        let rpass = Renderer::new(device, target_format, options);
         let ctx = egui::Context::default();
         //TODO some kind of styling
         let visuals = blue_visuals();

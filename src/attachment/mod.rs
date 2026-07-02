@@ -45,9 +45,9 @@ pub struct Attachment<S: ContextHolder + ?Sized, Desc: ShapeDescriptor> {
     renderer: S::AttachedRenderer<Desc>,
 }
 
-pub type Points<S> = Attachment<S, PointCloudDesc>;
+pub(crate) type Points<S> = Attachment<S, PointCloudDesc>;
 pub type PointsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut crate::point_cloud::PCSettings, Ctxt>;
-pub type Segments<S> = Attachment<S, SegmentDesc>;
+pub(crate) type Segments<S> = Attachment<S, SegmentDesc>;
 pub type SegmentsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut crate::segment::PCSettings, Ctxt>;
 
 impl<Desc: ShapeDescriptor> Clone for Attachment<InnerBareState, Desc> {

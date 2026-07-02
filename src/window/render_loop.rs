@@ -85,6 +85,7 @@ impl InnerGraphicalState {
             .request_device(&wgpu::DeviceDescriptor {
                 label: None,
                 memory_hints: wgpu::MemoryHints::MemoryUsage,
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 required_features: GpuProfiler::ALL_WGPU_TIMER_FEATURES,
                 required_limits: if cfg!(target_arch = "wasm32") {
                     let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
@@ -714,6 +715,7 @@ impl InnerGraphicalState {
                             }),
                             store: wgpu::StoreOp::Store,
                         },
+                        depth_slice: None,
                     }),
                     Some(wgpu::RenderPassColorAttachment {
                         view: self.texture_buffer_pool.get_normals_view(),
@@ -727,6 +729,7 @@ impl InnerGraphicalState {
                             }),
                             store: wgpu::StoreOp::Store,
                         },
+                        depth_slice: None,
                     }),
                 ],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
@@ -780,6 +783,7 @@ impl InnerGraphicalState {
                         load: wgpu::LoadOp::Clear(color),
                         store: wgpu::StoreOp::Store,
                     },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
@@ -807,6 +811,7 @@ impl InnerGraphicalState {
                                 }),
                                 store: wgpu::StoreOp::Store,
                             },
+                            depth_slice: None,
                         })],
                         depth_stencil_attachment: None,
                         occlusion_query_set: None,
@@ -829,6 +834,7 @@ impl InnerGraphicalState {
                             load: wgpu::LoadOp::Load,
                             store: wgpu::StoreOp::Store,
                         },
+                        depth_slice: None,
                     })],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &self.texture_buffer_pool.get_depth_view(),
@@ -872,6 +878,7 @@ impl InnerGraphicalState {
                         load: wgpu::LoadOp::Clear(self.settings.background_color),
                         store: wgpu::StoreOp::Store,
                     },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
@@ -894,6 +901,7 @@ impl InnerGraphicalState {
                             load: wgpu::LoadOp::Load,
                             store: wgpu::StoreOp::Store,
                         },
+                        depth_slice: None,
                     })],
                     // Create a depth stencil buffer using the depth texture
                     depth_stencil_attachment: None,

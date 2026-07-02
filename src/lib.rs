@@ -62,7 +62,7 @@ pub mod internal {
 /// can then be used to register geometries and data. It then has
 /// to be ran to be displayed.
 ///
-/// Settings can also be parameterized by modifying [`get_settings_mut`]
+/// Settings can be obtained and modified using [`State::get_settings_mut`]
 #[must_use]
 pub fn init() -> InitialState {
     tracy_client::Client::start();

@@ -914,7 +914,6 @@ impl<T: StateTrait> State<T> {
     }
 
     /// Load app state from given file content.
-    #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", not(target_arch = "wasm32")))))]
     #[cfg(all(feature = "saves", not(target_arch = "wasm32")))]
     pub fn load_from_state_file(&mut self, path: impl AsRef<std::path::Path>) -> Result<(), ()> {
         let data = std::fs::read(path.as_ref()).map_err(|_| ())?;
@@ -922,14 +921,12 @@ impl<T: StateTrait> State<T> {
     }
 
     /// Load app state from given buffer.
-    #[cfg_attr(docsrs, doc(cfg(feature = "saves")))]
     #[cfg(feature = "saves")]
     pub fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()> {
         self.0.load_from_state_slice(data)
     }
 
     /// Save current state in cbor into chosen file.
-    #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", not(target_arch = "wasm32")))))]
     #[cfg(all(feature = "saves", not(target_arch = "wasm32")))]
     pub fn save_state_file(&self, path: impl AsRef<std::path::Path>) -> Result<(), ()> {
         let data = self.0.save_state_vec()?;
@@ -937,7 +934,6 @@ impl<T: StateTrait> State<T> {
     }
 
     /// Save current state in cbor, downloaded in browser.
-    #[cfg_attr(docsrs, doc(cfg(all(feature = "saves", target_arch = "wasm32"))))]
     #[cfg(all(feature = "saves", target_arch = "wasm32"))]
     pub fn save_state(&self) -> Result<(), ()> {
         let data = self.0.save_state_vec()?;
@@ -946,7 +942,6 @@ impl<T: StateTrait> State<T> {
     }
 
     /// Save current state in cbor into buffer.
-    #[cfg_attr(docsrs, doc(cfg(feature = "saves")))]
     #[cfg(feature = "saves")]
     pub fn save_state_vec(&self) -> Result<Vec<u8>, ()> {
         self.0.save_state_vec()
@@ -1023,7 +1018,6 @@ impl InitialState {
     /// # }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    #[cfg_attr(docsrs, doc(cfg(not(target_arch = "wasm32"))))]
     pub fn run_headless(self) -> RunningState {
         let inner = InnerGraphicalState::new(
             self.0.surfaces,
