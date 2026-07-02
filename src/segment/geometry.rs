@@ -761,8 +761,8 @@ impl RenderPipeline for SegmentPipeline {
 
 type SegmentRenderer = Renderer<SegmentDesc>;
 
-impl AttachedRenderer<SegmentDesc> {
-    pub(crate) fn render_attached<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+impl RenderAttached for AttachedRenderer<SegmentDesc> {
+    fn render_attached<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
         'a: 'b,
     {

@@ -1399,7 +1399,6 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                             &state.0.device,
                             &state.0.queue,
                             &state.0.camera_bind_group_layout,
-                            state.0.config.format,
                             &mut state.0.dirty,
                         );
                         ui.draw_callback(state, &mut self.callback);

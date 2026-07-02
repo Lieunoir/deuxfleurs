@@ -1,5 +1,4 @@
 use crate::Settings;
-use crate::attachment::GraphicalAttachment;
 use crate::attachment::internal::AttachmentPosition;
 use crate::data::TransformSettings;
 use crate::data::internal::{DataSettings, DataUniformBuilder};
@@ -107,11 +106,11 @@ pub type DisplayShape<Desc> = Shape<InnerGraphicalState, Desc>;
 
 impl<Desc: ShapeDescriptor> UninitedShape<Desc>
 where
-    Desc::Attached<InnerBareState>: NewAttachedGeometry,
+    Desc::Attached<InnerGraphicalState>: GraphicalAttachedGeometry,
     Desc: ShapeDescriptor<
-        Attached<InnerGraphicalState> = <<Desc as ShapeDescriptor>::Attached<
-            InnerBareState,
-        > as NewAttachedGeometry>::UpgradedAttachedGeometry,
+        Attached<InnerBareState> = <<Desc as ShapeDescriptor>::Attached<
+            InnerGraphicalState,
+        > as GraphicalAttachedGeometry>::Downgraded,
     >,
 {
     pub(crate) fn upgrade(
@@ -138,7 +137,8 @@ where
             .map(|(name, field)| {
                 (
                     name,
-                    field.init(
+                    Desc::Attached::<InnerGraphicalState>::init(
+                        field,
                         device,
                         camera_bind_group_layout,
                         &renderer.transform_uniform,
@@ -167,13 +167,13 @@ impl<Desc> DisplayShape<Desc>
 where
     Desc: ShapeDescriptor,
     Renderer<Desc>: Render,
-    Desc::Attached<InnerGraphicalState>: GraphicalAttachment,
+    Desc::Attached<InnerGraphicalState>: GraphicalAttachedGeometry,
 {
     #[cfg(feature = "saves")]
     pub(crate) fn downgrade(&self) -> UninitedShape<Desc>
     where
         Desc: ShapeDescriptor<InnerBareState>,
-        <Desc as ShapeDescriptor>::Attached<InnerBareState>: NewAttachedGeometry<
+        <Desc as ShapeDescriptor>::Attached<InnerBareState>: GraphicalAttachedGeometry<
             UpgradedAttachedGeometry = <Desc as ShapeDescriptor>::AttachedGeometry<
                 InnerGraphicalState,
             >,
@@ -210,7 +210,6 @@ where
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
         // While it may look like some graphical operations could be batched together,
@@ -286,14 +285,7 @@ where
                     });
                 })
                 .body(|ui| {
-                    field.draw_ui(
-                        ui,
-                        device,
-                        queue,
-                        camera_bind_group_layout,
-                        color_format,
-                        refresh_screen,
-                    );
+                    field.draw_ui(ui, queue, refresh_screen);
                 });
         }
     }

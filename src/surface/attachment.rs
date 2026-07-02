@@ -1,12 +1,11 @@
 use crate::{
     attachment::{
-        GraphicalAttachment, Points, Segments, VectorField, VectorFieldSettings,
-        internal::AttachmentPosition,
+        Points, Segments, VectorField, VectorFieldSettings, internal::AttachmentPosition,
     },
     data::internal::DataUniform,
     point_cloud::PCSettings,
     segment::PCSettings as SegmentSettings,
-    shape::{AttachedGeometry, NewAttachedGeometry},
+    shape::{AttachedGeometry, GraphicalAttachedGeometry},
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
 #[cfg(feature = "saves")]
@@ -123,50 +122,52 @@ impl<S: ContextHolder> AttachedGeometry<S> for SurfaceAttachment<S> {
     }
 }
 
-impl NewAttachedGeometry for SurfaceAttachment<InnerBareState> {
-    type UpgradedAttachedGeometry = SurfaceAttachment<InnerGraphicalState>;
+impl GraphicalAttachedGeometry for SurfaceAttachment<InnerGraphicalState> {
+    type Downgraded = SurfaceAttachment<InnerBareState>;
 
     fn init(
-        self,
+        this: Self::Downgraded,
         device: &wgpu::Device,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_uniform: &DataUniform,
-    ) -> Self::UpgradedAttachedGeometry {
+    ) -> Self {
+        match this {
+            SurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(VectorField::init(
+                v,
+                device,
+                camera_bind_group_layout,
+                transform_uniform,
+            )),
+            SurfaceAttachment::Points(p) => SurfaceAttachment::Points(Points::init(
+                p,
+                device,
+                camera_bind_group_layout,
+                transform_uniform,
+            )),
+            SurfaceAttachment::Segments(s) => SurfaceAttachment::Segments(Segments::init(
+                s,
+                device,
+                camera_bind_group_layout,
+                transform_uniform,
+            )),
+        }
+    }
+
+    fn downgrade(&self) -> Self::Downgraded {
         match self {
-            SurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.init(
-                device,
-                camera_bind_group_layout,
-                transform_uniform,
-            )),
-            SurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.init(
-                device,
-                camera_bind_group_layout,
-                transform_uniform,
-            )),
-            SurfaceAttachment::Segments(p) => SurfaceAttachment::Segments(p.init(
-                device,
-                camera_bind_group_layout,
-                transform_uniform,
-            )),
+            SurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.downgrade()),
+            SurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.downgrade()),
+            SurfaceAttachment::Segments(s) => SurfaceAttachment::Segments(s.downgrade()),
+        }
+    }
+    fn draw_ui(&mut self, ui: &mut egui::Ui, queue: &wgpu::Queue, refresh_screen: &mut bool) {
+        match self {
+            SurfaceAttachment::VectorField(v) => v.draw_ui(ui, queue, refresh_screen),
+            SurfaceAttachment::Points(p) => p.draw_ui(ui, queue, refresh_screen),
+            SurfaceAttachment::Segments(s) => s.draw_ui(ui, queue, refresh_screen),
         }
     }
 
-    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
-        match upgraded {
-            SurfaceAttachment::VectorField(v) => {
-                SurfaceAttachment::VectorField(VectorField::<InnerBareState>::downgrade(v))
-            }
-            SurfaceAttachment::Points(p) => {
-                SurfaceAttachment::Points(Points::<InnerBareState>::downgrade(p))
-            }
-            SurfaceAttachment::Segments(s) => {
-                SurfaceAttachment::Segments(Segments::<InnerBareState>::downgrade(s))
-            }
-        }
-    }
-}
-
-impl GraphicalAttachment for SurfaceAttachment<InnerGraphicalState> {
     fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
         match self {
             SurfaceAttachment::VectorField(v) => v.move_elements(queue, indices, pos),
@@ -175,51 +176,14 @@ impl GraphicalAttachment for SurfaceAttachment<InnerGraphicalState> {
         }
     }
 
-    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'c: 'd,
+        'a: 'b,
     {
         match self {
             SurfaceAttachment::VectorField(v) => v.render(render_pass),
             SurfaceAttachment::Points(p) => p.render(render_pass),
             SurfaceAttachment::Segments(s) => s.render(render_pass),
-        }
-    }
-
-    fn draw_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-        refresh_screen: &mut bool,
-    ) {
-        match self {
-            SurfaceAttachment::VectorField(v) => v.draw_ui(
-                ui,
-                device,
-                queue,
-                camera_bind_group_layout,
-                color_format,
-                refresh_screen,
-            ),
-            SurfaceAttachment::Points(p) => p.draw_ui(
-                ui,
-                device,
-                queue,
-                camera_bind_group_layout,
-                color_format,
-                refresh_screen,
-            ),
-            SurfaceAttachment::Segments(s) => s.draw_ui(
-                ui,
-                device,
-                queue,
-                camera_bind_group_layout,
-                color_format,
-                refresh_screen,
-            ),
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     Settings,
-    attachment::{GraphicalAttachment, internal::AttachmentPosition},
+    attachment::internal::AttachmentPosition,
     data::internal::DataUniform,
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
@@ -48,17 +48,25 @@ where
     }
 }
 
-pub trait NewAttachedGeometry {
-    type UpgradedAttachedGeometry;
+pub trait GraphicalAttachedGeometry {
+    type Downgraded;
 
     fn init(
-        self,
+        this: Self::Downgraded,
         device: &wgpu::Device,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_uniform: &DataUniform,
-    ) -> Self::UpgradedAttachedGeometry;
+    ) -> Self;
 
-    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self;
+    fn downgrade(&self) -> Self::Downgraded;
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui, queue: &wgpu::Queue, refresh_screen: &mut bool);
+
+    fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]);
+
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b;
 }
 
 impl<S: ContextHolder> AttachedGeometry<S> for () {
@@ -91,38 +99,29 @@ impl<S: ContextHolder> AttachedGeometry<S> for () {
     }
 }
 
-impl NewAttachedGeometry for () {
-    type UpgradedAttachedGeometry = ();
+impl GraphicalAttachedGeometry for () {
+    type Downgraded = ();
 
     fn init(
-        self,
+        _this: (),
         _device: &wgpu::Device,
         _camera_bind_group_layout: &wgpu::BindGroupLayout,
         _transform_uniform: &DataUniform,
-    ) -> Self::UpgradedAttachedGeometry {
+    ) -> Self {
         ()
     }
 
-    fn downgrade(_upgraded: &Self::UpgradedAttachedGeometry) -> Self {
+    fn downgrade(&self) -> Self::Downgraded {
         ()
     }
-}
 
-impl GraphicalAttachment for () {
-    fn draw_ui(
-        &mut self,
-        _ui: &mut egui::Ui,
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        _camera_bind_group_layout: &wgpu::BindGroupLayout,
-        _color_format: wgpu::TextureFormat,
-        _refresh_screen: &mut bool,
-    ) {
-    }
+    fn draw_ui(&mut self, _ui: &mut egui::Ui, _queue: &wgpu::Queue, _refresh_screen: &mut bool) {}
+
     fn move_elements(&mut self, _queue: &wgpu::Queue, _indices: &[u32], _pos: &[[f32; 3]]) {}
-    fn render<'c, 'd>(&'c self, _render_pass: &mut wgpu::RenderPass<'d>)
+
+    fn render<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'c: 'd,
+        'a: 'b,
     {
     }
 }

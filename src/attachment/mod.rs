@@ -1,19 +1,15 @@
-mod points;
-mod segments;
 mod vector_field;
 use crate::{
     attachment::internal::AttachmentPosition,
-    data::internal::DataUniform,
+    data::internal::{DataUniform, DataUniformBuilder},
+    point_cloud::geometry::PointCloudDesc,
+    segment::geometry::SegmentDesc,
     shape::{
-        AttachedGeometry, AttachedRenderer, NewAttachedGeometry, ShapeDescriptor, ShapeGeometry,
-        data::ShapeSettings,
+        AttachedGeometry, AttachedRenderer, DataMut, FixedRenderer, GraphicalAttachedGeometry,
+        RenderAttached, ShapeDescriptor, ShapeGeometry, data::ShapeSettings,
     },
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
-pub(crate) use points::Points;
-pub use points::PointsSettingsMut;
-pub(crate) use segments::Segments;
-pub use segments::SegmentsSettingsMut;
 pub use vector_field::VectorFieldSettingsMut;
 pub(crate) use vector_field::{VectorField, VectorFieldSettings};
 
@@ -39,6 +35,11 @@ pub struct Attachment<S: ContextHolder + ?Sized, Desc: ShapeDescriptor> {
     renderer: S::AttachedRenderer<Desc>,
 }
 
+pub type Points<S> = Attachment<S, PointCloudDesc>;
+pub type PointsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut crate::point_cloud::PCSettings, Ctxt>;
+pub type Segments<S> = Attachment<S, SegmentDesc>;
+pub type SegmentsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut crate::segment::PCSettings, Ctxt>;
+
 impl<Desc: ShapeDescriptor> Clone for Attachment<InnerBareState, Desc> {
     fn clone(&self) -> Self {
         Self {
@@ -52,27 +53,7 @@ impl<Desc: ShapeDescriptor> Clone for Attachment<InnerBareState, Desc> {
     }
 }
 
-pub trait GraphicalAttachment: AttachedGeometry<InnerGraphicalState> {
-    fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]);
-
-    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
-    where
-        'c: 'd;
-
-    fn draw_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
-        refresh_screen: &mut bool,
-    );
-}
-
-impl<S: ContextHolder, Desc: ShapeDescriptor> crate::shape::AttachedGeometry<S>
-    for Attachment<S, Desc>
-{
+impl<S: ContextHolder, Desc: ShapeDescriptor> AttachedGeometry<S> for Attachment<S, Desc> {
     type Args = (Vec<u32>, <Desc::Geometry as ShapeGeometry>::Args);
     type Settings<'b>
         = &'b mut Desc::Settings
@@ -123,42 +104,73 @@ impl<S: ContextHolder, Desc: ShapeDescriptor> crate::shape::AttachedGeometry<S>
     }
 }
 
-impl<Desc: ShapeDescriptor> NewAttachedGeometry for Attachment<InnerBareState, Desc> {
-    type UpgradedAttachedGeometry = Attachment<InnerGraphicalState, Desc>;
+impl<Desc: ShapeDescriptor> GraphicalAttachedGeometry for Attachment<InnerGraphicalState, Desc>
+where
+    AttachedRenderer<Desc>: RenderAttached,
+{
+    type Downgraded = Attachment<InnerBareState, Desc>;
 
     fn init(
-        self,
+        this: Self::Downgraded,
         device: &wgpu::Device,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_uniform: &DataUniform,
-    ) -> Self::UpgradedAttachedGeometry {
+    ) -> Self {
         let renderer = AttachedRenderer::new(
             device,
-            &self.geometry,
-            &self.settings,
+            &this.geometry,
+            &this.settings,
             transform_uniform,
             camera_bind_group_layout,
             &transform_uniform.bind_group_layout, // White lie
         );
 
-        Self::UpgradedAttachedGeometry {
+        Self {
             renderer,
-            show: self.show,
-            geometry: self.geometry,
-            settings: self.settings,
-            position: self.position,
-            position_indices: self.position_indices,
+            show: this.show,
+            geometry: this.geometry,
+            settings: this.settings,
+            position: this.position,
+            position_indices: this.position_indices,
         }
     }
 
-    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
-        Self {
+    fn downgrade(&self) -> Self::Downgraded {
+        Attachment {
             renderer: (),
-            show: upgraded.show,
-            geometry: upgraded.geometry.clone(),
-            settings: upgraded.settings.clone(),
-            position: upgraded.position.clone(),
-            position_indices: upgraded.position_indices.clone(),
+            show: self.show,
+            geometry: self.geometry.clone(),
+            settings: self.settings.clone(),
+            position: self.position.clone(),
+            position_indices: self.position_indices.clone(),
+        }
+    }
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui, queue: &wgpu::Queue, refresh_screen: &mut bool) {
+        if self.settings.draw_ui(ui, &mut false) {
+            *refresh_screen = true;
+            self.settings
+                .refresh_buffer(queue, &self.renderer.settings_uniform);
+        }
+    }
+
+    fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
+        for (buffer_index, self_index) in self.position_indices.iter().enumerate() {
+            if let Some(index) = indices.iter().position(|p| p == self_index) {
+                self.geometry.move_vertex(buffer_index as u32, pos[index]);
+                self.renderer
+                    .fixed
+                    .update_vertex(queue, buffer_index as u32, &self.geometry);
+            }
+        }
+    }
+
+    fn render<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b,
+    {
+        if self.geometry.get_total_elements() > 0 {
+            self.renderer.render_attached(render_pass);
         }
     }
 }

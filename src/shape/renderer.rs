@@ -167,6 +167,12 @@ pub trait Render {
     }
 }
 
+pub trait RenderAttached {
+    fn render_attached<'a, 'b>(&'a self, _render_pass: &mut wgpu::RenderPass<'b>)
+    where
+        'a: 'b;
+}
+
 impl<Desc: ShapeDescriptor + ?Sized> AttachedRenderer<Desc> {
     pub(crate) fn new(
         device: &wgpu::Device,

@@ -10,8 +10,8 @@ use crate::sbv::SBV;
 use crate::screenshot;
 use crate::segment::{DisplaySegment, Segment, SegmentMut, UninitedSegment};
 use crate::shape::{
-    AttachedRenderer, DisplayShape, GraphicalContext, NewAttachedGeometry, Render, Renderer, Shape,
-    ShapeDescriptor, ShapeGeometry, ShapeMut, UninitedShape,
+    AttachedRenderer, DisplayShape, GraphicalAttachedGeometry, GraphicalContext, Render, Renderer,
+    Shape, ShapeDescriptor, ShapeGeometry, ShapeMut, UninitedShape,
 };
 use crate::surface::{DisplaySurface, Surface, SurfaceMut, UninitedSurface};
 use crate::texture::TextureBufferPool;
@@ -212,7 +212,7 @@ pub trait GeometryHolder<Shape>: ContainerContextGiver<Shape> + Sized {
 impl<Desc> GeometryHolder<UninitedShape<Desc>> for InnerBareState
 where
     Desc: ShapeDescriptor,
-    Desc::Attached<Self>: NewAttachedGeometry,
+    Desc::Attached<InnerGraphicalState>: GraphicalAttachedGeometry,
     InnerBareState: ContainerContextGiver<UninitedShape<Desc>>,
 {
     type Args = <<Desc as ShapeDescriptor>::Geometry as ShapeGeometry>::Args;

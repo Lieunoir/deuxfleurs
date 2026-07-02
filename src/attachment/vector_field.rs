@@ -1,11 +1,12 @@
 use crate::attachment::Attachment;
-use crate::attachment::GraphicalAttachment;
 use crate::data::internal::DataSettings;
 use crate::data::internal::DataUniform;
 use crate::data::internal::DataUniformBuilder;
 use crate::data::*;
+use crate::shape::AttachedRenderer;
 use crate::shape::DataBuffer;
 use crate::shape::FixedRenderer;
+use crate::shape::RenderAttached;
 use crate::shape::RenderPipeline;
 use crate::shape::ShapeDescriptor;
 use crate::shape::ShapeGeometry;
@@ -15,11 +16,9 @@ use crate::texture;
 use crate::util;
 use crate::util::Vertex;
 use crate::window::ContextHolder;
-use crate::window::InnerGraphicalState;
 use egui::Widget;
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize};
-use wgpu::BufferAddress;
 use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
 
@@ -28,6 +27,7 @@ pub struct VectorFieldDescriptor;
 pub struct VFFixedBuffer {
     vertex_buffer: wgpu::Buffer,
     vector_buffer: wgpu::Buffer,
+    vectors_len: u32,
 }
 
 pub struct VFPipeline {
@@ -160,6 +160,7 @@ impl FixedRenderer for VFFixedBuffer {
         Self {
             vertex_buffer,
             vector_buffer,
+            vectors_len: vectors.len() as u32,
         }
     }
 
@@ -261,9 +262,10 @@ impl ShapeGeometry for VFGeometry {
 
     fn move_vertex(
         &mut self,
-        _vertex: u32,
-        _pos: [f32; 3],
+        vertex: u32,
+        pos: [f32; 3],
     ) -> ((Vec<u32>, Vec<[f32; 3]>), (Vec<u32>, Vec<[f32; 3]>)) {
+        self.offsets[vertex as usize] = pos;
         ((Vec::new(), Vec::new()), (Vec::new(), Vec::new()))
     }
 
@@ -279,32 +281,6 @@ impl ShapeGeometry for VFGeometry {
             }
         }
         Self { vectors, offsets }
-    }
-}
-
-pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VectorFieldSettings, Ctxt>;
-
-impl<S: ContextHolder> VectorFieldSettingsMut<'_, S>
-where
-    Self: DataMutTrait,
-{
-    pub fn set_magnitude(&mut self, magnitude: f32, relative: bool) {
-        if relative {
-            self.inner.magnitude = magnitude;
-        } else {
-            self.inner.magnitude = magnitude / self.inner.l;
-        }
-        self.update_data_settings();
-    }
-
-    pub fn set_color(&mut self, color: [f32; 4]) {
-        self.inner.color.color = color;
-        self.update_data_settings();
-    }
-
-    pub fn show(&mut self, show: bool) {
-        self.inner.show = show;
-        self.update_data_settings();
     }
 }
 
@@ -358,46 +334,42 @@ impl Vertex for VectorData {
     }
 }
 
-impl GraphicalAttachment for VectorField<InnerGraphicalState> {
-    fn draw_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        _camera_bind_group_layout: &wgpu::BindGroupLayout,
-        _color_format: wgpu::TextureFormat,
-        refresh_screen: &mut bool,
-    ) {
-        if self.settings.draw_ui(ui, &mut false) {
-            *refresh_screen = true;
-            self.settings
-                .refresh_buffer(queue, &self.renderer.settings_uniform);
-        }
-    }
-
-    fn render<'c, 'd>(&'c self, render_pass: &mut wgpu::RenderPass<'d>)
+impl RenderAttached for AttachedRenderer<VectorFieldDescriptor> {
+    fn render_attached<'a, 'b>(&'a self, render_pass: &mut wgpu::RenderPass<'b>)
     where
-        'c: 'd,
+        'a: 'b,
     {
-        render_pass.set_bind_group(2, &self.renderer.settings_uniform.bind_group, &[]);
-        render_pass.set_pipeline(&self.renderer.pipeline.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.renderer.fixed.vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.renderer.fixed.vector_buffer.slice(..));
+        render_pass.set_bind_group(2, &self.settings_uniform.bind_group, &[]);
+        render_pass.set_pipeline(&self.pipeline.render_pipeline);
+        render_pass.set_vertex_buffer(0, self.fixed.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.fixed.vector_buffer.slice(..));
         //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
-        render_pass.draw(0..8, 0..(self.geometry.vectors.len() as u32));
+        render_pass.draw(0..8, 0..self.fixed.vectors_len);
+    }
+}
+
+pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VectorFieldSettings, Ctxt>;
+
+impl<S: ContextHolder> VectorFieldSettingsMut<'_, S>
+where
+    Self: DataMutTrait,
+{
+    pub fn set_magnitude(&mut self, magnitude: f32, relative: bool) {
+        if relative {
+            self.inner.magnitude = magnitude;
+        } else {
+            self.inner.magnitude = magnitude / self.inner.l;
+        }
+        self.update_data_settings();
     }
 
-    fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
-        for (index, value) in indices.iter().zip(pos) {
-            self.geometry.offsets[*index as usize] = *value;
-            queue.write_buffer(
-                &self.renderer.fixed.vector_buffer,
-                (*index as usize * size_of::<VectorData>()) as BufferAddress,
-                bytemuck::cast_slice(&[VectorData {
-                    orig_position: *value,
-                    vector: self.geometry.vectors[*index as usize],
-                }]),
-            );
-        }
+    pub fn set_color(&mut self, color: [f32; 4]) {
+        self.inner.color.color = color;
+        self.update_data_settings();
+    }
+
+    pub fn show(&mut self, show: bool) {
+        self.inner.show = show;
+        self.update_data_settings();
     }
 }

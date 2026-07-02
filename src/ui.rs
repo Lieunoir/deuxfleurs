@@ -228,7 +228,6 @@ impl UI {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
-        color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
         let input = self.state.take_egui_input(window);
@@ -279,7 +278,6 @@ impl UI {
                                     device,
                                     queue,
                                     camera_bind_group_layout,
-                                    color_format,
                                     refresh_screen,
                                 );
                             });
@@ -311,7 +309,6 @@ impl UI {
                                     device,
                                     queue,
                                     camera_bind_group_layout,
-                                    color_format,
                                     refresh_screen,
                                 );
                             });
@@ -347,7 +344,6 @@ impl UI {
                                     device,
                                     queue,
                                     camera_bind_group_layout,
-                                    color_format,
                                     refresh_screen,
                                 );
                             });
