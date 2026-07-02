@@ -1,27 +1,22 @@
+use crate::Settings;
 use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::data::TransformSettings;
 use crate::data::internal::DataUniform;
 use crate::data::internal::DataUniformBuilder;
 use crate::picker::{self, Picked};
-use crate::point_cloud::geometry::PointCloudDesc;
 use crate::point_cloud::{DisplayPointCloud, PointCloud, PointCloudMut, UninitedPointCloud};
 use crate::post_process;
 use crate::sbv::SBV;
 use crate::screenshot;
-use crate::segment::geometry::SegmentDesc;
 use crate::segment::{DisplaySegment, Segment, SegmentMut, UninitedSegment};
-use crate::shape::renderer::{DataBuffer, FixedRenderer};
 use crate::shape::{
     AttachedRenderer, DisplayShape, GraphicalContext, InvariantShapeDescriptor,
-    NewAttachedGeometry, Render, RenderPipeline, Renderer, Shape, ShapeDescriptor, ShapeGeometry,
-    ShapeMut, UninitedShape,
+    NewAttachedGeometry, Render, Renderer, ShapeGeometry, ShapeMut, UninitedShape,
 };
-use crate::surface::geometry::SurfaceDesc;
 use crate::surface::{DisplaySurface, Surface, SurfaceMut, UninitedSurface};
 use crate::texture::TextureBufferPool;
 use crate::types::SurfaceIndices;
 use crate::types::*;
-use crate::{Settings, settings};
 use egui;
 #[cfg(not(target_arch = "wasm32"))]
 use egui_winit::clipboard::Clipboard;
@@ -115,12 +110,7 @@ pub trait ContextHolder {
 }
 
 //Can't be merged with ContextHolder type due to https://github.com/rust-lang/rust/issues/87479
-pub trait ContainersHolder: ContextHolder
-where
-    SurfaceDesc: ShapeDescriptor<Self>,
-    PointCloudDesc: ShapeDescriptor<Self>,
-    SegmentDesc: ShapeDescriptor<Self>,
-{
+pub trait ContainersHolder: ContextHolder + Sized {
     fn get_containers_mut(
         &mut self,
     ) -> (
@@ -140,12 +130,7 @@ where
     );
 }
 
-pub trait ContainerContextGiver<Shape>: ContainersHolder
-where
-    SurfaceDesc: ShapeDescriptor<Self>,
-    PointCloudDesc: ShapeDescriptor<Self>,
-    SegmentDesc: ShapeDescriptor<Self>,
-{
+pub trait ContainerContextGiver<Shape>: ContainersHolder {
     fn get_container_mut(
         &mut self,
     ) -> (
@@ -157,12 +142,7 @@ where
     fn get_container(&self) -> &IndexMap<String, Shape>;
 }
 
-impl<State: ContainersHolder> ContainerContextGiver<Surface<State>> for State
-where
-    SurfaceDesc: ShapeDescriptor<State>,
-    PointCloudDesc: ShapeDescriptor<State>,
-    SegmentDesc: ShapeDescriptor<State>,
-{
+impl<State: ContainersHolder> ContainerContextGiver<Surface<State>> for State {
     fn get_container_mut(
         &mut self,
     ) -> (
@@ -179,12 +159,7 @@ where
     }
 }
 
-impl<State: ContainersHolder> ContainerContextGiver<PointCloud<State>> for State
-where
-    SurfaceDesc: ShapeDescriptor<State>,
-    PointCloudDesc: ShapeDescriptor<State>,
-    SegmentDesc: ShapeDescriptor<State>,
-{
+impl<State: ContainersHolder> ContainerContextGiver<PointCloud<State>> for State {
     fn get_container_mut(
         &mut self,
     ) -> (
@@ -201,12 +176,7 @@ where
     }
 }
 
-impl<State: ContainersHolder> ContainerContextGiver<Segment<State>> for State
-where
-    SurfaceDesc: ShapeDescriptor<State>,
-    PointCloudDesc: ShapeDescriptor<State>,
-    SegmentDesc: ShapeDescriptor<State>,
-{
+impl<State: ContainersHolder> ContainerContextGiver<Segment<State>> for State {
     fn get_container_mut(
         &mut self,
     ) -> (
@@ -223,12 +193,7 @@ where
     }
 }
 
-pub trait GeometryHolder<Shape>: ContainerContextGiver<Shape> + Sized
-where
-    SurfaceDesc: ShapeDescriptor<Self>,
-    PointCloudDesc: ShapeDescriptor<Self>,
-    SegmentDesc: ShapeDescriptor<Self>,
-{
+pub trait GeometryHolder<Shape>: ContainerContextGiver<Shape> + Sized {
     type Args;
 
     fn register(&mut self, name: String, args: Self::Args) -> ShapeMut<'_, Shape, Self>;
@@ -242,8 +207,8 @@ where
 
 impl<Desc> GeometryHolder<UninitedShape<Desc>> for InnerBareState
 where
-    Desc: ShapeDescriptor<InnerBareState>,
-    Desc::AttachedGeometry: NewAttachedGeometry,
+    Desc: InvariantShapeDescriptor,
+    Desc::Attached<Self>: NewAttachedGeometry,
     InnerBareState: ContainerContextGiver<UninitedShape<Desc>>,
 {
     type Args = <<Desc as InvariantShapeDescriptor>::Geometry as ShapeGeometry>::Args;
@@ -291,7 +256,7 @@ where
 
 impl<Desc> GeometryHolder<DisplayShape<Desc>> for InnerGraphicalState
 where
-    Desc: ShapeDescriptor<InnerGraphicalState>,
+    Desc: InvariantShapeDescriptor,
     Renderer<Desc>: Render,
     InnerGraphicalState: ContainerContextGiver<DisplayShape<Desc>>,
 {
@@ -828,10 +793,6 @@ pub trait StateTrait:
     GeometryHolder<Surface<Self>, Args = (SurfaceIndices, Vec<[f32; 3]>)>
     + GeometryHolder<PointCloud<Self>, Args = Vec<[f32; 3]>>
     + GeometryHolder<Segment<Self>, Args = (Vec<[f32; 3]>, Vec<[u32; 2]>)>
-where
-    SurfaceDesc: ShapeDescriptor<Self>,
-    PointCloudDesc: ShapeDescriptor<Self>,
-    SegmentDesc: ShapeDescriptor<Self>,
 {
     #[cfg(feature = "saves")]
     fn load_from_state_slice(&mut self, data: &[u8]) -> Result<(), ()>;
@@ -850,12 +811,7 @@ where
 
 pub struct State<T>(pub(crate) T);
 
-impl<T: StateTrait> State<T>
-where
-    SurfaceDesc: ShapeDescriptor<T>,
-    PointCloudDesc: ShapeDescriptor<T>,
-    SegmentDesc: ShapeDescriptor<T>,
-{
+impl<T: StateTrait> State<T> {
     pub(crate) fn new_inner(inner: T) -> Self {
         Self(inner)
     }

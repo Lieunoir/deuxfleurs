@@ -1,26 +1,32 @@
-#[cfg(feature = "saves")]
-use serde::{Deserialize, Serialize};
-
 use crate::{
-    Settings,
     attachment::{
-        GraphicalAttachment, NewVectorField, Points, Segments, VectorField, VectorFieldSettings,
+        GraphicalAttachment, Points, Segments, VectorField, VectorFieldSettings,
         internal::AttachmentPosition,
     },
-    camera::Camera,
     data::internal::DataUniform,
     point_cloud::PCSettings,
     segment::PCSettings as SegmentSettings,
-    shape::{AttachedGeometry, GraphicalContext, NewAttachedGeometry},
-    window::{InnerBareState, InnerGraphicalState},
+    shape::{AttachedGeometry, NewAttachedGeometry},
+    window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
+#[cfg(feature = "saves")]
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
-pub enum NewSurfaceAttachment {
-    VectorField(NewVectorField),
-    Points(Points<InnerBareState>),
-    Segments(Segments<InnerBareState>),
+pub enum SurfaceAttachment<S: ContextHolder + ?Sized> {
+    VectorField(VectorField<S>),
+    Points(Points<S>),
+    Segments(Segments<S>),
+}
+
+impl Clone for SurfaceAttachment<InnerBareState> {
+    fn clone(&self) -> Self {
+        match self {
+            SurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.clone()),
+            SurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.clone()),
+            SurfaceAttachment::Segments(s) => SurfaceAttachment::Segments(s.clone()),
+        }
+    }
 }
 
 pub enum SurfaceAttachmentSettings<'a> {
@@ -30,178 +36,29 @@ pub enum SurfaceAttachmentSettings<'a> {
 }
 
 pub enum SurfaceAttachmentArgs {
-    VectorField((Vec<[f32; 3]>, Vec<[f32; 3]>)),
+    VectorField((Vec<u32>, (Vec<[f32; 3]>, Vec<[f32; 3]>))),
     Points((Vec<u32>, Vec<[f32; 3]>)),
     Segments((Vec<u32>, (Vec<[f32; 3]>, Vec<[u32; 2]>))),
 }
 
-pub enum SurfaceAttachment {
-    VectorField(VectorField),
-    Points(Points<InnerGraphicalState>),
-    Segments(Segments<InnerGraphicalState>),
-}
-
-impl AttachedGeometry<InnerBareState> for NewSurfaceAttachment {
+impl<S: ContextHolder> AttachedGeometry<S> for SurfaceAttachment<S> {
     type Args = SurfaceAttachmentArgs;
-    type Settings<'b> = SurfaceAttachmentSettings<'b>;
+    type Settings<'b>
+        = SurfaceAttachmentSettings<'b>
+    where
+        S: 'b;
 
     fn new(
         name: String,
         args: Self::Args,
         position: AttachmentPosition,
         characteristic_l: f32,
-        context: &mut &mut Settings,
-        transform_layout: &(),
+        context: &mut S::Context<'_>,
+        transform_uniform: &S::TransformUniform,
     ) -> Self {
         match args {
             SurfaceAttachmentArgs::VectorField(args) => {
-                NewSurfaceAttachment::VectorField(<NewVectorField as AttachedGeometry<
-                    InnerBareState,
-                >>::new(
-                    name,
-                    args,
-                    position,
-                    characteristic_l,
-                    context,
-                    transform_layout,
-                ))
-            }
-            SurfaceAttachmentArgs::Points(args) => {
-                NewSurfaceAttachment::Points(<Points<InnerBareState> as AttachedGeometry<
-                    InnerBareState,
-                >>::new(
-                    name,
-                    args,
-                    position,
-                    characteristic_l,
-                    context,
-                    transform_layout,
-                ))
-            }
-            SurfaceAttachmentArgs::Segments(args) => {
-                NewSurfaceAttachment::Segments(<Segments<InnerBareState> as AttachedGeometry<
-                    InnerBareState,
-                >>::new(
-                    name,
-                    args,
-                    position,
-                    characteristic_l,
-                    context,
-                    transform_layout,
-                ))
-            }
-        }
-    }
-
-    fn show(&mut self, show: bool, refresh_screen: &mut bool) {
-        match self {
-            NewSurfaceAttachment::VectorField(v) => {
-                <NewVectorField as AttachedGeometry<InnerBareState>>::show(v, show, refresh_screen)
-            }
-            NewSurfaceAttachment::Points(p) => p.show(show, refresh_screen),
-            NewSurfaceAttachment::Segments(s) => s.show(show, refresh_screen),
-        }
-    }
-
-    fn shown(&self) -> bool {
-        match self {
-            NewSurfaceAttachment::VectorField(v) => {
-                <NewVectorField as AttachedGeometry<InnerBareState>>::shown(v)
-            }
-            NewSurfaceAttachment::Points(p) => p.shown(),
-            NewSurfaceAttachment::Segments(s) => s.shown(),
-        }
-    }
-
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        match self {
-            NewSurfaceAttachment::VectorField(v) => {
-                SurfaceAttachmentSettings::VectorField(<NewVectorField as AttachedGeometry<
-                    InnerBareState,
-                >>::get_settings(v))
-            }
-            NewSurfaceAttachment::Points(p) => SurfaceAttachmentSettings::Points(p.get_settings()),
-            NewSurfaceAttachment::Segments(s) => {
-                SurfaceAttachmentSettings::Segments(s.get_settings())
-            }
-        }
-    }
-
-    fn get_attached_position(&self) -> &AttachmentPosition {
-        match self {
-            NewSurfaceAttachment::VectorField(v) => {
-                <NewVectorField as AttachedGeometry<InnerBareState>>::get_attached_position(v)
-            }
-            NewSurfaceAttachment::Points(p) => p.get_attached_position(),
-            NewSurfaceAttachment::Segments(s) => s.get_attached_position(),
-        }
-    }
-}
-
-impl NewAttachedGeometry for NewSurfaceAttachment {
-    type UpgradedAttachedGeometry = SurfaceAttachment;
-
-    fn init(
-        self,
-        device: &wgpu::Device,
-        camera: &Camera,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        transform_uniform: &DataUniform,
-    ) -> Self::UpgradedAttachedGeometry {
-        match self {
-            NewSurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.init(
-                device,
-                camera,
-                camera_bind_group_layout,
-                transform_uniform,
-            )),
-            NewSurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.init(
-                device,
-                camera,
-                camera_bind_group_layout,
-                transform_uniform,
-            )),
-            NewSurfaceAttachment::Segments(p) => SurfaceAttachment::Segments(p.init(
-                device,
-                camera,
-                camera_bind_group_layout,
-                transform_uniform,
-            )),
-        }
-    }
-
-    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
-        match upgraded {
-            SurfaceAttachment::VectorField(v) => {
-                NewSurfaceAttachment::VectorField(NewVectorField::downgrade(v))
-            }
-            SurfaceAttachment::Points(p) => {
-                NewSurfaceAttachment::Points(Points::<InnerBareState>::downgrade(p))
-            }
-            SurfaceAttachment::Segments(s) => {
-                NewSurfaceAttachment::Segments(Segments::<InnerBareState>::downgrade(s))
-            }
-        }
-    }
-}
-
-impl AttachedGeometry<InnerGraphicalState> for SurfaceAttachment {
-    type Args = SurfaceAttachmentArgs;
-    type Settings<'b> = SurfaceAttachmentSettings<'b>;
-
-    fn new(
-        name: String,
-        args: Self::Args,
-        position: AttachmentPosition,
-        characteristic_l: f32,
-        context: &mut GraphicalContext<'_>,
-        transform_uniform: &DataUniform,
-    ) -> Self {
-        match args {
-            SurfaceAttachmentArgs::VectorField(args) => {
-                SurfaceAttachment::VectorField(<VectorField as AttachedGeometry<
-                    InnerGraphicalState,
-                >>::new(
+                SurfaceAttachment::VectorField(VectorField::new(
                     name,
                     args,
                     position,
@@ -231,7 +88,9 @@ impl AttachedGeometry<InnerGraphicalState> for SurfaceAttachment {
 
     fn show(&mut self, show: bool, refresh_screen: &mut bool) {
         match self {
-            SurfaceAttachment::VectorField(v) => v.show(show, refresh_screen),
+            SurfaceAttachment::VectorField(v) => {
+                v.show(show, refresh_screen);
+            }
             SurfaceAttachment::Points(p) => p.show(show, refresh_screen),
             SurfaceAttachment::Segments(s) => s.show(show, refresh_screen),
         }
@@ -264,7 +123,50 @@ impl AttachedGeometry<InnerGraphicalState> for SurfaceAttachment {
     }
 }
 
-impl GraphicalAttachment for SurfaceAttachment {
+impl NewAttachedGeometry for SurfaceAttachment<InnerBareState> {
+    type UpgradedAttachedGeometry = SurfaceAttachment<InnerGraphicalState>;
+
+    fn init(
+        self,
+        device: &wgpu::Device,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
+        transform_uniform: &DataUniform,
+    ) -> Self::UpgradedAttachedGeometry {
+        match self {
+            SurfaceAttachment::VectorField(v) => SurfaceAttachment::VectorField(v.init(
+                device,
+                camera_bind_group_layout,
+                transform_uniform,
+            )),
+            SurfaceAttachment::Points(p) => SurfaceAttachment::Points(p.init(
+                device,
+                camera_bind_group_layout,
+                transform_uniform,
+            )),
+            SurfaceAttachment::Segments(p) => SurfaceAttachment::Segments(p.init(
+                device,
+                camera_bind_group_layout,
+                transform_uniform,
+            )),
+        }
+    }
+
+    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
+        match upgraded {
+            SurfaceAttachment::VectorField(v) => {
+                SurfaceAttachment::VectorField(VectorField::<InnerBareState>::downgrade(v))
+            }
+            SurfaceAttachment::Points(p) => {
+                SurfaceAttachment::Points(Points::<InnerBareState>::downgrade(p))
+            }
+            SurfaceAttachment::Segments(s) => {
+                SurfaceAttachment::Segments(Segments::<InnerBareState>::downgrade(s))
+            }
+        }
+    }
+}
+
+impl GraphicalAttachment for SurfaceAttachment<InnerGraphicalState> {
     fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
         match self {
             SurfaceAttachment::VectorField(v) => v.move_elements(queue, indices, pos),

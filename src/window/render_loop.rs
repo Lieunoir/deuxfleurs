@@ -240,7 +240,6 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
-                        &camera,
                         &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
@@ -255,7 +254,6 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
-                        &camera,
                         &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),
@@ -269,7 +267,6 @@ impl InnerGraphicalState {
                     k,
                     v.upgrade(
                         &device,
-                        &camera,
                         &camera_bind_group_layout,
                         &picker.bind_group_layout,
                     ),

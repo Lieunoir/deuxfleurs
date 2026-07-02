@@ -3,7 +3,6 @@ mod segments;
 mod vector_field;
 use crate::{
     attachment::internal::AttachmentPosition,
-    camera::Camera,
     data::internal::DataUniform,
     shape::{
         AttachedGeometry, AttachedRenderer, InvariantShapeDescriptor, NewAttachedGeometry,
@@ -16,7 +15,7 @@ pub use points::PointsSettingsMut;
 pub(crate) use segments::Segments;
 pub use segments::SegmentsSettingsMut;
 pub use vector_field::VectorFieldSettingsMut;
-pub(crate) use vector_field::{NewVectorField, VectorField, VectorFieldSettings};
+pub(crate) use vector_field::{VectorField, VectorFieldSettings};
 
 pub(crate) mod internal {
     #[cfg(feature = "saves")]
@@ -31,7 +30,7 @@ pub(crate) mod internal {
     }
 }
 
-pub struct Attachment<S: ContextHolder, Desc: InvariantShapeDescriptor> {
+pub struct Attachment<S: ContextHolder + ?Sized, Desc: InvariantShapeDescriptor> {
     show: bool,
     settings: Desc::Settings,
     position: AttachmentPosition,
@@ -130,7 +129,6 @@ impl<Desc: InvariantShapeDescriptor> NewAttachedGeometry for Attachment<InnerBar
     fn init(
         self,
         device: &wgpu::Device,
-        camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_uniform: &DataUniform,
     ) -> Self::UpgradedAttachedGeometry {

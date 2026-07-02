@@ -1,7 +1,6 @@
 use crate::{
     Settings,
     attachment::{GraphicalAttachment, internal::AttachmentPosition},
-    camera::Camera,
     data::internal::DataUniform,
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
@@ -55,7 +54,6 @@ pub trait NewAttachedGeometry {
     fn init(
         self,
         device: &wgpu::Device,
-        camera: &Camera,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         transform_uniform: &DataUniform,
     ) -> Self::UpgradedAttachedGeometry;
@@ -99,7 +97,6 @@ impl NewAttachedGeometry for () {
     fn init(
         self,
         _device: &wgpu::Device,
-        _camera: &Camera,
         _camera_bind_group_layout: &wgpu::BindGroupLayout,
         _transform_uniform: &DataUniform,
     ) -> Self::UpgradedAttachedGeometry {

@@ -6,8 +6,8 @@ use crate::camera::Camera;
 use crate::data::{internal::*, *};
 use crate::picker::SurfacePicked;
 use crate::shape::*;
+use crate::surface::SurfaceAttachment;
 use crate::surface::attachment::{SurfaceAttachmentArgs, SurfaceAttachmentSettings};
-use crate::surface::{NewSurfaceAttachment, SurfaceAttachment};
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
 use crate::types::{SurfaceIndices, Vertices2D};
@@ -931,14 +931,7 @@ impl InvariantShapeDescriptor for SurfaceDesc {
     type FixedBuffer = SurfaceFixedRenderer;
     type DataBuffer = SurfaceDataBuffer;
     type Pipeline = SurfacePipeline;
-}
-
-impl ShapeDescriptor<InnerBareState> for SurfaceDesc {
-    type AttachedGeometry = NewSurfaceAttachment;
-}
-
-impl ShapeDescriptor<InnerGraphicalState> for SurfaceDesc {
-    type AttachedGeometry = SurfaceAttachment;
+    type Attached<S: ContextHolder> = SurfaceAttachment<S>;
 }
 
 pub type Surface<S> = Shape<S, SurfaceDesc>;
@@ -1106,14 +1099,9 @@ impl DisplaySurface {
 
 pub type SurfaceMut<'a, S> = ShapeMut<'a, Surface<S>, S>;
 
-impl<'a: 'b, 'b, S: ContextHolder> SurfaceMut<'a, S>
+impl<S: ContextHolder> SurfaceMut<'_, S>
 where
     SurfaceDesc: ShapeTrait<S>,
-    <SurfaceDesc as ShapeDescriptor<S>>::AttachedGeometry: AttachedGeometry<
-            S,
-            Settings<'b> = SurfaceAttachmentSettings<'b>,
-            Args = SurfaceAttachmentArgs,
-        >,
 {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.inner.settings.show_edges != show_edges {
@@ -1232,10 +1220,10 @@ where
     }
 
     pub fn add_vertex_points(
-        &'b mut self,
+        &mut self,
         name: impl Into<String>,
         vertices: Vec<u32>,
-    ) -> PointsSettingsMut<'b, S> {
+    ) -> PointsSettingsMut<'_, S> {
         if let Some(max) = vertices.iter().max() {
             assert!(*max < self.geometry.vertices.len() as u32);
         }
@@ -1252,14 +1240,14 @@ where
     }
 
     pub fn add_vertex_vector_field(
-        &'b mut self,
+        &mut self,
         name: impl Into<String>,
         vectors: impl Vertices,
-    ) -> VectorFieldSettingsMut<'b, S> {
+    ) -> VectorFieldSettingsMut<'_, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        let args = SurfaceAttachmentArgs::VectorField((offsets, vectors).into());
+        let args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
             .convert(|attached| match attached.get_settings() {
                 SurfaceAttachmentSettings::VectorField(f) => f,
@@ -1268,10 +1256,10 @@ where
     }
 
     pub fn add_face_vector_field(
-        &'b mut self,
+        &mut self,
         name: impl Into<String>,
         vectors: impl Vertices,
-    ) -> VectorFieldSettingsMut<'b, S> {
+    ) -> VectorFieldSettingsMut<'_, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.indices.size());
         let offsets: Vec<[f32; 3]> = self
@@ -1294,7 +1282,7 @@ where
                 [res0, res1, res2]
             })
             .collect();
-        let args = SurfaceAttachmentArgs::VectorField((offsets, vectors).into());
+        let args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Face)
             .convert(|attached| match attached.get_settings() {
                 SurfaceAttachmentSettings::VectorField(f) => f,
@@ -1303,10 +1291,10 @@ where
     }
 
     pub fn add_edge_vector_field(
-        &'b mut self,
+        &mut self,
         name: impl Into<String>,
         vectors: impl Vertices,
-    ) -> VectorFieldSettingsMut<'b, S> {
+    ) -> VectorFieldSettingsMut<'_, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.face_to_edge.num_edges as usize);
         let mut offsets = vec![[0., 0., 0.]; self.geometry.face_to_edge.num_edges as usize];
@@ -1326,7 +1314,7 @@ where
             offset += face.len();
         }
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
-        let args = SurfaceAttachmentArgs::VectorField((offsets, vectors).into());
+        let args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Edge)
             .convert(|attached| match attached.get_settings() {
                 SurfaceAttachmentSettings::VectorField(f) => f,
@@ -1335,10 +1323,10 @@ where
     }
 
     pub fn add_edge_segments(
-        &'b mut self,
+        &mut self,
         name: impl Into<String>,
         mut edges: Vec<u32>,
-    ) -> SegmentsSettingsMut<'b, S> {
+    ) -> SegmentsSettingsMut<'_, S> {
         if let Some(max) = edges.iter().max() {
             assert!(*max < self.geometry.face_to_edge.num_edges);
         }

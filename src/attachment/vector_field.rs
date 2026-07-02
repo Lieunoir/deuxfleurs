@@ -1,12 +1,15 @@
+use crate::attachment::Attachment;
 use crate::attachment::GraphicalAttachment;
-use crate::attachment::internal::AttachmentPosition;
-use crate::camera::Camera;
 use crate::data::internal::DataSettings;
 use crate::data::internal::DataUniform;
+use crate::data::internal::DataUniformBuilder;
 use crate::data::*;
-use crate::shape::AttachedGeometry;
-use crate::shape::GraphicalContext;
-use crate::shape::NewAttachedGeometry;
+use crate::shape::DataBuffer;
+use crate::shape::FixedRenderer;
+use crate::shape::InvariantShapeDescriptor;
+use crate::shape::RenderPipeline;
+use crate::shape::ShapeGeometry;
+use crate::shape::ShapeSettings;
 use crate::shape::{DataMut, DataMutTrait};
 use crate::texture;
 use crate::util;
@@ -20,16 +23,21 @@ use wgpu::BufferAddress;
 use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
 
-pub struct VectorField {
-    position: AttachmentPosition,
-    pub vectors: Vec<[f32; 3]>,
-    pub offsets: Vec<[f32; 3]>,
-    render_pipeline: wgpu::RenderPipeline,
+pub struct VectorFieldDescriptor;
+
+pub struct VFFixedBuffer {
     vertex_buffer: wgpu::Buffer,
     vector_buffer: wgpu::Buffer,
-    pub settings: VectorFieldSettings,
-    settings_bind_group: wgpu::BindGroup,
-    settings_buffer: wgpu::Buffer,
+}
+
+pub struct VFPipeline {
+    render_pipeline: wgpu::RenderPipeline,
+}
+
+#[derive(Clone)]
+pub struct VFGeometry {
+    vectors: Vec<[f32; 3]>,
+    offsets: Vec<[f32; 3]>,
 }
 
 #[repr(C)]
@@ -50,18 +58,28 @@ pub struct VectorFieldSettings {
     pub color: ColorSettings,
 }
 
+impl InvariantShapeDescriptor for VectorFieldDescriptor {
+    type Data = ();
+    type DataBuffer = ();
+    type FixedBuffer = VFFixedBuffer;
+    type Pipeline = VFPipeline;
+    type Geometry = VFGeometry;
+    type Settings = VectorFieldSettings;
+    type Attached<S: ContextHolder> = ();
+}
+
+pub type VectorField<S> = Attachment<S, VectorFieldDescriptor>;
+
 impl VectorFieldSettings {
-    fn new(l: f32) -> Self {
+    fn new(name: &str, l: f32) -> Self {
         Self {
             show: true,
             magnitude: 1.,
             l,
-            color: ColorSettings::default(),
+            color: ColorSettings::new(&name),
         }
     }
-}
 
-impl VectorFieldSettings {
     fn to_raw(&self) -> VectorFieldSettingsRaw {
         VectorFieldSettingsRaw {
             magnitude: self.magnitude,
@@ -69,6 +87,198 @@ impl VectorFieldSettings {
             _padding: [0; 2],
             color: self.color,
         }
+    }
+}
+
+impl DataUniformBuilder for VectorFieldSettings {
+    fn build_uniform(&self, device: &wgpu::Device) -> Option<DataUniform> {
+        self.to_raw().build_uniform(device)
+    }
+
+    fn refresh_buffer(&self, queue: &wgpu::Queue, data_uniform: &DataUniform) {
+        self.to_raw().refresh_buffer(queue, data_uniform);
+    }
+}
+
+impl ShapeSettings for VectorFieldSettings {
+    fn new(name: &str, characteristic_length: f32) -> Self {
+        VectorFieldSettings::new(name, characteristic_length)
+    }
+
+    fn draw_ui(&mut self, ui: &mut egui::Ui, _rebuild_pipeline: &mut bool) -> bool {
+        let mut settings_changed = false;
+        ui.horizontal(|ui| {
+            settings_changed |= self.color.draw_ui(ui);
+            settings_changed |= egui::DragValue::new(&mut self.magnitude)
+                .prefix("Magnitude: ")
+                .speed(0.1)
+                .ui(ui)
+                .changed();
+        });
+        settings_changed
+    }
+}
+
+impl FixedRenderer for VFFixedBuffer {
+    type Geometry = VFGeometry;
+
+    fn initialize(device: &wgpu::Device, geometry: &Self::Geometry) -> Self {
+        let Self::Geometry { vectors, offsets } = geometry;
+        let positions = [
+            [-0.1, 0., -0.1],
+            [0.1, 0., -0.1],
+            [-0.1, 0., 0.1],
+            [0.1, 0., 0.1],
+            [-0.1, 1., 0.1],
+            [0.1, 1., 0.1],
+            [-0.1, 1., -0.1],
+            [0.1, 1., -0.1],
+        ];
+        let vertices = positions.map(|position| VectorVertex { position });
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vector Vertex Buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let mut gpu_vertices = Vec::with_capacity(vectors.len());
+        for (vector, offset) in vectors.iter().zip(offsets) {
+            let vertex = VectorData {
+                orig_position: *offset,
+                vector: *vector,
+            };
+            gpu_vertices.push(vertex);
+        }
+        let vector_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vector Data Buffer"),
+            contents: bytemuck::cast_slice(&gpu_vertices),
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST,
+        });
+
+        Self {
+            vertex_buffer,
+            vector_buffer,
+        }
+    }
+
+    fn update_vertex(&mut self, _queue: &wgpu::Queue, _vertex: u32, _geometry: &Self::Geometry) {}
+}
+
+impl DataSettings for () {
+    fn apply_previous_settings(&mut self, _previous: Self) {}
+
+    fn draw_ui(&mut self, _ui: &mut egui::Ui) -> bool {
+        false
+    }
+}
+
+impl DataBuffer for () {
+    type Data = ();
+    type Geometry = VFGeometry;
+
+    fn new(_device: &wgpu::Device, _geometry: &Self::Geometry, _data: Option<&Self::Data>) -> Self {
+        ()
+    }
+}
+
+impl RenderPipeline for VFPipeline {
+    type Data = ();
+    type Geometry = VFGeometry;
+    type Settings = VectorFieldSettings;
+
+    fn new(
+        device: &wgpu::Device,
+        _data: Option<&Self::Data>,
+        _geometry: &Self::Geometry,
+        _settings: &Self::Settings,
+        transform_uniform: &DataUniform,
+        settings_uniform: &DataUniform,
+        _data_uniform: Option<&DataUniform>,
+        camera_bind_group_layout: &wgpu::BindGroupLayout,
+        _counter_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Vector Render Pipeline Layout"),
+            bind_group_layouts: &[
+                camera_bind_group_layout,
+                &transform_uniform.bind_group_layout,
+                &settings_uniform.bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
+        let shader = include_wgsl!("vector_shader.wgsl");
+        let render_pipeline = util::create_quad_pipeline(
+            device,
+            &pipeline_layout,
+            Some(texture::DEPTH_FORMAT),
+            &[VectorVertex::desc(), VectorData::desc()],
+            shader,
+            Some("vector field render"),
+        );
+        Self { render_pipeline }
+    }
+
+    fn rebuild(
+        &mut self,
+        _device: &wgpu::Device,
+        _data: Option<&Self::Data>,
+        _settings: &Self::Settings,
+        _transform_uniform: &DataUniform,
+        _settings_uniform: &DataUniform,
+        _data_uniform: Option<&DataUniform>,
+        _camera_bind_group_layout: &wgpu::BindGroupLayout,
+    ) {
+    }
+}
+
+impl ShapeGeometry for VFGeometry {
+    type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
+    fn can_be_replaced_by(&self, _other: &Self) -> bool {
+        false
+    }
+
+    fn get_characteristic_length(&self) -> f32 {
+        let avg_vec_length = self.vectors.iter().fold(0., |l, vec| {
+            l + (vec[0].powi(0) + vec[1].powi(1) + vec[2].powi(2)).sqrt()
+                / self.vectors.len() as f32
+        });
+        avg_vec_length
+    }
+
+    fn get_positions(&self) -> &[[f32; 3]] {
+        &self.offsets
+    }
+
+    fn get_total_elements(&self) -> u32 {
+        self.offsets.len() as u32
+    }
+
+    fn get_vertex_pos(&self, vertex: u32) -> [f32; 3] {
+        self.offsets[vertex as usize]
+    }
+
+    fn move_vertex(
+        &mut self,
+        _vertex: u32,
+        _pos: [f32; 3],
+    ) -> ((Vec<u32>, Vec<[f32; 3]>), (Vec<u32>, Vec<[f32; 3]>)) {
+        ((Vec::new(), Vec::new()), (Vec::new(), Vec::new()))
+    }
+
+    fn new(args: Self::Args) -> Self {
+        let mut vectors = args.0;
+        let offsets = args.1;
+        let max_vec_length = vectors.iter().fold(0., |l: f32, vec| {
+            l.max((vec[0].powi(0) + vec[1].powi(1) + vec[2].powi(2)).sqrt())
+        });
+        for v in &mut vectors {
+            for c in v {
+                *c = *c * 2. / max_vec_length;
+            }
+        }
+        Self { vectors, offsets }
     }
 }
 
@@ -95,37 +305,6 @@ where
     pub fn show(&mut self, show: bool) {
         self.inner.show = show;
         self.update_data_settings();
-    }
-}
-
-#[derive(Clone)]
-#[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
-pub struct NewVectorField {
-    position: AttachmentPosition,
-    vectors: Vec<[f32; 3]>,
-    offsets: Vec<[f32; 3]>,
-    pub(crate) settings: VectorFieldSettings,
-}
-
-impl NewVectorField {
-    pub(crate) fn new(
-        name: String,
-        characteristic_l: f32,
-        position: AttachmentPosition,
-        vectors: Vec<[f32; 3]>,
-        offsets: Vec<[f32; 3]>,
-    ) -> NewVectorField {
-        let avg_vec_length = vectors.iter().fold(0., |l, vec| {
-            l + (vec[0].powi(0) + vec[1].powi(1) + vec[2].powi(2)).sqrt() / vectors.len() as f32
-        });
-        let mut settings = VectorFieldSettings::new(characteristic_l / avg_vec_length * 2.);
-        settings.color = ColorSettings::new(&name);
-        NewVectorField {
-            position,
-            vectors,
-            offsets,
-            settings,
-        }
     }
 }
 
@@ -179,204 +358,7 @@ impl Vertex for VectorData {
     }
 }
 
-impl VectorField {
-    fn build_vertex_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-        let positions = [
-            [-0.1, 0., -0.1],
-            [0.1, 0., -0.1],
-            [-0.1, 0., 0.1],
-            [0.1, 0., 0.1],
-            [-0.1, 1., 0.1],
-            [0.1, 1., 0.1],
-            [-0.1, 1., -0.1],
-            [0.1, 1., -0.1],
-        ];
-        let vertices = positions.map(|position| VectorVertex { position });
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vector Vertex Buffer"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        })
-    }
-
-    fn build_vector_buffer(
-        device: &wgpu::Device,
-        vectors: &Vec<[f32; 3]>,
-        offsets: &Vec<[f32; 3]>,
-    ) -> wgpu::Buffer {
-        let mut gpu_vertices = Vec::with_capacity(vectors.len());
-        for (vector, offset) in vectors.iter().zip(offsets) {
-            let vertex = VectorData {
-                orig_position: *offset,
-                vector: *vector,
-            };
-            gpu_vertices.push(vertex);
-        }
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vector Data Buffer"),
-            contents: bytemuck::cast_slice(&gpu_vertices),
-            usage: wgpu::BufferUsages::VERTEX
-                | wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST,
-        })
-    }
-
-    pub fn new(
-        device: &wgpu::Device,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        transform_uniform: &DataUniform,
-        NewVectorField {
-            position,
-            vectors,
-            offsets,
-            settings,
-        }: NewVectorField,
-    ) -> Self {
-        assert!(vectors.len() == offsets.len());
-
-        let settings_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vector field settings buffer"),
-            contents: bytemuck::cast_slice(&[settings.to_raw()]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-        let settings_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("vector_field_settings_bind_group_layout"),
-            });
-        let settings_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &settings_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: settings_buffer.as_entire_binding(),
-            }],
-            label: Some("vector_field_settings_bind_group"),
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Vector Render Pipeline Layout"),
-            bind_group_layouts: &[
-                camera_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-                &settings_bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        });
-        let shader = include_wgsl!("vector_shader.wgsl");
-        let render_pipeline = util::create_quad_pipeline(
-            device,
-            &pipeline_layout,
-            Some(texture::DEPTH_FORMAT),
-            &[VectorVertex::desc(), VectorData::desc()],
-            shader,
-            Some("vector field render"),
-        );
-
-        let vertex_buffer = Self::build_vertex_buffer(device);
-        let vector_buffer = Self::build_vector_buffer(device, &vectors, &offsets);
-        Self {
-            position,
-            vectors,
-            offsets: offsets,
-            render_pipeline,
-            vertex_buffer,
-            vector_buffer,
-            settings,
-            settings_bind_group,
-            settings_buffer,
-        }
-    }
-}
-
-impl<S> AttachedGeometry<S> for NewVectorField
-where
-    for<'a> S: ContextHolder<Context<'a> = &'a mut crate::Settings, TransformUniform = ()>,
-{
-    type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Settings<'b> = &'b mut VectorFieldSettings;
-
-    fn new(
-        name: String,
-        args: Self::Args,
-        position: AttachmentPosition,
-        characteristic_l: f32,
-        _context: &mut &mut crate::Settings,
-        _transform_layout: &(),
-    ) -> Self {
-        let (vectors, offsets) = args;
-        NewVectorField::new(name, characteristic_l, position, vectors, offsets)
-    }
-
-    fn shown(&self) -> bool {
-        self.settings.show
-    }
-
-    fn show(&mut self, show: bool, refresh_screen: &mut bool) {
-        self.settings.show = show;
-        *refresh_screen = true;
-    }
-
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        &mut self.settings
-    }
-
-    fn get_attached_position(&self) -> &AttachmentPosition {
-        &self.position
-    }
-}
-
-impl AttachedGeometry<InnerGraphicalState> for VectorField {
-    type Args = (Vec<[f32; 3]>, Vec<[f32; 3]>);
-    type Settings<'b> = &'b mut VectorFieldSettings;
-
-    fn new(
-        name: String,
-        args: Self::Args,
-        position: AttachmentPosition,
-        characteristic_l: f32,
-        context: &mut GraphicalContext<'_>,
-        transform_uniform: &DataUniform,
-    ) -> Self {
-        *context.refresh_screen = true;
-        let (vectors, offsets) = args;
-        let new_vector_field =
-            NewVectorField::new(name, characteristic_l, position, vectors, offsets);
-        VectorField::new(
-            context.device,
-            context.camera_bind_group_layout,
-            transform_uniform,
-            new_vector_field,
-        )
-    }
-
-    fn shown(&self) -> bool {
-        self.settings.show
-    }
-
-    fn show(&mut self, show: bool, refresh_screen: &mut bool) {
-        self.settings.show = show;
-        *refresh_screen = true;
-    }
-
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        &mut self.settings
-    }
-
-    fn get_attached_position(&self) -> &AttachmentPosition {
-        &self.position
-    }
-}
-
-impl GraphicalAttachment for VectorField {
+impl GraphicalAttachment for VectorField<InnerGraphicalState> {
     fn draw_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -386,24 +368,10 @@ impl GraphicalAttachment for VectorField {
         _color_format: wgpu::TextureFormat,
         refresh_screen: &mut bool,
     ) {
-        let mut settings_changed = false;
-        //TODO move this
-
-        ui.horizontal(|ui| {
-            settings_changed |= self.settings.color.draw_ui(ui);
-            settings_changed |= egui::DragValue::new(&mut self.settings.magnitude)
-                .prefix("Magnitude: ")
-                .speed(0.1)
-                .ui(ui)
-                .changed();
-        });
-        if settings_changed {
+        if self.settings.draw_ui(ui, &mut false) {
             *refresh_screen = true;
-            queue.write_buffer(
-                &self.settings_buffer,
-                0,
-                bytemuck::cast_slice(&[self.settings.to_raw()]),
-            );
+            self.settings
+                .refresh_buffer(queue, &self.renderer.settings_uniform);
         }
     }
 
@@ -411,48 +379,25 @@ impl GraphicalAttachment for VectorField {
     where
         'c: 'd,
     {
-        render_pass.set_bind_group(2, &self.settings_bind_group, &[]);
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.vector_buffer.slice(..));
+        render_pass.set_bind_group(2, &self.renderer.settings_uniform.bind_group, &[]);
+        render_pass.set_pipeline(&self.renderer.pipeline.render_pipeline);
+        render_pass.set_vertex_buffer(0, self.renderer.fixed.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.renderer.fixed.vector_buffer.slice(..));
         //render_pass.draw(0..18, 0..(self.vectors.len() as u32));
-        render_pass.draw(0..8, 0..(self.vectors.len() as u32));
+        render_pass.draw(0..8, 0..(self.geometry.vectors.len() as u32));
     }
 
     fn move_elements(&mut self, queue: &wgpu::Queue, indices: &[u32], pos: &[[f32; 3]]) {
         for (index, value) in indices.iter().zip(pos) {
-            self.offsets[*index as usize] = *value;
+            self.geometry.offsets[*index as usize] = *value;
             queue.write_buffer(
-                &self.vector_buffer,
+                &self.renderer.fixed.vector_buffer,
                 (*index as usize * size_of::<VectorData>()) as BufferAddress,
                 bytemuck::cast_slice(&[VectorData {
                     orig_position: *value,
-                    vector: self.vectors[*index as usize],
+                    vector: self.geometry.vectors[*index as usize],
                 }]),
             );
-        }
-    }
-}
-
-impl NewAttachedGeometry for NewVectorField {
-    type UpgradedAttachedGeometry = VectorField;
-
-    fn init(
-        self,
-        device: &wgpu::Device,
-        _camera: &Camera,
-        camera_bind_group_layout: &wgpu::BindGroupLayout,
-        transform_uniform: &DataUniform,
-    ) -> Self::UpgradedAttachedGeometry {
-        VectorField::new(device, camera_bind_group_layout, transform_uniform, self)
-    }
-
-    fn downgrade(upgraded: &Self::UpgradedAttachedGeometry) -> Self {
-        Self {
-            position: upgraded.position.clone(),
-            settings: upgraded.settings.clone(),
-            vectors: upgraded.vectors.clone(),
-            offsets: upgraded.offsets.clone(),
         }
     }
 }

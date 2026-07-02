@@ -545,14 +545,7 @@ impl InvariantShapeDescriptor for PointCloudDesc {
     type DataBuffer = PointCloudDataBuffer;
     type FixedBuffer = PointCloudFixedRenderer;
     type Pipeline = PointCloudPipeline;
-}
-
-impl ShapeDescriptor<InnerBareState> for PointCloudDesc {
-    type AttachedGeometry = ();
-}
-
-impl ShapeDescriptor<InnerGraphicalState> for PointCloudDesc {
-    type AttachedGeometry = ();
+    type Attached<S: ContextHolder> = ();
 }
 
 pub type PointCloud<S> = Shape<S, PointCloudDesc>;

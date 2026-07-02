@@ -833,14 +833,7 @@ impl InvariantShapeDescriptor for SegmentDesc {
     type DataBuffer = SegmentDataBuffer;
     type FixedBuffer = SegmentFixedRenderer;
     type Pipeline = SegmentPipeline;
-}
-
-impl ShapeDescriptor<InnerBareState> for SegmentDesc {
-    type AttachedGeometry = ();
-}
-
-impl ShapeDescriptor<InnerGraphicalState> for SegmentDesc {
-    type AttachedGeometry = ();
+    type Attached<S: ContextHolder> = ();
 }
 
 pub type Segment<S> = Shape<S, SegmentDesc>;
