@@ -6,8 +6,8 @@ use crate::data::internal::DataUniformBuilder;
 use crate::data::*;
 use crate::shape::DataBuffer;
 use crate::shape::FixedRenderer;
-use crate::shape::InvariantShapeDescriptor;
 use crate::shape::RenderPipeline;
+use crate::shape::ShapeDescriptor;
 use crate::shape::ShapeGeometry;
 use crate::shape::ShapeSettings;
 use crate::shape::{DataMut, DataMutTrait};
@@ -58,7 +58,7 @@ pub struct VectorFieldSettings {
     pub color: ColorSettings,
 }
 
-impl InvariantShapeDescriptor for VectorFieldDescriptor {
+impl ShapeDescriptor for VectorFieldDescriptor {
     type Data = ();
     type DataBuffer = ();
     type FixedBuffer = VFFixedBuffer;

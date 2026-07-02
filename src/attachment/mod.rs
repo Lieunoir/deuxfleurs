@@ -5,8 +5,8 @@ use crate::{
     attachment::internal::AttachmentPosition,
     data::internal::DataUniform,
     shape::{
-        AttachedGeometry, AttachedRenderer, InvariantShapeDescriptor, NewAttachedGeometry,
-        ShapeGeometry, data::ShapeSettings,
+        AttachedGeometry, AttachedRenderer, NewAttachedGeometry, ShapeDescriptor, ShapeGeometry,
+        data::ShapeSettings,
     },
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
@@ -30,7 +30,7 @@ pub(crate) mod internal {
     }
 }
 
-pub struct Attachment<S: ContextHolder + ?Sized, Desc: InvariantShapeDescriptor> {
+pub struct Attachment<S: ContextHolder + ?Sized, Desc: ShapeDescriptor> {
     show: bool,
     settings: Desc::Settings,
     position: AttachmentPosition,
@@ -39,7 +39,7 @@ pub struct Attachment<S: ContextHolder + ?Sized, Desc: InvariantShapeDescriptor>
     renderer: S::AttachedRenderer<Desc>,
 }
 
-impl<Desc: InvariantShapeDescriptor> Clone for Attachment<InnerBareState, Desc> {
+impl<Desc: ShapeDescriptor> Clone for Attachment<InnerBareState, Desc> {
     fn clone(&self) -> Self {
         Self {
             show: self.show,
@@ -70,7 +70,7 @@ pub trait GraphicalAttachment: AttachedGeometry<InnerGraphicalState> {
     );
 }
 
-impl<S: ContextHolder, Desc: InvariantShapeDescriptor> crate::shape::AttachedGeometry<S>
+impl<S: ContextHolder, Desc: ShapeDescriptor> crate::shape::AttachedGeometry<S>
     for Attachment<S, Desc>
 {
     type Args = (Vec<u32>, <Desc::Geometry as ShapeGeometry>::Args);
@@ -123,7 +123,7 @@ impl<S: ContextHolder, Desc: InvariantShapeDescriptor> crate::shape::AttachedGeo
     }
 }
 
-impl<Desc: InvariantShapeDescriptor> NewAttachedGeometry for Attachment<InnerBareState, Desc> {
+impl<Desc: ShapeDescriptor> NewAttachedGeometry for Attachment<InnerBareState, Desc> {
     type UpgradedAttachedGeometry = Attachment<InnerGraphicalState, Desc>;
 
     fn init(

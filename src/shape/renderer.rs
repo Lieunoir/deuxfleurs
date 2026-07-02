@@ -1,8 +1,8 @@
 use crate::data::TransformSettings;
 use crate::data::internal::{DataUniform, DataUniformBuilder};
-use crate::shape::InvariantShapeDescriptor;
+use crate::shape::ShapeDescriptor;
 
-pub struct Renderer<Desc: InvariantShapeDescriptor + ?Sized> {
+pub struct Renderer<Desc: ShapeDescriptor + ?Sized> {
     // Buffers which won't be modified after init
     // (actually can due to geometry replacement)
     pub(crate) fixed: Desc::FixedBuffer,
@@ -17,13 +17,13 @@ pub struct Renderer<Desc: InvariantShapeDescriptor + ?Sized> {
     pub(crate) data_uniform: Option<DataUniform>,
 }
 
-pub struct AttachedRenderer<Desc: InvariantShapeDescriptor + ?Sized> {
+pub struct AttachedRenderer<Desc: ShapeDescriptor + ?Sized> {
     pub(crate) fixed: Desc::FixedBuffer,
     pub(crate) pipeline: Desc::Pipeline,
     pub(crate) settings_uniform: DataUniform,
 }
 
-impl<Desc: InvariantShapeDescriptor + ?Sized> Renderer<Desc> {
+impl<Desc: ShapeDescriptor + ?Sized> Renderer<Desc> {
     pub(crate) fn new(
         device: &wgpu::Device,
         geometry: &Desc::Geometry,
@@ -167,7 +167,7 @@ pub trait Render {
     }
 }
 
-impl<Desc: InvariantShapeDescriptor + ?Sized> AttachedRenderer<Desc> {
+impl<Desc: ShapeDescriptor + ?Sized> AttachedRenderer<Desc> {
     pub(crate) fn new(
         device: &wgpu::Device,
         geometry: &Desc::Geometry,

@@ -924,7 +924,7 @@ impl Render for SurfaceRenderer {
 
 pub struct SurfaceDesc;
 
-impl InvariantShapeDescriptor for SurfaceDesc {
+impl ShapeDescriptor for SurfaceDesc {
     type Data = SurfaceData;
     type Geometry = SurfaceGeometry;
     type Settings = SurfaceSettings;
@@ -1099,10 +1099,7 @@ impl DisplaySurface {
 
 pub type SurfaceMut<'a, S> = ShapeMut<'a, Surface<S>, S>;
 
-impl<S: ContextHolder> SurfaceMut<'_, S>
-where
-    SurfaceDesc: ShapeTrait<S>,
-{
+impl<S: ContextHolder> SurfaceMut<'_, S> {
     pub fn show_edges(&mut self, show_edges: bool) -> &mut Self {
         if self.inner.settings.show_edges != show_edges {
             self.inner.settings.show_edges = show_edges;

@@ -23,7 +23,7 @@ pub struct GraphicalContext<'a> {
     pub(crate) refresh_screen: &'a mut bool,
 }
 
-pub trait InvariantShapeDescriptor {
+pub trait ShapeDescriptor {
     type Geometry: ShapeGeometry;
     type Settings: ShapeSettings;
     type Data: DataSettings;
@@ -34,7 +34,7 @@ pub trait InvariantShapeDescriptor {
 }
 
 #[cfg_attr(feature = "saves", derive(Serialize, Deserialize))]
-pub struct Shape<S: ContextHolder, Desc: InvariantShapeDescriptor + ?Sized> {
+pub struct Shape<S: ContextHolder, Desc: ShapeDescriptor + ?Sized> {
     pub(crate) name: String,
     pub(crate) geometry: Desc::Geometry,
     pub(crate) renderer: S::Renderer<Desc>,
@@ -48,7 +48,7 @@ pub struct Shape<S: ContextHolder, Desc: InvariantShapeDescriptor + ?Sized> {
     modification_stamp: u32,
 }
 
-impl<S: ContextHolder, Desc: InvariantShapeDescriptor> Clone for Shape<S, Desc>
+impl<S: ContextHolder, Desc: ShapeDescriptor> Clone for Shape<S, Desc>
 where
     Desc::Attached<S>: Clone,
     S::Renderer<Desc>: Clone,
@@ -71,7 +71,7 @@ where
 }
 
 /// Mainly accessors for publically read-only fields
-impl<S: ContextHolder, Desc: InvariantShapeDescriptor> Shape<S, Desc> {
+impl<S: ContextHolder, Desc: ShapeDescriptor> Shape<S, Desc> {
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -105,9 +105,14 @@ impl<S: ContextHolder, Desc: InvariantShapeDescriptor> Shape<S, Desc> {
 pub type UninitedShape<Desc> = Shape<InnerBareState, Desc>;
 pub type DisplayShape<Desc> = Shape<InnerGraphicalState, Desc>;
 
-impl<Desc: InvariantShapeDescriptor> UninitedShape<Desc>
+impl<Desc: ShapeDescriptor> UninitedShape<Desc>
 where
     Desc::Attached<InnerBareState>: NewAttachedGeometry,
+    Desc: ShapeDescriptor<
+        Attached<InnerGraphicalState> = <<Desc as ShapeDescriptor>::Attached<
+            InnerBareState,
+        > as NewAttachedGeometry>::UpgradedAttachedGeometry,
+    >,
 {
     pub(crate) fn upgrade(
         self,
@@ -115,12 +120,6 @@ where
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> DisplayShape<Desc>
-    where
-        Desc: InvariantShapeDescriptor<
-            Attached<InnerGraphicalState> = <<Desc as InvariantShapeDescriptor>::Attached<
-                InnerBareState,
-            > as NewAttachedGeometry>::UpgradedAttachedGeometry,
-        >,
     {
         let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
         let renderer = Renderer::new(
@@ -166,18 +165,19 @@ where
 
 impl<Desc> DisplayShape<Desc>
 where
-    Desc: InvariantShapeDescriptor,
+    Desc: ShapeDescriptor,
     Renderer<Desc>: Render,
     Desc::Attached<InnerGraphicalState>: GraphicalAttachment,
 {
     #[cfg(feature = "saves")]
     pub(crate) fn downgrade(&self) -> UninitedShape<Desc>
     where
-        Desc: ShapeDescriptor<
-                InnerBareState,
+        Desc: ShapeDescriptor<InnerBareState>,
+        <Desc as ShapeDescriptor>::Attached<InnerBareState>: NewAttachedGeometry<
+            UpgradedAttachedGeometry = <Desc as ShapeDescriptor>::AttachedGeometry<
+                InnerGraphicalState,
             >,
-        <Desc as ShapeDescriptor<InnerBareState>>::AttachedGeometry:
-            NewAttachedGeometry<UpgradedAttachedGeometry = <Desc as ShapeDescriptor<InnerGraphicalState>>::AttachedGeometry>,
+        >,
     {
         let attached_data = self
             .attached_data
@@ -189,7 +189,7 @@ where
                 )
             })
             .collect();
-        UninitedShape::<Desc> {
+        UninitedShape {
             name: self.name.clone(),
             geometry: self.geometry.clone(),
             data: self.data.clone(),
@@ -369,26 +369,26 @@ where
     }
 }
 
-pub trait ShapeTrait<S: ContextHolder>: InvariantShapeDescriptor {
-    fn new(
+impl<S: ContextHolder, Desc: ShapeDescriptor> Shape<S, Desc> {
+    pub(crate) fn new(
         name: String,
-        args: <Self::Geometry as ShapeGeometry>::Args,
+        args: <Desc::Geometry as ShapeGeometry>::Args,
         char_l: Option<f32>,
         context: &mut S::Context<'_>,
-    ) -> Shape<S, Self> {
-        let geometry = Self::Geometry::new(args);
+    ) -> Shape<S, Desc> {
+        let geometry = Desc::Geometry::new(args);
         Self::new_with_geometry(name, geometry, char_l, context)
     }
 
     fn new_with_geometry(
         name: String,
-        geometry: Self::Geometry,
+        geometry: Desc::Geometry,
         char_l: Option<f32>,
         context: &mut S::Context<'_>,
-    ) -> Shape<S, Self> {
+    ) -> Shape<S, Desc> {
         let transform = TransformSettings::default();
         let char_l = char_l.unwrap_or_else(|| geometry.get_characteristic_length());
-        let settings = Self::Settings::new(&name, char_l);
+        let settings = Desc::Settings::new(&name, char_l);
         let renderer = S::build_renderer(&geometry, &transform, &settings, None, context);
         let sbv = SBV::new(geometry.get_positions());
         Shape {
@@ -407,20 +407,20 @@ pub trait ShapeTrait<S: ContextHolder>: InvariantShapeDescriptor {
     }
 
     // Return value is true when replaced, false when created
-    fn replace_or_create(
-        this: &mut Shape<S, Self>,
-        args: <Self::Geometry as ShapeGeometry>::Args,
+    pub(crate) fn replace_or_create(
+        &mut self,
+        args: <Desc::Geometry as ShapeGeometry>::Args,
         context: &mut S::Context<'_>,
     ) -> bool {
-        let new_geometry = <Self::Geometry as ShapeGeometry>::new(args);
-        if this.geometry.can_be_replaced_by(&new_geometry) {
-            S::rebuild_fixed_buffer(&mut this.renderer, &new_geometry, context);
-            this.geometry = new_geometry;
-            this.sbv = SBV::new(this.geometry.get_positions());
+        let new_geometry = <Desc::Geometry as ShapeGeometry>::new(args);
+        if self.geometry.can_be_replaced_by(&new_geometry) {
+            S::rebuild_fixed_buffer(&mut self.renderer, &new_geometry, context);
+            self.geometry = new_geometry;
+            self.sbv = SBV::new(self.geometry.get_positions());
             true
         } else {
-            *this = Self::new_with_geometry(
-                std::mem::take(&mut this.name),
+            *self = Self::new_with_geometry(
+                std::mem::take(&mut self.name),
                 new_geometry,
                 None,
                 context,
@@ -429,159 +429,105 @@ pub trait ShapeTrait<S: ContextHolder>: InvariantShapeDescriptor {
         }
     }
 
-    fn show(this: &mut Shape<S, Self>, show: bool, context: &mut S::Context<'_>) {
-        if this.show != show {
+    fn show(&mut self, show: bool, context: &mut S::Context<'_>) {
+        if self.show != show {
             S::notify_refresh_screen(context, true);
-            this.show = show;
+            self.show = show;
         }
     }
 
-    fn set_data(this: &mut Shape<S, Self>, name: Option<String>, context: &mut S::Context<'_>) {
-        if this.shown_data != name {
-            this.shown_data = name;
-            let data = this.shown_data.as_ref().map(|d| this.data.get(d)).flatten();
+    fn set_data(&mut self, name: Option<String>, context: &mut S::Context<'_>) {
+        if self.shown_data != name {
+            self.shown_data = name;
+            let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
             S::rebuild_data_buffer(
-                &mut this.renderer,
-                &this.geometry,
+                &mut self.renderer,
+                &self.geometry,
                 data,
-                &this.settings,
+                &self.settings,
                 context,
             );
-            S::notify_refresh_screen(context, this.show);
+            S::notify_refresh_screen(context, self.show);
         }
     }
 
     fn add_data<'a>(
-        this: &'a mut Shape<S, Self>,
+        &'a mut self,
         name: String,
-        data: Self::Data,
+        data: Desc::Data,
         mut context: S::Context<'a>,
-    ) -> DataMut<'a, &'a mut Self::Data, S> {
-        let old_data = this.data.insert(name.clone(), data);
-        let data = this.data.get_mut(&name).unwrap();
+    ) -> DataMut<'a, &'a mut Desc::Data, S> {
+        let old_data = self.data.insert(name.clone(), data);
+        let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_previous_settings(old));
-        if this.shown_data.as_ref() == Some(&name) {
+        if self.shown_data.as_ref() == Some(&name) {
             S::rebuild_data_buffer(
-                &mut this.renderer,
-                &this.geometry,
+                &mut self.renderer,
+                &self.geometry,
                 Some(data),
-                &this.settings,
+                &self.settings,
                 &context,
             );
-            S::notify_refresh_screen(&mut context, this.show);
+            S::notify_refresh_screen(&mut context, self.show);
         }
         DataMut {
             inner: data,
             context: context,
-            uniform: S::get_renderer_data_uniform(&this.renderer),
+            uniform: S::get_renderer_data_uniform(&self.renderer),
         }
     }
 
-    fn remove_data(this: &mut Shape<S, Self>, name: String, context: &mut S::Context<'_>) {
-        if this.data.shift_remove(&name).is_some() && this.shown_data == Some(name) {
-            this.shown_data = None;
-            S::notify_refresh_screen(context, this.show);
+    fn remove_data(&mut self, name: String, context: &mut S::Context<'_>) {
+        if self.data.shift_remove(&name).is_some() && self.shown_data == Some(name) {
+            self.shown_data = None;
+            S::notify_refresh_screen(context, self.show);
         }
     }
 
-    fn remove_attached_shape(
-        this: &mut Shape<S, Self>,
-        name: String,
-        context: &mut S::Context<'_>,
-    ) {
-        if let Some(data) = this.attached_data.shift_remove(&name)
+    fn remove_attached_shape(&mut self, name: String, context: &mut S::Context<'_>) {
+        if let Some(data) = self.attached_data.shift_remove(&name)
             && data.shown()
         {
-            S::notify_refresh_screen(context, this.show);
+            S::notify_refresh_screen(context, self.show);
         }
     }
 
-    fn update_settings(
-        this: &mut Shape<S, Self>,
-        context: &mut S::Context<'_>,
-        rebuild_pipeline: bool,
-    ) {
-        S::update_settings(&mut this.renderer, &this.settings, context);
+    fn update_settings(&mut self, context: &mut S::Context<'_>, rebuild_pipeline: bool) {
+        S::update_settings(&mut self.renderer, &self.settings, context);
         if rebuild_pipeline {
-            let data = this.shown_data.as_ref().map(|d| this.data.get(d)).flatten();
-            S::rebuild_pipeline(&mut this.renderer, data, &this.settings, context);
+            let data = self.shown_data.as_ref().map(|d| self.data.get(d)).flatten();
+            S::rebuild_pipeline(&mut self.renderer, data, &self.settings, context);
         }
     }
 
-    fn set_transform(
-        this: &mut Shape<S, Self>,
-        transform: [[f32; 4]; 4],
-        context: &mut S::Context<'_>,
-    ) {
-        this.transform.set_transform(transform);
-        S::update_transform(&mut this.renderer, &this.transform, context);
+    fn set_transform(&mut self, transform: [[f32; 4]; 4], context: &mut S::Context<'_>) {
+        self.transform.set_transform(transform);
+        S::update_transform(&mut self.renderer, &self.transform, context);
     }
 
     fn add_attached_geometry<'a>(
-        this: &'a mut Shape<S, Self>,
+        &'a mut self,
         name: String,
-        args: <Self::Attached<S> as AttachedGeometry<S>>::Args,
+        args: <Desc::Attached<S> as AttachedGeometry<S>>::Args,
         position: AttachmentPosition,
-        context: S::Context<'a>,
-    ) -> DataMut<'a, &'a mut Self::Attached<S>, S>;
-}
-
-impl<Desc> ShapeTrait<InnerBareState> for Desc
-where
-    Desc: InvariantShapeDescriptor,
-    Desc::Attached<InnerBareState>: NewAttachedGeometry,
-{
-    fn add_attached_geometry<'a>(
-        this: &'a mut UninitedShape<Desc>,
-        name: String,
-        args: <Desc::Attached<InnerBareState> as AttachedGeometry<InnerBareState>>::Args,
-        position: AttachmentPosition,
-        mut context: <InnerBareState as ContextHolder>::Context<'a>,
-    ) -> DataMut<'a, &'a mut Desc::Attached<InnerBareState>, InnerBareState> {
-        let geometry = Desc::Attached::new(
-            name.clone(),
-            args,
-            position,
-            this.geometry().get_characteristic_length(),
-            &mut context,
-            &(),
-        );
-        this.attached_data.insert(name.clone(), geometry);
-        DataMut {
-            inner: this.attached_data.get_mut(&name).unwrap(),
-            uniform: (),
-            context,
-        }
-    }
-}
-
-impl<Desc> ShapeTrait<InnerGraphicalState> for Desc
-where
-    Desc: InvariantShapeDescriptor,
-{
-    fn add_attached_geometry<'a>(
-        this: &'a mut DisplayShape<Desc>,
-        name: String,
-        args: <Desc::Attached<InnerGraphicalState> as AttachedGeometry<InnerGraphicalState>>::Args,
-        position: AttachmentPosition,
-        mut context: <InnerGraphicalState as ContextHolder>::Context<'a>,
-    ) -> DataMut<'a, &'a mut Desc::Attached<InnerGraphicalState>, InnerGraphicalState> {
-        *context.refresh_screen = true;
+        mut context: S::Context<'a>,
+    ) -> DataMut<'a, &'a mut Desc::Attached<S>, S> {
+        S::notify_refresh_screen(&mut context, true);
         {
             let geometry = Desc::Attached::new(
                 name.clone(),
                 args,
                 position,
-                this.geometry.get_characteristic_length(),
+                self.geometry.get_characteristic_length(),
                 &mut context,
-                &this.renderer.transform_uniform,
+                S::get_renderer_transform_uniform(&self.renderer),
             );
-            this.attached_data.insert(name.clone(), geometry);
+            self.attached_data.insert(name.clone(), geometry);
         }
         DataMut {
-            inner: this.attached_data.get_mut(&name).unwrap(),
+            inner: self.attached_data.get_mut(&name).unwrap(),
             context: context,
-            uniform: &this.renderer.data_uniform,
+            uniform: S::get_renderer_data_uniform(&self.renderer),
         }
     }
 }
@@ -591,7 +537,7 @@ pub struct ShapeMut<'a, Shape, S: ContextHolder> {
     pub(crate) context: S::Context<'a>,
 }
 
-impl<Desc: ShapeTrait<S>, S: ContextHolder> Deref for ShapeMut<'_, Shape<S, Desc>, S> {
+impl<Desc: ShapeDescriptor, S: ContextHolder> Deref for ShapeMut<'_, Shape<S, Desc>, S> {
     type Target = Shape<S, Desc>;
 
     fn deref(&self) -> &Self::Target {
@@ -599,27 +545,28 @@ impl<Desc: ShapeTrait<S>, S: ContextHolder> Deref for ShapeMut<'_, Shape<S, Desc
     }
 }
 
-impl<Desc: ShapeTrait<S>, S: ContextHolder> ShapeMut<'_, Shape<S, Desc>, S> {
+impl<Desc: ShapeDescriptor, S: ContextHolder> ShapeMut<'_, Shape<S, Desc>, S> {
     pub fn show(&mut self, show: bool) -> &mut Self {
-        Desc::show(&mut self.inner, show, &mut self.context);
+        self.inner.show(show, &mut self.context);
         self
     }
 
     pub fn set_transform(&mut self, transform: [[f32; 4]; 4]) {
-        Desc::set_transform(&mut self.inner, transform, &mut self.context);
+        self.inner.set_transform(transform, &mut self.context);
     }
 
     pub fn set_data<St: Into<String>>(&mut self, name: Option<St>) -> &mut Self {
-        Desc::set_data(&mut self.inner, name.map(Into::into), &mut self.context);
+        self.inner.set_data(name.map(Into::into), &mut self.context);
         self
     }
 
     pub fn remove_data<St: Into<String>>(&mut self, name: St) {
-        Desc::remove_data(&mut self.inner, name.into(), &mut self.context);
+        self.inner.remove_data(name.into(), &mut self.context);
     }
 
     pub fn remove_attached_shape<St: Into<String>>(&mut self, name: St) {
-        Desc::remove_attached_shape(&mut self.inner, name.into(), &mut self.context);
+        self.inner
+            .remove_attached_shape(name.into(), &mut self.context);
     }
 
     pub(crate) fn add_data(
@@ -628,7 +575,7 @@ impl<Desc: ShapeTrait<S>, S: ContextHolder> ShapeMut<'_, Shape<S, Desc>, S> {
         data: Desc::Data,
     ) -> DataMut<'_, &'_ mut Desc::Data, S> {
         let ctxt = <S as ContextHolder>::reborrow_context(&mut self.context);
-        Desc::add_data(&mut self.inner, name, data, ctxt)
+        self.inner.add_data(name, data, ctxt)
     }
 
     pub(crate) fn add_attached_geometry(
@@ -638,11 +585,12 @@ impl<Desc: ShapeTrait<S>, S: ContextHolder> ShapeMut<'_, Shape<S, Desc>, S> {
         position: AttachmentPosition,
     ) -> DataMut<'_, &'_ mut Desc::Attached<S>, S> {
         let ctxt = <S as ContextHolder>::reborrow_context(&mut self.context);
-        Desc::add_attached_geometry(&mut self.inner, name, args, position, ctxt)
+        self.inner.add_attached_geometry(name, args, position, ctxt)
     }
 
     pub(crate) fn update_settings(&mut self, rebuild_pipeline: bool) -> &mut Self {
-        Desc::update_settings(&mut self.inner, &mut self.context, rebuild_pipeline);
+        self.inner
+            .update_settings(&mut self.context, rebuild_pipeline);
         self
     }
 }

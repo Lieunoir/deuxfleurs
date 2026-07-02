@@ -10,7 +10,7 @@ use super::DataUniformBuilder;
 pub struct DataMut<'a, T, S: ContextHolder> {
     pub(crate) inner: T,
     pub(crate) context: S::Context<'a>,
-    pub(crate) uniform: S::DataUniform<'a>,
+    pub(crate) uniform: &'a S::DataUniform,
 }
 
 pub type UninitedData<'a, T> = DataMut<'a, T, InnerBareState>;

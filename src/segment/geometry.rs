@@ -826,7 +826,7 @@ impl Render for SegmentRenderer {
 
 pub struct SegmentDesc;
 
-impl InvariantShapeDescriptor for SegmentDesc {
+impl ShapeDescriptor for SegmentDesc {
     type Data = SegmentData;
     type Geometry = SegmentGeometry;
     type Settings = PCSettings;
@@ -841,10 +841,7 @@ pub type UninitedSegment = Segment<InnerBareState>;
 pub type DisplaySegment = Segment<InnerGraphicalState>;
 pub type SegmentMut<'a, S> = ShapeMut<'a, Segment<S>, S>;
 
-impl<S: ContextHolder> SegmentMut<'_, S>
-where
-    SegmentDesc: ShapeTrait<S>,
-{
+impl<S: ContextHolder> SegmentMut<'_, S> {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {
             self.inner.settings.radius.set_relative(radius);

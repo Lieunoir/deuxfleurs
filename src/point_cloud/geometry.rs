@@ -538,7 +538,7 @@ impl Render for PointCloudRenderer {
 
 pub struct PointCloudDesc;
 
-impl InvariantShapeDescriptor for PointCloudDesc {
+impl ShapeDescriptor for PointCloudDesc {
     type Data = PointCloudData;
     type Geometry = PointCloudGeometry;
     type Settings = PCSettings;
@@ -553,10 +553,7 @@ pub type UninitedPointCloud = PointCloud<InnerBareState>;
 pub type DisplayPointCloud = PointCloud<InnerGraphicalState>;
 pub type PointCloudMut<'a, S> = ShapeMut<'a, PointCloud<S>, S>;
 
-impl<S: ContextHolder> PointCloudMut<'_, S>
-where
-    PointCloudDesc: ShapeTrait<S>,
-{
+impl<S: ContextHolder> PointCloudMut<'_, S> {
     pub fn set_radius(&mut self, radius: f32, relative: bool) -> &mut Self {
         if relative {
             self.inner.settings.radius.set_relative(radius);
