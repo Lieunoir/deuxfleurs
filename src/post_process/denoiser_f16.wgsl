@@ -1,3 +1,5 @@
+enable f16;
+
 struct Parameters {
     reprojection: mat4x4<f32>,
     depth_mul: f32,
@@ -35,18 +37,18 @@ fn vs_main(
     return vec4<f32>(pos[index], 0.0, 1.0);
 }
 
-fn unpack_edges(packedValIn: f32) -> vec4<f32> {
+fn unpack_edges(packedValIn: f32) -> vec4<f16> {
     let packedVal = u32(packedValIn * 255.5);
-    var edgesLRTB: vec4<f32>;
-    edgesLRTB.x = f32((packedVal >> 6) & 0x03) / 3.0;
-    edgesLRTB.y = f32((packedVal >> 4) & 0x03) / 3.0;
-    edgesLRTB.z = f32((packedVal >> 2) & 0x03) / 3.0;
-    edgesLRTB.w = f32((packedVal >> 0) & 0x03) / 3.0;
+    var edgesLRTB: vec4<f16>;
+    edgesLRTB.x = f16((packedVal >> 6) & 0x03) / 3.0;
+    edgesLRTB.y = f16((packedVal >> 4) & 0x03) / 3.0;
+    edgesLRTB.z = f16((packedVal >> 2) & 0x03) / 3.0;
+    edgesLRTB.w = f16((packedVal >> 0) & 0x03) / 3.0;
 
     return saturate(edgesLRTB);
 }
 
-fn add_sample(ssaoValue: f32, edgeValue: f32, sum: ptr<function, f32>, sumWeight: ptr<function, f32>, sum_squared: ptr<function, f32>) {
+fn add_sample(ssaoValue: f16, edgeValue: f16, sum: ptr<function, f16>, sumWeight: ptr<function, f16>, sum_squared: ptr<function, f16>) {
     let weight = edgeValue;
     *sum += weight * ssaoValue;
     *sumWeight += weight;
@@ -61,18 +63,18 @@ fn linearize_depth(depth: f32) -> f32 {
     return param.depth_mul / (param.depth_add + depth);
 }
 
-fn get_previous_value(uv: vec2<f32>) -> vec2<f32> {
+fn get_previous_value(uv: vec2<f32>) -> vec2<f16> {
     let depth_value = delinearize_depth(textureSampleLevel(depth, s, uv, 0.).x);
-    let pos_clip = vec4(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
-    let recovered_clip_w = param.reprojection * pos_clip;
+    let pos_clip = vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - 2.0 * uv.y, depth_value, 1.0);
+    let recovered_clip_w = vec4<f16>(param.reprojection * pos_clip);
     let recovered_clip = recovered_clip_w.xyz / recovered_clip_w.www;
-    let recovered_clip_z = linearize_depth(recovered_clip.z);
-    let recovered_uv = vec2<f32>(0.5 * recovered_clip.x + 0.5, -0.5 * recovered_clip.y + 0.5);
-    let old_ao = textureSample(history, s, recovered_uv).x;
-    let linear_old_depth_sample = textureSampleLevel(old_depth, s, recovered_uv, 0.).x;
-    let weight = f32(abs(1. - linear_old_depth_sample / recovered_clip_z) < 0.05);
+    let recovered_clip_z = f16(linearize_depth(f32(recovered_clip.z)));
+    let recovered_uv = vec2<f16>(0.5 * recovered_clip.x + 0.5, -0.5 * recovered_clip.y + 0.5);
+    let old_ao = f16(textureSample(history, s, vec2<f32>(recovered_uv)).x);
+    let linear_old_depth_sample = f16(textureSampleLevel(old_depth, s, vec2<f32>(recovered_uv), 0.).x);
+    let weight = f16(abs(1. - linear_old_depth_sample / recovered_clip_z) < 0.05);
     //let weight = 1.;
-    return vec2<f32>(old_ao, weight);
+    return vec2<f16>(old_ao, weight);
 }
 
 @fragment
@@ -82,18 +84,18 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
 
     var previous_ao = get_previous_value(fcoords.xy * buffer_size_inv);
 
-    let blurAmount = 1.2f;
-    let diagWeight = 0.65 * 0.5;
+    let blurAmount: f16 = 1.2;
+    let diagWeight: f16 = 0.65 * 0.5;
 
     // gather edge and visibility quads, used later
     let edgesQ0 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(0, 0));
     let edgesQ1 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(1, 1));
     //let edgesQ2 = textureGather(0, source_edges, s, gatherCenter, vec2<i32>(1, 2));
 
-    let visQ0 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(0, 0));
-    let visQ1 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 2));
-    let visQ2 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(0, 2));
-    let visQ3 = textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 2));
+    let visQ0 = vec4<f16>(textureGather(0, source_ao, s, gatherCenter, vec2<i32>(0, 0)));
+    let visQ1 = vec4<f16>(textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 2)));
+    let visQ2 = vec4<f16>(textureGather(0, source_ao, s, gatherCenter, vec2<i32>(0, 2)));
+    let visQ3 = vec4<f16>(textureGather(0, source_ao, s, gatherCenter, vec2<i32>(2, 2)));
 
     let edgesL_LRTB = unpack_edges(edgesQ0.x);
     let edgesT_LRTB = unpack_edges(edgesQ0.z);
@@ -103,11 +105,11 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
 
     // Edges aren't perfectly symmetrical: edge detection algorithm does not guarantee that a left edge on the right pixel will match the right edge on the left pixel (although
     // they will match in majority of cases). This line further enforces the symmetricity, creating a slightly sharper blur. Works real nice with TAA.
-    edgesC_LRTB *= vec4<f32>(edgesL_LRTB.y, edgesR_LRTB.x, edgesT_LRTB.w, edgesB_LRTB.z);
+    edgesC_LRTB *= vec4<f16>(edgesL_LRTB.y, edgesR_LRTB.x, edgesT_LRTB.w, edgesB_LRTB.z);
 
-    let leak_threshold = 2.5;
-    let leak_strength = 0.5;
-    let edginess = (saturate(4.0 - leak_threshold - dot(edgesC_LRTB, vec4<f32>(1.))) / (4 - leak_threshold)) * leak_strength;
+    let leak_threshold: f16 = 2.5;
+    let leak_strength: f16 = 0.5;
+    let edginess = (saturate(4.0 - leak_threshold - dot(edgesC_LRTB, vec4<f16>(1.))) / (4 - leak_threshold)) * leak_strength;
     edgesC_LRTB = saturate(edgesC_LRTB + edginess);
 
     // for diagonals; used by first and second pass
@@ -149,9 +151,9 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> @location(0) f32 {
     let min_ssao = avg_ssao - std_diff;
     let max_ssao = avg_ssao + std_diff;
 
-    var weight = 0.9;
+    var weight: f16 = 0.9;
     previous_ao.x = min(max_ssao, previous_ao.x);
     previous_ao.x = max(min_ssao, previous_ao.x);
     weight *= previous_ao.y;
-    return (weight * previous_ao.x + (1. - weight) * blurred_ao);
+    return f32(weight * previous_ao.x + (1. - weight) * blurred_ao);
 }

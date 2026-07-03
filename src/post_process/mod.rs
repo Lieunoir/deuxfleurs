@@ -1513,10 +1513,16 @@ impl SSAO {
             immediate_size: 0,
         });
 
-        let shader = if device.features().contains(wgpu::Features::SHADER_F16) {
-            device.create_shader_module(include_wgsl!("ssao_f16.wgsl"))
+        let (shader, denoiser_shader) = if device.features().contains(wgpu::Features::SHADER_F16) {
+            (
+                device.create_shader_module(include_wgsl!("ssao_f16.wgsl")),
+                include_wgsl!("denoiser_f16.wgsl"),
+            )
         } else {
-            device.create_shader_module(include_wgsl!("ssao.wgsl"))
+            (
+                device.create_shader_module(include_wgsl!("ssao.wgsl")),
+                include_wgsl!("denoiser.wgsl"),
+            )
         };
 
         let ssao_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1577,7 +1583,6 @@ impl SSAO {
                 immediate_size: 0,
             });
 
-        let denoiser_shader = include_wgsl!("denoiser.wgsl");
         let denoiser_pipeline = util::create_copy_quad_pipeline(
             device,
             &denoiser_pipeline_layout,
