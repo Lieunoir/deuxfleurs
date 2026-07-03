@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/point_cloud/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (4c9d2bfe4 2026-07-01)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/point_cloud/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::data::{internal::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/point_cloud/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (c397dae80 2026-07-02)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/point_cloud/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::data::{internal::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">crate</span>::shape::<span class="kw-2">*</span>;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::texture;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::types::{Color, Scalar};
@@ -362,234 +362,218 @@
 <a href=#362 id=362 data-nosnippet>362</a>        camera_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
 <a href=#363 id=363 data-nosnippet>363</a>        counter_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
 <a href=#364 id=364 data-nosnippet>364</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#365 id=365 data-nosnippet>365</a>        <span class="kw">let </span>bind_group_layouts = <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = data_uniform {
-<a href=#366 id=366 data-nosnippet>366</a>            <span class="macro">vec!</span>[
-<a href=#367 id=367 data-nosnippet>367</a>                camera_bind_group_layout,
-<a href=#368 id=368 data-nosnippet>368</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#369 id=369 data-nosnippet>369</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
-<a href=#370 id=370 data-nosnippet>370</a>                <span class="kw-2">&amp;</span>uniform.bind_group_layout,
-<a href=#371 id=371 data-nosnippet>371</a>            ]
-<a href=#372 id=372 data-nosnippet>372</a>        } <span class="kw">else </span>{
-<a href=#373 id=373 data-nosnippet>373</a>            <span class="macro">vec!</span>[
-<a href=#374 id=374 data-nosnippet>374</a>                camera_bind_group_layout,
-<a href=#375 id=375 data-nosnippet>375</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#376 id=376 data-nosnippet>376</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
-<a href=#377 id=377 data-nosnippet>377</a>            ]
-<a href=#378 id=378 data-nosnippet>378</a>        };
-<a href=#379 id=379 data-nosnippet>379</a>        <span class="kw">let </span>pipeline_layout = device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
-<a href=#380 id=380 data-nosnippet>380</a>            label: <span class="prelude-val">Some</span>(<span class="string">"Sphere cloud Render Pipeline Layout"</span>),
-<a href=#381 id=381 data-nosnippet>381</a>            bind_group_layouts: <span class="kw-2">&amp;</span>bind_group_layouts,
-<a href=#382 id=382 data-nosnippet>382</a>            push_constant_ranges: <span class="kw-2">&amp;</span>[],
-<a href=#383 id=383 data-nosnippet>383</a>        });
-<a href=#384 id=384 data-nosnippet>384</a>
-<a href=#385 id=385 data-nosnippet>385</a>        <span class="kw">let </span>shader = wgpu::ShaderModuleDescriptor {
-<a href=#386 id=386 data-nosnippet>386</a>            label: <span class="prelude-val">Some</span>(<span class="string">"sphere cloud shader"</span>),
-<a href=#387 id=387 data-nosnippet>387</a>            source: wgpu::ShaderSource::Wgsl(get_shader(data).into()),
-<a href=#388 id=388 data-nosnippet>388</a>        };
-<a href=#389 id=389 data-nosnippet>389</a>        <span class="kw">let </span>sphere_buffer_layout = <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span>data {
-<a href=#390 id=390 data-nosnippet>390</a>            <span class="macro">vec!</span>[
-<a href=#391 id=391 data-nosnippet>391</a>                SphereVertex::desc(),
-<a href=#392 id=392 data-nosnippet>392</a>                SphereCenter::desc(),
-<a href=#393 id=393 data-nosnippet>393</a>                data.sphere_desc(),
-<a href=#394 id=394 data-nosnippet>394</a>            ]
-<a href=#395 id=395 data-nosnippet>395</a>        } <span class="kw">else </span>{
-<a href=#396 id=396 data-nosnippet>396</a>            <span class="macro">vec!</span>[SphereVertex::desc(), SphereCenter::desc()]
-<a href=#397 id=397 data-nosnippet>397</a>        };
-<a href=#398 id=398 data-nosnippet>398</a>        <span class="kw">let </span>sphere_render_pipeline = util::create_quad_pipeline(
-<a href=#399 id=399 data-nosnippet>399</a>            device,
-<a href=#400 id=400 data-nosnippet>400</a>            <span class="kw-2">&amp;</span>pipeline_layout,
-<a href=#401 id=401 data-nosnippet>401</a>            <span class="prelude-val">Some</span>(texture::DEPTH_FORMAT),
-<a href=#402 id=402 data-nosnippet>402</a>            <span class="kw-2">&amp;</span>sphere_buffer_layout,
-<a href=#403 id=403 data-nosnippet>403</a>            shader,
-<a href=#404 id=404 data-nosnippet>404</a>            <span class="prelude-val">Some</span>(<span class="string">"cloud sphere render"</span>),
-<a href=#405 id=405 data-nosnippet>405</a>        );
-<a href=#406 id=406 data-nosnippet>406</a>
-<a href=#407 id=407 data-nosnippet>407</a>        <span class="kw">let </span>picker_pipeline_layout =
-<a href=#408 id=408 data-nosnippet>408</a>            device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
-<a href=#409 id=409 data-nosnippet>409</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Point Cloud Picker Pipeline Layout"</span>),
-<a href=#410 id=410 data-nosnippet>410</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#411 id=411 data-nosnippet>411</a>                    camera_bind_group_layout,
-<a href=#412 id=412 data-nosnippet>412</a>                    counter_bind_group_layout,
-<a href=#413 id=413 data-nosnippet>413</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#414 id=414 data-nosnippet>414</a>                    <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
-<a href=#415 id=415 data-nosnippet>415</a>                ],
-<a href=#416 id=416 data-nosnippet>416</a>                push_constant_ranges: <span class="kw-2">&amp;</span>[],
-<a href=#417 id=417 data-nosnippet>417</a>            });
-<a href=#418 id=418 data-nosnippet>418</a>        <span class="kw">let </span>picker_shader = <span class="macro">include_wgsl!</span>(<span class="string">"picker.wgsl"</span>);
-<a href=#419 id=419 data-nosnippet>419</a>        <span class="kw">let </span>sphere_picker_render_pipeline = util::create_quad_picker_pipeline(
-<a href=#420 id=420 data-nosnippet>420</a>            device,
-<a href=#421 id=421 data-nosnippet>421</a>            <span class="kw-2">&amp;</span>picker_pipeline_layout,
-<a href=#422 id=422 data-nosnippet>422</a>            texture::PICKER_FORMAT,
-<a href=#423 id=423 data-nosnippet>423</a>            <span class="prelude-val">Some</span>(texture::DEPTH_FORMAT),
-<a href=#424 id=424 data-nosnippet>424</a>            <span class="kw-2">&amp;</span>[SphereVertex::desc(), SphereCenter::desc()],
-<a href=#425 id=425 data-nosnippet>425</a>            picker_shader,
-<a href=#426 id=426 data-nosnippet>426</a>            <span class="prelude-val">Some</span>(<span class="string">"Point Cloud picker"</span>),
-<a href=#427 id=427 data-nosnippet>427</a>            <span class="prelude-val">None</span>,
-<a href=#428 id=428 data-nosnippet>428</a>        );
-<a href=#429 id=429 data-nosnippet>429</a>        PointCloudPipeline {
-<a href=#430 id=430 data-nosnippet>430</a>            sphere_render_pipeline,
-<a href=#431 id=431 data-nosnippet>431</a>            sphere_picker_render_pipeline,
-<a href=#432 id=432 data-nosnippet>432</a>        }
-<a href=#433 id=433 data-nosnippet>433</a>    }
-<a href=#434 id=434 data-nosnippet>434</a>
-<a href=#435 id=435 data-nosnippet>435</a>    <span class="kw">fn </span>rebuild(
-<a href=#436 id=436 data-nosnippet>436</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#437 id=437 data-nosnippet>437</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
-<a href=#438 id=438 data-nosnippet>438</a>        data: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>::Data&gt;,
-<a href=#439 id=439 data-nosnippet>439</a>        _settings: <span class="kw-2">&amp;</span><span class="self">Self</span>::Settings,
-<a href=#440 id=440 data-nosnippet>440</a>        transform_uniform: <span class="kw-2">&amp;</span>DataUniform,
-<a href=#441 id=441 data-nosnippet>441</a>        settings_uniform: <span class="kw-2">&amp;</span>DataUniform,
-<a href=#442 id=442 data-nosnippet>442</a>        data_uniform: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DataUniform&gt;,
-<a href=#443 id=443 data-nosnippet>443</a>        camera_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
-<a href=#444 id=444 data-nosnippet>444</a>    ) {
-<a href=#445 id=445 data-nosnippet>445</a>        <span class="kw">let </span>bind_group_layouts = <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = data_uniform {
-<a href=#446 id=446 data-nosnippet>446</a>            <span class="macro">vec!</span>[
-<a href=#447 id=447 data-nosnippet>447</a>                camera_bind_group_layout,
-<a href=#448 id=448 data-nosnippet>448</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#449 id=449 data-nosnippet>449</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
-<a href=#450 id=450 data-nosnippet>450</a>                <span class="kw-2">&amp;</span>uniform.bind_group_layout,
-<a href=#451 id=451 data-nosnippet>451</a>            ]
-<a href=#452 id=452 data-nosnippet>452</a>        } <span class="kw">else </span>{
-<a href=#453 id=453 data-nosnippet>453</a>            <span class="macro">vec!</span>[
-<a href=#454 id=454 data-nosnippet>454</a>                camera_bind_group_layout,
-<a href=#455 id=455 data-nosnippet>455</a>                <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#456 id=456 data-nosnippet>456</a>                <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
-<a href=#457 id=457 data-nosnippet>457</a>            ]
-<a href=#458 id=458 data-nosnippet>458</a>        };
-<a href=#459 id=459 data-nosnippet>459</a>        <span class="kw">let </span>pipeline_layout = device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
-<a href=#460 id=460 data-nosnippet>460</a>            label: <span class="prelude-val">Some</span>(<span class="string">"Sphere cloud Render Pipeline Layout"</span>),
-<a href=#461 id=461 data-nosnippet>461</a>            bind_group_layouts: <span class="kw-2">&amp;</span>bind_group_layouts,
-<a href=#462 id=462 data-nosnippet>462</a>            push_constant_ranges: <span class="kw-2">&amp;</span>[],
-<a href=#463 id=463 data-nosnippet>463</a>        });
-<a href=#464 id=464 data-nosnippet>464</a>
-<a href=#465 id=465 data-nosnippet>465</a>        <span class="kw">let </span>shader = wgpu::ShaderModuleDescriptor {
-<a href=#466 id=466 data-nosnippet>466</a>            label: <span class="prelude-val">Some</span>(<span class="string">"sphere cloud shader"</span>),
-<a href=#467 id=467 data-nosnippet>467</a>            source: wgpu::ShaderSource::Wgsl(get_shader(data).into()),
-<a href=#468 id=468 data-nosnippet>468</a>        };
-<a href=#469 id=469 data-nosnippet>469</a>        <span class="kw">let </span>sphere_buffer_layout = <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span>data {
-<a href=#470 id=470 data-nosnippet>470</a>            <span class="macro">vec!</span>[
-<a href=#471 id=471 data-nosnippet>471</a>                SphereVertex::desc(),
-<a href=#472 id=472 data-nosnippet>472</a>                SphereCenter::desc(),
-<a href=#473 id=473 data-nosnippet>473</a>                data.sphere_desc(),
-<a href=#474 id=474 data-nosnippet>474</a>            ]
-<a href=#475 id=475 data-nosnippet>475</a>        } <span class="kw">else </span>{
-<a href=#476 id=476 data-nosnippet>476</a>            <span class="macro">vec!</span>[SphereVertex::desc(), SphereCenter::desc()]
-<a href=#477 id=477 data-nosnippet>477</a>        };
-<a href=#478 id=478 data-nosnippet>478</a>        <span class="kw">let </span>sphere_render_pipeline = util::create_quad_pipeline(
-<a href=#479 id=479 data-nosnippet>479</a>            device,
-<a href=#480 id=480 data-nosnippet>480</a>            <span class="kw-2">&amp;</span>pipeline_layout,
-<a href=#481 id=481 data-nosnippet>481</a>            <span class="prelude-val">Some</span>(texture::DEPTH_FORMAT),
-<a href=#482 id=482 data-nosnippet>482</a>            <span class="kw-2">&amp;</span>sphere_buffer_layout,
-<a href=#483 id=483 data-nosnippet>483</a>            shader,
-<a href=#484 id=484 data-nosnippet>484</a>            <span class="prelude-val">Some</span>(<span class="string">"cloud sphere render"</span>),
-<a href=#485 id=485 data-nosnippet>485</a>        );
-<a href=#486 id=486 data-nosnippet>486</a>        <span class="self">self</span>.sphere_render_pipeline = sphere_render_pipeline;
+<a href=#365 id=365 data-nosnippet>365</a>        <span class="kw">let </span>data_bind_group_layout = data_uniform.map(|d| <span class="kw-2">&amp;</span>d.bind_group_layout);
+<a href=#366 id=366 data-nosnippet>366</a>        <span class="kw">let </span>pipeline_layout = device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
+<a href=#367 id=367 data-nosnippet>367</a>            label: <span class="prelude-val">Some</span>(<span class="string">"Sphere cloud Render Pipeline Layout"</span>),
+<a href=#368 id=368 data-nosnippet>368</a>            bind_group_layouts: <span class="kw-2">&amp;</span>[
+<a href=#369 id=369 data-nosnippet>369</a>                <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#370 id=370 data-nosnippet>370</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
+<a href=#371 id=371 data-nosnippet>371</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>settings_uniform.bind_group_layout),
+<a href=#372 id=372 data-nosnippet>372</a>                data_bind_group_layout,
+<a href=#373 id=373 data-nosnippet>373</a>            ],
+<a href=#374 id=374 data-nosnippet>374</a>            immediate_size: <span class="number">0</span>,
+<a href=#375 id=375 data-nosnippet>375</a>        });
+<a href=#376 id=376 data-nosnippet>376</a>
+<a href=#377 id=377 data-nosnippet>377</a>        <span class="kw">let </span>shader = wgpu::ShaderModuleDescriptor {
+<a href=#378 id=378 data-nosnippet>378</a>            label: <span class="prelude-val">Some</span>(<span class="string">"sphere cloud shader"</span>),
+<a href=#379 id=379 data-nosnippet>379</a>            source: wgpu::ShaderSource::Wgsl(get_shader(data).into()),
+<a href=#380 id=380 data-nosnippet>380</a>        };
+<a href=#381 id=381 data-nosnippet>381</a>        <span class="kw">let </span>sphere_buffer_layout = <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span>data {
+<a href=#382 id=382 data-nosnippet>382</a>            <span class="macro">vec!</span>[
+<a href=#383 id=383 data-nosnippet>383</a>                SphereVertex::desc(),
+<a href=#384 id=384 data-nosnippet>384</a>                SphereCenter::desc(),
+<a href=#385 id=385 data-nosnippet>385</a>                data.sphere_desc(),
+<a href=#386 id=386 data-nosnippet>386</a>            ]
+<a href=#387 id=387 data-nosnippet>387</a>        } <span class="kw">else </span>{
+<a href=#388 id=388 data-nosnippet>388</a>            <span class="macro">vec!</span>[SphereVertex::desc(), SphereCenter::desc()]
+<a href=#389 id=389 data-nosnippet>389</a>        };
+<a href=#390 id=390 data-nosnippet>390</a>        <span class="kw">let </span>sphere_render_pipeline = util::create_quad_pipeline(
+<a href=#391 id=391 data-nosnippet>391</a>            device,
+<a href=#392 id=392 data-nosnippet>392</a>            <span class="kw-2">&amp;</span>pipeline_layout,
+<a href=#393 id=393 data-nosnippet>393</a>            <span class="prelude-val">Some</span>(texture::DEPTH_FORMAT),
+<a href=#394 id=394 data-nosnippet>394</a>            <span class="kw-2">&amp;</span>sphere_buffer_layout,
+<a href=#395 id=395 data-nosnippet>395</a>            shader,
+<a href=#396 id=396 data-nosnippet>396</a>            <span class="prelude-val">Some</span>(<span class="string">"cloud sphere render"</span>),
+<a href=#397 id=397 data-nosnippet>397</a>        );
+<a href=#398 id=398 data-nosnippet>398</a>
+<a href=#399 id=399 data-nosnippet>399</a>        <span class="kw">let </span>picker_pipeline_layout =
+<a href=#400 id=400 data-nosnippet>400</a>            device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
+<a href=#401 id=401 data-nosnippet>401</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Point Cloud Picker Pipeline Layout"</span>),
+<a href=#402 id=402 data-nosnippet>402</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
+<a href=#403 id=403 data-nosnippet>403</a>                    <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#404 id=404 data-nosnippet>404</a>                    <span class="prelude-val">Some</span>(counter_bind_group_layout),
+<a href=#405 id=405 data-nosnippet>405</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
+<a href=#406 id=406 data-nosnippet>406</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>settings_uniform.bind_group_layout),
+<a href=#407 id=407 data-nosnippet>407</a>                ],
+<a href=#408 id=408 data-nosnippet>408</a>                immediate_size: <span class="number">0</span>,
+<a href=#409 id=409 data-nosnippet>409</a>            });
+<a href=#410 id=410 data-nosnippet>410</a>        <span class="kw">let </span>picker_shader = <span class="macro">include_wgsl!</span>(<span class="string">"picker.wgsl"</span>);
+<a href=#411 id=411 data-nosnippet>411</a>        <span class="kw">let </span>sphere_picker_render_pipeline = util::create_quad_picker_pipeline(
+<a href=#412 id=412 data-nosnippet>412</a>            device,
+<a href=#413 id=413 data-nosnippet>413</a>            <span class="kw-2">&amp;</span>picker_pipeline_layout,
+<a href=#414 id=414 data-nosnippet>414</a>            texture::PICKER_FORMAT,
+<a href=#415 id=415 data-nosnippet>415</a>            <span class="prelude-val">Some</span>(texture::DEPTH_FORMAT),
+<a href=#416 id=416 data-nosnippet>416</a>            <span class="kw-2">&amp;</span>[SphereVertex::desc(), SphereCenter::desc()],
+<a href=#417 id=417 data-nosnippet>417</a>            picker_shader,
+<a href=#418 id=418 data-nosnippet>418</a>            <span class="prelude-val">Some</span>(<span class="string">"Point Cloud picker"</span>),
+<a href=#419 id=419 data-nosnippet>419</a>            <span class="prelude-val">None</span>,
+<a href=#420 id=420 data-nosnippet>420</a>        );
+<a href=#421 id=421 data-nosnippet>421</a>        PointCloudPipeline {
+<a href=#422 id=422 data-nosnippet>422</a>            sphere_render_pipeline,
+<a href=#423 id=423 data-nosnippet>423</a>            sphere_picker_render_pipeline,
+<a href=#424 id=424 data-nosnippet>424</a>        }
+<a href=#425 id=425 data-nosnippet>425</a>    }
+<a href=#426 id=426 data-nosnippet>426</a>
+<a href=#427 id=427 data-nosnippet>427</a>    <span class="kw">fn </span>rebuild(
+<a href=#428 id=428 data-nosnippet>428</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#429 id=429 data-nosnippet>429</a>        device: <span class="kw-2">&amp;</span>wgpu::Device,
+<a href=#430 id=430 data-nosnippet>430</a>        data: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>::Data&gt;,
+<a href=#431 id=431 data-nosnippet>431</a>        _settings: <span class="kw-2">&amp;</span><span class="self">Self</span>::Settings,
+<a href=#432 id=432 data-nosnippet>432</a>        transform_uniform: <span class="kw-2">&amp;</span>DataUniform,
+<a href=#433 id=433 data-nosnippet>433</a>        settings_uniform: <span class="kw-2">&amp;</span>DataUniform,
+<a href=#434 id=434 data-nosnippet>434</a>        data_uniform: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DataUniform&gt;,
+<a href=#435 id=435 data-nosnippet>435</a>        camera_bind_group_layout: <span class="kw-2">&amp;</span>wgpu::BindGroupLayout,
+<a href=#436 id=436 data-nosnippet>436</a>    ) {
+<a href=#437 id=437 data-nosnippet>437</a>        <span class="kw">let </span>data_bind_group_layout = data_uniform.map(|d| <span class="kw-2">&amp;</span>d.bind_group_layout);
+<a href=#438 id=438 data-nosnippet>438</a>        <span class="kw">let </span>pipeline_layout = device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
+<a href=#439 id=439 data-nosnippet>439</a>            label: <span class="prelude-val">Some</span>(<span class="string">"Sphere cloud Render Pipeline Layout"</span>),
+<a href=#440 id=440 data-nosnippet>440</a>            bind_group_layouts: <span class="kw-2">&amp;</span>[
+<a href=#441 id=441 data-nosnippet>441</a>                <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#442 id=442 data-nosnippet>442</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
+<a href=#443 id=443 data-nosnippet>443</a>                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>settings_uniform.bind_group_layout),
+<a href=#444 id=444 data-nosnippet>444</a>                data_bind_group_layout,
+<a href=#445 id=445 data-nosnippet>445</a>            ],
+<a href=#446 id=446 data-nosnippet>446</a>            immediate_size: <span class="number">0</span>,
+<a href=#447 id=447 data-nosnippet>447</a>        });
+<a href=#448 id=448 data-nosnippet>448</a>
+<a href=#449 id=449 data-nosnippet>449</a>        <span class="kw">let </span>shader = wgpu::ShaderModuleDescriptor {
+<a href=#450 id=450 data-nosnippet>450</a>            label: <span class="prelude-val">Some</span>(<span class="string">"sphere cloud shader"</span>),
+<a href=#451 id=451 data-nosnippet>451</a>            source: wgpu::ShaderSource::Wgsl(get_shader(data).into()),
+<a href=#452 id=452 data-nosnippet>452</a>        };
+<a href=#453 id=453 data-nosnippet>453</a>        <span class="kw">let </span>sphere_buffer_layout = <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span>data {
+<a href=#454 id=454 data-nosnippet>454</a>            <span class="macro">vec!</span>[
+<a href=#455 id=455 data-nosnippet>455</a>                SphereVertex::desc(),
+<a href=#456 id=456 data-nosnippet>456</a>                SphereCenter::desc(),
+<a href=#457 id=457 data-nosnippet>457</a>                data.sphere_desc(),
+<a href=#458 id=458 data-nosnippet>458</a>            ]
+<a href=#459 id=459 data-nosnippet>459</a>        } <span class="kw">else </span>{
+<a href=#460 id=460 data-nosnippet>460</a>            <span class="macro">vec!</span>[SphereVertex::desc(), SphereCenter::desc()]
+<a href=#461 id=461 data-nosnippet>461</a>        };
+<a href=#462 id=462 data-nosnippet>462</a>        <span class="kw">let </span>sphere_render_pipeline = util::create_quad_pipeline(
+<a href=#463 id=463 data-nosnippet>463</a>            device,
+<a href=#464 id=464 data-nosnippet>464</a>            <span class="kw-2">&amp;</span>pipeline_layout,
+<a href=#465 id=465 data-nosnippet>465</a>            <span class="prelude-val">Some</span>(texture::DEPTH_FORMAT),
+<a href=#466 id=466 data-nosnippet>466</a>            <span class="kw-2">&amp;</span>sphere_buffer_layout,
+<a href=#467 id=467 data-nosnippet>467</a>            shader,
+<a href=#468 id=468 data-nosnippet>468</a>            <span class="prelude-val">Some</span>(<span class="string">"cloud sphere render"</span>),
+<a href=#469 id=469 data-nosnippet>469</a>        );
+<a href=#470 id=470 data-nosnippet>470</a>        <span class="self">self</span>.sphere_render_pipeline = sphere_render_pipeline;
+<a href=#471 id=471 data-nosnippet>471</a>    }
+<a href=#472 id=472 data-nosnippet>472</a>}
+<a href=#473 id=473 data-nosnippet>473</a>
+<a href=#474 id=474 data-nosnippet>474</a><span class="kw">type </span>PointCloudRenderer = Renderer&lt;PointCloudDesc&gt;;
+<a href=#475 id=475 data-nosnippet>475</a>
+<a href=#476 id=476 data-nosnippet>476</a><span class="kw">impl </span>RenderAttached <span class="kw">for </span>AttachedRenderer&lt;PointCloudDesc&gt; {
+<a href=#477 id=477 data-nosnippet>477</a>    <span class="kw">fn </span>render_attached&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
+<a href=#478 id=478 data-nosnippet>478</a>    <span class="kw">where
+<a href=#479 id=479 data-nosnippet>479</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
+<a href=#480 id=480 data-nosnippet>480</a>    {
+<a href=#481 id=481 data-nosnippet>481</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#482 id=482 data-nosnippet>482</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
+<a href=#483 id=483 data-nosnippet>483</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#484 id=484 data-nosnippet>484</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
+<a href=#485 id=485 data-nosnippet>485</a>        <span class="comment">//render_pass.draw(0..6, 0..(self.fixed.positions_len));
+<a href=#486 id=486 data-nosnippet>486</a>        </span>render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
 <a href=#487 id=487 data-nosnippet>487</a>    }
 <a href=#488 id=488 data-nosnippet>488</a>}
 <a href=#489 id=489 data-nosnippet>489</a>
-<a href=#490 id=490 data-nosnippet>490</a><span class="kw">type </span>PointCloudRenderer = Renderer&lt;PointCloudDesc&gt;;
-<a href=#491 id=491 data-nosnippet>491</a>
-<a href=#492 id=492 data-nosnippet>492</a><span class="kw">impl </span>RenderAttached <span class="kw">for </span>AttachedRenderer&lt;PointCloudDesc&gt; {
-<a href=#493 id=493 data-nosnippet>493</a>    <span class="kw">fn </span>render_attached&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
-<a href=#494 id=494 data-nosnippet>494</a>    <span class="kw">where
-<a href=#495 id=495 data-nosnippet>495</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
-<a href=#496 id=496 data-nosnippet>496</a>    {
-<a href=#497 id=497 data-nosnippet>497</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#498 id=498 data-nosnippet>498</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
-<a href=#499 id=499 data-nosnippet>499</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#500 id=500 data-nosnippet>500</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
-<a href=#501 id=501 data-nosnippet>501</a>        <span class="comment">//render_pass.draw(0..6, 0..(self.fixed.positions_len));
-<a href=#502 id=502 data-nosnippet>502</a>        </span>render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
-<a href=#503 id=503 data-nosnippet>503</a>    }
-<a href=#504 id=504 data-nosnippet>504</a>}
-<a href=#505 id=505 data-nosnippet>505</a>
-<a href=#506 id=506 data-nosnippet>506</a><span class="kw">impl </span>Render <span class="kw">for </span>PointCloudRenderer {
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
-<a href=#508 id=508 data-nosnippet>508</a>    <span class="kw">where
-<a href=#509 id=509 data-nosnippet>509</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
-<a href=#510 id=510 data-nosnippet>510</a>    {
-<a href=#511 id=511 data-nosnippet>511</a>        render_pass.set_bind_group(<span class="number">1</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#512 id=512 data-nosnippet>512</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#513 id=513 data-nosnippet>513</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_uniform {
-<a href=#514 id=514 data-nosnippet>514</a>            render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span>uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#515 id=515 data-nosnippet>515</a>        }
-<a href=#516 id=516 data-nosnippet>516</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
+<a href=#490 id=490 data-nosnippet>490</a><span class="kw">impl </span>Render <span class="kw">for </span>PointCloudRenderer {
+<a href=#491 id=491 data-nosnippet>491</a>    <span class="kw">fn </span>render&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
+<a href=#492 id=492 data-nosnippet>492</a>    <span class="kw">where
+<a href=#493 id=493 data-nosnippet>493</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
+<a href=#494 id=494 data-nosnippet>494</a>    {
+<a href=#495 id=495 data-nosnippet>495</a>        render_pass.set_bind_group(<span class="number">1</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#496 id=496 data-nosnippet>496</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#497 id=497 data-nosnippet>497</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(uniform) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_uniform {
+<a href=#498 id=498 data-nosnippet>498</a>            render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span>uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#499 id=499 data-nosnippet>499</a>        }
+<a href=#500 id=500 data-nosnippet>500</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_render_pipeline);
+<a href=#501 id=501 data-nosnippet>501</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
+<a href=#502 id=502 data-nosnippet>502</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
+<a href=#503 id=503 data-nosnippet>503</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.sphere_data_buffer {
+<a href=#504 id=504 data-nosnippet>504</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
+<a href=#505 id=505 data-nosnippet>505</a>        }
+<a href=#506 id=506 data-nosnippet>506</a>        <span class="comment">//render_pass.draw(0..6, 0..(self.fixed.positions_len));
+<a href=#507 id=507 data-nosnippet>507</a>        </span>render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
+<a href=#508 id=508 data-nosnippet>508</a>    }
+<a href=#509 id=509 data-nosnippet>509</a>
+<a href=#510 id=510 data-nosnippet>510</a>    <span class="kw">fn </span>render_picker&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
+<a href=#511 id=511 data-nosnippet>511</a>    <span class="kw">where
+<a href=#512 id=512 data-nosnippet>512</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
+<a href=#513 id=513 data-nosnippet>513</a>    {
+<a href=#514 id=514 data-nosnippet>514</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#515 id=515 data-nosnippet>515</a>        render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
+<a href=#516 id=516 data-nosnippet>516</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_picker_render_pipeline);
 <a href=#517 id=517 data-nosnippet>517</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
 <a href=#518 id=518 data-nosnippet>518</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
-<a href=#519 id=519 data-nosnippet>519</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_buffer) = <span class="kw-2">&amp;</span><span class="self">self</span>.data_buffer.sphere_data_buffer {
-<a href=#520 id=520 data-nosnippet>520</a>            render_pass.set_vertex_buffer(<span class="number">2</span>, data_buffer.slice(..));
-<a href=#521 id=521 data-nosnippet>521</a>        }
-<a href=#522 id=522 data-nosnippet>522</a>        <span class="comment">//render_pass.draw(0..6, 0..(self.fixed.positions_len));
-<a href=#523 id=523 data-nosnippet>523</a>        </span>render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
-<a href=#524 id=524 data-nosnippet>524</a>    }
-<a href=#525 id=525 data-nosnippet>525</a>
-<a href=#526 id=526 data-nosnippet>526</a>    <span class="kw">fn </span>render_picker&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>, render_pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'b</span>&gt;)
-<a href=#527 id=527 data-nosnippet>527</a>    <span class="kw">where
-<a href=#528 id=528 data-nosnippet>528</a>        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
-<a href=#529 id=529 data-nosnippet>529</a>    {
-<a href=#530 id=530 data-nosnippet>530</a>        render_pass.set_bind_group(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transform_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#531 id=531 data-nosnippet>531</a>        render_pass.set_bind_group(<span class="number">3</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.settings_uniform.bind_group, <span class="kw-2">&amp;</span>[]);
-<a href=#532 id=532 data-nosnippet>532</a>        render_pass.set_pipeline(<span class="kw-2">&amp;</span><span class="self">self</span>.pipeline.sphere_picker_render_pipeline);
-<a href=#533 id=533 data-nosnippet>533</a>        render_pass.set_vertex_buffer(<span class="number">0</span>, <span class="self">self</span>.fixed.vertex_buffer.slice(..));
-<a href=#534 id=534 data-nosnippet>534</a>        render_pass.set_vertex_buffer(<span class="number">1</span>, <span class="self">self</span>.fixed.center_buffer.slice(..));
-<a href=#535 id=535 data-nosnippet>535</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
-<a href=#536 id=536 data-nosnippet>536</a>    }
-<a href=#537 id=537 data-nosnippet>537</a>}
-<a href=#538 id=538 data-nosnippet>538</a>
-<a href=#539 id=539 data-nosnippet>539</a><span class="kw">pub struct </span>PointCloudDesc;
-<a href=#540 id=540 data-nosnippet>540</a>
-<a href=#541 id=541 data-nosnippet>541</a><span class="kw">impl </span>ShapeDescriptor <span class="kw">for </span>PointCloudDesc {
-<a href=#542 id=542 data-nosnippet>542</a>    <span class="kw">type </span>Data = PointCloudData;
-<a href=#543 id=543 data-nosnippet>543</a>    <span class="kw">type </span>Geometry = PointCloudGeometry;
-<a href=#544 id=544 data-nosnippet>544</a>    <span class="kw">type </span>Settings = PCSettings;
-<a href=#545 id=545 data-nosnippet>545</a>    <span class="kw">type </span>DataBuffer = PointCloudDataBuffer;
-<a href=#546 id=546 data-nosnippet>546</a>    <span class="kw">type </span>FixedBuffer = PointCloudFixedRenderer;
-<a href=#547 id=547 data-nosnippet>547</a>    <span class="kw">type </span>Pipeline = PointCloudPipeline;
-<a href=#548 id=548 data-nosnippet>548</a>    <span class="kw">type </span>Attached&lt;S: ContextHolder&gt; = ();
-<a href=#549 id=549 data-nosnippet>549</a>}
-<a href=#550 id=550 data-nosnippet>550</a>
-<a href=#551 id=551 data-nosnippet>551</a><span class="kw">pub type </span>PointCloud&lt;S&gt; = Shape&lt;S, PointCloudDesc&gt;;
-<a href=#552 id=552 data-nosnippet>552</a><span class="kw">pub type </span>UninitedPointCloud = PointCloud&lt;InnerBareState&gt;;
-<a href=#553 id=553 data-nosnippet>553</a><span class="kw">pub type </span>DisplayPointCloud = PointCloud&lt;InnerGraphicalState&gt;;
-<a href=#554 id=554 data-nosnippet>554</a><span class="kw">pub type </span>PointCloudMut&lt;<span class="lifetime">'a</span>, S&gt; = ShapeMut&lt;<span class="lifetime">'a</span>, PointCloud&lt;S&gt;, S&gt;;
-<a href=#555 id=555 data-nosnippet>555</a>
-<a href=#556 id=556 data-nosnippet>556</a><span class="kw">impl</span>&lt;S: ContextHolder&gt; PointCloudMut&lt;<span class="lifetime">'_</span>, S&gt; {
-<a href=#557 id=557 data-nosnippet>557</a>    <span class="kw">pub fn </span>set_radius(<span class="kw-2">&amp;mut </span><span class="self">self</span>, radius: f32, relative: bool) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
-<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">if </span>relative {
-<a href=#559 id=559 data-nosnippet>559</a>            <span class="self">self</span>.inner.settings.radius.set_relative(radius);
-<a href=#560 id=560 data-nosnippet>560</a>        } <span class="kw">else </span>{
-<a href=#561 id=561 data-nosnippet>561</a>            <span class="self">self</span>.inner.settings.radius.set_absolute(radius);
-<a href=#562 id=562 data-nosnippet>562</a>        }
-<a href=#563 id=563 data-nosnippet>563</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
-<a href=#564 id=564 data-nosnippet>564</a>    }
-<a href=#565 id=565 data-nosnippet>565</a>
-<a href=#566 id=566 data-nosnippet>566</a>    <span class="kw">pub fn </span>set_color(<span class="kw-2">&amp;mut </span><span class="self">self</span>, color: [f32; <span class="number">4</span>]) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
-<a href=#567 id=567 data-nosnippet>567</a>        <span class="self">self</span>.inner.settings.color.color = color;
-<a href=#568 id=568 data-nosnippet>568</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
-<a href=#569 id=569 data-nosnippet>569</a>    }
-<a href=#570 id=570 data-nosnippet>570</a>
-<a href=#571 id=571 data-nosnippet>571</a>    <span class="kw">pub fn </span>add_scalar(
-<a href=#572 id=572 data-nosnippet>572</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#573 id=573 data-nosnippet>573</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
-<a href=#574 id=574 data-nosnippet>574</a>        datas: <span class="kw">impl </span>Scalar,
-<a href=#575 id=575 data-nosnippet>575</a>    ) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, S&gt; {
-<a href=#576 id=576 data-nosnippet>576</a>        <span class="kw">let </span>datas = datas.into();
-<a href=#577 id=577 data-nosnippet>577</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#578 id=578 data-nosnippet>578</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, S::get_settings(<span class="kw-2">&amp;</span><span class="self">self</span>.context));
-<a href=#579 id=579 data-nosnippet>579</a>        <span class="self">self</span>.add_data(name.into(), PointCloudData::Scalar(datas, settings))
-<a href=#580 id=580 data-nosnippet>580</a>            .convert(|data| {
-<a href=#581 id=581 data-nosnippet>581</a>                <span class="kw">if let </span>PointCloudData::Scalar(<span class="kw">_</span>, settings) = data {
-<a href=#582 id=582 data-nosnippet>582</a>                    settings
-<a href=#583 id=583 data-nosnippet>583</a>                } <span class="kw">else </span>{
-<a href=#584 id=584 data-nosnippet>584</a>                    <span class="macro">panic!</span>()
-<a href=#585 id=585 data-nosnippet>585</a>                }
-<a href=#586 id=586 data-nosnippet>586</a>            })
-<a href=#587 id=587 data-nosnippet>587</a>    }
-<a href=#588 id=588 data-nosnippet>588</a>
-<a href=#589 id=589 data-nosnippet>589</a>    <span class="kw">pub fn </span>add_colors(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw">impl </span>Into&lt;String&gt;, datas: <span class="kw">impl </span>Color) {
-<a href=#590 id=590 data-nosnippet>590</a>        <span class="kw">let </span>datas = datas.into();
-<a href=#591 id=591 data-nosnippet>591</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
-<a href=#592 id=592 data-nosnippet>592</a>        <span class="self">self</span>.add_data(name.into(), PointCloudData::Color(datas));
-<a href=#593 id=593 data-nosnippet>593</a>    }
-<a href=#594 id=594 data-nosnippet>594</a>}
+<a href=#519 id=519 data-nosnippet>519</a>        render_pass.draw(<span class="number">0</span>..<span class="number">4</span>, <span class="number">0</span>..(<span class="self">self</span>.fixed.positions_len));
+<a href=#520 id=520 data-nosnippet>520</a>    }
+<a href=#521 id=521 data-nosnippet>521</a>}
+<a href=#522 id=522 data-nosnippet>522</a>
+<a href=#523 id=523 data-nosnippet>523</a><span class="kw">pub struct </span>PointCloudDesc;
+<a href=#524 id=524 data-nosnippet>524</a>
+<a href=#525 id=525 data-nosnippet>525</a><span class="kw">impl </span>ShapeDescriptor <span class="kw">for </span>PointCloudDesc {
+<a href=#526 id=526 data-nosnippet>526</a>    <span class="kw">type </span>Data = PointCloudData;
+<a href=#527 id=527 data-nosnippet>527</a>    <span class="kw">type </span>Geometry = PointCloudGeometry;
+<a href=#528 id=528 data-nosnippet>528</a>    <span class="kw">type </span>Settings = PCSettings;
+<a href=#529 id=529 data-nosnippet>529</a>    <span class="kw">type </span>DataBuffer = PointCloudDataBuffer;
+<a href=#530 id=530 data-nosnippet>530</a>    <span class="kw">type </span>FixedBuffer = PointCloudFixedRenderer;
+<a href=#531 id=531 data-nosnippet>531</a>    <span class="kw">type </span>Pipeline = PointCloudPipeline;
+<a href=#532 id=532 data-nosnippet>532</a>    <span class="kw">type </span>Attached&lt;S: ContextHolder&gt; = ();
+<a href=#533 id=533 data-nosnippet>533</a>}
+<a href=#534 id=534 data-nosnippet>534</a>
+<a href=#535 id=535 data-nosnippet>535</a><span class="kw">pub type </span>PointCloud&lt;S&gt; = Shape&lt;S, PointCloudDesc&gt;;
+<a href=#536 id=536 data-nosnippet>536</a><span class="kw">pub type </span>UninitedPointCloud = PointCloud&lt;InnerBareState&gt;;
+<a href=#537 id=537 data-nosnippet>537</a><span class="kw">pub type </span>DisplayPointCloud = PointCloud&lt;InnerGraphicalState&gt;;
+<a href=#538 id=538 data-nosnippet>538</a><span class="kw">pub type </span>PointCloudMut&lt;<span class="lifetime">'a</span>, S&gt; = ShapeMut&lt;<span class="lifetime">'a</span>, PointCloud&lt;S&gt;, S&gt;;
+<a href=#539 id=539 data-nosnippet>539</a>
+<a href=#540 id=540 data-nosnippet>540</a><span class="kw">impl</span>&lt;S: ContextHolder&gt; PointCloudMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#541 id=541 data-nosnippet>541</a>    <span class="kw">pub fn </span>set_radius(<span class="kw-2">&amp;mut </span><span class="self">self</span>, radius: f32, relative: bool) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+<a href=#542 id=542 data-nosnippet>542</a>        <span class="kw">if </span>relative {
+<a href=#543 id=543 data-nosnippet>543</a>            <span class="self">self</span>.inner.settings.radius.set_relative(radius);
+<a href=#544 id=544 data-nosnippet>544</a>        } <span class="kw">else </span>{
+<a href=#545 id=545 data-nosnippet>545</a>            <span class="self">self</span>.inner.settings.radius.set_absolute(radius);
+<a href=#546 id=546 data-nosnippet>546</a>        }
+<a href=#547 id=547 data-nosnippet>547</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
+<a href=#548 id=548 data-nosnippet>548</a>    }
+<a href=#549 id=549 data-nosnippet>549</a>
+<a href=#550 id=550 data-nosnippet>550</a>    <span class="kw">pub fn </span>set_color(<span class="kw-2">&amp;mut </span><span class="self">self</span>, color: [f32; <span class="number">4</span>]) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+<a href=#551 id=551 data-nosnippet>551</a>        <span class="self">self</span>.inner.settings.color.color = color;
+<a href=#552 id=552 data-nosnippet>552</a>        <span class="self">self</span>.update_settings(<span class="bool-val">false</span>)
+<a href=#553 id=553 data-nosnippet>553</a>    }
+<a href=#554 id=554 data-nosnippet>554</a>
+<a href=#555 id=555 data-nosnippet>555</a>    <span class="kw">pub fn </span>add_scalar(
+<a href=#556 id=556 data-nosnippet>556</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#557 id=557 data-nosnippet>557</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
+<a href=#558 id=558 data-nosnippet>558</a>        datas: <span class="kw">impl </span>Scalar,
+<a href=#559 id=559 data-nosnippet>559</a>    ) -&gt; ColorMapMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#560 id=560 data-nosnippet>560</a>        <span class="kw">let </span>datas = datas.into();
+<a href=#561 id=561 data-nosnippet>561</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
+<a href=#562 id=562 data-nosnippet>562</a>        <span class="kw">let </span>settings = ColorMap::new(<span class="kw-2">&amp;</span>datas, S::get_settings(<span class="kw-2">&amp;</span><span class="self">self</span>.context));
+<a href=#563 id=563 data-nosnippet>563</a>        <span class="self">self</span>.add_data(name.into(), PointCloudData::Scalar(datas, settings))
+<a href=#564 id=564 data-nosnippet>564</a>            .convert(|data| {
+<a href=#565 id=565 data-nosnippet>565</a>                <span class="kw">if let </span>PointCloudData::Scalar(<span class="kw">_</span>, settings) = data {
+<a href=#566 id=566 data-nosnippet>566</a>                    settings
+<a href=#567 id=567 data-nosnippet>567</a>                } <span class="kw">else </span>{
+<a href=#568 id=568 data-nosnippet>568</a>                    <span class="macro">panic!</span>()
+<a href=#569 id=569 data-nosnippet>569</a>                }
+<a href=#570 id=570 data-nosnippet>570</a>            })
+<a href=#571 id=571 data-nosnippet>571</a>    }
+<a href=#572 id=572 data-nosnippet>572</a>
+<a href=#573 id=573 data-nosnippet>573</a>    <span class="kw">pub fn </span>add_colors(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw">impl </span>Into&lt;String&gt;, datas: <span class="kw">impl </span>Color) {
+<a href=#574 id=574 data-nosnippet>574</a>        <span class="kw">let </span>datas = datas.into();
+<a href=#575 id=575 data-nosnippet>575</a>        <span class="macro">assert!</span>(datas.len() == <span class="self">self</span>.geometry().positions.len());
+<a href=#576 id=576 data-nosnippet>576</a>        <span class="self">self</span>.add_data(name.into(), PointCloudData::Color(datas));
+<a href=#577 id=577 data-nosnippet>577</a>    }
+<a href=#578 id=578 data-nosnippet>578</a>}
 </code></pre></div></section></main></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/surface/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (4c9d2bfe4 2026-07-01)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/surface/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">super</span>::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/surface/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (c397dae80 2026-07-02)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/surface/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">super</span>::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">super</span>::shader::get_shader;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::attachment::{PointsSettingsMut, SegmentsSettingsMut};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::attachment::{VectorFieldSettingsMut, internal::AttachmentPosition};
@@ -740,41 +740,41 @@
 <a href=#740 id=740 data-nosnippet>740</a>            <span class="prelude-val">Some</span>(uniform) =&gt; device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
 <a href=#741 id=741 data-nosnippet>741</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Render Pipeline Layout"</span>),
 <a href=#742 id=742 data-nosnippet>742</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#743 id=743 data-nosnippet>743</a>                    camera_bind_group_layout,
-<a href=#744 id=744 data-nosnippet>744</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#745 id=745 data-nosnippet>745</a>                    <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
-<a href=#746 id=746 data-nosnippet>746</a>                    <span class="kw-2">&amp;</span>uniform.bind_group_layout,
+<a href=#743 id=743 data-nosnippet>743</a>                    <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#744 id=744 data-nosnippet>744</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
+<a href=#745 id=745 data-nosnippet>745</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>settings_uniform.bind_group_layout),
+<a href=#746 id=746 data-nosnippet>746</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>uniform.bind_group_layout),
 <a href=#747 id=747 data-nosnippet>747</a>                ],
-<a href=#748 id=748 data-nosnippet>748</a>                push_constant_ranges: <span class="kw-2">&amp;</span>[],
+<a href=#748 id=748 data-nosnippet>748</a>                immediate_size: <span class="number">0</span>,
 <a href=#749 id=749 data-nosnippet>749</a>            }),
 <a href=#750 id=750 data-nosnippet>750</a>            <span class="prelude-val">None </span>=&gt; device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
 <a href=#751 id=751 data-nosnippet>751</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Render Pipeline Layout"</span>),
 <a href=#752 id=752 data-nosnippet>752</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#753 id=753 data-nosnippet>753</a>                    camera_bind_group_layout,
-<a href=#754 id=754 data-nosnippet>754</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#755 id=755 data-nosnippet>755</a>                    <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
+<a href=#753 id=753 data-nosnippet>753</a>                    <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#754 id=754 data-nosnippet>754</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
+<a href=#755 id=755 data-nosnippet>755</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>settings_uniform.bind_group_layout),
 <a href=#756 id=756 data-nosnippet>756</a>                ],
-<a href=#757 id=757 data-nosnippet>757</a>                push_constant_ranges: <span class="kw-2">&amp;</span>[],
+<a href=#757 id=757 data-nosnippet>757</a>                immediate_size: <span class="number">0</span>,
 <a href=#758 id=758 data-nosnippet>758</a>            }),
 <a href=#759 id=759 data-nosnippet>759</a>        };
 <a href=#760 id=760 data-nosnippet>760</a>        <span class="kw">let </span>shadow_pipeline_layout =
 <a href=#761 id=761 data-nosnippet>761</a>            device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
 <a href=#762 id=762 data-nosnippet>762</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Surface Shadow Pipeline Layout"</span>),
 <a href=#763 id=763 data-nosnippet>763</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#764 id=764 data-nosnippet>764</a>                    camera_bind_group_layout,
-<a href=#765 id=765 data-nosnippet>765</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
+<a href=#764 id=764 data-nosnippet>764</a>                    <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#765 id=765 data-nosnippet>765</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
 <a href=#766 id=766 data-nosnippet>766</a>                ],
-<a href=#767 id=767 data-nosnippet>767</a>                push_constant_ranges: <span class="kw-2">&amp;</span>[],
+<a href=#767 id=767 data-nosnippet>767</a>                immediate_size: <span class="number">0</span>,
 <a href=#768 id=768 data-nosnippet>768</a>            });
 <a href=#769 id=769 data-nosnippet>769</a>        <span class="kw">let </span>picker_pipeline_layout =
 <a href=#770 id=770 data-nosnippet>770</a>            device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
 <a href=#771 id=771 data-nosnippet>771</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Surface Picker Pipeline Layout"</span>),
 <a href=#772 id=772 data-nosnippet>772</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#773 id=773 data-nosnippet>773</a>                    camera_bind_group_layout,
-<a href=#774 id=774 data-nosnippet>774</a>                    counter_bind_group_layout,
-<a href=#775 id=775 data-nosnippet>775</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
+<a href=#773 id=773 data-nosnippet>773</a>                    <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#774 id=774 data-nosnippet>774</a>                    <span class="prelude-val">Some</span>(counter_bind_group_layout),
+<a href=#775 id=775 data-nosnippet>775</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
 <a href=#776 id=776 data-nosnippet>776</a>                ],
-<a href=#777 id=777 data-nosnippet>777</a>                push_constant_ranges: <span class="kw-2">&amp;</span>[],
+<a href=#777 id=777 data-nosnippet>777</a>                immediate_size: <span class="number">0</span>,
 <a href=#778 id=778 data-nosnippet>778</a>            });
 <a href=#779 id=779 data-nosnippet>779</a>        <span class="kw">let </span>shader = wgpu::ShaderModuleDescriptor {
 <a href=#780 id=780 data-nosnippet>780</a>            label: <span class="prelude-val">Some</span>(<span class="string">"Normal Shader"</span>),
@@ -841,21 +841,21 @@
 <a href=#841 id=841 data-nosnippet>841</a>            <span class="prelude-val">Some</span>(uniform) =&gt; device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
 <a href=#842 id=842 data-nosnippet>842</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Render Pipeline Layout"</span>),
 <a href=#843 id=843 data-nosnippet>843</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#844 id=844 data-nosnippet>844</a>                    camera_bind_group_layout,
-<a href=#845 id=845 data-nosnippet>845</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#846 id=846 data-nosnippet>846</a>                    <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
-<a href=#847 id=847 data-nosnippet>847</a>                    <span class="kw-2">&amp;</span>uniform.bind_group_layout,
+<a href=#844 id=844 data-nosnippet>844</a>                    <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#845 id=845 data-nosnippet>845</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
+<a href=#846 id=846 data-nosnippet>846</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>settings_uniform.bind_group_layout),
+<a href=#847 id=847 data-nosnippet>847</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>uniform.bind_group_layout),
 <a href=#848 id=848 data-nosnippet>848</a>                ],
-<a href=#849 id=849 data-nosnippet>849</a>                push_constant_ranges: <span class="kw-2">&amp;</span>[],
+<a href=#849 id=849 data-nosnippet>849</a>                immediate_size: <span class="number">0</span>,
 <a href=#850 id=850 data-nosnippet>850</a>            }),
 <a href=#851 id=851 data-nosnippet>851</a>            <span class="prelude-val">None </span>=&gt; device.create_pipeline_layout(<span class="kw-2">&amp;</span>wgpu::PipelineLayoutDescriptor {
 <a href=#852 id=852 data-nosnippet>852</a>                label: <span class="prelude-val">Some</span>(<span class="string">"Render Pipeline Layout"</span>),
 <a href=#853 id=853 data-nosnippet>853</a>                bind_group_layouts: <span class="kw-2">&amp;</span>[
-<a href=#854 id=854 data-nosnippet>854</a>                    camera_bind_group_layout,
-<a href=#855 id=855 data-nosnippet>855</a>                    <span class="kw-2">&amp;</span>transform_uniform.bind_group_layout,
-<a href=#856 id=856 data-nosnippet>856</a>                    <span class="kw-2">&amp;</span>settings_uniform.bind_group_layout,
+<a href=#854 id=854 data-nosnippet>854</a>                    <span class="prelude-val">Some</span>(camera_bind_group_layout),
+<a href=#855 id=855 data-nosnippet>855</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>transform_uniform.bind_group_layout),
+<a href=#856 id=856 data-nosnippet>856</a>                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>settings_uniform.bind_group_layout),
 <a href=#857 id=857 data-nosnippet>857</a>                ],
-<a href=#858 id=858 data-nosnippet>858</a>                push_constant_ranges: <span class="kw-2">&amp;</span>[],
+<a href=#858 id=858 data-nosnippet>858</a>                immediate_size: <span class="number">0</span>,
 <a href=#859 id=859 data-nosnippet>859</a>            }),
 <a href=#860 id=860 data-nosnippet>860</a>        };
 <a href=#861 id=861 data-nosnippet>861</a>        <span class="kw">let </span>shader = wgpu::ShaderModuleDescriptor {
