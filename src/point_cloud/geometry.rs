@@ -112,7 +112,7 @@ pub struct PCSettings {
 
 impl ShapeSettings for PCSettings {
     fn new(name: &str, l: f32) -> Self {
-        let radius = Radius::new(0.1 * l);
+        let radius = Radius::new(0.3 * l);
         let color = ColorSettings::new(name);
         PCSettings { radius, color }
     }
@@ -238,7 +238,7 @@ impl ShapeGeometry for PointCloudGeometry {
         }
         let v = [max_x - min_x, max_y - min_y, max_z - min_z];
         let avg_edge_length =
-            (v[0].powi(2) + v[1].powi(2) + v[2].powi(2)).sqrt() / (args.len() as f32).cbrt();
+            (v[0].powi(2) + v[1].powi(2) + v[2].powi(2)).sqrt() / (args.len() as f32).cbrt() / 3.;
         PointCloudGeometry {
             positions: args,
             avg_edge_length,
