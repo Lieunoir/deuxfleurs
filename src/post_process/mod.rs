@@ -78,14 +78,14 @@ impl TextureCopy {
         });
         let copy_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Copy Pipeline Layout"),
-            bind_group_layouts: &[&copy_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&copy_bind_group_layout)],
+            immediate_size: 0,
         });
         let blend_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Blend Pipeline Layout"),
-                bind_group_layouts: &[&copy_bind_group_layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&copy_bind_group_layout)],
+                immediate_size: 0,
             });
         let copy_shader = include_wgsl!("copy.wgsl");
         let copy_pipeline = util::create_copy_quad_pipeline(
@@ -162,6 +162,7 @@ impl TextureCopy {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         render_pass.set_blend_constant(wgpu::Color {
             r: factor,
@@ -289,7 +290,7 @@ impl PBR {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
 
@@ -402,8 +403,8 @@ impl PBR {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("PBR Pipeline Layout"),
-            bind_group_layouts: &[&material_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&material_bind_group_layout)],
+            immediate_size: 0,
         });
 
         let shader = include_wgsl!("pbr.wgsl");
@@ -543,7 +544,7 @@ impl Ground {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
 
@@ -693,14 +694,17 @@ impl Ground {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
-            bind_group_layouts: &[camera_bind_group_layout, &material_ground_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[
+                Some(camera_bind_group_layout),
+                Some(&material_ground_bind_group_layout),
+            ],
+            immediate_size: 0,
         });
 
         let blur_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shadow Pipeline Layout"),
-            bind_group_layouts: &[&material_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&material_bind_group_layout)],
+            immediate_size: 0,
         });
 
         let shader = include_wgsl!("shadow.wgsl");
@@ -785,6 +789,7 @@ impl Ground {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
         render_pass.set_bind_group(0, &self.h_blur_bind_group, &[]);
@@ -804,6 +809,7 @@ impl Ground {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
         render_pass.set_bind_group(0, &self.low_blur_bind_group, &[]);
@@ -825,6 +831,7 @@ impl Ground {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         render_pass.set_pipeline(&self.h_blur_pipeline);
         render_pass.set_bind_group(0, &self.low_h_blur_bind_group, &[]);
@@ -844,6 +851,7 @@ impl Ground {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         render_pass.set_pipeline(&self.blur_pipeline);
         render_pass.set_bind_group(0, &self.blur_bind_group, &[]);
@@ -1210,7 +1218,7 @@ impl SSAO {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
 
@@ -1220,7 +1228,7 @@ impl SSAO {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
 
@@ -1230,7 +1238,7 @@ impl SSAO {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
 
@@ -1501,15 +1509,20 @@ impl SSAO {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SSAO Pipeline Layout"),
-            bind_group_layouts: &[&depth_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&depth_bind_group_layout)],
+            immediate_size: 0,
         });
 
-        let shader = device.create_shader_module(include_wgsl!("ssao.wgsl"));
+        let shader = if device.features().contains(wgpu::Features::SHADER_F16) {
+            device.create_shader_module(include_wgsl!("ssao_f16.wgsl"))
+        } else {
+            device.create_shader_module(include_wgsl!("ssao.wgsl"))
+        };
 
         let ssao_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ssao_pipeline"),
             layout: Some(&pipeline_layout),
+            multiview_mask: None,
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
@@ -1554,17 +1567,14 @@ impl SSAO {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
-            // If the pipeline will be used with a multiview render pass, this
-            // indicates how many array layers the attachments will have.
-            multiview: None,
             cache: None,
         });
 
         let denoiser_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("SSAO denoiser Pipeline Layout"),
-                bind_group_layouts: &[&denoiser_bind_group_layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&denoiser_bind_group_layout)],
+                immediate_size: 0,
             });
 
         let denoiser_shader = include_wgsl!("denoiser.wgsl");
@@ -1622,8 +1632,8 @@ impl SSAO {
         let depth_copy_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Depth copy Pipeline Layout"),
-                bind_group_layouts: &[&depth_copy_bind_group_layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&depth_copy_bind_group_layout)],
+                immediate_size: 0,
             });
         let depth_copy_shader = include_wgsl!("copy_depth.wgsl");
         let depth_copy_pipeline = util::create_copy_quad_pipeline(
@@ -1698,8 +1708,8 @@ impl SSAO {
         let depth_filter_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Depth filter Pipeline Layout"),
-                bind_group_layouts: &[&depth_filter_bind_group_layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&depth_filter_bind_group_layout)],
+                immediate_size: 0,
             });
         let depth_filter_shader = include_wgsl!("blit.wgsl");
         let depth_filter_pipeline = util::create_copy_quad_pipeline(
@@ -1779,6 +1789,7 @@ impl SSAO {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 },
             );
             render_pass.set_bind_group(0, &self.depth_copy_bind_group, &[]);
@@ -1807,6 +1818,7 @@ impl SSAO {
                         depth_stencil_attachment: None,
                         occlusion_query_set: None,
                         timestamp_writes: None,
+                        multiview_mask: None,
                     },
                 );
                 render_pass.set_bind_group(0, bind_group, &[]);
@@ -1840,6 +1852,7 @@ impl SSAO {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 },
             );
             if self.ping {
@@ -1870,6 +1883,7 @@ impl SSAO {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 },
             );
             if self.ping {
@@ -1903,6 +1917,7 @@ impl SSAO {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             self.cleared = true;
             self.ping

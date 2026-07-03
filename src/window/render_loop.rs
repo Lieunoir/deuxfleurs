@@ -50,6 +50,7 @@ impl InnerGraphicalState {
         segments: IndexMap<String, UninitedSegment>,
         settings: Settings,
         camera: Camera,
+        active_event_loop: Option<&ActiveEventLoop>,
         window: Option<Window>,
         proxy: Option<EventLoopProxy<UserEvent>>,
     ) -> Self {
@@ -61,12 +62,19 @@ impl InnerGraphicalState {
             },
         };
         let window = window.map(Arc::new);
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        let display = active_event_loop.map(|e| {
+            let res: Box<dyn wgpu::wgt::WgpuHasDisplayHandle> = Box::new(e.owned_display_handle());
+            res
+        });
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             #[cfg(not(target_arch = "wasm32"))]
             backends: wgpu::Backends::PRIMARY,
             #[cfg(target_arch = "wasm32")]
             backends: wgpu::Backends::GL,
-            ..Default::default()
+            flags: wgpu::InstanceFlags::default(),
+            memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
+            backend_options: wgpu::BackendOptions::default(),
+            display,
         });
         let surface = window
             .as_ref()
@@ -80,13 +88,17 @@ impl InnerGraphicalState {
             .await
             .unwrap();
 
+        let mut required_features = GpuProfiler::ALL_WGPU_TIMER_FEATURES;
+        if adapter.features().contains(wgpu::Features::SHADER_F16) {
+            required_features |= wgpu::Features::SHADER_F16
+        }
         // Select a device to use
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: None,
                 memory_hints: wgpu::MemoryHints::MemoryUsage,
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                required_features: GpuProfiler::ALL_WGPU_TIMER_FEATURES,
+                required_features,
                 required_limits: if cfg!(target_arch = "wasm32") {
                     let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
                     limits.max_texture_dimension_2d = adapter.limits().max_texture_dimension_2d;
@@ -584,7 +596,7 @@ impl InnerGraphicalState {
         event_loop_proxy: Option<&winit::event_loop::EventLoopProxy<crate::window::UserEvent>>,
         mut ui: Option<&mut crate::ui::UI>,
         scene_changed: bool,
-    ) -> Result<bool, wgpu::SurfaceError> {
+    ) -> Result<bool, wgpu::CurrentSurfaceTexture> {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -618,11 +630,15 @@ impl InnerGraphicalState {
         });
 
         // Hack for screenshot frames
-        let output = if event_loop_proxy.is_some() {
-            self.surface
-                .as_ref()
-                .map(|surface| surface.get_current_texture())
-                .transpose()?
+        let output = if event_loop_proxy.is_some()
+            && let Some(surface) = self.surface.as_ref()
+        {
+            let texture = surface.get_current_texture();
+            if let wgpu::CurrentSurfaceTexture::Success(t) = texture {
+                Some(t)
+            } else {
+                return Err(texture);
+            }
         } else {
             None
         };
@@ -742,6 +758,7 @@ impl InnerGraphicalState {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
 
             material_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
@@ -788,6 +805,7 @@ impl InnerGraphicalState {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
 
             self.pbr_renderer.render(&mut pbr_render_pass, ping);
@@ -816,6 +834,7 @@ impl InnerGraphicalState {
                         depth_stencil_attachment: None,
                         occlusion_query_set: None,
                         timestamp_writes: None,
+                        multiview_mask: None,
                     },
                 );
                 shadow_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
@@ -846,6 +865,7 @@ impl InnerGraphicalState {
                     }),
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 ground_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
                 self.ground.render(&mut ground_render_pass);
@@ -883,6 +903,7 @@ impl InnerGraphicalState {
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
             self.copy.copy(&mut render_pass);
         }
@@ -907,6 +928,7 @@ impl InnerGraphicalState {
                     depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 })
                 .forget_lifetime();
             ui.render(ui_render_pass, &clipped_primitives, &screen_descriptor);
@@ -1219,6 +1241,7 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                     init.0.segments,
                     init.0.camera,
                     init.0.settings,
+                    event_loop,
                     window,
                     self.proxy.clone(),
                 )
@@ -1420,18 +1443,38 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> ApplicationHandler<UserEvent> f
                                 if request_redraw {
                                     state.window.as_ref().unwrap().request_redraw();
                                 }
-                                ui.handle_platform_output(&*state.window.as_ref().unwrap())}
-                            ,
-                            // Reconfigure the surface if it's lost or outdated
+                                ui.handle_platform_output(&*state.window.as_ref().unwrap())
+                            }
                             Err(
-                                wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated,
+                                wgpu::CurrentSurfaceTexture::Success(_)
+                                | wgpu::CurrentSurfaceTexture::Occluded,
                             ) => {
-                                state.0.resize(state.0.size)
-                            },
-                            // The system is out of memory, we should probably quit
-                            Err(wgpu::SurfaceError::OutOfMemory) | Err(wgpu::SurfaceError::Other) => event_loop.exit(),
-
-                            Err(wgpu::SurfaceError::Timeout) => {
+                                // Nothing to do
+                            }
+                            // Reconfigure the surface if it's lost, outdated or suboptimal
+                            // TODO better handle lost
+                            Err(wgpu::CurrentSurfaceTexture::Suboptimal(t)) => {
+                                drop(t);
+                                state
+                                    .0
+                                    .surface
+                                    .as_mut()
+                                    .unwrap()
+                                    .configure(&state.0.device, &state.0.config);
+                            }
+                            Err(
+                                wgpu::CurrentSurfaceTexture::Lost
+                                | wgpu::CurrentSurfaceTexture::Outdated,
+                            ) => {
+                                state
+                                    .0
+                                    .surface
+                                    .as_mut()
+                                    .unwrap()
+                                    .configure(&state.0.device, &state.0.config);
+                            }
+                            Err(wgpu::CurrentSurfaceTexture::Validation) => event_loop.exit(),
+                            Err(wgpu::CurrentSurfaceTexture::Timeout) => {
                                 log::warn!("Surface timeout")
                             }
                         }

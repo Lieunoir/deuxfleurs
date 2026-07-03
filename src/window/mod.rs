@@ -32,7 +32,7 @@ use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
 use wgpu_profiler::GpuProfiler;
-use winit::event_loop::EventLoopProxy;
+use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
 use winit::{event_loop::EventLoop, window::Window};
 mod render_loop;
 
@@ -1027,6 +1027,7 @@ impl InitialState {
             self.0.camera,
             None,
             None,
+            None,
         )
         .block_on();
         RunningState::new_inner(inner)
@@ -1092,6 +1093,7 @@ impl RunningState {
         segments: IndexMap<String, UninitedSegment>,
         camera: Camera,
         settings: Settings,
+        event_loop: &ActiveEventLoop,
         window: Window,
         proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
@@ -1101,6 +1103,7 @@ impl RunningState {
             segments,
             settings,
             camera,
+            Some(event_loop),
             Some(window),
             Some(proxy),
         )

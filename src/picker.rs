@@ -172,6 +172,7 @@ impl Picker {
                     }),
                     occlusion_query_set: None,
                     timestamp_writes: None,
+                    multiview_mask: None,
                 });
                 render_pass.set_bind_group(0, camera_bind_group, &[]);
 

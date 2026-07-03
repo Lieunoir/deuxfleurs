@@ -564,36 +564,28 @@ impl RenderPipeline for SegmentPipeline {
         camera_bind_group_layout: &wgpu::BindGroupLayout,
         counter_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        let bind_group_layouts = if let Some(uniform) = data_uniform {
-            vec![
-                camera_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-                &settings_uniform.bind_group_layout,
-                &uniform.bind_group_layout,
-            ]
-        } else {
-            vec![
-                camera_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-                &settings_uniform.bind_group_layout,
-            ]
-        };
+        let data_bind_group_layout = data_uniform.map(|d| &d.bind_group_layout);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Sphere Cloud Render Pipeline Layout"),
-            bind_group_layouts: &bind_group_layouts,
-            push_constant_ranges: &[],
+            bind_group_layouts: &[
+                Some(camera_bind_group_layout),
+                Some(&transform_uniform.bind_group_layout),
+                Some(&settings_uniform.bind_group_layout),
+                data_bind_group_layout,
+            ],
+            immediate_size: 0,
         });
 
         let picker_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Sphere Cloud Picker Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_bind_group_layout,
-                    counter_bind_group_layout,
-                    &transform_uniform.bind_group_layout,
-                    &settings_uniform.bind_group_layout,
+                    Some(camera_bind_group_layout),
+                    Some(counter_bind_group_layout),
+                    Some(&transform_uniform.bind_group_layout),
+                    Some(&settings_uniform.bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         let shader = wgpu::ShaderModuleDescriptor {
@@ -687,24 +679,16 @@ impl RenderPipeline for SegmentPipeline {
         data_uniform: Option<&DataUniform>,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) {
-        let bind_group_layouts = if let Some(uniform) = data_uniform {
-            vec![
-                camera_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-                &settings_uniform.bind_group_layout,
-                &uniform.bind_group_layout,
-            ]
-        } else {
-            vec![
-                camera_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-                &settings_uniform.bind_group_layout,
-            ]
-        };
+        let data_bind_group_layout = data_uniform.map(|d| &d.bind_group_layout);
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Sphere Cloud Render Pipeline Layout"),
-            bind_group_layouts: &bind_group_layouts,
-            push_constant_ranges: &[],
+            bind_group_layouts: &[
+                Some(camera_bind_group_layout),
+                Some(&transform_uniform.bind_group_layout),
+                Some(&settings_uniform.bind_group_layout),
+                data_bind_group_layout,
+            ],
+            immediate_size: 0,
         });
 
         let shader = wgpu::ShaderModuleDescriptor {

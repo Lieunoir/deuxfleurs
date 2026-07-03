@@ -740,41 +740,41 @@ impl RenderPipeline for SurfacePipeline {
             Some(uniform) => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_bind_group_layout,
-                    &transform_uniform.bind_group_layout,
-                    &settings_uniform.bind_group_layout,
-                    &uniform.bind_group_layout,
+                    Some(camera_bind_group_layout),
+                    Some(&transform_uniform.bind_group_layout),
+                    Some(&settings_uniform.bind_group_layout),
+                    Some(&uniform.bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             }),
             None => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_bind_group_layout,
-                    &transform_uniform.bind_group_layout,
-                    &settings_uniform.bind_group_layout,
+                    Some(camera_bind_group_layout),
+                    Some(&transform_uniform.bind_group_layout),
+                    Some(&settings_uniform.bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             }),
         };
         let shadow_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Surface Shadow Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_bind_group_layout,
-                    &transform_uniform.bind_group_layout,
+                    Some(camera_bind_group_layout),
+                    Some(&transform_uniform.bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
         let picker_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Surface Picker Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_bind_group_layout,
-                    counter_bind_group_layout,
-                    &transform_uniform.bind_group_layout,
+                    Some(camera_bind_group_layout),
+                    Some(counter_bind_group_layout),
+                    Some(&transform_uniform.bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Normal Shader"),
@@ -841,21 +841,21 @@ impl RenderPipeline for SurfacePipeline {
             Some(uniform) => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_bind_group_layout,
-                    &transform_uniform.bind_group_layout,
-                    &settings_uniform.bind_group_layout,
-                    &uniform.bind_group_layout,
+                    Some(camera_bind_group_layout),
+                    Some(&transform_uniform.bind_group_layout),
+                    Some(&settings_uniform.bind_group_layout),
+                    Some(&uniform.bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             }),
             None => device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
-                    camera_bind_group_layout,
-                    &transform_uniform.bind_group_layout,
-                    &settings_uniform.bind_group_layout,
+                    Some(camera_bind_group_layout),
+                    Some(&transform_uniform.bind_group_layout),
+                    Some(&settings_uniform.bind_group_layout),
                 ],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             }),
         };
         let shader = wgpu::ShaderModuleDescriptor {

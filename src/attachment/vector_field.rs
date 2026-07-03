@@ -204,11 +204,11 @@ impl RenderPipeline for VFPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Vector Render Pipeline Layout"),
             bind_group_layouts: &[
-                camera_bind_group_layout,
-                &transform_uniform.bind_group_layout,
-                &settings_uniform.bind_group_layout,
+                Some(camera_bind_group_layout),
+                Some(&transform_uniform.bind_group_layout),
+                Some(&settings_uniform.bind_group_layout),
             ],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
         let shader = include_wgsl!("vector_shader.wgsl");
         let render_pipeline = util::create_quad_pipeline(

@@ -186,7 +186,7 @@ impl UI {
         let ctx = egui::Context::default();
         //TODO some kind of styling
         let visuals = blue_visuals();
-        ctx.set_style(egui::Style {
+        ctx.set_global_style(egui::Style {
             animation_time: 0.,
             wrap_mode: Some(TextWrapMode::Wrap),
             interaction: egui::style::Interaction {
