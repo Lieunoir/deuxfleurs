@@ -37,7 +37,7 @@
 <a href=#37 id=37 data-nosnippet>37</a>        // be called in an event loop or on another thread.
 <a href=#38 id=38 data-nosnippet>38</a>        //
 <a href=#39 id=39 data-nosnippet>39</a>        // We pass our submission index so we don't need to wait for any other possible submissions.
-<a href=#40 id=40 data-nosnippet>40</a>        </span>device.poll(wgpu::PollType::Wait {
+<a href=#40 id=40 data-nosnippet>40</a>        </span><span class="kw">let _ </span>= device.poll(wgpu::PollType::Wait {
 <a href=#41 id=41 data-nosnippet>41</a>            submission_index: <span class="prelude-val">Some</span>(submission_index),
 <a href=#42 id=42 data-nosnippet>42</a>            timeout: <span class="prelude-val">None</span>,
 <a href=#43 id=43 data-nosnippet>43</a>        });
