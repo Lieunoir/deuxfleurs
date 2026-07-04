@@ -768,7 +768,7 @@ checksum = "930c7171c8df9fb1782bdf9b918ed9ed2d33d1d22300abb754f9085bc48bf8e8"
 
 [[package]]
 name = "deuxfleurs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "atoi_radix10",
  "bytemuck",
