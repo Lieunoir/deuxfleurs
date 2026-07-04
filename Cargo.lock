@@ -772,7 +772,6 @@ version = "0.1.0"
 dependencies = [
  "atoi_radix10",
  "bytemuck",
- "cfg-if",
  "console_error_panic_hook",
  "console_log",
  "egui",

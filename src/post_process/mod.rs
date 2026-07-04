@@ -3,6 +3,7 @@ use crate::texture;
 use crate::util;
 use wgpu::include_wgsl;
 use wgpu::util::DeviceExt;
+#[cfg(feature = "profiling")]
 use wgpu_profiler::GpuProfiler;
 
 pub struct TextureCopy {
@@ -1758,8 +1759,8 @@ impl SSAO {
     pub fn render(
         &mut self,
         ssao_enabled: bool,
-        encoder: &mut wgpu::CommandEncoder,
-        profiler: &GpuProfiler,
+        mut encoder: &mut wgpu::CommandEncoder,
+        #[cfg(feature = "profiling")] profiler: &GpuProfiler,
         ssao_view: &wgpu::TextureView,
         denoiser_edges_view: &wgpu::TextureView,
         denoised_ssao_view_ping: &wgpu::TextureView,
@@ -1772,15 +1773,19 @@ impl SSAO {
         if ssao_enabled {
             self.cleared = false;
             self.frame_index += 1;
-            let mut scope = profiler.scope("SSAO", encoder);
+            #[cfg(feature = "profiling")]
+            let mut encoder = profiler.scope("SSAO", encoder);
             let filtered_depth_mip_views = if self.ping {
                 filtered_depth_mip_views_ping
             } else {
                 filtered_depth_mip_views_pong
             };
-            let mut render_pass = scope.scoped_render_pass(
-                "Z Copy depth",
-                wgpu::RenderPassDescriptor {
+            {
+                let scope = cfg_select! {
+                    feature = "profiling" => &mut encoder.scope("Copy & linearize depth"),
+                    _ => &mut encoder,
+                };
+                let mut render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Copy Depth Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &filtered_depth_mip_views[0],
@@ -1795,21 +1800,23 @@ impl SSAO {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                     multiview_mask: None,
-                },
-            );
-            render_pass.set_bind_group(0, &self.depth_copy_bind_group, &[]);
-            render_pass.set_pipeline(&self.depth_copy_pipeline);
-            render_pass.draw(0..4, 0..1);
-            drop(render_pass);
+                });
+                render_pass.set_bind_group(0, &self.depth_copy_bind_group, &[]);
+                render_pass.set_pipeline(&self.depth_copy_pipeline);
+                render_pass.draw(0..4, 0..1);
+            }
             let depth_filter_bind_groups = if self.ping {
                 &self.depth_filter_bind_groups_ping
             } else {
                 &self.depth_filter_bind_groups_pong
             };
-            for (i, bind_group) in depth_filter_bind_groups.iter().enumerate() {
-                let mut render_pass = scope.scoped_render_pass(
-                    "SSAO Mip filter depth",
-                    wgpu::RenderPassDescriptor {
+            {
+                let scope = cfg_select! {
+                    feature = "profiling" => &mut encoder.scope("Mip filter depth"),
+                    _ => &mut encoder,
+                };
+                for (i, bind_group) in depth_filter_bind_groups.iter().enumerate() {
+                    let mut render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("Mip filter Pass"),
                         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                             view: &filtered_depth_mip_views[i + 1],
@@ -1824,15 +1831,18 @@ impl SSAO {
                         occlusion_query_set: None,
                         timestamp_writes: None,
                         multiview_mask: None,
-                    },
-                );
-                render_pass.set_bind_group(0, bind_group, &[]);
-                render_pass.set_pipeline(&self.depth_filter_pipeline);
-                render_pass.draw(0..4, 0..1);
+                    });
+                    render_pass.set_bind_group(0, bind_group, &[]);
+                    render_pass.set_pipeline(&self.depth_filter_pipeline);
+                    render_pass.draw(0..4, 0..1);
+                }
             }
-            let mut render_pass = scope.scoped_render_pass(
-                "SSAO Primary",
-                wgpu::RenderPassDescriptor {
+            {
+                let scope = cfg_select! {
+                    feature = "profiling" => &mut encoder.scope("Main"),
+                    _ => &mut encoder,
+                };
+                let mut render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("SSAO Render Pass"),
                     color_attachments: &[
                         Some(wgpu::RenderPassColorAttachment {
@@ -1858,19 +1868,21 @@ impl SSAO {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                     multiview_mask: None,
-                },
-            );
-            if self.ping {
-                render_pass.set_bind_group(0, &self.depth_bind_group_ping, &[]);
-            } else {
-                render_pass.set_bind_group(0, &self.depth_bind_group_pong, &[]);
-            };
-            render_pass.set_pipeline(&self.ssao_pipeline);
-            render_pass.draw(0..4, 0..1);
-            drop(render_pass);
-            let mut render_pass = scope.scoped_render_pass(
-                "SSAO denoiser",
-                wgpu::RenderPassDescriptor {
+                });
+                if self.ping {
+                    render_pass.set_bind_group(0, &self.depth_bind_group_ping, &[]);
+                } else {
+                    render_pass.set_bind_group(0, &self.depth_bind_group_pong, &[]);
+                };
+                render_pass.set_pipeline(&self.ssao_pipeline);
+                render_pass.draw(0..4, 0..1);
+            }
+            {
+                let scope = cfg_select! {
+                    feature = "profiling" => &mut encoder.scope("Denoiser"),
+                    _ => &mut encoder,
+                };
+                let mut render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("SSAO Denoiser Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: if self.ping {
@@ -1889,16 +1901,15 @@ impl SSAO {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                     multiview_mask: None,
-                },
-            );
-            if self.ping {
-                render_pass.set_bind_group(0, &self.denoiser_bind_group_ping, &[]);
-            } else {
-                render_pass.set_bind_group(0, &self.denoiser_bind_group_pong, &[]);
+                });
+                if self.ping {
+                    render_pass.set_bind_group(0, &self.denoiser_bind_group_ping, &[]);
+                } else {
+                    render_pass.set_bind_group(0, &self.denoiser_bind_group_pong, &[]);
+                }
+                render_pass.set_pipeline(&self.denoiser_pipeline);
+                render_pass.draw(0..4, 0..1);
             }
-            render_pass.set_pipeline(&self.denoiser_pipeline);
-            render_pass.draw(0..4, 0..1);
-            drop(render_pass);
             self.ping = !self.ping;
             !self.ping
         } else if !self.cleared {

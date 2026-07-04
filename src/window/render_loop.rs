@@ -26,6 +26,7 @@ use web_sys::Clipboard;
 use wgpu::rwh::HasDisplayHandle;
 use wgpu::util::DeviceExt;
 use wgpu::{CompositeAlphaMode, Extent3d};
+#[cfg(feature = "profiling")]
 use wgpu_profiler::{GpuProfiler, GpuProfilerSettings};
 use winit::application::ApplicationHandler;
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
@@ -67,10 +68,10 @@ impl InnerGraphicalState {
             res
         });
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            #[cfg(not(target_arch = "wasm32"))]
-            backends: wgpu::Backends::PRIMARY,
-            #[cfg(target_arch = "wasm32")]
-            backends: wgpu::Backends::GL,
+            backends: cfg_select! {
+                target_arch = "wasm32" => wgpu::Backends::GL,
+                _ => wgpu::Backends::PRIMARY,
+            },
             flags: wgpu::InstanceFlags::default(),
             memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
             backend_options: wgpu::BackendOptions::default(),
@@ -88,7 +89,10 @@ impl InnerGraphicalState {
             .await
             .unwrap();
 
-        let mut required_features = GpuProfiler::ALL_WGPU_TIMER_FEATURES;
+        let mut required_features = cfg_select! {
+            feature = "profiling" => GpuProfiler::ALL_WGPU_TIMER_FEATURES,
+            _ => wgpu::Features::empty(),
+        };
         if adapter.features().contains(wgpu::Features::SHADER_F16) {
             required_features |= wgpu::Features::SHADER_F16
         }
@@ -114,6 +118,7 @@ impl InnerGraphicalState {
             .await
             .unwrap();
 
+        #[cfg(feature = "profiling")]
         let profiler = GpuProfiler::new_with_tracy_client(
             GpuProfilerSettings::default(),
             adapter.get_info().backend,
@@ -368,6 +373,7 @@ impl InnerGraphicalState {
             taa_counter: 0,
             sbv: SBV::default(),
             rng: SmallRng::seed_from_u64(1),
+            #[cfg(feature = "profiling")]
             profiler,
         }
     }
@@ -714,74 +720,79 @@ impl InnerGraphicalState {
                 (view.as_ref().unwrap(), self.settings.background_color)
             };
 
-            let mut scope = self.profiler.scope("Material", &mut encoder);
+            {
+                let scope = cfg_select! {
+                    feature = "profiling" => &mut self.profiler.scope("Material", &mut encoder),
+                    _ => &mut encoder,
+                };
 
-            let mut material_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Material Render Pass"),
-                color_attachments: &[
-                    Some(wgpu::RenderPassColorAttachment {
-                        view: self.texture_buffer_pool.get_albedo_view(),
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 0.0,
+                let mut material_render_pass =
+                    scope.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Material Render Pass"),
+                        color_attachments: &[
+                            Some(wgpu::RenderPassColorAttachment {
+                                view: self.texture_buffer_pool.get_albedo_view(),
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: 0.0,
+                                        g: 0.0,
+                                        b: 0.0,
+                                        a: 0.0,
+                                    }),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                                depth_slice: None,
                             }),
-                            store: wgpu::StoreOp::Store,
-                        },
-                        depth_slice: None,
-                    }),
-                    Some(wgpu::RenderPassColorAttachment {
-                        view: self.texture_buffer_pool.get_normals_view(),
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 0.0,
+                            Some(wgpu::RenderPassColorAttachment {
+                                view: self.texture_buffer_pool.get_normals_view(),
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: 0.0,
+                                        g: 0.0,
+                                        b: 0.0,
+                                        a: 0.0,
+                                    }),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                                depth_slice: None,
                             }),
-                            store: wgpu::StoreOp::Store,
-                        },
-                        depth_slice: None,
-                    }),
-                ],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.texture_buffer_pool.get_depth_view(),
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
+                        ],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.texture_buffer_pool.get_depth_view(),
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                        multiview_mask: None,
+                    });
 
-            material_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+                material_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
 
-            //order matters!
-            //cloud discard so no depth test
-            //segment only change deph sometimes, could use conservative depth
-            //surface fully uses depth buffer(except attachments)
-            for cloud in self.clouds.values() {
-                cloud.render(&mut material_render_pass);
+                //order matters!
+                //cloud discard so no depth test
+                //segment only change deph sometimes, could use conservative depth
+                //surface fully uses depth buffer(except attachments)
+                for cloud in self.clouds.values() {
+                    cloud.render(&mut material_render_pass);
+                }
+                for segment in self.segments.values() {
+                    segment.render(&mut material_render_pass);
+                }
+                for surface in self.surfaces.values() {
+                    surface.render(&mut material_render_pass);
+                }
             }
-            for segment in self.segments.values() {
-                segment.render(&mut material_render_pass);
-            }
-            for surface in self.surfaces.values() {
-                surface.render(&mut material_render_pass);
-            }
-            drop(material_render_pass);
-            drop(scope);
 
             let ping = self.ssao.render(
                 self.settings.ssao_enabled,
                 &mut encoder,
+                #[cfg(feature = "profiling")]
                 &self.profiler,
                 self.texture_buffer_pool.get_ssao_view(),
                 self.texture_buffer_pool.get_denoiser_edges_view(),
@@ -790,83 +801,92 @@ impl InnerGraphicalState {
                 self.texture_buffer_pool.get_filtered_depth_mip_views_ping(),
                 self.texture_buffer_pool.get_filtered_depth_mip_views_pong(),
             );
-            let mut scope = self.profiler.scope("PBR", &mut encoder);
-            let mut pbr_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("PBR Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: view_ref,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(color),
-                        store: wgpu::StoreOp::Store,
-                    },
-                    depth_slice: None,
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
 
-            self.pbr_renderer.render(&mut pbr_render_pass, ping);
-            drop(pbr_render_pass);
-            drop(scope);
-            if self.settings.shadow {
-                let mut scope = self.profiler.scope("Shadow", &mut encoder);
-                let mut shadow_render_pass = scope.scoped_render_pass(
-                    "Render shadow",
-                    wgpu::RenderPassDescriptor {
-                        label: Some("Shadow Render Pass"),
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: self.ground.get_texture_view(),
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.,
-                                    g: 0.,
-                                    b: 0.,
-                                    a: 0.,
-                                }),
-                                store: wgpu::StoreOp::Store,
-                            },
-                            depth_slice: None,
-                        })],
-                        depth_stencil_attachment: None,
-                        occlusion_query_set: None,
-                        timestamp_writes: None,
-                        multiview_mask: None,
-                    },
-                );
-                shadow_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-                for surface in self.surfaces.values() {
-                    surface.render_shadow(&mut shadow_render_pass);
-                }
-
-                drop(shadow_render_pass);
-                self.ground.blur(&mut scope);
-                let mut ground_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Shadow Render Pass"),
+            {
+                let scope = cfg_select! {
+                    feature = "profiling" => &mut self.profiler.scope("PBR", &mut encoder),
+                    _ => &mut encoder,
+                };
+                let mut pbr_render_pass = scope.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("PBR Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: view_ref,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
+                            load: wgpu::LoadOp::Clear(color),
                             store: wgpu::StoreOp::Store,
                         },
                         depth_slice: None,
                     })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.texture_buffer_pool.get_depth_view(),
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
+                    depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
                     multiview_mask: None,
                 });
+
+                self.pbr_renderer.render(&mut pbr_render_pass, ping);
+            }
+
+            if self.settings.shadow {
+                {
+                    let scope = cfg_select! {
+                        feature = "profiling" => &mut self.profiler.scope("Shadow", &mut encoder),
+                        _ => &mut encoder,
+                    };
+                    let mut shadow_render_pass = scope.begin_render_pass(
+                        //"Render shadow",
+                        &wgpu::RenderPassDescriptor {
+                            label: Some("Shadow Render Pass"),
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: self.ground.get_texture_view(),
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: 0.,
+                                        g: 0.,
+                                        b: 0.,
+                                        a: 0.,
+                                    }),
+                                    store: wgpu::StoreOp::Store,
+                                },
+                                depth_slice: None,
+                            })],
+                            depth_stencil_attachment: None,
+                            occlusion_query_set: None,
+                            timestamp_writes: None,
+                            multiview_mask: None,
+                        },
+                    );
+                    shadow_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+                    for surface in self.surfaces.values() {
+                        surface.render_shadow(&mut shadow_render_pass);
+                    }
+                }
+                self.ground.blur(&mut encoder);
+                let mut ground_render_pass =
+                    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Ground Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: view_ref,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                            depth_slice: None,
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.texture_buffer_pool.get_depth_view(),
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                        multiview_mask: None,
+                    });
                 ground_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
                 self.ground.render(&mut ground_render_pass);
                 drop(ground_render_pass);
@@ -934,6 +954,7 @@ impl InnerGraphicalState {
             ui.render(ui_render_pass, &clipped_primitives, &screen_descriptor);
         }
 
+        #[cfg(feature = "profiling")]
         self.profiler.resolve_queries(&mut encoder);
 
         if let Some((user_cmd_bufs, _clipped_primitives, _screen_descriptor)) = deltas {
@@ -946,7 +967,9 @@ impl InnerGraphicalState {
         } else {
             self.queue.submit(iter::once(encoder.finish()));
         }
+        #[cfg(feature = "profiling")]
         self.profiler.end_frame().unwrap();
+        #[cfg(feature = "profiling")]
         self.profiler
             .process_finished_frame(self.queue.get_timestamp_period());
 

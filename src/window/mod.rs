@@ -31,6 +31,7 @@ use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use web_sys::Clipboard;
+#[cfg(feature = "profiling")]
 use wgpu_profiler::GpuProfiler;
 use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
 use winit::{event_loop::EventLoop, window::Window};
@@ -394,6 +395,7 @@ pub struct InnerGraphicalState {
     sbv: SBV,
     rng: SmallRng,
 
+    #[cfg(feature = "profiling")]
     profiler: GpuProfiler,
 }
 
@@ -1152,10 +1154,11 @@ impl<T: FnMut(&mut egui::Ui, &mut RunningState)> StateWrapper<T> {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
         }
         #[cfg(feature = "logger")]
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
+        cfg_select! {
+            target_arch = "wasm32" => {
                 console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
-            } else {
+            }
+            _ => {
                 env_logger::init();
             }
         }

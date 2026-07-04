@@ -10,7 +10,6 @@ exclude = ["examples/*"]
 
 [dependencies]
 bytemuck = { version = "1.12.1", features = ["derive"] }
-cfg-if = "1.0.0"
 glam = { version = "0.32", features = ["serde"] }
 egui = "0.34"
 transform-gizmo-egui = "0.9"
@@ -38,7 +37,7 @@ memchr = "2.7.4"
 atoi_radix10 = { version = "0.0.1", features = ["simd"] }
 num-traits = "0.2.19"
 serde_cbor = { version = "0.11.2", optional = true }
-wgpu-profiler = { version = "=0.27.0", features = ["tracy"] }
+wgpu-profiler = { version = "=0.27.0", features = ["tracy"] , optional = true}
 tracy-client = "0.18.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -67,6 +66,8 @@ logger = ["dep:env_logger"]
 x11 = ["egui-winit/x11", "winit/x11"]
 # Enable Wayland winit backend
 wayland = ["egui-winit/wayland", "winit/wayland", "winit/wayland-dlopen"]
+# Enables wgpu profiler
+profiling = ["dep:wgpu-profiler"]
 
 [dev-dependencies]
 faer = "0.24"

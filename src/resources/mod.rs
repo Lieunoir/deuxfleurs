@@ -1,5 +1,4 @@
 use crate::types::SurfaceIndices;
-use cfg_if::cfg_if;
 use std::{
     io::{BufReader, Cursor},
     path::Path,
@@ -35,11 +34,9 @@ async fn fetch(file_name: &Path) -> Option<String> {
 }
 
 async fn load_string(file_name: &Path) -> Option<String> {
-    cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            fetch(file_name).await
-
-        } else {
+    cfg_select! {
+        target_arch = "wasm32" =>  fetch(file_name).await,
+        _ => {
             let text = std::fs::read_to_string(file_name).ok()?;
             Some(text)
         }
