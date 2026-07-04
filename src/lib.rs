@@ -65,6 +65,7 @@ pub mod internal {
 /// Settings can be obtained and modified using [`State::get_settings_mut`]
 #[must_use]
 pub fn init() -> InitialState {
+    #[cfg(feature = "profiling")]
     tracy_client::Client::start();
     State::new_inner(InnerBareState {
         surfaces: IndexMap::new(),
