@@ -239,7 +239,7 @@ impl UI {
         self.ctx.begin_pass(input);
         self.hovered = false;
 
-        let screen_height = self.ctx.screen_rect().height();
+        let screen_height = self.ctx.content_rect().height();
         let factor = self.ctx.pixels_per_point();
 
         let space_between_section = 9.;
@@ -390,7 +390,7 @@ impl UI {
         state: &mut RunningState,
         callback: &mut T,
     ) {
-        let screen_height = self.ctx.screen_rect().height();
+        let screen_height = self.ctx.content_rect().height();
         //let factor = self.ctx.pixels_per_point();
         egui::Window::new("Interact")
             .anchor(egui::Align2::RIGHT_TOP, [-5., 5.])

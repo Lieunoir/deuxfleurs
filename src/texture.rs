@@ -16,9 +16,7 @@ pub struct TextureBufferPool {
     // concerned by super sampling
     // custom formats
     // picking should be concerned by aa, so could be moved?
-    depth: wgpu::Texture,
     depth_view: wgpu::TextureView,
-    albedo: wgpu::Texture,
     albedo_view: wgpu::TextureView,
     normals_or_picking: wgpu::Texture,
     normals_view: wgpu::TextureView,
@@ -29,10 +27,8 @@ pub struct TextureBufferPool {
     // screenshot has to be rgba format
     screenshot_or_blend_stored: wgpu::Texture,
     blend_stored_view: wgpu::TextureView,
-    screenshot_view: wgpu::TextureView,
     // possibly concerned by super sampling
     // has to be same format as window
-    blend_render_target: wgpu::Texture,
     blend_render_target_view: wgpu::TextureView,
     output_buffer: wgpu::Buffer,
     output_buffer_dimensions: BufferDimensions,
@@ -40,9 +36,7 @@ pub struct TextureBufferPool {
     // own format
     ssao_view: wgpu::TextureView,
     denoiser_edges_view: wgpu::TextureView,
-    denoised_ssao_ping: wgpu::Texture,
     denoised_ssao_view_ping: wgpu::TextureView,
-    denoised_ssao_pong: wgpu::Texture,
     denoised_ssao_view_pong: wgpu::TextureView,
     filtered_depth_mip_views_ping: [wgpu::TextureView; FILTERED_DEPTH_MIP_LEVEL_COUNT as usize],
     filtered_depth_view_ping: wgpu::TextureView,
@@ -110,8 +104,6 @@ impl TextureBufferPool {
             label: Some("screenshot_or_blend_texture"),
             view_formats: &[],
         });
-        let screenshot_view =
-            screenshot_or_blend_stored.create_view(&wgpu::TextureViewDescriptor::default());
         let blend_stored_view =
             screenshot_or_blend_stored.create_view(&wgpu::TextureViewDescriptor::default());
         let blend_render_target = device.create_texture(&wgpu::TextureDescriptor {
@@ -215,25 +207,19 @@ impl TextureBufferPool {
         };
         let output_buffer = device.create_buffer(&output_buffer_desc);
         Self {
-            albedo,
             albedo_view,
             picking_view,
             normals_or_picking,
             normals_view,
             screenshot_or_blend_stored,
-            screenshot_view,
             blend_stored_view,
-            blend_render_target,
             blend_render_target_view,
             output_buffer,
             output_buffer_dimensions,
-            depth,
             depth_view,
             ssao_view,
             denoiser_edges_view,
-            denoised_ssao_ping,
             denoised_ssao_view_ping,
-            denoised_ssao_pong,
             denoised_ssao_view_pong,
             filtered_depth_mip_views_ping,
             filtered_depth_view_ping,

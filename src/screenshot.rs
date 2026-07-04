@@ -37,7 +37,7 @@ impl Screenshoter {
         // be called in an event loop or on another thread.
         //
         // We pass our submission index so we don't need to wait for any other possible submissions.
-        device.poll(wgpu::PollType::Wait {
+        let _ = device.poll(wgpu::PollType::Wait {
             submission_index: Some(submission_index),
             timeout: None,
         });

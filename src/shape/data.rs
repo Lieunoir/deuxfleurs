@@ -2,7 +2,7 @@ use crate::{
     Settings,
     attachment::internal::AttachmentPosition,
     data::internal::DataUniform,
-    window::{ContextHolder, InnerBareState, InnerGraphicalState},
+    window::{ContextHolder, InnerGraphicalState},
 };
 
 use super::DataUniformBuilder;
@@ -13,7 +13,6 @@ pub struct DataMut<'a, T, S: ContextHolder> {
     pub(crate) uniform: &'a S::DataUniform,
 }
 
-pub type UninitedData<'a, T> = DataMut<'a, T, InnerBareState>;
 pub type DisplayData<'a, T> = DataMut<'a, T, InnerGraphicalState>;
 
 impl<'a, T, S: ContextHolder> DataMut<'a, T, S> {
