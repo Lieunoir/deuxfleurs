@@ -112,7 +112,7 @@
 <a href=#112 id=112 data-nosnippet>112</a>
 <a href=#113 id=113 data-nosnippet>113</a><span class="kw">impl </span>ShapeSettings <span class="kw">for </span>PCSettings {
 <a href=#114 id=114 data-nosnippet>114</a>    <span class="kw">fn </span>new(name: <span class="kw-2">&amp;</span>str, l: f32) -&gt; <span class="self">Self </span>{
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="kw">let </span>radius = Radius::new(<span class="number">0.1 </span>* l);
+<a href=#115 id=115 data-nosnippet>115</a>        <span class="kw">let </span>radius = Radius::new(<span class="number">0.3 </span>* l);
 <a href=#116 id=116 data-nosnippet>116</a>        <span class="kw">let </span>color = ColorSettings::new(name);
 <a href=#117 id=117 data-nosnippet>117</a>        PCSettings { radius, color }
 <a href=#118 id=118 data-nosnippet>118</a>    }
@@ -238,7 +238,7 @@
 <a href=#238 id=238 data-nosnippet>238</a>        }
 <a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">let </span>v = [max_x - min_x, max_y - min_y, max_z - min_z];
 <a href=#240 id=240 data-nosnippet>240</a>        <span class="kw">let </span>avg_edge_length =
-<a href=#241 id=241 data-nosnippet>241</a>            (v[<span class="number">0</span>].powi(<span class="number">2</span>) + v[<span class="number">1</span>].powi(<span class="number">2</span>) + v[<span class="number">2</span>].powi(<span class="number">2</span>)).sqrt() / (args.len() <span class="kw">as </span>f32).cbrt();
+<a href=#241 id=241 data-nosnippet>241</a>            (v[<span class="number">0</span>].powi(<span class="number">2</span>) + v[<span class="number">1</span>].powi(<span class="number">2</span>) + v[<span class="number">2</span>].powi(<span class="number">2</span>)).sqrt() / (args.len() <span class="kw">as </span>f32).cbrt() / <span class="number">3.</span>;
 <a href=#242 id=242 data-nosnippet>242</a>        PointCloudGeometry {
 <a href=#243 id=243 data-nosnippet>243</a>            positions: args,
 <a href=#244 id=244 data-nosnippet>244</a>            avg_edge_length,
