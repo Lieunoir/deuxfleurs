@@ -900,8 +900,8 @@ fn create_hilbert_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::T
                 d += ((3 * r.0) ^ r.1) << (2 * n);
                 if r.1 == 0 {
                     if r.0 == 1 {
-                        p.0 = (1 << n) - 1 - p.0;
-                        p.1 = (1 << n) - 1 - p.1;
+                        p.0 = (1usize << n).wrapping_sub(1).wrapping_sub(p.0);
+                        p.1 = (1usize << n).wrapping_sub(1).wrapping_sub(p.1);
                     }
                     let temp = p.0;
                     p.0 = p.1;
