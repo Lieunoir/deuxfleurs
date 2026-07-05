@@ -157,9 +157,9 @@ fn fs_main(@builtin(position) fcoords: vec4<f32>) -> FragmentOutput {
     //    discard;
     //}
     var noise_x = textureLoad(hilbert, coords % 16, 0).x;
-    let gather_offset = vec2<f32>(-0.25 * pix_dif);
-    let values_ul = vec4<f16>(textureGather(0, t_d, s, vec2<f32>(origin) + gather_offset));
-    let values_br = vec4<f16>(textureGather(0, t_d, s, vec2<f32>(origin) + gather_offset, vec2<i32>(1, 1)));
+    let gather_offset = vec2<f32>(origin - 0.25 * pix_dif);
+    let values_ul = vec4<f16>(textureGather(0, t_d, s, gather_offset));
+    let values_br = vec4<f16>(textureGather(0, t_d, s, gather_offset, vec2<i32>(1, 1)));
     let depth = values_ul.y;
 
     // viewspace Zs left top right bottom

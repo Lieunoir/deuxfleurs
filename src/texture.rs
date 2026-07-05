@@ -10,7 +10,7 @@ pub const SSAO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 pub const SCREENSHOT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 pub const FILTERED_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
-pub const FILTERED_DEPTH_MIP_LEVEL_COUNT: u32 = 7;
+pub const FILTERED_DEPTH_MIP_LEVEL_COUNT: u32 = cfg_select! { target_arch = "wasm32" => 1, _ => 7};
 
 pub struct TextureBufferPool {
     // concerned by super sampling

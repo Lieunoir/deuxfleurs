@@ -80,12 +80,12 @@ pub fn load_mesh_blocking(file_name: impl AsRef<Path>) -> Option<(Vec<[f32; 3]>,
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) async fn parse_preloaded_mesh(
-    file_name: &str,
+    file_name: impl AsRef<Path>,
     data: Vec<u8>,
 ) -> Option<(Vec<[f32; 3]>, SurfaceIndices)> {
     let file_cursor = Cursor::new(data);
     let mut file_reader = BufReader::new(file_cursor);
-    match Path::new(&file_name).extension() {
+    match file_name.as_ref().extension() {
         Some(ext) => {
             if ext == "obj" {
                 Some(obj_load::load_obj_buf(&mut file_reader))
