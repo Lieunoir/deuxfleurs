@@ -73,7 +73,7 @@ impl DataSettings for UVMapSettings {
     }
 }
 
-pub type UVMapSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut UVMapSettings, Ctxt>;
+pub type UVMapSettingsMut<'a, Ctxt> = DataMut<'a, UVMapSettings, Ctxt>;
 
 impl<S: ContextHolder> UVMapSettingsMut<'_, S> {
     pub fn set_color_1(&mut self, color: [f32; 4]) {

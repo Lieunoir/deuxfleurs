@@ -1,26 +1,23 @@
+use super::DataUniformBuilder;
 use crate::{
     attachment::internal::AttachmentPosition, data::internal::DataUniform, window::ContextHolder,
 };
 
-use super::DataUniformBuilder;
-
 pub struct DataMut<'a, T, S: ContextHolder> {
-    pub(crate) inner: T,
+    pub(crate) inner: &'a mut T,
     pub(crate) context: S::Context<'a>,
     pub(crate) uniform: &'a S::DataUniform,
 }
 
-impl<'a, T, S: ContextHolder> DataMut<'a, T, S> {
-    pub(crate) fn convert<U, F: FnOnce(T) -> U>(self, f: F) -> DataMut<'a, U, S> {
+impl<'a, T: DataUniformBuilder, S: ContextHolder> DataMut<'a, T, S> {
+    pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(self, f: F) -> DataMut<'a, U, S> {
         DataMut {
             inner: f(self.inner),
             uniform: self.uniform,
             context: self.context,
         }
     }
-}
 
-impl<'a, T: DataUniformBuilder, S: ContextHolder> DataMut<'a, &'a mut T, S> {
     pub(crate) fn update_data_settings(&mut self) {
         S::rebuild_data_uniform(self.inner, self.uniform, &self.context);
     }

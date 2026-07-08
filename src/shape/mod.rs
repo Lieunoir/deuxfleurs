@@ -450,7 +450,7 @@ impl<S: ContextHolder, Desc: ShapeDescriptor> Shape<S, Desc> {
         name: String,
         data: Desc::Data,
         mut context: S::Context<'a>,
-    ) -> DataMut<'a, &'a mut Desc::Data, S> {
+    ) -> DataMut<'a, Desc::Data, S> {
         let old_data = self.data.insert(name.clone(), data);
         let data = self.data.get_mut(&name).unwrap();
         old_data.map(|old| data.apply_previous_settings(old));
@@ -563,7 +563,7 @@ impl<Desc: ShapeDescriptor, S: ContextHolder> ShapeMut<'_, Shape<S, Desc>, S> {
         &'_ mut self,
         name: String,
         data: Desc::Data,
-    ) -> DataMut<'_, &'_ mut Desc::Data, S> {
+    ) -> DataMut<'_, Desc::Data, S> {
         let ctxt = <S as ContextHolder>::reborrow_context(&mut self.context);
         self.inner.add_data(name, data, ctxt)
     }

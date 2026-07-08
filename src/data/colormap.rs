@@ -679,7 +679,7 @@ impl DataSettings for ColorMap {
     }
 }
 
-pub type ColorMapMut<'a, Ctxt> = DataMut<'a, &'a mut ColorMap, Ctxt>;
+pub type ColorMapMut<'a, Ctxt> = DataMut<'a, ColorMap, Ctxt>;
 
 impl<S: ContextHolder> ColorMapMut<'_, S> {
     pub fn set_colormap(&mut self, colormap: Colors) {

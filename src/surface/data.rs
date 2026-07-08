@@ -72,7 +72,7 @@ impl DataSettings for VertexScalarSettings {
     }
 }
 
-pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VertexScalarSettings, Ctxt>;
+pub type VertexScalarSettingsMut<'a, Ctxt> = DataMut<'a, VertexScalarSettings, Ctxt>;
 
 impl<S: ContextHolder> VertexScalarSettingsMut<'_, S> {
     pub fn set_isolines(&mut self, number: f32) {
