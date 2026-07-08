@@ -1,7 +1,5 @@
 use crate::{
-    attachment::internal::AttachmentPosition,
-    data::internal::DataUniform,
-    window::{ContextHolder, InnerGraphicalState},
+    attachment::internal::AttachmentPosition, data::internal::DataUniform, window::ContextHolder,
 };
 
 use super::DataUniformBuilder;
@@ -51,7 +49,6 @@ pub trait GraphicalAttachedGeometry {
 
 impl<S: ContextHolder> AttachedGeometry<S> for () {
     type Args = ();
-    type Settings<'a> = &'a mut ();
 
     fn new(
         _name: String,
@@ -68,10 +65,6 @@ impl<S: ContextHolder> AttachedGeometry<S> for () {
 
     fn shown(&self) -> bool {
         false
-    }
-
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        self
     }
 
     fn get_attached_position(&self) -> &AttachmentPosition {
@@ -136,9 +129,6 @@ pub trait ShapeGeometry: Clone {
 
 pub trait AttachedGeometry<S: ContextHolder + ?Sized> {
     type Args;
-    type Settings<'a>
-    where
-        Self: 'a;
 
     fn new(
         name: String,
@@ -152,8 +142,6 @@ pub trait AttachedGeometry<S: ContextHolder + ?Sized> {
     fn shown(&self) -> bool;
 
     fn show(&mut self, _show: bool, _refresh_screen: &mut bool);
-
-    fn get_settings(&mut self) -> Self::Settings<'_>;
 
     fn get_attached_position(&self) -> &AttachmentPosition;
 }

@@ -5,15 +5,15 @@ use crate::{
     point_cloud::geometry::PointCloudDesc,
     segment::geometry::SegmentDesc,
     shape::{
-        AttachedGeometry, AttachedRenderer, DataMut, FixedRenderer, GraphicalAttachedGeometry,
-        RenderAttached, ShapeDescriptor, ShapeGeometry, data::ShapeSettings,
+        AttachedGeometry, AttachedRenderer, FixedRenderer, GraphicalAttachedGeometry,
+        RenderAttached, ShapeDescriptor, ShapeGeometry, ShapeMut, data::ShapeSettings,
     },
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
 #[cfg(feature = "saves")]
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-pub use vector_field::VectorFieldSettingsMut;
-pub(crate) use vector_field::{VectorField, VectorFieldSettings};
+pub(crate) use vector_field::VectorField;
+pub use vector_field::VectorFieldAttachmentMut;
 
 pub(crate) mod internal {
     #[cfg(feature = "saves")]
@@ -46,9 +46,9 @@ pub struct Attachment<S: ContextHolder + ?Sized, Desc: ShapeDescriptor> {
 }
 
 pub(crate) type Points<S> = Attachment<S, PointCloudDesc>;
-pub type PointsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut crate::point_cloud::PCSettings, Ctxt>;
+pub type PointsAttachmentMut<'a, Ctxt> = ShapeMut<'a, Points<Ctxt>, Ctxt>;
 pub(crate) type Segments<S> = Attachment<S, SegmentDesc>;
-pub type SegmentsSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut crate::segment::PCSettings, Ctxt>;
+pub type SegmentsAttachmentMut<'a, Ctxt> = ShapeMut<'a, Segments<Ctxt>, Ctxt>;
 
 impl<Desc: ShapeDescriptor> Clone for Attachment<InnerBareState, Desc> {
     fn clone(&self) -> Self {
@@ -65,12 +65,6 @@ impl<Desc: ShapeDescriptor> Clone for Attachment<InnerBareState, Desc> {
 
 impl<S: ContextHolder, Desc: ShapeDescriptor> AttachedGeometry<S> for Attachment<S, Desc> {
     type Args = (Vec<u32>, <Desc::Geometry as ShapeGeometry>::Args);
-    type Settings<'b>
-        = &'b mut Desc::Settings
-    where
-        S: 'b,
-        Desc: 'b,
-        Desc::Settings: 'b;
 
     fn new(
         name: String,
@@ -107,10 +101,6 @@ impl<S: ContextHolder, Desc: ShapeDescriptor> AttachedGeometry<S> for Attachment
 
     fn get_attached_position(&self) -> &AttachmentPosition {
         &self.position
-    }
-
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        &mut self.settings
     }
 }
 
@@ -182,5 +172,21 @@ where
         if self.geometry.get_total_elements() > 0 {
             self.renderer.render_attached(render_pass);
         }
+    }
+}
+
+impl<'a, T, S: ContextHolder> ShapeMut<'a, T, S> {
+    pub(crate) fn convert<U, F: FnOnce(&mut T) -> &mut U>(self, f: F) -> ShapeMut<'a, U, S> {
+        ShapeMut {
+            inner: f(self.inner),
+            context: self.context,
+        }
+    }
+}
+
+impl<Desc: ShapeDescriptor, S: ContextHolder> ShapeMut<'_, Attachment<S, Desc>, S> {
+    pub fn show(&mut self, show: bool) {
+        self.inner.show = show;
+        S::notify_refresh_screen(&mut self.context, true);
     }
 }

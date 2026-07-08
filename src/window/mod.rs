@@ -112,6 +112,12 @@ pub trait ContextHolder {
         this: &Self::Renderer<Desc>,
     ) -> &Self::TransformUniform;
 
+    fn update_attached_settings<Desc: ShapeDescriptor + ?Sized>(
+        this: &mut Self::AttachedRenderer<Desc>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    );
+
     fn build_attached_renderer<Desc: ShapeDescriptor + ?Sized>(
         geometry: &Desc::Geometry,
         settings: &Desc::Settings,
@@ -523,6 +529,14 @@ impl ContextHolder for InnerGraphicalState {
         &this.transform_uniform
     }
 
+    fn update_attached_settings<Desc: ShapeDescriptor + ?Sized>(
+        this: &mut Self::AttachedRenderer<Desc>,
+        settings: &Desc::Settings,
+        ctxt: &Self::Context<'_>,
+    ) {
+        settings.refresh_buffer(ctxt.queue, &this.settings_uniform);
+    }
+
     fn build_attached_renderer<Desc: ShapeDescriptor + ?Sized>(
         geometry: &Desc::Geometry,
         settings: &Desc::Settings,
@@ -740,6 +754,13 @@ impl ContextHolder for InnerBareState {
         _this: &Self::Renderer<Desc>,
     ) -> &Self::TransformUniform {
         &()
+    }
+
+    fn update_attached_settings<Desc: ShapeDescriptor + ?Sized>(
+        _this: &mut Self::AttachedRenderer<Desc>,
+        _settings: &Desc::Settings,
+        _ctxt: &Self::Context<'_>,
+    ) {
     }
 
     fn build_attached_renderer<Desc: ShapeDescriptor + ?Sized>(

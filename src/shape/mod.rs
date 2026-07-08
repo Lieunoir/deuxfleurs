@@ -499,13 +499,13 @@ impl<S: ContextHolder, Desc: ShapeDescriptor> Shape<S, Desc> {
         S::update_transform(&mut self.renderer, &self.transform, context);
     }
 
-    fn add_attached_geometry<'a>(
-        &'a mut self,
+    fn add_attached_geometry(
+        &mut self,
         name: String,
         args: <Desc::Attached<S> as AttachedGeometry<S>>::Args,
         position: AttachmentPosition,
-        mut context: S::Context<'a>,
-    ) -> DataMut<'a, &'a mut Desc::Attached<S>, S> {
+        mut context: S::Context<'_>,
+    ) -> &mut Desc::Attached<S> {
         S::notify_refresh_screen(&mut context, true);
         {
             let geometry = Desc::Attached::new(
@@ -518,11 +518,7 @@ impl<S: ContextHolder, Desc: ShapeDescriptor> Shape<S, Desc> {
             );
             self.attached_data.insert(name.clone(), geometry);
         }
-        DataMut {
-            inner: self.attached_data.get_mut(&name).unwrap(),
-            context: context,
-            uniform: S::get_renderer_data_uniform(&self.renderer),
-        }
+        self.attached_data.get_mut(&name).unwrap()
     }
 }
 
@@ -577,9 +573,12 @@ impl<Desc: ShapeDescriptor, S: ContextHolder> ShapeMut<'_, Shape<S, Desc>, S> {
         name: String,
         args: <Desc::Attached<S> as AttachedGeometry<S>>::Args,
         position: AttachmentPosition,
-    ) -> DataMut<'_, &'_ mut Desc::Attached<S>, S> {
+    ) -> ShapeMut<'_, Desc::Attached<S>, S> {
         let ctxt = <S as ContextHolder>::reborrow_context(&mut self.context);
-        self.inner.add_attached_geometry(name, args, position, ctxt)
+        ShapeMut {
+            inner: self.inner.add_attached_geometry(name, args, position, ctxt),
+            context: <S as ContextHolder>::reborrow_context(&mut self.context),
+        }
     }
 
     pub(crate) fn update_settings(&mut self, rebuild_pipeline: bool) -> &mut Self {

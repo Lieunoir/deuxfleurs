@@ -5,12 +5,12 @@ use crate::data::internal::DataUniformBuilder;
 use crate::data::*;
 use crate::shape::AttachedRenderer;
 use crate::shape::DataBuffer;
-use crate::shape::DataMut;
 use crate::shape::FixedRenderer;
 use crate::shape::RenderAttached;
 use crate::shape::RenderPipeline;
 use crate::shape::ShapeDescriptor;
 use crate::shape::ShapeGeometry;
+use crate::shape::ShapeMut;
 use crate::shape::ShapeSettings;
 use crate::texture;
 use crate::util;
@@ -349,25 +349,31 @@ impl RenderAttached for AttachedRenderer<VectorFieldDescriptor> {
     }
 }
 
-pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VectorFieldSettings, Ctxt>;
+pub type VectorFieldAttachmentMut<'a, Ctxt> = ShapeMut<'a, VectorField<Ctxt>, Ctxt>;
 
-impl<S: ContextHolder> VectorFieldSettingsMut<'_, S> {
+impl<S: ContextHolder> VectorFieldAttachmentMut<'_, S> {
     pub fn set_magnitude(&mut self, magnitude: f32, relative: bool) {
         if relative {
-            self.inner.magnitude = magnitude;
+            self.inner.settings.magnitude = magnitude;
         } else {
-            self.inner.magnitude = magnitude / self.inner.l;
+            self.inner.settings.magnitude = magnitude / self.inner.settings.l;
         }
-        self.update_data_settings();
+        if self.inner.show {
+            S::notify_refresh_screen(&mut self.context, true);
+        }
+        S::update_attached_settings(
+            &mut self.inner.renderer,
+            &self.inner.settings,
+            &self.context,
+        );
     }
 
     pub fn set_color(&mut self, color: [f32; 4]) {
-        self.inner.color.color = color;
-        self.update_data_settings();
-    }
-
-    pub fn show(&mut self, show: bool) {
-        self.inner.show = show;
-        self.update_data_settings();
+        self.inner.settings.color.color = color;
+        S::update_attached_settings(
+            &mut self.inner.renderer,
+            &self.inner.settings,
+            &self.context,
+        );
     }
 }

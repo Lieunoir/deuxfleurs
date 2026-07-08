@@ -1,10 +1,6 @@
 use crate::{
-    attachment::{
-        Points, Segments, VectorField, VectorFieldSettings, internal::AttachmentPosition,
-    },
+    attachment::{Points, Segments, VectorField, internal::AttachmentPosition},
     data::internal::DataUniform,
-    point_cloud::PCSettings,
-    segment::PCSettings as SegmentSettings,
     shape::{AttachedGeometry, GraphicalAttachedGeometry},
     window::{ContextHolder, InnerBareState, InnerGraphicalState},
 };
@@ -35,12 +31,6 @@ impl Clone for SurfaceAttachment<InnerBareState> {
     }
 }
 
-pub enum SurfaceAttachmentSettings<'a> {
-    VectorField(&'a mut VectorFieldSettings),
-    Points(&'a mut PCSettings),
-    Segments(&'a mut SegmentSettings),
-}
-
 pub enum SurfaceAttachmentArgs {
     VectorField((Vec<u32>, (Vec<[f32; 3]>, Vec<[f32; 3]>))),
     Points((Vec<u32>, Vec<[f32; 3]>)),
@@ -49,10 +39,6 @@ pub enum SurfaceAttachmentArgs {
 
 impl<S: ContextHolder> AttachedGeometry<S> for SurfaceAttachment<S> {
     type Args = SurfaceAttachmentArgs;
-    type Settings<'b>
-        = SurfaceAttachmentSettings<'b>
-    where
-        S: 'b;
 
     fn new(
         name: String,
@@ -107,16 +93,6 @@ impl<S: ContextHolder> AttachedGeometry<S> for SurfaceAttachment<S> {
             SurfaceAttachment::VectorField(v) => v.shown(),
             SurfaceAttachment::Points(p) => p.shown(),
             SurfaceAttachment::Segments(s) => s.shown(),
-        }
-    }
-
-    fn get_settings(&mut self) -> Self::Settings<'_> {
-        match self {
-            SurfaceAttachment::VectorField(v) => {
-                SurfaceAttachmentSettings::VectorField(v.get_settings())
-            }
-            SurfaceAttachment::Points(p) => SurfaceAttachmentSettings::Points(p.get_settings()),
-            SurfaceAttachment::Segments(s) => SurfaceAttachmentSettings::Segments(s.get_settings()),
         }
     }
 

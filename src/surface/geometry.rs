@@ -1,13 +1,13 @@
 use super::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
 use super::shader::get_shader;
-use crate::attachment::{PointsSettingsMut, SegmentsSettingsMut};
-use crate::attachment::{VectorFieldSettingsMut, internal::AttachmentPosition};
+use crate::attachment::{PointsAttachmentMut, SegmentsAttachmentMut};
+use crate::attachment::{VectorFieldAttachmentMut, internal::AttachmentPosition};
 use crate::camera::Camera;
 use crate::data::{internal::*, *};
 use crate::picker::SurfacePicked;
 use crate::shape::*;
 use crate::surface::SurfaceAttachment;
-use crate::surface::attachment::{SurfaceAttachmentArgs, SurfaceAttachmentSettings};
+use crate::surface::attachment::SurfaceAttachmentArgs;
 use crate::texture;
 use crate::types::{Color, Scalar, Vertices};
 use crate::types::{SurfaceIndices, Vertices2D};
@@ -1220,7 +1220,7 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
         &mut self,
         name: impl Into<String>,
         vertices: Vec<u32>,
-    ) -> PointsSettingsMut<'_, S> {
+    ) -> PointsAttachmentMut<'_, S> {
         if let Some(max) = vertices.iter().max() {
             assert!(*max < self.geometry.vertices.len() as u32);
         }
@@ -1230,8 +1230,8 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
             .collect::<Vec<_>>();
         let args = SurfaceAttachmentArgs::Points((vertices, positions).into());
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
-            .convert(|attached| match attached.get_settings() {
-                SurfaceAttachmentSettings::Points(p) => p,
+            .convert(|attached| match attached {
+                SurfaceAttachment::Points(p) => p,
                 _ => panic!(),
             })
     }
@@ -1240,14 +1240,14 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
         &mut self,
         name: impl Into<String>,
         vectors: impl Vertices,
-    ) -> VectorFieldSettingsMut<'_, S> {
+    ) -> VectorFieldAttachmentMut<'_, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.vertices.len());
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
         let args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
-            .convert(|attached| match attached.get_settings() {
-                SurfaceAttachmentSettings::VectorField(f) => f,
+            .convert(|attached| match attached {
+                SurfaceAttachment::VectorField(f) => f,
                 _ => panic!(),
             })
     }
@@ -1256,7 +1256,7 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
         &mut self,
         name: impl Into<String>,
         vectors: impl Vertices,
-    ) -> VectorFieldSettingsMut<'_, S> {
+    ) -> VectorFieldAttachmentMut<'_, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.indices.size());
         let offsets: Vec<[f32; 3]> = self
@@ -1281,8 +1281,8 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
             .collect();
         let args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Face)
-            .convert(|attached| match attached.get_settings() {
-                SurfaceAttachmentSettings::VectorField(f) => f,
+            .convert(|attached| match attached {
+                SurfaceAttachment::VectorField(f) => f,
                 _ => panic!(),
             })
     }
@@ -1291,7 +1291,7 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
         &mut self,
         name: impl Into<String>,
         vectors: impl Vertices,
-    ) -> VectorFieldSettingsMut<'_, S> {
+    ) -> VectorFieldAttachmentMut<'_, S> {
         let vectors = vectors.into();
         assert!(vectors.len() == self.geometry.face_to_edge.num_edges as usize);
         let mut offsets = vec![[0., 0., 0.]; self.geometry.face_to_edge.num_edges as usize];
@@ -1313,8 +1313,8 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
         let offsets: Vec<[f32; 3]> = self.geometry.vertices.clone();
         let args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Edge)
-            .convert(|attached| match attached.get_settings() {
-                SurfaceAttachmentSettings::VectorField(f) => f,
+            .convert(|attached| match attached {
+                SurfaceAttachment::VectorField(f) => f,
                 _ => panic!(),
             })
     }
@@ -1323,7 +1323,7 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
         &mut self,
         name: impl Into<String>,
         mut edges: Vec<u32>,
-    ) -> SegmentsSettingsMut<'_, S> {
+    ) -> SegmentsAttachmentMut<'_, S> {
         if let Some(max) = edges.iter().max() {
             assert!(*max < self.geometry.face_to_edge.num_edges);
         }
@@ -1365,8 +1365,8 @@ impl<S: ContextHolder> SurfaceMut<'_, S> {
         let args =
             SurfaceAttachmentArgs::Segments((vertices_indices, (vertices_values, connections)));
         self.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
-            .convert(|attached| match attached.get_settings() {
-                SurfaceAttachmentSettings::Segments(s) => s,
+            .convert(|attached| match attached {
+                SurfaceAttachment::Segments(s) => s,
                 _ => panic!(),
             })
     }
