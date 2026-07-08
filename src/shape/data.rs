@@ -1,5 +1,4 @@
 use crate::{
-    Settings,
     attachment::internal::AttachmentPosition,
     data::internal::DataUniform,
     window::{ContextHolder, InnerGraphicalState},
@@ -13,8 +12,6 @@ pub struct DataMut<'a, T, S: ContextHolder> {
     pub(crate) uniform: &'a S::DataUniform,
 }
 
-pub type DisplayData<'a, T> = DataMut<'a, T, InnerGraphicalState>;
-
 impl<'a, T, S: ContextHolder> DataMut<'a, T, S> {
     pub(crate) fn convert<U, F: FnOnce(T) -> U>(self, f: F) -> DataMut<'a, U, S> {
         DataMut {
@@ -25,25 +22,9 @@ impl<'a, T, S: ContextHolder> DataMut<'a, T, S> {
     }
 }
 
-pub trait DataMutTrait {
-    fn update_data_settings(&mut self);
-}
-
-impl<T, S> DataMutTrait for DataMut<'_, T, S>
-where
-    for<'a> S: ContextHolder<Context<'a> = &'a mut Settings>,
-{
-    fn update_data_settings(&mut self) {}
-}
-
-impl<T> DataMutTrait for DisplayData<'_, T>
-where
-    T: DataUniformBuilder,
-{
-    fn update_data_settings(&mut self) {
-        self.uniform
-            .as_ref()
-            .map(|uniform| self.inner.refresh_buffer(self.context.queue, uniform));
+impl<'a, T: DataUniformBuilder, S: ContextHolder> DataMut<'a, &'a mut T, S> {
+    pub(crate) fn update_data_settings(&mut self) {
+        S::rebuild_data_uniform(self.inner, self.uniform, &self.context);
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::data::internal::DataSettings;
-use crate::shape::{DataMut, DataMutTrait};
+use crate::shape::DataMut;
 use crate::window::ContextHolder;
 use egui::Widget;
 #[cfg(feature = "saves")]
@@ -75,10 +75,7 @@ impl DataSettings for UVMapSettings {
 
 pub type UVMapSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut UVMapSettings, Ctxt>;
 
-impl<S: ContextHolder> UVMapSettingsMut<'_, S>
-where
-    Self: DataMutTrait,
-{
+impl<S: ContextHolder> UVMapSettingsMut<'_, S> {
     pub fn set_color_1(&mut self, color: [f32; 4]) {
         self.inner.color_1 = color;
         self.update_data_settings();

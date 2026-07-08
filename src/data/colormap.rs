@@ -1,6 +1,6 @@
 use crate::Settings;
 use crate::data::internal::{DataSettings, DataUniform, DataUniformBuilder};
-use crate::shape::{DataMut, DataMutTrait};
+use crate::shape::DataMut;
 use crate::window::ContextHolder;
 use egui::Shape;
 use egui::epaint::RectShape;
@@ -681,10 +681,7 @@ impl DataSettings for ColorMap {
 
 pub type ColorMapMut<'a, Ctxt> = DataMut<'a, &'a mut ColorMap, Ctxt>;
 
-impl<S: ContextHolder> ColorMapMut<'_, S>
-where
-    Self: DataMutTrait,
-{
+impl<S: ContextHolder> ColorMapMut<'_, S> {
     pub fn set_colormap(&mut self, colormap: Colors) {
         self.inner.colors = colormap;
         self.update_data_settings();

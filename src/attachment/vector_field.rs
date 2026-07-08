@@ -5,13 +5,13 @@ use crate::data::internal::DataUniformBuilder;
 use crate::data::*;
 use crate::shape::AttachedRenderer;
 use crate::shape::DataBuffer;
+use crate::shape::DataMut;
 use crate::shape::FixedRenderer;
 use crate::shape::RenderAttached;
 use crate::shape::RenderPipeline;
 use crate::shape::ShapeDescriptor;
 use crate::shape::ShapeGeometry;
 use crate::shape::ShapeSettings;
-use crate::shape::{DataMut, DataMutTrait};
 use crate::texture;
 use crate::util;
 use crate::util::Vertex;
@@ -351,10 +351,7 @@ impl RenderAttached for AttachedRenderer<VectorFieldDescriptor> {
 
 pub type VectorFieldSettingsMut<'a, Ctxt> = DataMut<'a, &'a mut VectorFieldSettings, Ctxt>;
 
-impl<S: ContextHolder> VectorFieldSettingsMut<'_, S>
-where
-    Self: DataMutTrait,
-{
+impl<S: ContextHolder> VectorFieldSettingsMut<'_, S> {
     pub fn set_magnitude(&mut self, magnitude: f32, relative: bool) {
         if relative {
             self.inner.magnitude = magnitude;

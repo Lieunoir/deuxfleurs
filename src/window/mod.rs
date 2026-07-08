@@ -98,6 +98,12 @@ pub trait ContextHolder {
         ctxt: &Self::Context<'_>,
     );
 
+    fn rebuild_data_uniform<T: DataUniformBuilder>(
+        this: &T,
+        uniform: &Self::DataUniform,
+        ctxt: &Self::Context<'_>,
+    );
+
     fn get_renderer_data_uniform<Desc: ShapeDescriptor + ?Sized>(
         this: &Self::Renderer<Desc>,
     ) -> &Self::DataUniform;
@@ -501,6 +507,16 @@ impl ContextHolder for InnerGraphicalState {
         &this.data_uniform
     }
 
+    fn rebuild_data_uniform<T: DataUniformBuilder>(
+        this: &T,
+        uniform: &Self::DataUniform,
+        ctxt: &Self::Context<'_>,
+    ) {
+        uniform
+            .as_ref()
+            .map(|uniform| this.refresh_buffer(ctxt.queue, uniform));
+    }
+
     fn get_renderer_transform_uniform<Desc: ShapeDescriptor + ?Sized>(
         this: &Self::Renderer<Desc>,
     ) -> &Self::TransformUniform {
@@ -703,6 +719,13 @@ impl ContextHolder for InnerBareState {
         _this: &mut Self::Renderer<Desc>,
         _data: Option<&Desc::Data>,
         _settings: &Desc::Settings,
+        _ctxt: &Self::Context<'_>,
+    ) {
+    }
+
+    fn rebuild_data_uniform<T: DataUniformBuilder>(
+        _this: &T,
+        _uniform: &Self::DataUniform,
         _ctxt: &Self::Context<'_>,
     ) {
     }
