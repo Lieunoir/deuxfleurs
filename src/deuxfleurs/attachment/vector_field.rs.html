@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/attachment/vector_field.rs`."><title>vector_field.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (c397dae80 2026-07-02)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/attachment/</div>vector_field.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::attachment::Attachment;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/attachment/vector_field.rs`."><title>vector_field.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (f10db292a 2026-07-07)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/attachment/</div>vector_field.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">crate</span>::attachment::Attachment;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">crate</span>::data::internal::DataSettings;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::data::internal::DataUniform;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::data::internal::DataUniformBuilder;
@@ -10,8 +10,8 @@
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::shape::RenderPipeline;
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::shape::ShapeDescriptor;
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span><span class="kw">crate</span>::shape::ShapeGeometry;
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::shape::ShapeSettings;
-<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::shape::{DataMut, DataMutTrait};
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::shape::ShapeMut;
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::shape::ShapeSettings;
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::texture;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::util;
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span><span class="kw">crate</span>::util::Vertex;
@@ -349,29 +349,32 @@
 <a href=#349 id=349 data-nosnippet>349</a>    }
 <a href=#350 id=350 data-nosnippet>350</a>}
 <a href=#351 id=351 data-nosnippet>351</a>
-<a href=#352 id=352 data-nosnippet>352</a><span class="kw">pub type </span>VectorFieldSettingsMut&lt;<span class="lifetime">'a</span>, Ctxt&gt; = DataMut&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>VectorFieldSettings, Ctxt&gt;;
+<a href=#352 id=352 data-nosnippet>352</a><span class="kw">pub type </span>VectorFieldAttachmentMut&lt;<span class="lifetime">'a</span>, Ctxt&gt; = ShapeMut&lt;<span class="lifetime">'a</span>, VectorField&lt;Ctxt&gt;, Ctxt&gt;;
 <a href=#353 id=353 data-nosnippet>353</a>
-<a href=#354 id=354 data-nosnippet>354</a><span class="kw">impl</span>&lt;S: ContextHolder&gt; VectorFieldSettingsMut&lt;<span class="lifetime">'_</span>, S&gt;
-<a href=#355 id=355 data-nosnippet>355</a><span class="kw">where
-<a href=#356 id=356 data-nosnippet>356</a>    </span><span class="self">Self</span>: DataMutTrait,
-<a href=#357 id=357 data-nosnippet>357</a>{
-<a href=#358 id=358 data-nosnippet>358</a>    <span class="kw">pub fn </span>set_magnitude(<span class="kw-2">&amp;mut </span><span class="self">self</span>, magnitude: f32, relative: bool) {
-<a href=#359 id=359 data-nosnippet>359</a>        <span class="kw">if </span>relative {
-<a href=#360 id=360 data-nosnippet>360</a>            <span class="self">self</span>.inner.magnitude = magnitude;
-<a href=#361 id=361 data-nosnippet>361</a>        } <span class="kw">else </span>{
-<a href=#362 id=362 data-nosnippet>362</a>            <span class="self">self</span>.inner.magnitude = magnitude / <span class="self">self</span>.inner.l;
+<a href=#354 id=354 data-nosnippet>354</a><span class="kw">impl</span>&lt;S: ContextHolder&gt; VectorFieldAttachmentMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#355 id=355 data-nosnippet>355</a>    <span class="kw">pub fn </span>set_magnitude(<span class="kw-2">&amp;mut </span><span class="self">self</span>, magnitude: f32, relative: bool) {
+<a href=#356 id=356 data-nosnippet>356</a>        <span class="kw">if </span>relative {
+<a href=#357 id=357 data-nosnippet>357</a>            <span class="self">self</span>.inner.settings.magnitude = magnitude;
+<a href=#358 id=358 data-nosnippet>358</a>        } <span class="kw">else </span>{
+<a href=#359 id=359 data-nosnippet>359</a>            <span class="self">self</span>.inner.settings.magnitude = magnitude / <span class="self">self</span>.inner.settings.l;
+<a href=#360 id=360 data-nosnippet>360</a>        }
+<a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">if </span><span class="self">self</span>.inner.show {
+<a href=#362 id=362 data-nosnippet>362</a>            S::notify_refresh_screen(<span class="kw-2">&amp;mut </span><span class="self">self</span>.context, <span class="bool-val">true</span>);
 <a href=#363 id=363 data-nosnippet>363</a>        }
-<a href=#364 id=364 data-nosnippet>364</a>        <span class="self">self</span>.update_data_settings();
-<a href=#365 id=365 data-nosnippet>365</a>    }
-<a href=#366 id=366 data-nosnippet>366</a>
-<a href=#367 id=367 data-nosnippet>367</a>    <span class="kw">pub fn </span>set_color(<span class="kw-2">&amp;mut </span><span class="self">self</span>, color: [f32; <span class="number">4</span>]) {
-<a href=#368 id=368 data-nosnippet>368</a>        <span class="self">self</span>.inner.color.color = color;
-<a href=#369 id=369 data-nosnippet>369</a>        <span class="self">self</span>.update_data_settings();
-<a href=#370 id=370 data-nosnippet>370</a>    }
-<a href=#371 id=371 data-nosnippet>371</a>
-<a href=#372 id=372 data-nosnippet>372</a>    <span class="kw">pub fn </span>show(<span class="kw-2">&amp;mut </span><span class="self">self</span>, show: bool) {
-<a href=#373 id=373 data-nosnippet>373</a>        <span class="self">self</span>.inner.show = show;
-<a href=#374 id=374 data-nosnippet>374</a>        <span class="self">self</span>.update_data_settings();
-<a href=#375 id=375 data-nosnippet>375</a>    }
-<a href=#376 id=376 data-nosnippet>376</a>}
+<a href=#364 id=364 data-nosnippet>364</a>        S::update_attached_settings(
+<a href=#365 id=365 data-nosnippet>365</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner.renderer,
+<a href=#366 id=366 data-nosnippet>366</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.inner.settings,
+<a href=#367 id=367 data-nosnippet>367</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+<a href=#368 id=368 data-nosnippet>368</a>        );
+<a href=#369 id=369 data-nosnippet>369</a>    }
+<a href=#370 id=370 data-nosnippet>370</a>
+<a href=#371 id=371 data-nosnippet>371</a>    <span class="kw">pub fn </span>set_color(<span class="kw-2">&amp;mut </span><span class="self">self</span>, color: [f32; <span class="number">4</span>]) {
+<a href=#372 id=372 data-nosnippet>372</a>        <span class="self">self</span>.inner.settings.color.color = color;
+<a href=#373 id=373 data-nosnippet>373</a>        S::update_attached_settings(
+<a href=#374 id=374 data-nosnippet>374</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>.inner.renderer,
+<a href=#375 id=375 data-nosnippet>375</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.inner.settings,
+<a href=#376 id=376 data-nosnippet>376</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+<a href=#377 id=377 data-nosnippet>377</a>        );
+<a href=#378 id=378 data-nosnippet>378</a>    }
+<a href=#379 id=379 data-nosnippet>379</a>}
 </code></pre></div></section></main></body></html>

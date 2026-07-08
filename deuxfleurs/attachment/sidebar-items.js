@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Attachment"],"type":["PointsSettingsMut","SegmentsSettingsMut","VectorFieldSettingsMut"]};
+window.SIDEBAR_ITEMS = {"struct":["Attachment"],"type":["PointsAttachmentMut","SegmentsAttachmentMut","VectorFieldAttachmentMut"]};

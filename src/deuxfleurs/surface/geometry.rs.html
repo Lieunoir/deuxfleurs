@@ -1,13 +1,13 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/surface/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (c397dae80 2026-07-02)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/surface/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">super</span>::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/surface/geometry.rs`."><title>geometry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="deuxfleurs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (f10db292a 2026-07-07)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">deuxfleurs/surface/</div>geometry.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span><span class="kw">super</span>::data::{SurfaceData, VertexScalarSettings, VertexScalarSettingsMut};
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span><span class="kw">super</span>::shader::get_shader;
-<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::attachment::{PointsSettingsMut, SegmentsSettingsMut};
-<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::attachment::{VectorFieldSettingsMut, internal::AttachmentPosition};
+<a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span><span class="kw">crate</span>::attachment::{PointsAttachmentMut, SegmentsAttachmentMut};
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::attachment::{VectorFieldAttachmentMut, internal::AttachmentPosition};
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::camera::Camera;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span><span class="kw">crate</span>::data::{internal::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::picker::SurfacePicked;
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::shape::<span class="kw-2">*</span>;
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::surface::SurfaceAttachment;
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::surface::attachment::{SurfaceAttachmentArgs, SurfaceAttachmentSettings};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::surface::attachment::SurfaceAttachmentArgs;
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::texture;
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span><span class="kw">crate</span>::types::{Color, Scalar, Vertices};
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">crate</span>::types::{SurfaceIndices, Vertices2D};
@@ -1220,7 +1220,7 @@
 <a href=#1220 id=1220 data-nosnippet>1220</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#1221 id=1221 data-nosnippet>1221</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
 <a href=#1222 id=1222 data-nosnippet>1222</a>        vertices: Vec&lt;u32&gt;,
-<a href=#1223 id=1223 data-nosnippet>1223</a>    ) -&gt; PointsSettingsMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#1223 id=1223 data-nosnippet>1223</a>    ) -&gt; PointsAttachmentMut&lt;<span class="lifetime">'_</span>, S&gt; {
 <a href=#1224 id=1224 data-nosnippet>1224</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = vertices.iter().max() {
 <a href=#1225 id=1225 data-nosnippet>1225</a>            <span class="macro">assert!</span>(<span class="kw-2">*</span>max &lt; <span class="self">self</span>.geometry.vertices.len() <span class="kw">as </span>u32);
 <a href=#1226 id=1226 data-nosnippet>1226</a>        }
@@ -1230,8 +1230,8 @@
 <a href=#1230 id=1230 data-nosnippet>1230</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 <a href=#1231 id=1231 data-nosnippet>1231</a>        <span class="kw">let </span>args = SurfaceAttachmentArgs::Points((vertices, positions).into());
 <a href=#1232 id=1232 data-nosnippet>1232</a>        <span class="self">self</span>.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
-<a href=#1233 id=1233 data-nosnippet>1233</a>            .convert(|attached| <span class="kw">match </span>attached.get_settings() {
-<a href=#1234 id=1234 data-nosnippet>1234</a>                SurfaceAttachmentSettings::Points(p) =&gt; p,
+<a href=#1233 id=1233 data-nosnippet>1233</a>            .convert(|attached| <span class="kw">match </span>attached {
+<a href=#1234 id=1234 data-nosnippet>1234</a>                SurfaceAttachment::Points(p) =&gt; p,
 <a href=#1235 id=1235 data-nosnippet>1235</a>                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
 <a href=#1236 id=1236 data-nosnippet>1236</a>            })
 <a href=#1237 id=1237 data-nosnippet>1237</a>    }
@@ -1240,14 +1240,14 @@
 <a href=#1240 id=1240 data-nosnippet>1240</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#1241 id=1241 data-nosnippet>1241</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
 <a href=#1242 id=1242 data-nosnippet>1242</a>        vectors: <span class="kw">impl </span>Vertices,
-<a href=#1243 id=1243 data-nosnippet>1243</a>    ) -&gt; VectorFieldSettingsMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#1243 id=1243 data-nosnippet>1243</a>    ) -&gt; VectorFieldAttachmentMut&lt;<span class="lifetime">'_</span>, S&gt; {
 <a href=#1244 id=1244 data-nosnippet>1244</a>        <span class="kw">let </span>vectors = vectors.into();
 <a href=#1245 id=1245 data-nosnippet>1245</a>        <span class="macro">assert!</span>(vectors.len() == <span class="self">self</span>.geometry.vertices.len());
 <a href=#1246 id=1246 data-nosnippet>1246</a>        <span class="kw">let </span>offsets: Vec&lt;[f32; <span class="number">3</span>]&gt; = <span class="self">self</span>.geometry.vertices.clone();
 <a href=#1247 id=1247 data-nosnippet>1247</a>        <span class="kw">let </span>args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
 <a href=#1248 id=1248 data-nosnippet>1248</a>        <span class="self">self</span>.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
-<a href=#1249 id=1249 data-nosnippet>1249</a>            .convert(|attached| <span class="kw">match </span>attached.get_settings() {
-<a href=#1250 id=1250 data-nosnippet>1250</a>                SurfaceAttachmentSettings::VectorField(f) =&gt; f,
+<a href=#1249 id=1249 data-nosnippet>1249</a>            .convert(|attached| <span class="kw">match </span>attached {
+<a href=#1250 id=1250 data-nosnippet>1250</a>                SurfaceAttachment::VectorField(f) =&gt; f,
 <a href=#1251 id=1251 data-nosnippet>1251</a>                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
 <a href=#1252 id=1252 data-nosnippet>1252</a>            })
 <a href=#1253 id=1253 data-nosnippet>1253</a>    }
@@ -1256,7 +1256,7 @@
 <a href=#1256 id=1256 data-nosnippet>1256</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#1257 id=1257 data-nosnippet>1257</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
 <a href=#1258 id=1258 data-nosnippet>1258</a>        vectors: <span class="kw">impl </span>Vertices,
-<a href=#1259 id=1259 data-nosnippet>1259</a>    ) -&gt; VectorFieldSettingsMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#1259 id=1259 data-nosnippet>1259</a>    ) -&gt; VectorFieldAttachmentMut&lt;<span class="lifetime">'_</span>, S&gt; {
 <a href=#1260 id=1260 data-nosnippet>1260</a>        <span class="kw">let </span>vectors = vectors.into();
 <a href=#1261 id=1261 data-nosnippet>1261</a>        <span class="macro">assert!</span>(vectors.len() == <span class="self">self</span>.geometry.indices.size());
 <a href=#1262 id=1262 data-nosnippet>1262</a>        <span class="kw">let </span>offsets: Vec&lt;[f32; <span class="number">3</span>]&gt; = <span class="self">self
@@ -1281,8 +1281,8 @@
 <a href=#1281 id=1281 data-nosnippet>1281</a>            .collect();
 <a href=#1282 id=1282 data-nosnippet>1282</a>        <span class="kw">let </span>args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
 <a href=#1283 id=1283 data-nosnippet>1283</a>        <span class="self">self</span>.add_attached_geometry(name.into(), args, AttachmentPosition::Face)
-<a href=#1284 id=1284 data-nosnippet>1284</a>            .convert(|attached| <span class="kw">match </span>attached.get_settings() {
-<a href=#1285 id=1285 data-nosnippet>1285</a>                SurfaceAttachmentSettings::VectorField(f) =&gt; f,
+<a href=#1284 id=1284 data-nosnippet>1284</a>            .convert(|attached| <span class="kw">match </span>attached {
+<a href=#1285 id=1285 data-nosnippet>1285</a>                SurfaceAttachment::VectorField(f) =&gt; f,
 <a href=#1286 id=1286 data-nosnippet>1286</a>                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
 <a href=#1287 id=1287 data-nosnippet>1287</a>            })
 <a href=#1288 id=1288 data-nosnippet>1288</a>    }
@@ -1291,7 +1291,7 @@
 <a href=#1291 id=1291 data-nosnippet>1291</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#1292 id=1292 data-nosnippet>1292</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
 <a href=#1293 id=1293 data-nosnippet>1293</a>        vectors: <span class="kw">impl </span>Vertices,
-<a href=#1294 id=1294 data-nosnippet>1294</a>    ) -&gt; VectorFieldSettingsMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#1294 id=1294 data-nosnippet>1294</a>    ) -&gt; VectorFieldAttachmentMut&lt;<span class="lifetime">'_</span>, S&gt; {
 <a href=#1295 id=1295 data-nosnippet>1295</a>        <span class="kw">let </span>vectors = vectors.into();
 <a href=#1296 id=1296 data-nosnippet>1296</a>        <span class="macro">assert!</span>(vectors.len() == <span class="self">self</span>.geometry.face_to_edge.num_edges <span class="kw">as </span>usize);
 <a href=#1297 id=1297 data-nosnippet>1297</a>        <span class="kw">let </span><span class="kw-2">mut </span>offsets = <span class="macro">vec!</span>[[<span class="number">0.</span>, <span class="number">0.</span>, <span class="number">0.</span>]; <span class="self">self</span>.geometry.face_to_edge.num_edges <span class="kw">as </span>usize];
@@ -1313,8 +1313,8 @@
 <a href=#1313 id=1313 data-nosnippet>1313</a>        <span class="kw">let </span>offsets: Vec&lt;[f32; <span class="number">3</span>]&gt; = <span class="self">self</span>.geometry.vertices.clone();
 <a href=#1314 id=1314 data-nosnippet>1314</a>        <span class="kw">let </span>args = SurfaceAttachmentArgs::VectorField((Vec::new(), (offsets, vectors).into()));
 <a href=#1315 id=1315 data-nosnippet>1315</a>        <span class="self">self</span>.add_attached_geometry(name.into(), args, AttachmentPosition::Edge)
-<a href=#1316 id=1316 data-nosnippet>1316</a>            .convert(|attached| <span class="kw">match </span>attached.get_settings() {
-<a href=#1317 id=1317 data-nosnippet>1317</a>                SurfaceAttachmentSettings::VectorField(f) =&gt; f,
+<a href=#1316 id=1316 data-nosnippet>1316</a>            .convert(|attached| <span class="kw">match </span>attached {
+<a href=#1317 id=1317 data-nosnippet>1317</a>                SurfaceAttachment::VectorField(f) =&gt; f,
 <a href=#1318 id=1318 data-nosnippet>1318</a>                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
 <a href=#1319 id=1319 data-nosnippet>1319</a>            })
 <a href=#1320 id=1320 data-nosnippet>1320</a>    }
@@ -1323,7 +1323,7 @@
 <a href=#1323 id=1323 data-nosnippet>1323</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#1324 id=1324 data-nosnippet>1324</a>        name: <span class="kw">impl </span>Into&lt;String&gt;,
 <a href=#1325 id=1325 data-nosnippet>1325</a>        <span class="kw-2">mut </span>edges: Vec&lt;u32&gt;,
-<a href=#1326 id=1326 data-nosnippet>1326</a>    ) -&gt; SegmentsSettingsMut&lt;<span class="lifetime">'_</span>, S&gt; {
+<a href=#1326 id=1326 data-nosnippet>1326</a>    ) -&gt; SegmentsAttachmentMut&lt;<span class="lifetime">'_</span>, S&gt; {
 <a href=#1327 id=1327 data-nosnippet>1327</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = edges.iter().max() {
 <a href=#1328 id=1328 data-nosnippet>1328</a>            <span class="macro">assert!</span>(<span class="kw-2">*</span>max &lt; <span class="self">self</span>.geometry.face_to_edge.num_edges);
 <a href=#1329 id=1329 data-nosnippet>1329</a>        }
@@ -1365,8 +1365,8 @@
 <a href=#1365 id=1365 data-nosnippet>1365</a>        <span class="kw">let </span>args =
 <a href=#1366 id=1366 data-nosnippet>1366</a>            SurfaceAttachmentArgs::Segments((vertices_indices, (vertices_values, connections)));
 <a href=#1367 id=1367 data-nosnippet>1367</a>        <span class="self">self</span>.add_attached_geometry(name.into(), args, AttachmentPosition::Vertex)
-<a href=#1368 id=1368 data-nosnippet>1368</a>            .convert(|attached| <span class="kw">match </span>attached.get_settings() {
-<a href=#1369 id=1369 data-nosnippet>1369</a>                SurfaceAttachmentSettings::Segments(s) =&gt; s,
+<a href=#1368 id=1368 data-nosnippet>1368</a>            .convert(|attached| <span class="kw">match </span>attached {
+<a href=#1369 id=1369 data-nosnippet>1369</a>                SurfaceAttachment::Segments(s) =&gt; s,
 <a href=#1370 id=1370 data-nosnippet>1370</a>                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
 <a href=#1371 id=1371 data-nosnippet>1371</a>            })
 <a href=#1372 id=1372 data-nosnippet>1372</a>    }
